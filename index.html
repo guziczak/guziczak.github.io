@@ -284,9 +284,10 @@
 
   <script>
     // Konfiguracja
-    const autoRedirectEnabled = true; // Hardcoded flaga blokująca auto-redirect
+    const autoRedirectEnabled = true; // Hardcoded flaga dla auto-redirect
     const redirectUrl = "https://guziczak.github.io/lukasz/";
-    const splitDelay = 2000; // ms po których rozpocznie się animacja separacji
+    const splitDelay = 500; // ms po których rozpocznie się animacja separacji
+    const totalAutoRedirectDelay = 1000; // całkowity czas w ms do auto-przekierowania od momentu załadowania strony
     
     document.addEventListener('DOMContentLoaded', () => {
       const bubbleContainer = document.getElementById('bubbleContainer');
@@ -294,12 +295,19 @@
       const redirectBubble = document.getElementById('redirectBubble');
       const deformBackground = document.getElementById('deformBackground');
       
-      // Przekierowanie po kliknięciu
+      // Przekierowanie po kliknięciu w bąbelek
       redirectBubble.addEventListener('click', () => {
         window.location.href = redirectUrl;
       });
       
-      // Rozpocznij animację po opóźnieniu
+      // Rozpocznij asynchroniczne odliczanie do automatycznego przekierowania
+      if (autoRedirectEnabled) {
+        setTimeout(() => {
+          window.location.href = redirectUrl;
+        }, totalAutoRedirectDelay);
+      }
+      
+      // Rozpocznij animację rozdzielania po opóźnieniu
       setTimeout(startSeparationAnimation, splitDelay);
       
       // Funkcja rozpoczynająca animację separacji bąbelków
@@ -332,17 +340,17 @@
         // 3. Utwórz efekt małych bąbelków przy rozrywaniu
         setTimeout(createBubbleBreakEffect, 350);
         
-        // 4. Po zakończeniu animacji separacji (po 800ms + margines bezpieczeństwa)
+        // 4. Po zakończeniu animacji separacji
         setTimeout(() => {
           // Usuń element łącznika
           connector.remove();
           
-          // WAŻNE: Wyraźnie ustaw style dla bąbelka przekierowującego
-          // aby upewnić się, że pozostanie widoczny
+          // Wyraźnie ustaw style dla bąbelka przekierowującego
           redirectBubble.classList.add('redirect-floating');
           
           // Zastosuj animację pływania dla głównego bąbelka
           mainBubble.classList.add('floating');
+          
         }, 850);
       }
       
