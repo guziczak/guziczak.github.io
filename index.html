@@ -11,21 +11,27 @@
       --primary-color: #0070f3;
       --primary-dark: #0050a0;
       --secondary-color: #34d399;
-      --tertiary-color: #8b5cf6;
       --light-bg: #f9fafb;
       --dark-bg: #111827;
-      --light-card: #ffffff;
-      --dark-card: #1f2937;
       --light-text: #1f2937;
       --dark-text: #f3f4f6;
-      --gray-text: #6b7280;
-      --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      --dark-card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.25), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-      --border-radius: 12px;
+      --light-card: #ffffff;
+      --dark-card: #1f2937;
       --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       --heading-font: 'Poppins', 'Segoe UI', sans-serif;
       --body-font: 'Inter', 'Roboto', 'Arial', sans-serif;
-      --transition-bezier: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    /* Animation state classes */
+    .redirect-floating {
+      opacity: 1 !important;
+      transform: translate(-50%, -50%) scale(1) !important;
+      animation: float-redirect 4s ease-in-out infinite, wobble-shape 6s infinite linear !important;
+    }
+    
+    .main-floating {
+      animation: float-main-after 6s ease-in-out infinite, wobble-shape 6s infinite linear !important;
+      transform: translate(-50%, -50%) scale(0.9) !important;
     }
     
     * {
@@ -35,40 +41,40 @@
     }
     
     body {
+      font-family: var(--body-font);
       background-color: var(--light-bg);
       color: var(--light-text);
       height: 100vh;
       overflow: hidden;
-      font-family: var(--body-font);
-      transition: var(--transition);
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
+      transition: var(--transition);
     }
 
     body.dark-mode {
       background-color: var(--dark-bg);
       color: var(--dark-text);
     }
-    
-    /* Subtle gradient overlay to match main site */
-    body::before {
-      content: '';
+
+    /* Background gradient */
+    .bg-gradient {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
       background: radial-gradient(circle at 70% 30%, rgba(0, 112, 243, 0.08) 0%, rgba(0, 0, 0, 0) 60%);
-      pointer-events: none;
       z-index: -1;
+      transition: var(--transition);
     }
-    
-    body.dark-mode::before {
+
+    body.dark-mode .bg-gradient {
       background: radial-gradient(circle at 70% 30%, rgba(0, 112, 243, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
     }
     
+    /* Theme toggle button */
     .theme-toggle {
       position: fixed;
       top: 20px;
@@ -84,26 +90,18 @@
       justify-content: center;
       color: var(--light-text);
       background-color: rgba(0, 0, 0, 0.05);
-      border-radius: 50%;
-      z-index: 200;
+      z-index: 100;
       transition: var(--transition);
       backdrop-filter: blur(4px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Light mode specific toggle styling to match main site */
-    body:not(.dark-mode) .theme-toggle {
-      background-color: rgba(0, 0, 0, 0.05);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
       border: 1px solid rgba(0, 0, 0, 0.05);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
     
-    /* Dark mode specific toggle styling to match main site */
     body.dark-mode .theme-toggle {
       background-color: rgba(255, 255, 255, 0.1);
       color: var(--dark-text);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
       border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
     }
     
     .theme-toggle:hover {
@@ -116,101 +114,17 @@
       transform: translateY(-1px);
     }
     
-    /* Background elements */
-    .background-elements {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: -1;
-      overflow: hidden;
-      pointer-events: none;
-    }
-
-    .bg-gradient {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
-      animation: pulse-bg 15s ease infinite;
-    }
-
-    .light-rays {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(
-        ellipse at 50% -20%,
-        rgba(0, 112, 243, 0.08) 0%,
-        rgba(0, 0, 0, 0) 70%
-      );
-      pointer-events: none;
-    }
-
-    body.dark-mode .light-rays {
-      background: radial-gradient(
-        ellipse at 50% -20%,
-        rgba(0, 112, 243, 0.15) 0%,
-        rgba(0, 0, 0, 0) 70%
-      );
-    }
-
-    /* Background particles styling */
-    .floating-particle {
-      position: absolute;
-      background-color: var(--primary-color);
-      border-radius: 50%;
-      filter: blur(1px);
-      opacity: 0.05;
-      animation: float-subtle 15s infinite ease-in-out;
-    }
-    
-    body.dark-mode .floating-particle {
-      opacity: 0.07;
-    }
-    
-    /* Subtle floating animation */
-    @keyframes float-subtle {
-      0%, 100% {
-        transform: translate(0, 0);
-      }
-      25% {
-        transform: translate(var(--x-offset), var(--y-offset));
-      }
-      50% {
-        transform: translate(calc(var(--x-offset) * 0.3), calc(var(--y-offset) * -0.8));
-      }
-      75% {
-        transform: translate(calc(var(--x-offset) * -0.5), calc(var(--y-offset) * 0.3));
-      }
-    }
-
-    @keyframes pulse-bg {
-      0%, 100% {
-        opacity: 0.8;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 1;
-        transform: scale(1.05);
-      }
-    }
-    
     /* Bubble container */
     .bubble-container {
       position: relative;
       width: 300px;
       height: 300px;
-      margin: 0 auto;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    /* Main bubble styles - more organic and non-uniform shapes */
+    /* Base bubble styles */
     .bubble {
       position: absolute;
       background: rgba(0, 112, 243, 0.25);
@@ -221,47 +135,16 @@
       align-items: center;
       justify-content: center;
       transform-origin: center;
-      will-change: transform, border-radius;
       transition: box-shadow 0.3s ease;
-      /* Super organic default shape applied before any animations */
-      animation: wobble-shape 3s infinite alternate ease-in-out;
+      will-change: transform, border-radius;
+      border-radius: 50% 50% 50% 50% / 50% 50% 50% 50%;
+      overflow: hidden;
     }
     
-    /* Light mode specific bubble styling to match main site */
-    body:not(.dark-mode) .bubble {
-      background: rgba(0, 112, 243, 0.25);
-      box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.3),
-                  0 5px 15px rgba(0, 112, 243, 0.15);
-      border: 1px solid rgba(0, 112, 243, 0.3);
-    }
-    
-    /* Dark mode specific bubble styling to match main site */
     body.dark-mode .bubble {
       background: rgba(0, 112, 243, 0.3);
       box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.15),
                   0 5px 15px rgba(0, 112, 243, 0.2);
-    }
-    
-    /* Continuous organic shape morphing */
-    @keyframes wobble-shape {
-      0% {
-        border-radius: 48% 52% 47% 53% / 52% 47% 53% 48%;
-      }
-      20% {
-        border-radius: 54% 46% 50% 50% / 45% 55% 49% 51%;
-      }
-      40% {
-        border-radius: 51% 49% 55% 45% / 53% 47% 44% 56%;
-      }
-      60% {
-        border-radius: 46% 54% 49% 51% / 48% 52% 56% 44%;
-      }
-      80% {
-        border-radius: 52% 48% 43% 57% / 51% 49% 52% 48%;
-      }
-      100% {
-        border-radius: 47% 53% 52% 48% / 49% 51% 46% 54%;
-      }
     }
     
     /* Main bubble */
@@ -272,109 +155,9 @@
       top: 50%;
       transform: translate(-50%, -50%);
       z-index: 3;
-      animation: float-random 5s ease-in-out infinite, wobble-shape 3s infinite alternate ease-in-out;
+      animation: float-main 5s ease-in-out infinite, wobble-shape 6s infinite linear;
     }
 
-    /* Realistic random floating animation */
-    @keyframes float-random {
-      0% {
-        transform: translate(-50%, -50%) translateY(0);
-      }
-      25% {
-        transform: translate(-52%, -48%) translateY(-5px);
-      }
-      50% {
-        transform: translate(-50%, -52%) translateY(-10px);
-      }
-      75% {
-        transform: translate(-48%, -50%) translateY(-5px);
-      }
-      100% {
-        transform: translate(-50%, -50%) translateY(0);
-      }
-    }
-    
-    /* More realistic lighting effects - subtle and natural */
-    .highlight {
-      position: absolute;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.35);
-      filter: blur(2px);
-      opacity: 0.7;
-    }
-    
-    /* Light mode highlights */
-    body:not(.dark-mode) .highlight {
-      background: rgba(255, 255, 255, 0.45);
-      filter: blur(2px);
-      opacity: 0.75;
-    }
-    
-    /* Dark mode highlights */
-    body.dark-mode .highlight {
-      background: rgba(255, 255, 255, 0.3);
-      filter: blur(2.5px);
-      opacity: 0.65;
-    }
-    
-    /* Main highlight - realistic top-left light source */
-    .highlight-main {
-      width: 30%;
-      height: 30%;
-      top: 15%;
-      left: 15%;
-      border-radius: 70% 30% 50% 50% / 60% 40% 60% 40%;
-      transform: rotate(-15deg);
-      animation: subtle-highlight 8s infinite ease-in-out;
-    }
-    
-    /* Secondary highlight - realistic reflection pattern */
-    .highlight-small {
-      width: 12%;
-      height: 10%;
-      top: 40%;
-      left: 25%;
-      border-radius: 40% 60% 55% 45% / 45% 55% 60% 40%;
-      transform: rotate(25deg);
-      animation: subtle-highlight 8s infinite ease-in-out reverse;
-    }
-    
-    @keyframes subtle-highlight {
-      0%, 100% {
-        opacity: 0.65;
-        transform: rotate(-15deg) scale(1);
-      }
-      50% {
-        opacity: 0.85;
-        transform: rotate(-12deg) scale(1.05);
-      }
-    }
-
-    @keyframes pulse-highlight {
-      0%, 100% {
-        opacity: 0.7;
-      }
-      50% {
-        opacity: 0.9;
-      }
-    }
-
-    /* Spinner in main bubble */
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
-      border-top-color: white;
-      animation: spin 1.2s cubic-bezier(0.5, 0.1, 0.5, 1) infinite;
-    }
-    
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-    
     /* Redirect bubble - initially hidden */
     .redirect-bubble {
       width: 70px;
@@ -384,35 +167,55 @@
       opacity: 0;
       transform: translate(-50%, -50%) scale(0);
       cursor: pointer;
-      z-index: 20; /* Higher z-index to be on top */
-      box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.3),
-                  0 0 10px rgba(0, 112, 243, 0.2);
-      transition: box-shadow 0.3s ease;
-      animation: wobble-shape-small 2s infinite alternate ease-in-out;
+      z-index: 4;
+      transition: var(--transition);
     }
     
-    /* Faster wobbling for smaller bubble */
-    @keyframes wobble-shape-small {
-      0% {
-        border-radius: 53% 47% 49% 51% / 47% 53% 52% 48%;
-      }
-      25% {
-        border-radius: 56% 44% 52% 48% / 51% 49% 47% 53%;
-      }
-      50% {
-        border-radius: 48% 52% 54% 46% / 49% 51% 53% 47%;
-      }
-      75% {
-        border-radius: 51% 49% 46% 54% / 54% 46% 48% 52%;
-      }
-      100% {
-        border-radius: 55% 45% 51% 49% / 45% 55% 50% 50%;
-      }
+    /* Highlights inside bubbles */
+    .highlight {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.35);
+      filter: blur(2px);
+      opacity: 0.7;
+      pointer-events: none;
     }
-
-    .redirect-bubble:hover {
-      box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.4),
-                  0 0 12px rgba(0, 112, 243, 0.15);
+    
+    body.dark-mode .highlight {
+      background: rgba(255, 255, 255, 0.3);
+      opacity: 0.65;
+    }
+    
+    /* Main highlight */
+    .highlight-main {
+      width: 30%;
+      height: 30%;
+      top: 15%;
+      left: 15%;
+      border-radius: 70% 30% 50% 50% / 60% 40% 60% 40%;
+      transform: rotate(-15deg);
+      animation: pulse-highlight 8s infinite ease-in-out;
+    }
+    
+    /* Secondary highlight */
+    .highlight-small {
+      width: 12%;
+      height: 10%;
+      top: 40%;
+      left: 25%;
+      border-radius: 40% 60% 55% 45% / 45% 55% 60% 40%;
+      transform: rotate(25deg);
+      animation: pulse-highlight 8s infinite ease-in-out reverse;
+    }
+    
+    /* Spinner in main bubble */
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1.2s cubic-bezier(0.5, 0.1, 0.5, 1) infinite;
     }
     
     /* Arrow in redirect bubble */
@@ -441,7 +244,7 @@
       transform: scale(1) translateX(2px);
     }
     
-    /* Bubble connection and tiny bubbles */
+    /* Bubble connector (initially hidden) */
     .bubble-connector {
       position: absolute;
       z-index: 1;
@@ -450,12 +253,14 @@
                   0 0 10px rgba(0, 112, 243, 0.1);
       backdrop-filter: blur(3px);
       opacity: 0;
-      border-radius: 40% 60% 50% 50% / 40% 50% 50% 60%;
       transform-origin: left center;
       left: 50%;
       top: 50%;
+      width: 0;
+      height: 0;
     }
 
+    /* Tiny bubbles that appear during separation */
     .tiny-bubble {
       position: absolute;
       background: rgba(0, 112, 243, 0.15);
@@ -463,522 +268,12 @@
       opacity: 0;
       box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.6),
                   0 0 5px rgba(0, 112, 243, 0.15);
-      z-index: 1;
+      z-index: 2;
       transform: scale(0);
+      pointer-events: none;
     }
     
-    /* Final animation states */
-    .redirect-floating {
-      opacity: 1 !important;
-      transform: translate(-50%, -50%) scale(1) !important;
-      animation: float-redirect-organic 4s ease-in-out infinite, 
-                 wobble-shape-small 2s infinite alternate ease-in-out,
-                 pulse-redirect-subtle 2s infinite alternate !important;
-    }
-
-    .main-floating {
-      animation: float-main-organic 6s ease-in-out infinite, 
-                 wobble-shape 3s infinite alternate ease-in-out !important;
-      transform: translate(-50%, -50%) scale(0.9) !important;
-    }
-
-    /* Realistic organic movement for main bubble after separation */
-    @keyframes float-main-organic {
-      0% {
-        transform: translate(-50%, -50%) scale(0.9);
-      }
-      25% {
-        transform: translate(-51%, -52%) scale(0.9) translateY(-7px);
-      }
-      50% {
-        transform: translate(-50%, -48%) scale(0.9) translateY(-12px);
-      }
-      75% {
-        transform: translate(-49%, -52%) scale(0.9) translateY(-7px);
-      }
-      100% {
-        transform: translate(-50%, -50%) scale(0.9);
-      }
-    }
-
-    /* Organic floating for redirect bubble */
-    @keyframes float-redirect-organic {
-      0% {
-        transform: translate(-50%, -50%) scale(1);
-      }
-      33% {
-        transform: translate(-48%, -51%) scale(1) translateY(-5px);
-      }
-      66% {
-        transform: translate(-52%, -49%) scale(1) translateY(-10px);
-      }
-      100% {
-        transform: translate(-50%, -50%) scale(1);
-      }
-    }
-
-    /* Subtle pulse effect */
-    @keyframes pulse-redirect-subtle {
-      0% {
-        box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.3),
-                    0 0 5px rgba(0, 112, 243, 0.1),
-                    0 0 0 0 rgba(0, 112, 243, 0.1);
-      }
-      100% {
-        box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.4),
-                    0 0 8px rgba(0, 112, 243, 0.15),
-                    0 0 12px 5px rgba(0, 112, 243, 0.05);
-      }
-    }
-
-    /* ULTRA-REALISTIC ORGANICALLY MORPHING BUBBLE ANIMATION */
-    @keyframes mainBubbleDeform {
-      0% {
-        transform: translate(-50%, -50%) scale(1);
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.35),
-                    0 5px 15px rgba(0, 112, 243, 0.15);
-      }
-      5% {
-        /* Begin developing slight asymmetry */
-        transform: translate(-51%, -50%) scale(1.01, 0.995);
-        border-radius: 52% 48% 47% 53% / 50% 50% 53% 47%;
-      }
-      10% {
-        /* More asymmetry toward where new bubble will form */
-        transform: translate(-52%, -50%) scale(1.02, 0.99);
-        border-radius: 53% 47% 46% 54% / 50% 49% 54% 46%;
-      }
-      15% {
-        /* Start of a protrusion */
-        transform: translate(-52.5%, -50%) scale(1.03, 0.98);
-        border-radius: 52% 48% 45% 55% / 49% 47% 56% 45%;
-      }
-      20% {
-        /* Protrusion becoming more pronounced */
-        transform: translate(-53%, -50%) scale(1.035, 0.975);
-        border-radius: 50% 50% 43% 57% / 47% 45% 58% 44%;
-      }
-      25% {
-        /* Further elongation in direction of future separation */
-        transform: translate(-54%, -50%) scale(1.04, 0.97);
-        border-radius: 47% 53% 41% 59% / 45% 43% 60% 42%;
-      }
-      30% {
-        /* Maximum elongation before necking */
-        transform: translate(-55%, -50%) scale(1.05, 0.965);
-        border-radius: 44% 56% 40% 60% / 43% 41% 62% 40%;
-      }
-      35% {
-        /* Beginning of necking (narrowing) between the bubbles */
-        transform: translate(-56%, -50%) scale(1.055, 0.96);
-        border-radius: 40% 60% 38% 62% / 40% 39% 64% 38%;
-        box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.32),
-                    0 5px 12px rgba(0, 112, 243, 0.04);
-      }
-      40% {
-        /* More pronounced necking */
-        transform: translate(-57%, -50%) scale(1.06, 0.955);
-        border-radius: 37% 63% 36% 64% / 38% 36% 66% 36%;
-      }
-      45% {
-        /* Critical necking point - most stretched */
-        transform: translate(-58%, -50%) scale(1.065, 0.95);
-        border-radius: 34% 66% 33% 67% / 35% 33% 68% 34%;
-      }
-      /* Critical point where bubbles are separating */
-      50% {
-        transform: translate(-59%, -50%) scale(1.07, 0.945);
-        border-radius: 32% 68% 31% 69% / 33% 30% 70% 32%;
-        box-shadow: inset 0 0 16px rgba(255, 255, 255, 0.3),
-                    0 5px 10px rgba(0, 112, 243, 0.04);
-      }
-      /* Surface tension rebound - rapid shape recovery */
-      53% {
-        transform: translate(-58%, -50%) scale(1.03, 0.97);
-        border-radius: 36% 64% 38% 62% / 39% 37% 63% 38%;
-      }
-      56% {
-        transform: translate(-57%, -50%) scale(0.99, 0.99);
-        border-radius: 40% 60% 43% 57% / 44% 42% 58% 43%;
-      }
-      60% {
-        /* Shape oscillation from surface tension */
-        transform: translate(-56%, -50%) scale(0.96, 1.01);
-        border-radius: 44% 56% 47% 53% / 48% 46% 54% 47%;
-        box-shadow: inset 0 0 17px rgba(255, 255, 255, 0.31),
-                    0 5px 11px rgba(0, 112, 243, 0.04);
-      }
-      64% {
-        transform: translate(-55%, -50%) scale(0.94, 1.02);
-        border-radius: 47% 53% 49% 51% / 50% 49% 51% 50%;
-      }
-      68% {
-        /* Secondary oscillation */
-        transform: translate(-54%, -50%) scale(0.93, 1.025);
-        border-radius: 49% 51% 50% 50% / 51% 52% 48% 49%;
-      }
-      72% {
-        transform: translate(-53%, -50%) scale(0.925, 1.02);
-        border-radius: 50% 50% 51% 49% / 52% 53% 47% 48%;
-        box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.33),
-                    0 5px 12px rgba(0, 112, 243, 0.045);
-      }
-      76% {
-        /* Damping oscillation */
-        transform: translate(-52%, -50%) scale(0.92, 1.015);
-        border-radius: 51% 49% 52% 48% / 52.5% 53.5% 46.5% 47.5%;
-      }
-      80% {
-        transform: translate(-51.5%, -50%) scale(0.915, 1.01);
-        border-radius: 51.5% 48.5% 52.5% 47.5% / 52% 53% 47% 48%;
-      }
-      84% {
-        /* Final subtle oscillations */
-        transform: translate(-51%, -50%) scale(0.91, 1.005);
-        border-radius: 51.8% 48.2% 52.8% 47.2% / 51.5% 52.5% 47.5% 48.5%;
-      }
-      88% {
-        transform: translate(-50.5%, -50%) scale(0.905, 1);
-        border-radius: 52% 48% 53% 47% / 51% 52% 48% 49%;
-        box-shadow: inset 0 0 19px rgba(255, 255, 255, 0.34),
-                    0 5px 13px rgba(0, 112, 243, 0.048);
-      }
-      92% {
-        /* Settling toward final shape */
-        transform: translate(-50.3%, -50%) scale(0.9025, 0.9975);
-        border-radius: 51.5% 48.5% 52.5% 47.5% / 50.5% 51.5% 48.5% 49.5%;
-      }
-      96% {
-        transform: translate(-50.1%, -50%) scale(0.901, 0.995);
-        border-radius: 51.2% 48.8% 52.2% 47.8% / 50.2% 51% 49% 49.8%;
-      }
-      100% {
-        /* Final stable state - slightly smaller with organic shape */
-        transform: translate(-50%, -50%) scale(0.9);
-        border-radius: 51% 49% 52% 48% / 50% 51% 49% 50%;
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.35),
-                    0 5px 15px rgba(0, 112, 243, 0.05);
-      }
-    }
-
-    /* ORGANIC BUBBLE FORMATION WITH NON-UNIFORM SHAPE */
-    @keyframes newBubbleForm {
-      0% {
-        opacity: 0;
-        transform: translate(-150%, -50%) scale(0.05);
-        border-radius: 60% 40% 55% 45% / 55% 45% 55% 45%;
-        box-shadow: inset 0 0 6px rgba(255, 255, 255, 0.2),
-                    0 2px 5px rgba(0, 112, 243, 0.02);
-      }
-      10% {
-        opacity: 0.1;
-        transform: translate(-140%, -50%) scale(0.15);
-        border-radius: 58% 42% 56% 44% / 54% 46% 53% 47%;
-      }
-      20% {
-        opacity: 0.2;
-        transform: translate(-130%, -50%) scale(0.25);
-        border-radius: 57% 43% 54% 46% / 53% 47% 52% 48%;
-        box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.22),
-                    0 2px 6px rgba(0, 112, 243, 0.025);
-      }
-      30% {
-        opacity: 0.35;
-        transform: translate(-120%, -50%) scale(0.35);
-        border-radius: 56% 44% 53% 47% / 52% 48% 51% 49%;
-      }
-      40% {
-        opacity: 0.45;
-        transform: translate(-110%, -50%) scale(0.45);
-        border-radius: 55% 45% 52% 48% / 51% 49% 50% 50%;
-        box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.25),
-                    0 3px 7px rgba(0, 112, 243, 0.03);
-      }
-      /* Non-uniform growth as surface tension effects kick in */
-      50% {
-        opacity: 0.6;
-        transform: translate(-100%, -50%) scale(0.55, 0.6);
-        border-radius: 54% 46% 51% 49% / 49% 51% 49% 51%;
-      }
-      /* Wobble as bubble pinches off */
-      55% {
-        opacity: 0.68;
-        transform: translate(-95%, -50%) scale(0.65, 0.62);
-        border-radius: 51% 49% 53% 47% / 47% 53% 48% 52%;
-      }
-      60% {
-        opacity: 0.75;
-        transform: translate(-90%, -50%) scale(0.72, 0.68);
-        border-radius: 49% 51% 54% 46% / 46% 54% 47% 53%;
-        box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.28),
-                    0 3px 8px rgba(0, 112, 243, 0.035);
-      }
-      65% {
-        opacity: 0.82;
-        transform: translate(-85%, -50%) scale(0.78, 0.75);
-        border-radius: 47% 53% 52% 48% / 48% 52% 47% 53%;
-      }
-      70% {
-        opacity: 0.85;
-        transform: translate(-80%, -50%) scale(0.82, 0.83);
-        border-radius: 48% 52% 50% 50% / 50% 50% 48% 52%;
-      }
-      /* Natural oscillation as bubble stabilizes */
-      75% {
-        opacity: 0.88;
-        transform: translate(-75%, -50%) scale(0.85, 0.9);
-        border-radius: 50% 50% 48% 52% / 52% 48% 50% 50%;
-        box-shadow: inset 0 0 14px rgba(255, 255, 255, 0.3),
-                    0 4px 9px rgba(0, 112, 243, 0.04);
-      }
-      80% {
-        opacity: 0.92;
-        transform: translate(-70%, -50%) scale(0.9, 0.87);
-        border-radius: 52% 48% 49% 51% / 51% 49% 52% 48%;
-      }
-      85% {
-        opacity: 0.95;
-        transform: translate(-65%, -50%) scale(0.94, 0.97);
-        border-radius: 53% 47% 50% 50% / 49% 51% 51% 49%;
-      }
-      /* Final stabilization with organic shape */
-      90% {
-        opacity: 0.97;
-        transform: translate(-60%, -50%) scale(0.97, 0.96);
-        border-radius: 53% 47% 51% 49% / 48% 52% 50% 50%;
-        box-shadow: inset 0 0 16px rgba(255, 255, 255, 0.32),
-                    0 4px 10px rgba(0, 112, 243, 0.045);
-      }
-      95% {
-        opacity: 0.99;
-        transform: translate(-55%, -50%) scale(0.99, 1.01);
-        border-radius: 53% 47% 51.5% 48.5% / 48.5% 51.5% 49.5% 50.5%;
-      }
-      100% {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-        border-radius: 53% 47% 52% 48% / 49% 51% 50% 50%;
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.35),
-                    0 5px 15px rgba(0, 112, 243, 0.05);
-      }
-    }
-
-    @keyframes connectorAnimation {
-      0% {
-        opacity: 0;
-        width: 0;
-        height: 0;
-        transform: scaleX(0) translateX(0);
-        border-radius: 50%;
-        box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.3),
-                    0 0 5px rgba(0, 112, 243, 0.1);
-      }
-      /* Initial formation - connector starts to form */
-      5% {
-        opacity: 0.2;
-        width: 10px;
-        height: 8px;
-        transform: scaleX(0.1) translateX(5px);
-        border-radius: 48% 52% 48% 52% / 50% 50% 50% 50%;
-      }
-      10% {
-        opacity: 0.4;
-        width: 20px;
-        height: 15px;
-        transform: scaleX(0.2) translateX(10px);
-        border-radius: 45% 55% 45% 55% / 50% 50% 50% 50%;
-        box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.4),
-                    0 0 8px rgba(0, 112, 243, 0.15);
-      }
-      /* Growth phase - connector stretches as bubbles move apart */
-      20% {
-        opacity: 0.6;
-        width: 30px;
-        height: 20px;
-        transform: scaleX(0.35) translateX(20px);
-        border-radius: 42% 58% 42% 58% / 48% 52% 48% 52%;
-      }
-      30% {
-        opacity: 0.8;
-        width: 40px;
-        height: 25px;
-        transform: scaleX(0.5) translateX(30px);
-        border-radius: 40% 60% 40% 60% / 45% 55% 45% 55%;
-        box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.5),
-                    0 0 10px rgba(0, 112, 243, 0.2);
-      }
-      /* Maximum extension point */
-      40% {
-        opacity: 0.9;
-        width: 45px;
-        height: 28px;
-        transform: scaleX(0.6) translateX(35px);
-        border-radius: 38% 62% 38% 62% / 42% 58% 42% 58%;
-      }
-      50% {
-        opacity: 1;
-        width: 50px;
-        height: 30px;
-        transform: scaleX(0.7) translateX(40px);
-        border-radius: 35% 65% 35% 65% / 40% 60% 40% 60%;
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.55),
-                    0 0 12px rgba(0, 112, 243, 0.22);
-      }
-      /* Thinning phase - connector begins to narrow in the middle */
-      55% {
-        opacity: 0.95;
-        width: 48px;
-        height: 28px;
-        transform: scaleX(0.65) translateX(45px);
-        border-radius: 36% 64% 36% 64% / 41% 59% 41% 59%;
-      }
-      60% {
-        opacity: 0.9;
-        width: 42px;
-        height: 25px;
-        transform: scaleX(0.6) translateX(50px);
-        border-radius: 38% 62% 38% 62% / 43% 57% 43% 57%;
-        box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.5),
-                    0 0 10px rgba(0, 112, 243, 0.2);
-      }
-      /* Necking - connector becomes very thin in the middle before breaking */
-      65% {
-        opacity: 0.85;
-        width: 36px;
-        height: 22px;
-        transform: scaleX(0.55) translateX(55px);
-        border-radius: 39% 61% 39% 61% / 44% 56% 44% 56%;
-      }
-      70% {
-        opacity: 0.75;
-        width: 30px;
-        height: 20px;
-        transform: scaleX(0.5) translateX(60px);
-        border-radius: 40% 60% 40% 60% / 45% 55% 45% 55%;
-        box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.45),
-                    0 0 8px rgba(0, 112, 243, 0.18);
-      }
-      /* Breaking - connector is about to separate */
-      75% {
-        opacity: 0.65;
-        width: 24px;
-        height: 16px;
-        transform: scaleX(0.45) translateX(65px);
-        border-radius: 42% 58% 42% 58% / 47% 53% 47% 53%;
-      }
-      /* Post-break retraction and dissipation */
-      80% {
-        opacity: 0.5;
-        width: 18px;
-        height: 12px;
-        transform: scaleX(0.35) translateX(70px);
-        border-radius: 44% 56% 44% 56% / 48% 52% 48% 52%;
-        box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.4),
-                    0 0 6px rgba(0, 112, 243, 0.15);
-      }
-      85% {
-        opacity: 0.35;
-        width: 15px;
-        height: 10px;
-        transform: scaleX(0.25) translateX(75px);
-        border-radius: 46% 54% 46% 54% / 49% 51% 49% 51%;
-      }
-      90% {
-        opacity: 0.2;
-        width: 10px;
-        height: 8px;
-        transform: scaleX(0.15) translateX(85px);
-        border-radius: 48% 52% 48% 52% / 49% 51% 49% 51%;
-        box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.35),
-                    0 0 4px rgba(0, 112, 243, 0.1);
-      }
-      95% {
-        opacity: 0.1;
-        width: 5px;
-        height: 4px;
-        transform: scaleX(0.1) translateX(95px);
-        border-radius: 49% 51% 49% 51% / 50% 50% 50% 50%;
-      }
-      100% {
-        opacity: 0;
-        width: 0;
-        height: 0;
-        transform: scaleX(0) translateX(100px);
-        border-radius: 50%;
-        box-shadow: inset 0 0 0 rgba(255, 255, 255, 0),
-                    0 0 0 rgba(255, 255, 255, 0);
-      }
-    }
-
-    @keyframes tinyBubbleRise {
-      0% {
-        opacity: 0;
-        transform: translate(0, 0) scale(0);
-        box-shadow: inset 0 0 3px rgba(255, 255, 255, 0.4),
-                    0 0 2px rgba(0, 112, 243, 0.2);
-      }
-      /* Initial appearance with slight push effect */
-      5% {
-        opacity: 0.5;
-        transform: translate(calc(var(--tx) * 0.1), calc(var(--ty) * 0.1)) scale(0.5);
-      }
-      10% {
-        opacity: 1;
-        transform: translate(calc(var(--tx) * 0.15), calc(var(--ty) * 0.15)) scale(1);
-        box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.5),
-                    0 0 3px rgba(0, 112, 243, 0.3);
-      }
-      /* Movement phase - realistic fluid dynamics */
-      20% {
-        opacity: 0.95;
-        transform: translate(calc(var(--tx) * 0.3), calc(var(--ty) * 0.3)) scale(0.95) rotate(calc(var(--tr) * 0.2));
-      }
-      /* Small bubbles wobble as they rise */
-      30% {
-        opacity: 0.9;
-        transform: translate(calc(var(--tx) * 0.45 + var(--wobble-x)), calc(var(--ty) * 0.45)) scale(0.9) rotate(calc(var(--tr) * 0.4));
-        box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.45),
-                    0 0 2px rgba(0, 112, 243, 0.25);
-      }
-      40% {
-        opacity: 0.85;
-        transform: translate(calc(var(--tx) * 0.6 - var(--wobble-x)), calc(var(--ty) * 0.6)) scale(0.85) rotate(calc(var(--tr) * 0.6));
-      }
-      50% {
-        opacity: 0.8;
-        transform: translate(calc(var(--tx) * 0.7 + var(--wobble-x)), calc(var(--ty) * 0.7)) scale(0.75) rotate(calc(var(--tr) * 0.7));
-        box-shadow: inset 0 0 3px rgba(255, 255, 255, 0.4),
-                    0 0 2px rgba(0, 112, 243, 0.2);
-      }
-      60% {
-        opacity: 0.7;
-        transform: translate(calc(var(--tx) * 0.8 - var(--wobble-x)), calc(var(--ty) * 0.8)) scale(0.65) rotate(calc(var(--tr) * 0.8));
-      }
-      70% {
-        opacity: 0.6;
-        transform: translate(calc(var(--tx) * 0.85), calc(var(--ty) * 0.85)) scale(0.55) rotate(calc(var(--tr) * 0.9));
-        box-shadow: inset 0 0 2px rgba(255, 255, 255, 0.35),
-                    0 0 1px rgba(0, 112, 243, 0.15);
-      }
-      80% {
-        opacity: 0.4;
-        transform: translate(calc(var(--tx) * 0.9), calc(var(--ty) * 0.9)) scale(0.45) rotate(calc(var(--tr) * 0.95));
-      }
-      90% {
-        opacity: 0.2;
-        transform: translate(calc(var(--tx) * 0.95), calc(var(--ty) * 0.95)) scale(0.35) rotate(calc(var(--tr) * 0.98));
-        box-shadow: inset 0 0 1px rgba(255, 255, 255, 0.3),
-                    0 0 1px rgba(0, 112, 243, 0.1);
-      }
-      100% {
-        opacity: 0;
-        transform: translate(var(--tx), var(--ty)) scale(0.3) rotate(var(--tr));
-        box-shadow: inset 0 0 0 rgba(255, 255, 255, 0),
-                    0 0 0 rgba(255, 255, 255, 0);
-      }
-    }
-
-    /* Loading text styles */
+    /* Loading text */
     .loading-text {
       position: absolute;
       bottom: 40px;
@@ -997,13 +292,6 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     
-    /* Light/dark mode variants matching main site */
-    body:not(.dark-mode) .loading-text {
-      background-color: rgba(0, 112, 243, 0.1);
-      color: var(--light-text);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
     body.dark-mode .loading-text {
       background-color: rgba(0, 112, 243, 0.15);
       color: var(--dark-text);
@@ -1011,15 +299,101 @@
     }
 
     .loading-text.fade-out {
-      opacity: a0;
+      opacity: 0;
       transform: translateX(-50%) translateY(10px);
     }
     
-    /* Pulsating effect to attract attention after separation */
     .loading-text.pulse {
       animation: text-pulse 2s infinite alternate ease-in-out;
     }
     
+    /* Background particles */
+    .particles-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }
+    
+    .particle {
+      position: absolute;
+      background-color: var(--primary-color);
+      border-radius: 50%;
+      filter: blur(1px);
+      opacity: 0.05;
+      animation: float-particle 15s infinite ease-in-out;
+    }
+    
+    body.dark-mode .particle {
+      opacity: 0.07;
+    }
+    
+    /* ANIMATIONS */
+    
+    /* Main bubble wobble */
+    @keyframes wobble-shape {
+      0% {
+        border-radius: 51% 49% 48% 52% / 52% 47% 53% 48%;
+      }
+      16.67% {
+        border-radius: 54% 46% 50% 50% / 45% 55% 49% 51%;
+      }
+      33.33% {
+        border-radius: 49% 51% 55% 45% / 53% 47% 44% 56%;
+      }
+      50% {
+        border-radius: 46% 54% 49% 51% / 48% 52% 56% 44%;
+      }
+      66.67% {
+        border-radius: 52% 48% 43% 57% / 51% 49% 52% 48%;
+      }
+      83.33% {
+        border-radius: 47% 53% 52% 48% / 49% 51% 46% 54%;
+      }
+      100% {
+        border-radius: 51% 49% 48% 52% / 52% 47% 53% 48%;
+      }
+    }
+    
+    /* Main bubble floating */
+    @keyframes float-main {
+      0%, 100% {
+        transform: translate(-50%, -50%) translateY(0);
+      }
+      25% {
+        transform: translate(-52%, -48%) translateY(-5px);
+      }
+      50% {
+        transform: translate(-50%, -52%) translateY(-10px);
+      }
+      75% {
+        transform: translate(-48%, -50%) translateY(-5px);
+      }
+    }
+    
+    /* Spin animation for loader */
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    
+    /* Highlight pulsing */
+    @keyframes pulse-highlight {
+      0%, 100% {
+        opacity: 0.65;
+        transform: rotate(-15deg) scale(1);
+      }
+      50% {
+        opacity: 0.85;
+        transform: rotate(-12deg) scale(1.05);
+      }
+    }
+    
+    /* Text pulsing */
     @keyframes text-pulse {
       0% {
         transform: translateX(-50%) scale(1);
@@ -1029,11 +403,515 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
       }
     }
-
-    /* Browser prefers reduced motion */
+    
+    /* Particles floating */
+    @keyframes float-particle {
+      0%, 100% {
+        transform: translate(0, 0);
+      }
+      25% {
+        transform: translate(var(--x-offset), var(--y-offset));
+      }
+      50% {
+        transform: translate(calc(var(--x-offset) * 0.3), calc(var(--y-offset) * -0.8));
+      }
+      75% {
+        transform: translate(calc(var(--x-offset) * -0.5), calc(var(--y-offset) * 0.3));
+      }
+    }
+    
+    /* Redirect bubble floating animation (after separation) */
+    @keyframes float-redirect {
+      0% {
+        transform: translate(-50%, -50%) scale(1);
+      }
+      33% {
+        transform: translate(-48%, -51%) scale(1) translateY(-5px);
+      }
+      66% {
+        transform: translate(-52%, -49%) scale(1) translateY(-10px);
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+    
+    /* Main bubble floating animation (after separation) */
+    @keyframes float-main-after {
+      0% {
+        transform: translate(-50%, -50%) scale(0.9);
+      }
+      25% {
+        transform: translate(-51%, -52%) scale(0.9) translateY(-7px);
+      }
+      50% {
+        transform: translate(-50%, -48%) scale(0.9) translateY(-12px);
+      }
+      75% {
+        transform: translate(-49%, -52%) scale(0.9) translateY(-7px);
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(0.9);
+      }
+    }
+    
+    /* Main bubble deformation animation for separation */
+    @keyframes mainBubbleDeform {
+      0% {
+        transform: translate(-50%, -50%) scale(1);
+        border-radius: 51% 49% 48% 52% / 52% 47% 53% 48%;
+      }
+      5% {
+        transform: translate(-51%, -50%) scale(1.01, 0.995);
+        border-radius: 52% 48% 47% 53% / 50% 50% 53% 47%;
+      }
+      10% {
+        transform: translate(-52%, -50%) scale(1.02, 0.99);
+        border-radius: 53% 47% 46% 54% / 50% 49% 54% 46%;
+      }
+      15% {
+        transform: translate(-52.5%, -50%) scale(1.03, 0.98);
+        border-radius: 52% 48% 45% 55% / 49% 47% 56% 45%;
+      }
+      20% {
+        transform: translate(-53%, -50%) scale(1.035, 0.975);
+        border-radius: 50% 50% 43% 57% / 47% 45% 58% 44%;
+      }
+      25% {
+        transform: translate(-54%, -50%) scale(1.04, 0.97);
+        border-radius: 47% 53% 41% 59% / 45% 43% 60% 42%;
+      }
+      30% {
+        transform: translate(-55%, -50%) scale(1.05, 0.965);
+        border-radius: 44% 56% 40% 60% / 43% 41% 62% 40%;
+      }
+      35% {
+        transform: translate(-56%, -50%) scale(1.055, 0.96);
+        border-radius: 40% 60% 38% 62% / 40% 39% 64% 38%;
+      }
+      40% {
+        transform: translate(-57%, -50%) scale(1.06, 0.955);
+        border-radius: 37% 63% 36% 64% / 38% 36% 66% 36%;
+      }
+      45% {
+        transform: translate(-58%, -50%) scale(1.065, 0.95);
+        border-radius: 34% 66% 33% 67% / 35% 33% 68% 34%;
+      }
+      50% {
+        transform: translate(-59%, -50%) scale(1.07, 0.945);
+        border-radius: 32% 68% 31% 69% / 33% 30% 70% 32%;
+      }
+      53% {
+        transform: translate(-58%, -50%) scale(1.03, 0.97);
+        border-radius: 36% 64% 38% 62% / 39% 37% 63% 38%;
+      }
+      56% {
+        transform: translate(-57%, -50%) scale(0.99, 0.99);
+        border-radius: 40% 60% 43% 57% / 44% 42% 58% 43%;
+      }
+      59% {
+        transform: translate(-56.5%, -50%) scale(0.97, 1.0);
+        border-radius: 42% 58% 45% 55% / 46% 44% 56% 45%;
+      }
+      62% {
+        transform: translate(-56%, -50%) scale(0.96, 1.01);
+        border-radius: 44% 56% 47% 53% / 48% 46% 54% 47%;
+      }
+      65% {
+        transform: translate(-55.5%, -50%) scale(0.95, 1.015);
+        border-radius: 46% 54% 48% 52% / 49% 48% 52% 48%;
+      }
+      68% {
+        transform: translate(-55%, -50%) scale(0.94, 1.02);
+        border-radius: 47% 53% 49% 51% / 50% 49% 51% 50%;
+      }
+      71% {
+        transform: translate(-54.5%, -50%) scale(0.935, 1.022);
+        border-radius: 48% 52% 50% 50% / 50.5% 50.5% 49.5% 49.5%;
+      }
+      74% {
+        transform: translate(-54%, -50%) scale(0.93, 1.025);
+        border-radius: 49% 51% 50% 50% / 51% 52% 48% 49%;
+      }
+      77% {
+        transform: translate(-53.5%, -50%) scale(0.925, 1.022);
+        border-radius: 49.5% 50.5% 50.5% 49.5% / 51.5% 52.5% 47.5% 48.5%;
+      }
+      80% {
+        transform: translate(-53%, -50%) scale(0.92, 1.02);
+        border-radius: 50% 50% 51% 49% / 52% 53% 47% 48%;
+      }
+      83% {
+        transform: translate(-52.5%, -50%) scale(0.915, 1.015);
+        border-radius: 50.5% 49.5% 51.5% 48.5% / 52.2% 53.2% 46.8% 47.8%;
+      }
+      86% {
+        transform: translate(-52%, -50%) scale(0.91, 1.01);
+        border-radius: 51% 49% 52% 48% / 52.5% 53.5% 46.5% 47.5%;
+      }
+      89% {
+        transform: translate(-51.5%, -50%) scale(0.905, 1.005);
+        border-radius: 51.2% 48.8% 52.2% 47.8% / 52.2% 53.2% 46.8% 47.8%;
+      }
+      92% {
+        transform: translate(-51%, -50%) scale(0.902, 1.002);
+        border-radius: 51.5% 48.5% 52.5% 47.5% / 51.5% 52.5% 47.5% 48.5%;
+      }
+      96% {
+        transform: translate(-50.5%, -50%) scale(0.901, 1.0);
+        border-radius: 51.2% 48.8% 52.2% 47.8% / 51% 51.5% 48.5% 49%;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(0.9);
+        border-radius: 51% 49% 52% 48% / 50% 51% 49% 50%;
+      }
+    }
+    
+    /* New bubble formation animation */
+    @keyframes newBubbleForm {
+      0% {
+        opacity: 0;
+        transform: translate(-150%, -50%) scale(0.05);
+        border-radius: 60% 40% 55% 45% / 55% 45% 55% 45%;
+      }
+      5% {
+        opacity: 0.05;
+        transform: translate(-145%, -50%) scale(0.1);
+        border-radius: 59% 41% 55.5% 44.5% / 54.5% 45.5% 54% 46%;
+      }
+      10% {
+        opacity: 0.1;
+        transform: translate(-140%, -50%) scale(0.15);
+        border-radius: 58% 42% 56% 44% / 54% 46% 53% 47%;
+      }
+      15% {
+        opacity: 0.15;
+        transform: translate(-135%, -50%) scale(0.2);
+        border-radius: 57.5% 42.5% 55% 45% / 53.5% 46.5% 52.5% 47.5%;
+      }
+      20% {
+        opacity: 0.2;
+        transform: translate(-130%, -50%) scale(0.25);
+        border-radius: 57% 43% 54% 46% / 53% 47% 52% 48%;
+      }
+      25% {
+        opacity: 0.27;
+        transform: translate(-125%, -50%) scale(0.3);
+        border-radius: 56.5% 43.5% 53.5% 46.5% / 52.5% 47.5% 51.5% 48.5%;
+      }
+      30% {
+        opacity: 0.35;
+        transform: translate(-120%, -50%) scale(0.35);
+        border-radius: 56% 44% 53% 47% / 52% 48% 51% 49%;
+      }
+      35% {
+        opacity: 0.4;
+        transform: translate(-115%, -50%) scale(0.4);
+        border-radius: 55.5% 44.5% 52.5% 47.5% / 51.5% 48.5% 50.5% 49.5%;
+      }
+      40% {
+        opacity: 0.45;
+        transform: translate(-110%, -50%) scale(0.45);
+        border-radius: 55% 45% 52% 48% / 51% 49% 50% 50%;
+      }
+      45% {
+        opacity: 0.52;
+        transform: translate(-105%, -50%) scale(0.5, 0.55);
+        border-radius: 54.5% 45.5% 51.5% 48.5% / 50% 50% 49.5% 50.5%;
+      }
+      50% {
+        opacity: 0.6;
+        transform: translate(-100%, -50%) scale(0.55, 0.6);
+        border-radius: 54% 46% 51% 49% / 49% 51% 49% 51%;
+      }
+      55% {
+        opacity: 0.68;
+        transform: translate(-95%, -50%) scale(0.65, 0.62);
+        border-radius: 51% 49% 53% 47% / 47% 53% 48% 52%;
+      }
+      60% {
+        opacity: 0.75;
+        transform: translate(-90%, -50%) scale(0.72, 0.68);
+        border-radius: 49% 51% 54% 46% / 46% 54% 47% 53%;
+      }
+      65% {
+        opacity: 0.82;
+        transform: translate(-85%, -50%) scale(0.78, 0.75);
+        border-radius: 47% 53% 52% 48% / 48% 52% 47% 53%;
+      }
+      70% {
+        opacity: 0.85;
+        transform: translate(-80%, -50%) scale(0.82, 0.83);
+        border-radius: 48% 52% 50% 50% / 50% 50% 48% 52%;
+      }
+      75% {
+        opacity: 0.88;
+        transform: translate(-75%, -50%) scale(0.85, 0.9);
+        border-radius: 50% 50% 48% 52% / 52% 48% 50% 50%;
+      }
+      80% {
+        opacity: 0.92;
+        transform: translate(-70%, -50%) scale(0.9, 0.87);
+        border-radius: 52% 48% 49% 51% / 51% 49% 52% 48%;
+      }
+      85% {
+        opacity: 0.95;
+        transform: translate(-65%, -50%) scale(0.94, 0.97);
+        border-radius: 53% 47% 50% 50% / 49% 51% 51% 49%;
+      }
+      90% {
+        opacity: 0.97;
+        transform: translate(-60%, -50%) scale(0.97, 0.96);
+        border-radius: 53% 47% 51% 49% / 48% 52% 50% 50%;
+      }
+      95% {
+        opacity: 0.99;
+        transform: translate(-55%, -50%) scale(0.99, 1.01);
+        border-radius: 53% 47% 51.5% 48.5% / 48.5% 51.5% 49.5% 50.5%;
+      }
+      100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+        border-radius: 53% 47% 52% 48% / 49% 51% 50% 50%;
+      }
+    }
+    
+    /* Bubble connector animation */
+    @keyframes connectorAnimation {
+      0% {
+        opacity: 0;
+        width: 0;
+        height: 0;
+        transform: scaleX(0) translateX(0);
+        border-radius: 50%;
+      }
+      /* Initial formation stages */
+      5% {
+        opacity: 0.2;
+        width: 10px;
+        height: 8px;
+        transform: scaleX(0.1) translateX(5px);
+        border-radius: 48% 52% 48% 52% / 50% 50% 50% 50%;
+      }
+      10% {
+        opacity: 0.3;
+        width: 15px;
+        height: 12px;
+        transform: scaleX(0.15) translateX(10px);
+        border-radius: 47% 53% 47% 53% / 50% 50% 50% 50%;
+      }
+      15% {
+        opacity: 0.4;
+        width: 20px;
+        height: 15px;
+        transform: scaleX(0.2) translateX(15px);
+        border-radius: 45% 55% 45% 55% / 50% 50% 50% 50%;
+      }
+      /* Growth phase - elongation */
+      20% {
+        opacity: 0.5;
+        width: 25px;
+        height: 18px;
+        transform: scaleX(0.27) translateX(18px);
+        border-radius: 44% 56% 44% 56% / 49% 51% 49% 51%;
+      }
+      25% {
+        opacity: 0.55;
+        width: 30px;
+        height: 20px;
+        transform: scaleX(0.35) translateX(22px);
+        border-radius: 42% 58% 42% 58% / 48% 52% 48% 52%;
+      }
+      30% {
+        opacity: 0.65;
+        width: 35px;
+        height: 22px;
+        transform: scaleX(0.42) translateX(26px);
+        border-radius: 41% 59% 41% 59% / 47% 53% 47% 53%;
+      }
+      35% {
+        opacity: 0.75;
+        width: 38px;
+        height: 24px;
+        transform: scaleX(0.48) translateX(30px);
+        border-radius: 40% 60% 40% 60% / 46% 54% 46% 54%;
+      }
+      /* Maximum extension point */
+      40% {
+        opacity: 0.85;
+        width: 42px;
+        height: 26px;
+        transform: scaleX(0.55) translateX(33px);
+        border-radius: 39% 61% 39% 61% / 44% 56% 44% 56%;
+      }
+      45% {
+        opacity: 0.95;
+        width: 46px;
+        height: 28px;
+        transform: scaleX(0.62) translateX(36px);
+        border-radius: 37% 63% 37% 63% / 42% 58% 42% 58%;
+      }
+      50% {
+        opacity: 1;
+        width: 50px;
+        height: 30px;
+        transform: scaleX(0.7) translateX(40px);
+        border-radius: 35% 65% 35% 65% / 40% 60% 40% 60%;
+      }
+      /* Thinning phase - begins to narrow in middle */
+      53% {
+        opacity: 0.97;
+        width: 48px;
+        height: 28px;
+        transform: scaleX(0.67) translateX(43px);
+        border-radius: 36% 64% 36% 64% / 41% 59% 41% 59%;
+      }
+      56% {
+        opacity: 0.94;
+        width: 45px;
+        height: 27px;
+        transform: scaleX(0.64) translateX(46px);
+        border-radius: 37% 63% 37% 63% / 42% 58% 42% 58%;
+      }
+      59% {
+        opacity: 0.9;
+        width: 42px;
+        height: 25px;
+        transform: scaleX(0.61) translateX(49px);
+        border-radius: 38% 62% 38% 62% / 43% 57% 43% 57%;
+      }
+      62% {
+        opacity: 0.87;
+        width: 39px;
+        height: 24px;
+        transform: scaleX(0.58) translateX(52px);
+        border-radius: 39% 61% 39% 61% / 44% 56% 44% 56%;
+      }
+      /* More pronounced necking */
+      65% {
+        opacity: 0.85;
+        width: 36px;
+        height: 22px;
+        transform: scaleX(0.55) translateX(55px);
+        border-radius: 39% 61% 39% 61% / 44% 56% 44% 56%;
+      }
+      68% {
+        opacity: 0.8;
+        width: 33px;
+        height: 21px;
+        transform: scaleX(0.52) translateX(58px);
+        border-radius: 40% 60% 40% 60% / 45% 55% 45% 55%;
+      }
+      71% {
+        opacity: 0.75;
+        width: 30px;
+        height: 20px;
+        transform: scaleX(0.5) translateX(61px);
+        border-radius: 40% 60% 40% 60% / 45% 55% 45% 55%;
+      }
+      /* Critical thinning before break */
+      74% {
+        opacity: 0.7;
+        width: 27px;
+        height: 18px;
+        transform: scaleX(0.47) translateX(64px);
+        border-radius: 41% 59% 41% 59% / 46% 54% 46% 54%;
+      }
+      77% {
+        opacity: 0.65;
+        width: 24px;
+        height: 16px;
+        transform: scaleX(0.45) translateX(67px);
+        border-radius: 42% 58% 42% 58% / 47% 53% 47% 53%;
+      }
+      /* Breaking - connector is about to separate */
+      80% {
+        opacity: 0.55;
+        width: 20px;
+        height: 14px;
+        transform: scaleX(0.4) translateX(70px);
+        border-radius: 43% 57% 43% 57% / 48% 52% 48% 52%;
+      }
+      83% {
+        opacity: 0.45;
+        width: 16px;
+        height: 12px;
+        transform: scaleX(0.35) translateX(73px);
+        border-radius: 44% 56% 44% 56% / 48% 52% 48% 52%;
+      }
+      86% {
+        opacity: 0.35;
+        width: 14px;
+        height: 10px;
+        transform: scaleX(0.25) translateX(76px);
+        border-radius: 45% 55% 45% 55% / 49% 51% 49% 51%;
+      }
+      /* Post-break dissipation */
+      89% {
+        opacity: 0.25;
+        width: 12px;
+        height: 9px;
+        transform: scaleX(0.2) translateX(82px);
+        border-radius: 47% 53% 47% 53% / 49% 51% 49% 51%;
+      }
+      92% {
+        opacity: 0.2;
+        width: 10px;
+        height: 8px;
+        transform: scaleX(0.15) translateX(88px);
+        border-radius: 48% 52% 48% 52% / 49% 51% 49% 51%;
+      }
+      95% {
+        opacity: 0.1;
+        width: 5px;
+        height: 4px;
+        transform: scaleX(0.1) translateX(94px);
+        border-radius: 49% 51% 49% 51% / 50% 50% 50% 50%;
+      }
+      100% {
+        opacity: 0;
+        width: 0;
+        height: 0;
+        transform: scaleX(0) translateX(100px);
+        border-radius: 50%;
+      }
+    }
+    
+    /* Tiny bubble rise animation */
+    @keyframes tinyBubbleRise {
+      0% {
+        opacity: 0;
+        transform: translate(0, 0) scale(0);
+      }
+      10% {
+        opacity: 1;
+        transform: translate(calc(var(--tx) * 0.1), calc(var(--ty) * 0.1)) scale(1);
+      }
+      25% {
+        opacity: 0.95;
+        transform: translate(calc(var(--tx) * 0.3), calc(var(--ty) * 0.3)) scale(0.95) rotate(calc(var(--tr) * 0.2));
+      }
+      40% {
+        opacity: 0.9;
+        transform: translate(calc(var(--tx) * 0.45 + var(--wobble-x)), calc(var(--ty) * 0.45)) scale(0.9) rotate(calc(var(--tr) * 0.4));
+      }
+      60% {
+        opacity: 0.8;
+        transform: translate(calc(var(--tx) * 0.6 - var(--wobble-x)), calc(var(--ty) * 0.6)) scale(0.85) rotate(calc(var(--tr) * 0.6));
+      }
+      80% {
+        opacity: 0.6;
+        transform: translate(calc(var(--tx) * 0.75 + var(--wobble-x)), calc(var(--ty) * 0.75)) scale(0.75) rotate(calc(var(--tr) * 0.8));
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--tx), var(--ty)) scale(0.7) rotate(var(--tr));
+      }
+    }
+    
+    /* Reduced motion preferences */
     @media (prefers-reduced-motion: reduce) {
-      .bubble, .redirect-bubble, .main-bubble, .tiny-bubble,
-      .highlight, .spinner, .floating-particle {
+      * {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
@@ -1042,47 +920,54 @@
   </style>
 </head>
 <body>
+  <!-- Theme Toggle Button -->
   <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" id="themeIcon">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-    </svg>
+    <i class="fas fa-moon" id="themeIcon"></i>
   </button>
 
-  <div class="background-elements">
-    <div class="light-rays"></div>
-    <!-- Custom background particles for ambient effect -->
-    <div id="backgroundParticles"></div>
-  </div>
+  <!-- Background Gradient -->
+  <div class="bg-gradient"></div>
 
+  <!-- Background Particles -->
+  <div class="particles-container" id="particlesContainer"></div>
+
+  <!-- Main Bubble Container -->
   <div class="bubble-container" id="bubbleContainer">
-    <!-- Main bubble with organic shape -->
+    <!-- Main Bubble -->
     <div class="bubble main-bubble" id="mainBubble">
       <div class="highlight highlight-main"></div>
       <div class="highlight highlight-small"></div>
       <div class="spinner"></div>
     </div>
-    <!-- Redirect bubble with slightly different organic shape -->
+    
+    <!-- Redirect Bubble -->
     <div class="bubble redirect-bubble" id="redirectBubble">
       <div class="highlight highlight-main"></div>
       <div class="highlight highlight-small"></div>
       <div class="arrow"></div>
     </div>
-    <!-- Connector for bubble separation physics -->
+    
+    <!-- Bubble Connector -->
     <div class="bubble-connector" id="bubbleConnector"></div>
   </div>
 
+  <!-- Loading Text -->
   <div class="loading-text" id="loadingText">
     Przekierowywanie...
   </div>
 
+  <!-- Font Awesome -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+  
   <script>
-    // Configuration
-    const redirectUrl = "https://guziczak.github.io/lukasz/";
-    const autoRedirectDelay = 5000; // ms before auto-redirect
-    const splitStartDelay = 500;   // ms before bubble split animation starts
-    const splitDuration = 500;     // ms for the split animation
-    
     document.addEventListener('DOMContentLoaded', () => {
+      // Configuration
+      const redirectUrl = "https://guziczak.github.io/lukasz/";
+      const autoRedirectDelay = 5000;  // ms before auto-redirect
+      const splitStartDelay = 500;    // ms before bubble split animation starts
+      const splitDuration = 1500;     // ms for the split animation
+      
+      // Get DOM elements
       const body = document.body;
       const bubbleContainer = document.getElementById('bubbleContainer');
       const mainBubble = document.getElementById('mainBubble');
@@ -1091,7 +976,7 @@
       const themeToggle = document.getElementById('themeToggle');
       const themeIcon = document.getElementById('themeIcon');
       const loadingText = document.getElementById('loadingText');
-      const backgroundElements = document.querySelector('.background-elements');
+      const particlesContainer = document.getElementById('particlesContainer');
       
       // Initialize theme based on user preference
       initTheme();
@@ -1127,7 +1012,8 @@
         
         if (savedTheme === 'true' || (savedTheme === null && prefersDarkMode)) {
           body.classList.add('dark-mode');
-          themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+          themeIcon.classList.remove('fa-moon');
+          themeIcon.classList.add('fa-sun');
         }
       }
       
@@ -1137,19 +1023,21 @@
         localStorage.setItem('darkMode', isDark);
         
         if (isDark) {
-          themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+          themeIcon.classList.remove('fa-moon');
+          themeIcon.classList.add('fa-sun');
         } else {
-          themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+          themeIcon.classList.remove('fa-sun');
+          themeIcon.classList.add('fa-moon');
         }
       }
       
       // Create floating background particles
       function createBackgroundParticles() {
-        if (!backgroundElements) return;
+        if (!particlesContainer) return;
         
         for (let i = 0; i < 20; i++) {
           const particle = document.createElement('div');
-          particle.className = 'floating-particle';
+          particle.className = 'particle';
           
           // Random size between 3px and 12px
           const size = 3 + Math.random() * 9;
@@ -1169,7 +1057,7 @@
           // Random animation delay
           particle.style.animationDelay = `${Math.random() * 5}s`;
           
-          backgroundElements.appendChild(particle);
+          particlesContainer.appendChild(particle);
         }
       }
       
@@ -1185,67 +1073,42 @@
         bubbleConnector.style.left = `${mainCenterX}px`;
         bubbleConnector.style.top = `${mainCenterY}px`;
         
-        // Add initial wobble to bubbles before animation begins
-        mainBubble.style.animation = 'wobble-shape 1.5s infinite alternate ease-in-out';
-        
         setTimeout(() => {
-          // Stop wobble animation and force a reflow to reset animation
-          mainBubble.style.animation = 'none';
-          void mainBubble.offsetWidth;
-          
-          // Start the main separation animations with precise physics
+          // Start the main bubble deformation and new bubble formation animations
           mainBubble.style.animation = `mainBubbleDeform ${splitDuration}ms forwards cubic-bezier(0.34, 1.56, 0.64, 1)`;
           redirectBubble.style.animation = `newBubbleForm ${splitDuration}ms forwards cubic-bezier(0.34, 1.56, 0.64, 1)`;
           bubbleConnector.style.animation = `connectorAnimation ${splitDuration}ms forwards cubic-bezier(0.34, 1.56, 0.64, 1)`;
           
-          // Create first wave of tiny bubbles at the precise moment of separation
+          // Create tiny bubbles at the precise moment of separation
           setTimeout(() => {
             createTinyBubbleEffect();
           }, splitDuration * 0.48); // Create bubbles at exact separation moment
           
           // After separation is complete
           setTimeout(() => {
-            // Add floating animations to both bubbles and stop wobble-shape animation
-            mainBubble.style.animation = 'none';
-            redirectBubble.style.animation = 'none';
-            
-            // Force reflow
-            void mainBubble.offsetWidth;
-            void redirectBubble.offsetWidth;
-            
-            // Now add the new animation classes
+            // Use classes instead of inline styles to ensure bubble remains visible
             mainBubble.classList.add('main-floating');
             redirectBubble.classList.add('redirect-floating');
             
-            // Update loading text with animation
+            // Update loading text
             if (loadingText) {
               loadingText.textContent = 'Kliknij bąbelek, aby przejść dalej';
               loadingText.classList.add('pulse');
             }
             
-            // Add extra subtle effects to enhance the feeling of completion
+            // Add post-separation effects
             addPostSeparationEffects();
           }, splitDuration + 100);
-        }, 300); // Short delay before starting separation process
+        }, 300);
       }
       
-      // Function to add subtle post-separation visual enhancements
+      // Add subtle post-separation visual effects
       function addPostSeparationEffects() {
-        // Add subtle pulse to redirect bubble's box-shadow
-        const pulseStyle = document.createElement('style');
-        pulseStyle.textContent = `
-          .redirect-floating {
-            animation: float-redirect-organic 4s ease-in-out infinite, 
-                      pulse-redirect-subtle 2s infinite alternate !important;
-          }
-        `;
-        document.head.appendChild(pulseStyle);
-        
-        // Add small background particles floating upward from the separation point
+        // Add small floating particles from the separation point
         for (let i = 0; i < 5; i++) {
           setTimeout(() => {
             const particle = document.createElement('div');
-            particle.className = 'floating-particle';
+            particle.className = 'particle';
             
             // Small particles
             const size = 2 + Math.random() * 3;
@@ -1279,11 +1142,11 @@
             setTimeout(() => {
               particle.remove();
             }, 10000);
-          }, i * 500); // Staggered creation
+          }, i * 500);
         }
       }
       
-      // Create ultra-realistic tiny bubble effect when main bubble separates
+      // Create tiny bubble effect during separation
       function createTinyBubbleEffect() {
         const mainRect = mainBubble.getBoundingClientRect();
         const redirectRect = redirectBubble.getBoundingClientRect();
@@ -1295,21 +1158,21 @@
         const redirectCenterX = redirectRect.left - containerRect.left + redirectRect.width / 2;
         const redirectCenterY = redirectRect.top - containerRect.top + redirectRect.height / 2;
         
-        // The exact point where bubbles are separating (closer to main bubble)
+        // The exact point where bubbles are separating
         const breakPointX = mainCenterX + (redirectCenterX - mainCenterX) * 0.4;
         const breakPointY = mainCenterY + (redirectCenterY - mainCenterY) * 0.4;
         
-        // Vector for break direction - useful for realistic physics
+        // Vector for break direction
         const breakAngle = Math.atan2(redirectCenterY - mainCenterY, redirectCenterX - mainCenterX);
         
-        // Create two waves of tiny bubbles, between 15-25 bubbles total
+        // Create two waves of tiny bubbles
         const numFirstWave = 8 + Math.floor(Math.random() * 5);
         const numSecondWave = 7 + Math.floor(Math.random() * 6);
         
         // First wave - immediate break bubbles
         createBubbleWave(numFirstWave, breakPointX, breakPointY, breakAngle, 0);
         
-        // Second wave - slightly delayed bubbles (as if surface tension is still releasing tiny bubbles)
+        // Second wave - slightly delayed bubbles
         setTimeout(() => {
           createBubbleWave(numSecondWave, breakPointX, breakPointY, breakAngle, 0.7);
         }, 100);
@@ -1319,7 +1182,7 @@
             const tinyBubble = document.createElement('div');
             tinyBubble.className = 'tiny-bubble';
             
-            // Add highlights to tiny bubbles for extra realism
+            // Add highlights to tiny bubbles
             const highlight = document.createElement('div');
             highlight.className = 'highlight highlight-small';
             highlight.style.width = '40%';
@@ -1328,8 +1191,7 @@
             highlight.style.left = '20%';
             tinyBubble.appendChild(highlight);
             
-            // More varied size distribution (tiny ones are more numerous in real fluid)
-            // In real fluid dynamics, bubble size follows a lognormal distribution
+            // More varied size distribution 
             const sizeRandom = Math.random();
             let size;
             
@@ -1344,10 +1206,9 @@
             tinyBubble.style.width = `${size}px`;
             tinyBubble.style.height = `${size}px`;
             
-            // Initial position with slight radial distribution from break point
-            // Use break angle to determine primary direction of bubble dispersal
+            // Initial position with radial distribution
             const radialDistance = Math.random() * 12 * (1 + waveOffsetFactor);
-            const radialAngle = angle + (Math.random() - 0.5) * Math.PI; // Dispersal cone ±90°
+            const radialAngle = angle + (Math.random() - 0.5) * Math.PI; // Dispersal cone
             
             const offsetX = Math.cos(radialAngle) * radialDistance;
             const offsetY = Math.sin(radialAngle) * radialDistance;
@@ -1356,18 +1217,16 @@
             tinyBubble.style.top = `${originY + offsetY}px`;
             
             // Physics-based direction vectors
-            // Smaller bubbles are more affected by surface tension forces and fluid dynamics
-            // Larger bubbles rise more directly upward
             const dispersalFactor = 1 - (size / 15); // Smaller bubbles disperse more randomly
             const primaryDirection = Math.PI / 2; // Upward direction
             
             // Blend between break direction and upward direction based on size
             const blendedAngle = angle * dispersalFactor + primaryDirection * (1 - dispersalFactor);
             
-            // Add randomness proportional to size (smaller = more random)
+            // Add randomness proportional to size
             const finalAngle = blendedAngle + (Math.random() - 0.5) * Math.PI * dispersalFactor;
             
-            // Distance proportional to size (larger bubbles travel farther)
+            // Distance proportional to size
             const baseDistance = 30 + size * 3;
             const distance = baseDistance + Math.random() * 40;
             
@@ -1396,28 +1255,12 @@
             // Staggered animation start times for more natural effect
             const startDelay = i * 15 + Math.random() * 30;
             
-            // Varied animation duration based on size (smaller = faster dissipation)
+            // Varied animation duration based on size
             const duration = 0.7 + size/10 + Math.random() * 0.5;
-            
-            // Custom easing for each bubble
-            const easingVariant = Math.floor(Math.random() * 3);
-            let easing;
-            
-            switch(easingVariant) {
-              case 0:
-                easing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'; // easeOutQuad
-                break;
-              case 1:
-                easing = 'cubic-bezier(0.55, 0.085, 0.68, 0.53)'; // easeInQuad
-                break;
-              case 2:
-                easing = 'cubic-bezier(0.25, 0.1, 0.25, 1)'; // ease
-                break;
-            }
             
             // Start animation
             setTimeout(() => {
-              tinyBubble.style.animation = `tinyBubbleRise ${duration}s ${easing} forwards`;
+              tinyBubble.style.animation = `tinyBubbleRise ${duration}s ease-out forwards`;
               
               // Remove after animation completes
               setTimeout(() => {
