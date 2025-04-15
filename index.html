@@ -1007,47 +1007,6 @@
       }
     }
 
-    /* Animacja pulsowania dla łącznika podczas rozciągania */
-    @keyframes pulseConnector {
-      0%, 100% {
-        box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.5),
-                    0 0 10px rgba(0, 112, 243, 0.1);
-      }
-      50% {
-        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.7),
-                    0 0 15px rgba(0, 112, 243, 0.2);
-      }
-    }
-
-    /* Ulepszenie animacji highlight */
-    @keyframes pulse-highlight {
-      0% {
-        opacity: 0.65;
-        transform: rotate(-15deg) scale(1) translate(0, 0);
-        filter: blur(2px);
-      }
-      25% {
-        opacity: 0.75;
-        transform: rotate(-14deg) scale(1.03) translate(1px, -1px);
-        filter: blur(1.8px);
-      }
-      50% {
-        opacity: 0.85;
-        transform: rotate(-12deg) scale(1.05) translate(2px, -2px);
-        filter: blur(1.5px);
-      }
-      75% {
-        opacity: 0.75;
-        transform: rotate(-13deg) scale(1.03) translate(1px, -1px);
-        filter: blur(1.8px);
-      }
-      100% {
-        opacity: 0.65;
-        transform: rotate(-15deg) scale(1) translate(0, 0);
-        filter: blur(2px);
-      }
-    }
-
     /* Nowa animacja dla drgań powierzchni bąbelka */
     @keyframes bubble-surface-tension {
       0% {
@@ -1098,6 +1057,47 @@
         opacity: 0;
         transform: scale(0);
         filter: brightness(0.8);
+      }
+    }
+
+    /* Animacja pulsowania dla łącznika podczas rozciągania */
+    @keyframes pulseConnector {
+      0%, 100% {
+        box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.5),
+                    0 0 10px rgba(0, 112, 243, 0.1);
+      }
+      50% {
+        box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.7),
+                    0 0 15px rgba(0, 112, 243, 0.2);
+      }
+    }
+
+    /* Ulepszenie animacji highlight */
+    @keyframes pulse-highlight {
+      0% {
+        opacity: 0.65;
+        transform: rotate(-15deg) scale(1) translate(0, 0);
+        filter: blur(2px);
+      }
+      25% {
+        opacity: 0.75;
+        transform: rotate(-14deg) scale(1.03) translate(1px, -1px);
+        filter: blur(1.8px);
+      }
+      50% {
+        opacity: 0.85;
+        transform: rotate(-12deg) scale(1.05) translate(2px, -2px);
+        filter: blur(1.5px);
+      }
+      75% {
+        opacity: 0.75;
+        transform: rotate(-13deg) scale(1.03) translate(1px, -1px);
+        filter: blur(1.8px);
+      }
+      100% {
+        opacity: 0.65;
+        transform: rotate(-15deg) scale(1) translate(0, 0);
+        filter: blur(2px);
       }
     }
     
@@ -1229,7 +1229,7 @@
         }, 500);
       }, autoRedirectDelay);
       
-      // Poprawiona funkcja inicjalizacji motywu
+      // Funkcja inicjalizacji motywu
       function initTheme() {
         let isDarkMode = false;
         
@@ -1260,7 +1260,7 @@
         }, 100);
       }
       
-      // Poprawiona funkcja aktualizacji ikony
+      // Funkcja aktualizacji ikony
       function updateThemeIcon(isDarkMode) {
         const themeIcon = document.getElementById('themeIcon');
         if (!themeIcon) return;
@@ -1277,7 +1277,7 @@
         }
       }
       
-      // Poprawiona funkcja przełączania trybu ciemnego
+      // Funkcja przełączania trybu ciemnego
       function toggleDarkMode() {
         const isDark = document.body.classList.toggle('dark-mode');
         
@@ -1322,7 +1322,7 @@
         }
       }
       
-      // Poprawione uruchomienie animacji separacji bąbelków
+      // Główna funkcja uruchamiająca animację separacji bąbelków
       function startBubbleSeparationAnimation() {
         // Ustawienie łącznika bąbelków
         try {
@@ -1386,7 +1386,7 @@
         }, 300);
       }
       
-      // Ulepszona funkcja tworzenia małych bąbelków podczas separacji
+      // Funkcja tworząca małe bąbelki podczas separacji
       function createTinyBubbleEffect() {
         if (!mainBubble || !redirectBubble || !bubbleContainer) return;
         
@@ -1433,191 +1433,191 @@
         } catch (error) {
           console.warn("Błąd podczas obliczania pozycji efektu bąbelków", error);
         }
-        
-        // Funkcja tworząca mikrobąbelki (bardzo małe, krótkotrwałe)
-        function createMicroBubbles(count, originX, originY, angle) {
-          for (let i = 0; i < count; i++) {
-            try {
-              const microBubble = document.createElement('div');
-              microBubble.className = 'tiny-bubble';
-              
-              // Styl dla mikrobąbelków
-              microBubble.style.background = 'rgba(0, 112, 243, 0.2)';
-              microBubble.style.boxShadow = 'inset 0 0 3px rgba(255, 255, 255, 0.8), 0 0 4px rgba(0, 112, 243, 0.2)';
-              
-              // Losowy rozmiar (bardzo małe)
-              const size = 1 + Math.random() * 2;
-              microBubble.style.width = `${size}px`;
-              microBubble.style.height = `${size}px`;
-              
-              // Początkowa pozycja - dokładnie w punkcie przerwania
-              const radialDistance = Math.random() * 4; // Bardzo małe rozproszenie początkowe
-              const radialAngle = angle + (Math.random() - 0.5) * Math.PI * 0.3; // Węższy stożek rozproszenia
-              
-              const offsetX = Math.cos(radialAngle) * radialDistance;
-              const offsetY = Math.sin(radialAngle) * radialDistance;
-              
-              microBubble.style.left = `${originX + offsetX}px`;
-              microBubble.style.top = `${originY + offsetY}px`;
-              
-              // Kalkulacja trajektorii - bardzo szybkie rozproszenie
-              const dispersalAngle = angle + (Math.random() - 0.5) * Math.PI * 0.5;
-              const distance = 15 + Math.random() * 25; // Krótszy dystans
-              
-              // Zapisz parametry animacji jako zmienne CSS
-              microBubble.style.setProperty('--tx', `${Math.cos(dispersalAngle) * distance}px`);
-              microBubble.style.setProperty('--ty', `${Math.sin(dispersalAngle) * distance}px`);
-              microBubble.style.setProperty('--tr', `${(Math.random() - 0.5) * 180}deg`);
-              microBubble.style.setProperty('--wobble-x', `${Math.random() * 5}px`);
-              
-              bubbleContainer.appendChild(microBubble);
-              
-              // Animacja mikrobąbelków - szybka, prawie natychmiastowa
-              microBubble.style.animation = `micro-bubble-form 0.5s ease-out forwards`;
-              
-              // Czyszczenie
-              setTimeout(() => {
-                try {
-                  microBubble.remove();
-                } catch (error) {
-                  // Ignoruj błędy podczas usuwania
-                }
-              }, 600);
-            } catch (error) {
-              console.warn("Błąd podczas tworzenia mikrobąbelka", error);
-              continue;
-            }
-          }
-        }
-        
-        // Funkcja tworząca falę bąbelków z ulepszoną fizyką
-        function createBubbleWave(numBubbles, originX, originY, angle, waveOffsetFactor, speedFactor) {
-          for (let i = 0; i < numBubbles; i++) {
-            try {
-              const tinyBubble = document.createElement('div');
-              tinyBubble.className = 'tiny-bubble';
-              
-              // Dodawanie podświetleń do bąbelków
-              if (Math.random() > 0.3) { // 70% bąbelków ma podświetlenia
-                const highlight = document.createElement('div');
-                highlight.className = 'highlight highlight-small';
-                highlight.style.width = '40%';
-                highlight.style.height = '40%';
-                highlight.style.top = `${15 + Math.random() * 10}%`;
-                highlight.style.left = `${15 + Math.random() * 10}%`;
-                highlight.style.borderRadius = `${40 + Math.random() * 20}% ${60 - Math.random() * 20}% ${50 + Math.random() * 10}% ${50 - Math.random() * 10}%`;
-                highlight.style.transform = `rotate(${Math.random() * 30 - 15}deg)`;
-                tinyBubble.appendChild(highlight);
+      }
+
+      // Funkcja tworząca mikrobąbelki (bardzo małe, krótkotrwałe)
+      function createMicroBubbles(count, originX, originY, angle) {
+        for (let i = 0; i < count; i++) {
+          try {
+            const microBubble = document.createElement('div');
+            microBubble.className = 'tiny-bubble';
+            
+            // Styl dla mikrobąbelków
+            microBubble.style.background = 'rgba(0, 112, 243, 0.2)';
+            microBubble.style.boxShadow = 'inset 0 0 3px rgba(255, 255, 255, 0.8), 0 0 4px rgba(0, 112, 243, 0.2)';
+            
+            // Losowy rozmiar (bardzo małe)
+            const size = 1 + Math.random() * 2;
+            microBubble.style.width = `${size}px`;
+            microBubble.style.height = `${size}px`;
+            
+            // Początkowa pozycja - dokładnie w punkcie przerwania
+            const radialDistance = Math.random() * 4; // Bardzo małe rozproszenie początkowe
+            const radialAngle = angle + (Math.random() - 0.5) * Math.PI * 0.3; // Węższy stożek rozproszenia
+            
+            const offsetX = Math.cos(radialAngle) * radialDistance;
+            const offsetY = Math.sin(radialAngle) * radialDistance;
+            
+            microBubble.style.left = `${originX + offsetX}px`;
+            microBubble.style.top = `${originY + offsetY}px`;
+            
+            // Kalkulacja trajektorii - bardzo szybkie rozproszenie
+            const dispersalAngle = angle + (Math.random() - 0.5) * Math.PI * 0.5;
+            const distance = 15 + Math.random() * 25; // Krótszy dystans
+            
+            // Zapisz parametry animacji jako zmienne CSS
+            microBubble.style.setProperty('--tx', `${Math.cos(dispersalAngle) * distance}px`);
+            microBubble.style.setProperty('--ty', `${Math.sin(dispersalAngle) * distance}px`);
+            microBubble.style.setProperty('--tr', `${(Math.random() - 0.5) * 180}deg`);
+            microBubble.style.setProperty('--wobble-x', `${Math.random() * 5}px`);
+            
+            bubbleContainer.appendChild(microBubble);
+            
+            // Animacja mikrobąbelków - szybka, prawie natychmiastowa
+            microBubble.style.animation = `micro-bubble-form 0.5s ease-out forwards`;
+            
+            // Czyszczenie
+            setTimeout(() => {
+              try {
+                microBubble.remove();
+              } catch (error) {
+                // Ignoruj błędy podczas usuwania
               }
-              
-              // Bardziej zróżnicowana dystrybucja rozmiaru
-              const sizeRandom = Math.random();
-              let size;
-              
-              if (sizeRandom < 0.5) { // 50% szans na malutkie bąbelki
-                size = 2 + sizeRandom * 3; // 2-5px
-              } else if (sizeRandom < 0.85) { // 35% szans na średnie bąbelki
-                size = 5 + (sizeRandom - 0.5) * 10 / 0.35; // 5-10px
-              } else { // 15% szans na większe bąbelki
-                size = 10 + (sizeRandom - 0.85) * 8 / 0.15; // 10-18px
-              }
-              
-              // Skoryguj rozmiar zgodnie z falą (późniejsze fale mają inne rozmiary)
-              size = size * (1 - waveOffsetFactor * 0.2);
-              
-              tinyBubble.style.width = `${size}px`;
-              tinyBubble.style.height = `${size}px`;
-              
-              // Ulepszony wygląd bąbelka
-              const opacity = 0.2 + Math.random() * 0.15;
-              tinyBubble.style.background = `rgba(0, 112, 243, ${opacity})`;
-              tinyBubble.style.boxShadow = `inset 0 0 ${size/2}px rgba(255, 255, 255, 0.5), 
-                                            0 0 ${size/3}px rgba(0, 112, 243, 0.25)`;
-              
-              // Delikatnie nieregularny kształt
-              const radiusBase = 50;
-              const radiusVariation = 5 - size/4; // Mniejsze bąbelki są bardziej nieregularne
-              tinyBubble.style.borderRadius = `${radiusBase + Math.random() * radiusVariation}% 
-                                              ${radiusBase - Math.random() * radiusVariation}% 
-                                              ${radiusBase + Math.random() * radiusVariation}% 
-                                              ${radiusBase - Math.random() * radiusVariation}%`;
-              
-              // Początkowa pozycja z dystrybucją radialną
-              const radialDistance = Math.random() * 12 * (1 + waveOffsetFactor * 0.8);
-              const radialAngle = angle + (Math.random() - 0.5) * Math.PI * (0.8 - waveOffsetFactor * 0.3); // Stożek rozproszenia
-              
-              const offsetX = Math.cos(radialAngle) * radialDistance;
-              const offsetY = Math.sin(radialAngle) * radialDistance;
-              
-              tinyBubble.style.left = `${originX + offsetX}px`;
-              tinyBubble.style.top = `${originY + offsetY}px`;
-              
-              // Fizyka oparta na rozmiarze
-              const buoyancyFactor = 1 - (size / 20); // Mniejsze bąbelki rozpraszają się bardziej losowo
-              const primaryDirection = Math.PI / 2; // Kierunek w górę
-              
-              // Mieszanie między kierunkiem rozerwania a kierunkiem w górę w zależności od rozmiaru
-              const blendedAngle = angle * buoyancyFactor + primaryDirection * (1 - buoyancyFactor);
-              
-              // Dodajemy losowość proporcjonalną do rozmiaru
-              const finalAngle = blendedAngle + (Math.random() - 0.5) * Math.PI * buoyancyFactor;
-              
-              // Dystans proporcjonalny do rozmiaru
-              const baseDistance = 50 + size * 4;
-              const distance = baseDistance + Math.random() * 60;
-              
-              // Większe bąbelki unoszą się szybciej dzięki wyporności
-              const sizeFactor = 0.7 + (size / 15);
-              
-              // Ostateczny mnożnik prędkości uwzględniający czynnik fali
-              const finalSpeedFactor = sizeFactor * speedFactor;
-              
-              // Obliczanie ostatecznych wektorów ruchu
-              const tx = Math.sin(finalAngle) * distance * finalSpeedFactor;
-              const ty = -Math.abs(Math.cos(finalAngle) * distance * finalSpeedFactor); // Zawsze unoszenie w górę
-              
-              // Większa rotacja dla mniejszych bąbelków
-              const tr = (Math.random() - 0.5) * (180 - size * 8); 
-              
-              // Zakłócenia trajektorii dla realistycznej dynamiki płynów
-              const wobbleX = Math.random() * 15 * (1 - size/18); // Mniejsze bąbelki bardziej się kołyszą
-              
-              // Ustawienie zmiennych CSS dla animacji
-              tinyBubble.style.setProperty('--tx', `${tx}px`);
-              tinyBubble.style.setProperty('--ty', `${ty}px`);
-              tinyBubble.style.setProperty('--tr', `${tr}deg`);
-              tinyBubble.style.setProperty('--wobble-x', `${wobbleX}px`);
-              
-              // Dodanie do kontenera
-              bubbleContainer.appendChild(tinyBubble);
-              
-              // Rozłożone czasy rozpoczęcia animacji dla bardziej naturalnego efektu
-              const startDelay = i * 25 + Math.random() * 50;
-              
-              // Zróżnicowany czas trwania animacji w zależności od rozmiaru
-              const duration = 1 + size/10 + Math.random() * 0.7;
-              
-              // Uruchomienie animacji
-              setTimeout(() => {
-                tinyBubble.style.animation = `tinyBubbleRise ${duration}s ease-out forwards`;
-                
-                // Usunięcie po zakończeniu animacji
-                setTimeout(() => {
-                  try {
-                    tinyBubble.remove();
-                  } catch (error) {
-                    // Ignoruj błędy podczas usuwania
-                  }
-                }, duration * 1000 + 100);
-              }, startDelay);
-            } catch (error) {
-              console.warn("Błąd podczas tworzenia bąbelka w fali", error);
-              continue; // Kontynuuj tworzenie innych bąbelków mimo błędu
-            }
+            }, 600);
+          } catch (error) {
+            console.warn("Błąd podczas tworzenia mikrobąbelka", error);
+            continue;
           }
         }
       }
-      
+
+      // Funkcja tworząca falę bąbelków z ulepszoną fizyką
+      function createBubbleWave(numBubbles, originX, originY, angle, waveOffsetFactor, speedFactor) {
+        for (let i = 0; i < numBubbles; i++) {
+          try {
+            const tinyBubble = document.createElement('div');
+            tinyBubble.className = 'tiny-bubble';
+            
+            // Dodawanie podświetleń do bąbelków
+            if (Math.random() > 0.3) { // 70% bąbelków ma podświetlenia
+              const highlight = document.createElement('div');
+              highlight.className = 'highlight highlight-small';
+              highlight.style.width = '40%';
+              highlight.style.height = '40%';
+              highlight.style.top = `${15 + Math.random() * 10}%`;
+              highlight.style.left = `${15 + Math.random() * 10}%`;
+              highlight.style.borderRadius = `${40 + Math.random() * 20}% ${60 - Math.random() * 20}% ${50 + Math.random() * 10}% ${50 - Math.random() * 10}%`;
+              highlight.style.transform = `rotate(${Math.random() * 30 - 15}deg)`;
+              tinyBubble.appendChild(highlight);
+            }
+            
+            // Bardziej zróżnicowana dystrybucja rozmiaru
+            const sizeRandom = Math.random();
+            let size;
+            
+            if (sizeRandom < 0.5) { // 50% szans na malutkie bąbelki
+              size = 2 + sizeRandom * 3; // 2-5px
+            } else if (sizeRandom < 0.85) { // 35% szans na średnie bąbelki
+              size = 5 + (sizeRandom - 0.5) * 10 / 0.35; // 5-10px
+            } else { // 15% szans na większe bąbelki
+              size = 10 + (sizeRandom - 0.85) * 8 / 0.15; // 10-18px
+            }
+            
+            // Skoryguj rozmiar zgodnie z falą (późniejsze fale mają inne rozmiary)
+            size = size * (1 - waveOffsetFactor * 0.2);
+            
+            tinyBubble.style.width = `${size}px`;
+            tinyBubble.style.height = `${size}px`;
+            
+            // Ulepszony wygląd bąbelka
+            const opacity = 0.2 + Math.random() * 0.15;
+            tinyBubble.style.background = `rgba(0, 112, 243, ${opacity})`;
+            tinyBubble.style.boxShadow = `inset 0 0 ${size/2}px rgba(255, 255, 255, 0.5), 
+                                          0 0 ${size/3}px rgba(0, 112, 243, 0.25)`;
+            
+            // Delikatnie nieregularny kształt
+            const radiusBase = 50;
+            const radiusVariation = 5 - size/4; // Mniejsze bąbelki są bardziej nieregularne
+            tinyBubble.style.borderRadius = `${radiusBase + Math.random() * radiusVariation}% 
+                                            ${radiusBase - Math.random() * radiusVariation}% 
+                                            ${radiusBase + Math.random() * radiusVariation}% 
+                                            ${radiusBase - Math.random() * radiusVariation}%`;
+            
+            // Początkowa pozycja z dystrybucją radialną
+            const radialDistance = Math.random() * 12 * (1 + waveOffsetFactor * 0.8);
+            const radialAngle = angle + (Math.random() - 0.5) * Math.PI * (0.8 - waveOffsetFactor * 0.3); // Stożek rozproszenia
+            
+            const offsetX = Math.cos(radialAngle) * radialDistance;
+            const offsetY = Math.sin(radialAngle) * radialDistance;
+            
+            tinyBubble.style.left = `${originX + offsetX}px`;
+            tinyBubble.style.top = `${originY + offsetY}px`;
+            
+            // Fizyka oparta na rozmiarze
+            const buoyancyFactor = 1 - (size / 20); // Mniejsze bąbelki rozpraszają się bardziej losowo
+            const primaryDirection = Math.PI / 2; // Kierunek w górę
+            
+            // Mieszanie między kierunkiem rozerwania a kierunkiem w górę w zależności od rozmiaru
+            const blendedAngle = angle * buoyancyFactor + primaryDirection * (1 - buoyancyFactor);
+            
+            // Dodajemy losowość proporcjonalną do rozmiaru
+            const finalAngle = blendedAngle + (Math.random() - 0.5) * Math.PI * buoyancyFactor;
+            
+            // Dystans proporcjonalny do rozmiaru
+            const baseDistance = 50 + size * 4;
+            const distance = baseDistance + Math.random() * 60;
+            
+            // Większe bąbelki unoszą się szybciej dzięki wyporności
+            const sizeFactor = 0.7 + (size / 15);
+            
+            // Ostateczny mnożnik prędkości uwzględniający czynnik fali
+            const finalSpeedFactor = sizeFactor * speedFactor;
+            
+            // Obliczanie ostatecznych wektorów ruchu
+            const tx = Math.sin(finalAngle) * distance * finalSpeedFactor;
+            const ty = -Math.abs(Math.cos(finalAngle) * distance * finalSpeedFactor); // Zawsze unoszenie w górę
+            
+            // Większa rotacja dla mniejszych bąbelków
+            const tr = (Math.random() - 0.5) * (180 - size * 8); 
+            
+            // Zakłócenia trajektorii dla realistycznej dynamiki płynów
+            const wobbleX = Math.random() * 15 * (1 - size/18); // Mniejsze bąbelki bardziej się kołyszą
+            
+            // Ustawienie zmiennych CSS dla animacji
+            tinyBubble.style.setProperty('--tx', `${tx}px`);
+            tinyBubble.style.setProperty('--ty', `${ty}px`);
+            tinyBubble.style.setProperty('--tr', `${tr}deg`);
+            tinyBubble.style.setProperty('--wobble-x', `${wobbleX}px`);
+            
+            // Dodanie do kontenera
+            bubbleContainer.appendChild(tinyBubble);
+            
+            // Rozłożone czasy rozpoczęcia animacji dla bardziej naturalnego efektu
+            const startDelay = i * 25 + Math.random() * 50;
+            
+            // Zróżnicowany czas trwania animacji w zależności od rozmiaru
+            const duration = 1 + size/10 + Math.random() * 0.7;
+            
+            // Uruchomienie animacji
+            setTimeout(() => {
+              tinyBubble.style.animation = `tinyBubbleRise ${duration}s ease-out forwards`;
+              
+              // Usunięcie po zakończeniu animacji
+              setTimeout(() => {
+                try {
+                  tinyBubble.remove();
+                } catch (error) {
+                  // Ignoruj błędy podczas usuwania
+                }
+              }, duration * 1000 + 100);
+            }, startDelay);
+          } catch (error) {
+            console.warn("Błąd podczas tworzenia bąbelka w fali", error);
+            continue; // Kontynuuj tworzenie innych bąbelków mimo błędu
+          }
+        }
+      }
+
       // Funkcja dodająca efekty po separacji
       function addPostSeparationEffects() {
         // Dodawanie małych cząstek powstających w punkcie separacji
