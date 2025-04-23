@@ -11,7 +11,7 @@
       try {
         // Sprawdź preferencje przeglądarki najpierw
         const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        
+
         // Następnie spróbuj wczytać zapisane preferencje
         try {
           const savedTheme = localStorage.getItem('darkMode');
@@ -22,10 +22,10 @@
       } catch (error) {
         isDarkMode = false;
       }
-      
+
       // Zapisz informację aby można było użyć jej do ustawienia klasy na body
       window.initialDarkMode = isDarkMode;
-      
+
       // Dodaj klasę bezpośrednio do dokumentu, jeszcze przed pełnym renderem
       if (isDarkMode) {
         document.documentElement.classList.add('dark-mode');
@@ -57,29 +57,29 @@
       --bubble-border-light: rgba(0, 112, 243, 0.2);
       --bubble-border-dark: rgba(0, 112, 243, 0.15);
     }
-    
+
     /* Animation state classes */
     .redirect-floating {
       opacity: 1 !important;
       transform: translate(-50%, -50%) scale(1) !important;
       animation: float-redirect 4s ease-in-out infinite, wobble-shape 6s infinite linear, bubble-surface-tension 3s ease-in-out infinite !important;
     }
-    
+
     .main-floating {
       animation: float-main-after 6s ease-in-out infinite, wobble-shape 6s infinite linear, bubble-surface-tension 4s ease-in-out infinite !important;
       transform: translate(-50%, -50%) scale(0.9) !important;
     }
-    
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
-    
+
     html.dark-mode {
       background-color: var(--dark-bg); /* Natychmiastowy kolor tła */
     }
-    
+
     body {
       font-family: var(--body-font);
       background-color: var(--light-bg);
@@ -115,7 +115,7 @@
     body.dark-mode .bg-gradient {
       background: radial-gradient(circle at 70% 30%, rgba(0, 112, 243, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
     }
-    
+
     /* Theme toggle button */
     .theme-toggle {
       position: fixed;
@@ -138,7 +138,7 @@
       border: 1px solid rgba(0, 0, 0, 0.05);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
-    
+
     html.dark-mode .theme-toggle,
     body.dark-mode .theme-toggle {
       background-color: rgba(255, 255, 255, 0.1);
@@ -146,7 +146,7 @@
       border: 1px solid rgba(255, 255, 255, 0.05);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
     }
-    
+
     .theme-toggle:hover {
       background-color: rgba(0, 112, 243, 0.1);
       transform: translateY(-3px);
@@ -156,7 +156,7 @@
     .theme-toggle:active {
       transform: translateY(-1px);
     }
-    
+
     /* Bubble container */
     .bubble-container {
       position: relative;
@@ -184,7 +184,7 @@
       border-radius: 51% 49% 48% 52% / 52% 47% 53% 48%;
       overflow: hidden;
     }
-    
+
     html.dark-mode .bubble,
     body.dark-mode .bubble {
       background: var(--bubble-bg-dark);
@@ -192,7 +192,7 @@
                   0 0 15px var(--bubble-shadow-dark),
                   0 0 0 1px var(--bubble-border-dark);
     }
-    
+
     /* Main bubble */
     .main-bubble {
       width: 140px;
@@ -216,7 +216,7 @@
       z-index: 4;
       transition: var(--transition);
     }
-    
+
     /* Highlights inside bubbles - użyte we wszystkich stanach */
     .highlight {
       position: absolute;
@@ -226,13 +226,13 @@
       opacity: 0.7;
       pointer-events: none;
     }
-    
+
     html.dark-mode .highlight,
     body.dark-mode .highlight {
       background: rgba(255, 255, 255, 0.3);
       opacity: 0.65;
     }
-    
+
     /* Main highlight */
     .highlight-main {
       width: 30%;
@@ -243,7 +243,7 @@
       transform: rotate(-15deg);
       animation: pulse-highlight 8s infinite ease-in-out;
     }
-    
+
     /* Secondary highlight */
     .highlight-small {
       width: 12%;
@@ -254,7 +254,7 @@
       transform: rotate(25deg);
       animation: pulse-highlight 8s infinite ease-in-out reverse;
     }
-    
+
     /* Spinner in main bubble */
     .spinner {
       width: 40px;
@@ -264,7 +264,7 @@
       border-top-color: white;
       animation: spin 1.2s cubic-bezier(0.5, 0.1, 0.5, 1) infinite;
     }
-    
+
     /* Arrow in redirect bubble */
     .arrow {
       position: relative;
@@ -274,7 +274,7 @@
       transform: scale(0.8);
       transition: transform 0.3s ease;
     }
-    
+
     .arrow::before {
       content: '';
       position: absolute;
@@ -290,7 +290,7 @@
     .redirect-bubble:hover .arrow {
       transform: scale(1) translateX(2px);
     }
-    
+
     /* Bubble connector (initially hidden) */
     .bubble-connector {
       position: absolute;
@@ -319,7 +319,7 @@
       transform: scale(0);
       pointer-events: none;
     }
-    
+
     /* Loading text */
     .loading-text {
       position: absolute;
@@ -338,7 +338,7 @@
       backdrop-filter: blur(4px);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
-    
+
     html.dark-mode .loading-text,
     body.dark-mode .loading-text {
       background-color: rgba(0, 112, 243, 0.15);
@@ -350,11 +350,11 @@
       opacity: 0;
       transform: translateX(-50%) translateY(10px);
     }
-    
+
     .loading-text.pulse {
       animation: text-pulse 2s infinite alternate ease-in-out;
     }
-    
+
     /* Background particles */
     .particles-container {
       position: absolute;
@@ -365,7 +365,7 @@
       z-index: -1;
       pointer-events: none;
     }
-    
+
     .particle {
       position: absolute;
       background-color: var(--primary-color);
@@ -374,14 +374,14 @@
       opacity: 0.05;
       animation: float-particle 15s infinite ease-in-out;
     }
-    
+
     html.dark-mode .particle,
     body.dark-mode .particle {
       opacity: 0.07;
     }
-    
+
     /* ANIMATIONS */
-    
+
     /* Ulepszony wobble-shape - bardziej organiczne kształty z subtelniejszymi zmianami */
     @keyframes wobble-shape {
       0% {
@@ -919,42 +919,42 @@
       }
       20% {
         opacity: 0.98;
-        transform: translate(calc(var(--tx) * 0.25 + var(--wobble-x) * 0.3), calc(var(--ty) * 0.18)) scale(0.98) 
+        transform: translate(calc(var(--tx) * 0.25 + var(--wobble-x) * 0.3), calc(var(--ty) * 0.18)) scale(0.98)
                   rotate(calc(var(--tr) * 0.25));
       }
       30% {
         opacity: 0.95;
-        transform: translate(calc(var(--tx) * 0.37 - var(--wobble-x) * 0.5), calc(var(--ty) * 0.32)) scale(0.96) 
+        transform: translate(calc(var(--tx) * 0.37 - var(--wobble-x) * 0.5), calc(var(--ty) * 0.32)) scale(0.96)
                   rotate(calc(var(--tr) * 0.38));
       }
       40% {
         opacity: 0.9;
-        transform: translate(calc(var(--tx) * 0.5 + var(--wobble-x) * 0.7), calc(var(--ty) * 0.48)) scale(0.94) 
+        transform: translate(calc(var(--tx) * 0.5 + var(--wobble-x) * 0.7), calc(var(--ty) * 0.48)) scale(0.94)
                   rotate(calc(var(--tr) * 0.5));
       }
       50% {
         opacity: 0.85;
-        transform: translate(calc(var(--tx) * 0.63 - var(--wobble-x) * 0.4), calc(var(--ty) * 0.65)) scale(0.92) 
+        transform: translate(calc(var(--tx) * 0.63 - var(--wobble-x) * 0.4), calc(var(--ty) * 0.65)) scale(0.92)
                   rotate(calc(var(--tr) * 0.63));
       }
       60% {
         opacity: 0.8;
-        transform: translate(calc(var(--tx) * 0.74 + var(--wobble-x) * 0.2), calc(var(--ty) * 0.77)) scale(0.89) 
+        transform: translate(calc(var(--tx) * 0.74 + var(--wobble-x) * 0.2), calc(var(--ty) * 0.77)) scale(0.89)
                   rotate(calc(var(--tr) * 0.75));
       }
       70% {
         opacity: 0.7;
-        transform: translate(calc(var(--tx) * 0.83 - var(--wobble-x) * 0.1), calc(var(--ty) * 0.85)) scale(0.85) 
+        transform: translate(calc(var(--tx) * 0.83 - var(--wobble-x) * 0.1), calc(var(--ty) * 0.85)) scale(0.85)
                   rotate(calc(var(--tr) * 0.87));
       }
       80% {
         opacity: 0.5;
-        transform: translate(calc(var(--tx) * 0.91 + var(--wobble-x) * 0.07), calc(var(--ty) * 0.91)) scale(0.8) 
+        transform: translate(calc(var(--tx) * 0.91 + var(--wobble-x) * 0.07), calc(var(--ty) * 0.91)) scale(0.8)
                   rotate(calc(var(--tr) * 0.93));
       }
       90% {
         opacity: 0.25;
-        transform: translate(calc(var(--tx) * 0.96 - var(--wobble-x) * 0.03), calc(var(--ty) * 0.96)) scale(0.75) 
+        transform: translate(calc(var(--tx) * 0.96 - var(--wobble-x) * 0.03), calc(var(--ty) * 0.96)) scale(0.75)
                   rotate(calc(var(--tr) * 0.97));
       }
       100% {
@@ -1085,14 +1085,14 @@
         filter: blur(2px);
       }
     }
-    
+
     /* Spin animation for loader */
     @keyframes spin {
       to {
         transform: rotate(360deg);
       }
     }
-    
+
     /* Text pulsing */
     @keyframes text-pulse {
       0% {
@@ -1103,7 +1103,7 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
       }
     }
-    
+
     /* Particles floating */
     @keyframes float-particle {
       0%, 100% {
@@ -1119,7 +1119,7 @@
         transform: translate(calc(var(--x-offset) * -0.5), calc(var(--y-offset) * 0.3));
       }
     }
-    
+
     /* Reduced motion preferences */
     @media (prefers-reduced-motion: reduce) {
       * {
@@ -1150,14 +1150,14 @@
       <div class="highlight highlight-small"></div>
       <div class="spinner"></div>
     </div>
-    
+
     <!-- Redirect Bubble -->
     <div class="bubble redirect-bubble" id="redirectBubble">
       <div class="highlight highlight-main"></div>
       <div class="highlight highlight-small"></div>
       <div class="arrow"></div>
     </div>
-    
+
     <!-- Bubble Connector -->
     <div class="bubble-connector" id="bubbleConnector"></div>
   </div>
@@ -1169,7 +1169,7 @@
 
   <!-- Font Awesome -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-  
+
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Configuration
@@ -1177,7 +1177,7 @@
       const autoRedirectDelay = 5000;  // ms before auto-redirect
       const splitStartDelay = 1;    // ms before bubble split animation starts
       const splitDuration = 1000;     // ms for the split animation
-      
+
       // Get DOM elements
       const bubbleContainer = document.getElementById('bubbleContainer');
       const mainBubble = document.getElementById('mainBubble');
@@ -1186,7 +1186,7 @@
       const themeToggle = document.getElementById('themeToggle');
       const loadingText = document.getElementById('loadingText');
       const particlesContainer = document.getElementById('particlesContainer');
-      
+
       // Set initial theme based on early initialization
       if (window.initialDarkMode === false) {
         document.documentElement.classList.remove('dark-mode');
@@ -1197,40 +1197,40 @@
         document.body.classList.add('dark-mode');
         updateThemeIcon(true);
       }
-      
+
       // Create background particles
       createBackgroundParticles();
-      
+
       // Redirect on click
       redirectBubble.addEventListener('click', () => {
         window.location.href = redirectUrl;
       });
-      
+
       // Toggle theme
       themeToggle.addEventListener('click', toggleDarkMode);
-      
+
       // Schedule the bubble split animation
       setTimeout(startBubbleSeparationAnimation, splitStartDelay);
-      
+
       // Schedule auto-redirect (ensure this always happens regardless of localStorage or other issues)
       setTimeout(() => {
         // Fade out loading text before redirect
         if (loadingText) loadingText.classList.add('fade-out');
-        
+
         setTimeout(() => {
           window.location.href = redirectUrl;
         }, 500);
       }, autoRedirectDelay);
-      
+
       // Funkcja aktualizacji ikony
       function updateThemeIcon(isDarkMode) {
         const themeIcon = document.getElementById('themeIcon');
         if (!themeIcon) return;
-        
+
         // Najpierw usuń wszystkie klasy ikon (zarówno księżyc jak i słońce)
         themeIcon.classList.remove('fa-moon');
         themeIcon.classList.remove('fa-sun');
-        
+
         // Dodaj właściwą klasę w zależności od bieżącego motywu
         if (isDarkMode) {
           themeIcon.classList.add('fa-sun'); // W trybie ciemnym pokazujemy słońce (aby przełączyć na jasny)
@@ -1238,16 +1238,16 @@
           themeIcon.classList.add('fa-moon'); // W trybie jasnym pokazujemy księżyc (aby przełączyć na ciemny)
         }
       }
-      
+
       // Funkcja przełączania trybu ciemnego
       function toggleDarkMode() {
         // Przełączamy klasę zarówno na HTML jak i BODY
         const isDark = document.documentElement.classList.toggle('dark-mode');
         document.body.classList.toggle('dark-mode');
-        
+
         // Upewnij się, że ikona jest natychmiast zaktualizowana
         updateThemeIcon(isDark);
-        
+
         // Zapisz preferencje
         try {
           localStorage.setItem('darkMode', isDark);
@@ -1255,70 +1255,70 @@
           console.warn("Nie można zapisać preferencji motywu w localStorage", error);
         }
       }
-      
+
       // Create floating background particles
       function createBackgroundParticles() {
         if (!particlesContainer) return;
-        
+
         for (let i = 0; i < 20; i++) {
           const particle = document.createElement('div');
           particle.className = 'particle';
-          
+
           // Random size between 3px and 12px
           const size = 3 + Math.random() * 9;
           particle.style.width = `${size}px`;
           particle.style.height = `${size}px`;
-          
+
           // Random position
           const left = Math.random() * 100;
           const top = Math.random() * 100;
           particle.style.left = `${left}%`;
           particle.style.top = `${top}%`;
-          
+
           // Random animation properties
           particle.style.setProperty('--x-offset', `${Math.random() * 100 - 50}px`);
           particle.style.setProperty('--y-offset', `${Math.random() * 100 - 50}px`);
-          
+
           // Random animation delay
           particle.style.animationDelay = `${Math.random() * 5}s`;
-          
+
           particlesContainer.appendChild(particle);
         }
       }
-      
+
       // Główna funkcja uruchamiająca animację separacji bąbelków
       function startBubbleSeparationAnimation() {
         // Ustawienie łącznika bąbelków
         try {
           const mainRect = mainBubble.getBoundingClientRect();
           const containerRect = bubbleContainer.getBoundingClientRect();
-          
+
           const mainCenterX = mainRect.left - containerRect.left + mainRect.width / 2;
           const mainCenterY = mainRect.top - containerRect.top + mainRect.height / 2;
-          
+
           bubbleConnector.style.left = `${mainCenterX}px`;
           bubbleConnector.style.top = `${mainCenterY}px`;
-          
+
           // Dodaj animację pulsowania do łącznika
           bubbleConnector.style.animation = 'pulseConnector 1s infinite alternate ease-in-out';
         } catch (error) {
           console.warn("Błąd podczas ustawiania łącznika bąbelków, kontynuacja animacji", error);
         }
-        
+
         setTimeout(() => {
           // Rozpocznij animacje deformacji głównego bąbelka i formowania nowego
           if (mainBubble) {
             mainBubble.style.animation = `mainBubbleDeform ${splitDuration}ms forwards cubic-bezier(0.34, 1.56, 0.64, 1)`;
           }
-          
+
           if (redirectBubble) {
             redirectBubble.style.animation = `newBubbleForm ${splitDuration}ms forwards cubic-bezier(0.34, 1.56, 0.64, 1)`;
           }
-          
+
           if (bubbleConnector) {
             bubbleConnector.style.animation = `connectorAnimation ${splitDuration}ms forwards cubic-bezier(0.34, 1.56, 0.64, 1)`;
           }
-          
+
           // Stwórz małe bąbelki w dokładnym momencie separacji
           setTimeout(() => {
             try {
@@ -1327,19 +1327,19 @@
               console.warn("Błąd podczas tworzenia efektu małych bąbelków, kontynuacja animacji", error);
             }
           }, splitDuration * 0.48); // Tworzenie bąbelków w dokładnym momencie separacji
-          
+
           // Po zakończeniu separacji
           setTimeout(() => {
             // Użyj klas zamiast styli inline, aby upewnić się, że bąbelki pozostają widoczne
             if (mainBubble) mainBubble.classList.add('main-floating');
             if (redirectBubble) redirectBubble.classList.add('redirect-floating');
-            
+
             // Aktualizuj tekst ładowania
             if (loadingText) {
               loadingText.textContent = 'Kliknij bąbelek, aby przejść dalej';
               loadingText.classList.add('pulse');
             }
-            
+
             // Dodaj efekty po separacji
             try {
               addPostSeparationEffects();
@@ -1349,51 +1349,51 @@
           }, splitDuration + 100);
         }, 300);
       }
-      
+
       // Funkcja tworząca małe bąbelki podczas separacji
       function createTinyBubbleEffect() {
         if (!mainBubble || !redirectBubble || !bubbleContainer) return;
-        
+
         try {
           const mainRect = mainBubble.getBoundingClientRect();
           const redirectRect = redirectBubble.getBoundingClientRect();
           const containerRect = bubbleContainer.getBoundingClientRect();
-          
+
           // Obliczanie punktu separacji między bąbelkami
           const mainCenterX = mainRect.left - containerRect.left + mainRect.width / 2;
           const mainCenterY = mainRect.top - containerRect.top + mainRect.height / 2;
           const redirectCenterX = redirectRect.left - containerRect.left + redirectRect.width / 2;
           const redirectCenterY = redirectRect.top - containerRect.top + redirectRect.height / 2;
-          
+
           // Obliczanie dokładnego punktu przerwania
           const breakPointX = mainCenterX + (redirectCenterX - mainCenterX) * 0.42; // Przesunięte bliżej głównego bąbelka
           const breakPointY = mainCenterY + (redirectCenterY - mainCenterY) * 0.38; // Przesunięte nieco w dół
-          
+
           // Wektor kierunku przerwania
           const breakAngle = Math.atan2(redirectCenterY - mainCenterY, redirectCenterX - mainCenterX);
-          
+
           // Symulacja trójfazowego oddzielania się bąbelków
           const numMicroBubbles = 5 + Math.floor(Math.random() * 4); // Mikrobąbelki w momencie przerwania
           const numFirstWave = 10 + Math.floor(Math.random() * 6); // Pierwsza fala
           const numSecondWave = 8 + Math.floor(Math.random() * 5); // Druga fala
           const numThirdWave = 5 + Math.floor(Math.random() * 3); // Trzecia fala (mniejsza)
-          
+
           // Mikrobąbelki w momencie przerwania (bardzo małe i szybkie)
           createMicroBubbles(numMicroBubbles, breakPointX, breakPointY, breakAngle);
-          
+
           // Pierwsza fala - bąbelki tuż po przerwaniu
           createBubbleWave(numFirstWave, breakPointX, breakPointY, breakAngle, 0, 0.2);
-          
+
           // Druga fala - opóźnione bąbelki (większe)
           setTimeout(() => {
             createBubbleWave(numSecondWave, breakPointX, breakPointY, breakAngle, 0.7, 0.5);
           }, 120);
-          
+
           // Trzecia fala - jeszcze bardziej opóźnione bąbelki (najmniejsze, powolne)
           setTimeout(() => {
             createBubbleWave(numThirdWave, breakPointX, breakPointY, breakAngle, 1.2, 0.8);
           }, 250);
-          
+
         } catch (error) {
           console.warn("Błąd podczas obliczania pozycji efektu bąbelków", error);
         }
@@ -1405,41 +1405,41 @@
           try {
             const microBubble = document.createElement('div');
             microBubble.className = 'tiny-bubble';
-            
+
             // Styl dla mikrobąbelków - użyj tego samego stylu co dla głównych bąbelków
             microBubble.style.background = 'rgba(0, 112, 243, 0.2)';
             microBubble.style.boxShadow = 'inset 0 0 3px rgba(255, 255, 255, 0.8), 0 0 4px rgba(0, 112, 243, 0.2)';
-            
+
             // Losowy rozmiar (bardzo małe)
             const size = 1 + Math.random() * 2;
             microBubble.style.width = `${size}px`;
             microBubble.style.height = `${size}px`;
-            
+
             // Początkowa pozycja - dokładnie w punkcie przerwania
             const radialDistance = Math.random() * 4; // Bardzo małe rozproszenie początkowe
             const radialAngle = angle + (Math.random() - 0.5) * Math.PI * 0.3; // Węższy stożek rozproszenia
-            
+
             const offsetX = Math.cos(radialAngle) * radialDistance;
             const offsetY = Math.sin(radialAngle) * radialDistance;
-            
+
             microBubble.style.left = `${originX + offsetX}px`;
             microBubble.style.top = `${originY + offsetY}px`;
-            
+
             // Kalkulacja trajektorii - bardzo szybkie rozproszenie
             const dispersalAngle = angle + (Math.random() - 0.5) * Math.PI * 0.5;
             const distance = 15 + Math.random() * 25; // Krótszy dystans
-            
+
             // Zapisz parametry animacji jako zmienne CSS
             microBubble.style.setProperty('--tx', `${Math.cos(dispersalAngle) * distance}px`);
             microBubble.style.setProperty('--ty', `${Math.sin(dispersalAngle) * distance}px`);
             microBubble.style.setProperty('--tr', `${(Math.random() - 0.5) * 180}deg`);
             microBubble.style.setProperty('--wobble-x', `${Math.random() * 5}px`);
-            
+
             bubbleContainer.appendChild(microBubble);
-            
+
             // Animacja mikrobąbelków - szybka, prawie natychmiastowa
             microBubble.style.animation = `micro-bubble-form 0.5s ease-out forwards`;
-            
+
             // Czyszczenie
             setTimeout(() => {
               try {
@@ -1461,7 +1461,7 @@
           try {
             const tinyBubble = document.createElement('div');
             tinyBubble.className = 'tiny-bubble';
-            
+
             // Dodawanie podświetleń do bąbelków
             if (Math.random() > 0.3) { // 70% bąbelków ma podświetlenia
               const highlight = document.createElement('div');
@@ -1474,11 +1474,11 @@
               highlight.style.transform = `rotate(${Math.random() * 30 - 15}deg)`;
               tinyBubble.appendChild(highlight);
             }
-            
+
             // Bardziej zróżnicowana dystrybucja rozmiaru
             const sizeRandom = Math.random();
             let size;
-            
+
             if (sizeRandom < 0.5) { // 50% szans na malutkie bąbelki
               size = 2 + sizeRandom * 3; // 2-5px
             } else if (sizeRandom < 0.85) { // 35% szans na średnie bąbelki
@@ -1486,86 +1486,86 @@
             } else { // 15% szans na większe bąbelki
               size = 10 + (sizeRandom - 0.85) * 8 / 0.15; // 10-18px
             }
-            
+
             // Skoryguj rozmiar zgodnie z falą (późniejsze fale mają inne rozmiary)
             size = size * (1 - waveOffsetFactor * 0.2);
-            
+
             tinyBubble.style.width = `${size}px`;
             tinyBubble.style.height = `${size}px`;
-            
+
             // Ulepszony wygląd bąbelka - użyj tego samego stylu co dla głównych bąbelków
             const opacity = 0.2 + Math.random() * 0.15;
             tinyBubble.style.background = `rgba(0, 112, 243, ${opacity})`;
-            tinyBubble.style.boxShadow = `inset 0 0 ${size/2}px rgba(255, 255, 255, 0.5), 
+            tinyBubble.style.boxShadow = `inset 0 0 ${size/2}px rgba(255, 255, 255, 0.5),
                                           0 0 ${size/3}px rgba(0, 112, 243, 0.25)`;
-            
+
             // Delikatnie nieregularny kształt
             const radiusBase = 50;
             const radiusVariation = 5 - size/4; // Mniejsze bąbelki są bardziej nieregularne
-            tinyBubble.style.borderRadius = `${radiusBase + Math.random() * radiusVariation}% 
-                                            ${radiusBase - Math.random() * radiusVariation}% 
-                                            ${radiusBase + Math.random() * radiusVariation}% 
+            tinyBubble.style.borderRadius = `${radiusBase + Math.random() * radiusVariation}%
+                                            ${radiusBase - Math.random() * radiusVariation}%
+                                            ${radiusBase + Math.random() * radiusVariation}%
                                             ${radiusBase - Math.random() * radiusVariation}%`;
-            
+
             // Początkowa pozycja z dystrybucją radialną
             const radialDistance = Math.random() * 12 * (1 + waveOffsetFactor * 0.8);
             const radialAngle = angle + (Math.random() - 0.5) * Math.PI * (0.8 - waveOffsetFactor * 0.3); // Stożek rozproszenia
-            
+
             const offsetX = Math.cos(radialAngle) * radialDistance;
             const offsetY = Math.sin(radialAngle) * radialDistance;
-            
+
             tinyBubble.style.left = `${originX + offsetX}px`;
             tinyBubble.style.top = `${originY + offsetY}px`;
-            
+
             // Fizyka oparta na rozmiarze
             const buoyancyFactor = 1 - (size / 20); // Mniejsze bąbelki rozpraszają się bardziej losowo
             const primaryDirection = Math.PI / 2; // Kierunek w górę
-            
+
             // Mieszanie między kierunkiem rozerwania a kierunkiem w górę w zależności od rozmiaru
             const blendedAngle = angle * buoyancyFactor + primaryDirection * (1 - buoyancyFactor);
-            
+
             // Dodajemy losowość proporcjonalną do rozmiaru
             const finalAngle = blendedAngle + (Math.random() - 0.5) * Math.PI * buoyancyFactor;
-            
+
             // Dystans proporcjonalny do rozmiaru
             const baseDistance = 50 + size * 4;
             const distance = baseDistance + Math.random() * 60;
-            
+
             // Większe bąbelki unoszą się szybciej dzięki wyporności
             const sizeFactor = 0.7 + (size / 15);
-            
+
             // Ostateczny mnożnik prędkości uwzględniający czynnik fali
             const finalSpeedFactor = sizeFactor * speedFactor;
-            
+
             // Obliczanie ostatecznych wektorów ruchu
             const tx = Math.sin(finalAngle) * distance * finalSpeedFactor;
             const ty = -Math.abs(Math.cos(finalAngle) * distance * finalSpeedFactor); // Zawsze unoszenie w górę
-            
+
             // Większa rotacja dla mniejszych bąbelków
-            const tr = (Math.random() - 0.5) * (180 - size * 8); 
-            
+            const tr = (Math.random() - 0.5) * (180 - size * 8);
+
             // Zakłócenia trajektorii dla realistycznej dynamiki płynów
             const wobbleX = Math.random() * 15 * (1 - size/18); // Mniejsze bąbelki bardziej się kołyszą
-            
+
             // Ustawienie zmiennych CSS dla animacji
             tinyBubble.style.setProperty('--tx', `${tx}px`);
             tinyBubble.style.setProperty('--ty', `${ty}px`);
             tinyBubble.style.setProperty('--tr', `${tr}deg`);
             tinyBubble.style.setProperty('--wobble-x', `${wobbleX}px`);
-            
+
             // Dodanie do kontenera
             bubbleContainer.appendChild(tinyBubble);
-            
+
             // Rozłożone czasy rozpoczęcia animacji dla bardziej naturalnego efektu
             const startDelay = i * 25 + Math.random() * 50;
-            
+
             // Zróżnicowany czas trwania animacji w zależności od rozmiaru
             const duration = 1 + size/10 + Math.random() * 0.7;
-            
+
             // Uruchomienie animacji
             setTimeout(() => {
               tinyBubble.style.animation = `tinyBubbleRise ${duration}s ease-out forwards`;
-              
+
               // Usunięcie po zakończeniu animacji
               setTimeout(() => {
                 try {
@@ -1590,47 +1590,47 @@
             try {
               const particle = document.createElement('div');
               particle.className = 'particle';
-              
+
               // Mała losowa wielkość
               const size = 1.5 + Math.random() * 3.5;
               particle.style.width = `${size}px`;
               particle.style.height = `${size}px`;
-              
+
               // Pozycja blisko punktu separacji
               const mainRect = mainBubble.getBoundingClientRect();
               const redirectRect = redirectBubble.getBoundingClientRect();
               const containerRect = bubbleContainer.getBoundingClientRect();
-              
+
               const mainCenterX = mainRect.left - containerRect.left + mainRect.width / 2;
               const mainCenterY = mainRect.top - containerRect.top + mainRect.height / 2;
               const redirectCenterX = redirectRect.left - containerRect.left + redirectRect.width / 2;
               const redirectCenterY = redirectRect.top - containerRect.top + redirectRect.height / 2;
-              
+
               // Punkt między dwoma bąbelkami, bliżej głównego
               const midX = mainCenterX + (redirectCenterX - mainCenterX) * 0.4;
               const midY = mainCenterY + (redirectCenterY - mainCenterY) * 0.38;
-              
+
               // Dodaj losowe odchylenie
               const offsetX = (Math.random() - 0.5) * 10;
               const offsetY = (Math.random() - 0.5) * 10;
-              
+
               particle.style.left = `${midX + offsetX}px`;
               particle.style.top = `${midY + offsetY}px`;
-              
+
               // Losowe parametry animacji - głównie unoszenie w górę
               particle.style.setProperty('--x-offset', `${Math.random() * 50 - 25}px`);
               particle.style.setProperty('--y-offset', `${-40 - Math.random() * 40}px`);
-              
+
               // Opóźnienie dla animacji
               particle.style.animationDelay = `0s`;
               particle.style.animationDuration = `${3 + Math.random() * 3}s`;
-              
+
               // Dodaje lepszą widoczność
               particle.style.opacity = `${0.1 + Math.random() * 0.1}`;
-              
+
               // Dodanie do kontenera
               bubbleContainer.appendChild(particle);
-              
+
               // Usunięcie po animacji
               setTimeout(() => {
                 try {
@@ -1644,12 +1644,12 @@
             }
           }, i * 300); // Większe odstępy czasowe między cząstkami
         }
-        
+
         // Dodatkowy efekt - pulsowanie bąbelków po separacji
         if (mainBubble) {
           mainBubble.style.animation = 'float-main-after 6s ease-in-out infinite, wobble-shape 6s infinite linear, bubble-surface-tension 4s ease-in-out infinite';
         }
-        
+
         if (redirectBubble) {
           redirectBubble.style.animation = 'float-redirect 4s ease-in-out infinite, wobble-shape 6s infinite linear, bubble-surface-tension 3s ease-in-out infinite';
         }
