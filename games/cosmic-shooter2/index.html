@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kosmiczny Strzelec - Wersja Ulepszona</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+        body {
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            color: white;
+        }
+        #gameCanvas {
+            display: block;
+            touch-action: none;
+        }
+        #gameUI {
+            position: absolute;
+            top: 80px;
+            left: 10px;
+            color: white;
+            font-size: 18px;
+            pointer-events: none;
+            text-shadow: 0 0 5px #0af, 0 0 10px #0af;
+        }
+        #gameUI div {
+            margin-bottom: 10px;
+        }
+        .ui-bar {
+            height: 20px;
+            width: 150px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #0af;
+            margin-top: 5px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 10px #0af;
+        }
+        #healthBar, #shieldBar {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(to right, #0af, #08f);
+            transition: width 0.3s ease;
+        }
+        #shieldBar {
+            background: linear-gradient(to right, #8af, #48f);
+        }
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, rgba(0, 20, 40, 0.8) 0%, rgba(0, 0, 20, 0.9) 100%);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
+        #startScreen {
+            display: flex;
+            background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAwIDEwMDAiPjxyZWN0IHdpZHRoPSIxMDAwIiBoZWlnaHQ9IjEwMDAiIGZpbGw9IiMwMDAiLz48Y2lyY2xlIGN4PSIzMDAiIGN5PSIzMDAiIHI9IjE1MCIgZmlsbD0icmdiYSgwLDUwLDIwMCwwLjEpIiBmaWx0ZXI9ImJsdXIoNTBweCkiLz48Y2lyY2xlIGN4PSI3MDAiIGN5PSI3MDAiIHI9IjIwMCIgZmlsbD0icmdiYSgxMDAsMCwxMDAsMC4xKSIgZmlsdGVyPSJibHVyKDcwcHgpIi8+PC9zdmc+);
+            animation: bgPulse 20s infinite alternate;
+        }
+        .button {
+            background: linear-gradient(to bottom, #08f, #04b);
+            border: 2px solid #0af;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px #0af;
+            text-shadow: 0 0 5px #0af;
+        }
+        .button:hover {
+            background: linear-gradient(to bottom, #0af, #08f);
+            transform: scale(1.05);
+            box-shadow: 0 0 25px #0af;
+        }
+        h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 0 10px #0af, 0 0 20px #0af, 0 0 30px #0af;
+            letter-spacing: 3px;
+        }
+        p {
+            margin: 20px 0;
+            text-align: center;
+            padding: 0 20px;
+            max-width: 600px;
+            line-height: 1.5;
+            font-size: 18px;
+            color: #adf;
+            text-shadow: 0 0 5px #0af;
+        }
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: linear-gradient(to bottom, rgba(0, 115, 230, 0.8), rgba(0, 80, 200, 0.8));
+            color: #fff;
+            border: 2px solid rgba(0, 175, 255, 0.8);
+            padding: 0;
+            font-size: 1.2em;
+            cursor: pointer;
+            border-radius: 50%;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px rgba(0, 175, 255, 0.8);
+            transition: all 0.3s ease;
+            height: 40px;
+            width: 40px;
+            min-width: 40px;
+            text-align: center;
+        }
+        .back-button a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+        .back-button:hover {
+            background: linear-gradient(to bottom, rgba(0, 175, 255, 0.8), rgba(0, 115, 230, 0.8));
+            transform: scale(1.1);
+            box-shadow: 0 0 25px rgba(0, 175, 255, 0.8);
+        }
+        .icon {
+            width: 24px;
+            height: 24px;
+            filter: invert(1) drop-shadow(0 0 2px #08f);
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        @keyframes bgPulse {
+            0% { background-position: 0 0; }
+            100% { background-position: 100px 100px; }
+        }
+        .pulse-once {
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        #joystick {
+            position: fixed;
+            bottom: 100px;
+            left: 100px;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: rgba(0, 100, 200, 0.2);
+            border: 2px solid rgba(0, 150, 255, 0.5);
+            display: none;
+            z-index: 9;
+            touch-action: none;
+            box-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
+        }
+        #joystickKnob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 200, 255, 0.8) 0%, rgba(0, 100, 200, 0.8) 100%);
+            box-shadow: 0 0 10px #0af, inset 0 0 10px rgba(255, 255, 255, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.7);
+        }
+        #fireButton {
+            position: fixed;
+            bottom: 100px;
+            right: 100px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 100, 100, 0.8) 0%, rgba(200, 50, 50, 0.8) 100%);
+            border: 2px solid rgba(255, 150, 150, 0.7);
+            display: none;
+            z-index: 9;
+            touch-action: none;
+            box-shadow: 0 0 20px rgba(255, 100, 100, 0.5);
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            text-shadow: 0 0 5px rgba(255, 50, 50, 1);
+            text-align: center;
+            line-height: 100px;
+        }
+        #pauseButton {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 150, 255, 0.3);
+            border: 2px solid rgba(0, 175, 255, 0.7);
+            display: none;
+            z-index: 9;
+            box-shadow: 0 0 10px rgba(0, 150, 255, 0.5);
+        }
+        #pauseButton::before, #pauseButton::after {
+            content: '';
+            position: absolute;
+            top: 25%;
+            height: 50%;
+            width: 20%;
+            background: white;
+            box-shadow: 0 0 5px #0af;
+        }
+        #pauseButton::before {
+            left: 25%;
+        }
+        #pauseButton::after {
+            right: 25%;
+        }
+        
+        #powerupDisplay {
+            position: absolute;
+            top: 200px;
+            left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .powerup-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 0 10px currentColor;
+        }
+        .powerup-shield {
+            color: #48f;
+            border: 2px solid #48f;
+            background: rgba(50, 100, 255, 0.3);
+        }
+        .powerup-triple {
+            color: #f84;
+            border: 2px solid #f84;
+            background: rgba(255, 100, 50, 0.3);
+        }
+        .powerup-speed {
+            color: #4f8;
+            border: 2px solid #4f8;
+            background: rgba(50, 255, 100, 0.3);
+        }
+        
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) rotate(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translate(-2px, -2px) rotate(-1deg); }
+            20%, 40%, 60%, 80% { transform: translate(2px, 2px) rotate(1deg); }
+        }
+
+        #levelNotification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #fff;
+            text-shadow: 0 0 10px #0af, 0 0 20px #0af;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+        
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            filter: blur(1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="back-button">
+        <a href="https://guziczak.github.io/lukasz"><img src="../resources/icons/return.svg" alt="Return" class="icon"></a>
+    </div>
+
+    <div id="pauseButton"></div>
+
+    <div id="gameUI">
+        <div>POZIOM: <span id="level">1</span></div>
+        <div>PUNKTY: <span id="score">0</span></div>
+        <div>ŻYCIE: <div class="ui-bar"><div id="healthBar"></div></div></div>
+        <div>TARCZA: <div class="ui-bar"><div id="shieldBar"></div></div></div>
+    </div>
+
+    <div id="powerupDisplay"></div>
+    <div id="levelNotification"></div>
+
+    <div id="joystick"><div id="joystickKnob"></div></div>
+    <div id="fireButton">OGIEŃ</div>
+
+    <div id="startScreen" class="screen">
+        <h1>KOSMICZNY STRZELEC</h1>
+        <p>Steruj statkiem, unikaj meteorów i zestrzel wrogów! Zbieraj powerupy, aby zwiększyć swoją siłę ognia!</p>
+        <button id="startButton" class="button">ROZPOCZNIJ GRĘ</button>
+    </div>
+
+    <div id="pauseScreen" class="screen">
+        <h1>PAUZA</h1>
+        <button id="resumeButton" class="button">KONTYNUUJ</button>
+        <button id="quitButton" class="button">WYJDŹ DO MENU</button>
+    </div>
+
+    <div id="gameOverScreen" class="screen">
+        <h1>KONIEC GRY!</h1>
+        <p>Twój wynik: <span id="finalScore">0</span></p>
+        <p>Osiągnięty poziom: <span id="finalLevel">1</span></p>
+        <button id="restartButton" class="button">ZAGRAJ PONOWNIE</button>
+    </div>
+
+    <script src="audio.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
