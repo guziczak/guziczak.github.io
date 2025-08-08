@@ -57,7 +57,42 @@ def main():
         print(f"  ✓ data/")
         files_copied += 1
     
-    # Skopiuj także public jeśli istnieje (dla fallback)
+    # Kopiuj folder translations jeśli istnieje w dist
+    translations_src = os.path.join(dist_path, 'translations')
+    if os.path.exists(translations_src):
+        if os.path.exists('translations'):
+            shutil.rmtree('translations')
+        shutil.copytree(translations_src, 'translations')
+        print(f"  ✓ translations/ (from dist)")
+        files_copied += 1
+    # Jeśli nie ma w dist, skopiuj z public
+    elif os.path.exists('public/translations'):
+        if os.path.exists('translations'):
+            shutil.rmtree('translations')
+        shutil.copytree('public/translations', 'translations')
+        print(f"  ✓ translations/ (from public)")
+        files_copied += 1
+    
+    # Kopiuj folder resources jeśli istnieje
+    resources_src = os.path.join(dist_path, 'resources')
+    if os.path.exists(resources_src):
+        if os.path.exists('resources'):
+            shutil.rmtree('resources')
+        shutil.copytree(resources_src, 'resources')
+        print(f"  ✓ resources/")
+        files_copied += 1
+    
+    # Kopiuj foldery CV jeśli istnieją
+    for cv_folder in ['cv_en', 'cv_pl']:
+        cv_src = os.path.join(dist_path, cv_folder)
+        if os.path.exists(cv_src):
+            if os.path.exists(cv_folder):
+                shutil.rmtree(cv_folder)
+            shutil.copytree(cv_src, cv_folder)
+            print(f"  ✓ {cv_folder}/")
+            files_copied += 1
+    
+    # Skopiuj także pliki z public jeśli istnieją (dla fallback)
     if os.path.exists('public'):
         public_files = ['cv_en.pdf', 'cv_pl.pdf', 'manifest.json', 'favicon.ico']
         for file in public_files:
@@ -66,81 +101,13 @@ def main():
                 with open(src, 'rb') as f_src:
                     with open(file, 'wb') as f_dst:
                         f_dst.write(f_src.read())
-                print(f"  ✓ {file}")
+                print(f"  ✓ {file} (from public)")
                 files_copied += 1
     
-    # Kopiuj folder translations
-    if os.path.exists('public/translations'):
-        if os.path.exists('translations'):
-            shutil.rmtree('translations')
-        shutil.copytree('public/translations', 'translations')
-        print(f"  ✓ translations/")
-        files_copied += 1
-    
-    # Napraw ścieżki w index.html dla IntelliJ
-    if os.path.exists('index.html'):
-        with open('index.html', 'r', encoding='utf-8') as f:
-            html = f.read()
-        
-        # Zmień base href na pełną ścieżkę IntelliJ
-        html = html.replace('<base href="/">', '<base href="/lukasz/portfolio-angular/lukasz-portfolio/">')
-        
-        # Dodaj pełne ścieżki dla IntelliJ
-        html = html.replace('href="chunk-', 'href="/lukasz/portfolio-angular/lukasz-portfolio/chunk-')
-        html = html.replace('src="polyfills-', 'src="/lukasz/portfolio-angular/lukasz-portfolio/polyfills-')
-        html = html.replace('src="main-', 'src="/lukasz/portfolio-angular/lukasz-portfolio/main-')
-        html = html.replace('href="styles-', 'href="/lukasz/portfolio-angular/lukasz-portfolio/styles-')
-        
-        with open('index.html', 'w', encoding='utf-8') as f:
-            f.write(html)
-        
-        print("  ✓ Naprawiono ścieżki w index.html")
-    
-    # Napraw absolutne ścieżki w plikach JS
-    print("  • Naprawianie ścieżek w plikach JavaScript...")
-    intellij_base = '/lukasz/portfolio-angular/lukasz-portfolio'
-    
-    for file in os.listdir('.'):
-        if file.endswith('.js'):
-            with open(file, 'r', encoding='utf-8') as f:
-                js_content = f.read()
-            
-            # Zamień absolutne ścieżki na pełne ścieżki IntelliJ
-            # Różne formaty w minifikowanym kodzie
-            replacements = [
-                ('"/data/', f'"{intellij_base}/data/'),
-                ("'/data/", f"'{intellij_base}/data/"),
-                ('`/data/', f'`{intellij_base}/data/'),
-                ('("/data/', f'("{intellij_base}/data/'),
-                ("('/data/", f"('{intellij_base}/data/"),
-                ('(`/data/', f'(`{intellij_base}/data/'),
-                
-                ('"/translations/', f'"{intellij_base}/translations/'),
-                ("'/translations/", f"'{intellij_base}/translations/"),
-                ('`/translations/', f'`{intellij_base}/translations/'),
-                ('("/translations/', f'("{intellij_base}/translations/'),
-                ("('/translations/", f"('{intellij_base}/translations/"),
-                ('(`/translations/', f'(`{intellij_base}/translations/'),
-                
-                ('"/assets/', f'"{intellij_base}/assets/'),
-                ("'/assets/", f"'{intellij_base}/assets/"),
-                ('`/assets/', f'`{intellij_base}/assets/'),
-                ('("/assets/', f'("{intellij_base}/assets/'),
-                ("('/assets/", f"('{intellij_base}/assets/"),
-                ('(`/assets/', f'(`{intellij_base}/assets/'),
-            ]
-            
-            for old, new in replacements:
-                js_content = js_content.replace(old, new)
-            
-            with open(file, 'w', encoding='utf-8') as f:
-                f.write(js_content)
-    
-    print("  ✓ Naprawiono ścieżki w plikach JS")
-    
     print(f"\n✅ Sukces! Skopiowano {files_copied} plików/folderów")
-    print(f"\n🚀 Teraz możesz otworzyć index.html w IntelliJ!")
-    print(f"   Wszystkie pliki są w głównym katalogu")
+    print(f"\n🚀 Aplikacja jest gotowa do uruchomienia!")
+    print(f"   Wszystkie pliki są w głównym katalogu z relatywnymi ścieżkami")
+    print(f"   Możesz otworzyć index.html w dowolnej przeglądarce lub serwerze")
 
 if __name__ == "__main__":
     main()
