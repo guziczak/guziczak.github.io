@@ -31,7 +31,7 @@ import { CommonModule } from '@angular/common';
       border: 4px solid var(--bg-tertiary);
       border-top-color: var(--color-primary);
       border-radius: 50%;
-      animation: spin 1s linear infinite;
+      animation: spin 2s linear infinite;
     }
 
     @keyframes spin {
@@ -48,8 +48,8 @@ import { CommonModule } from '@angular/common';
       font-size: 1rem;
       color: var(--text-secondary);
       margin: 0;
-      animation: slideUp 0.5s ease-out;
-      transition: opacity 0.3s ease-out;
+      animation: slideUp 0.8s ease-out;
+      transition: opacity 0.5s ease-out;
     }
 
     .loading-text.fade-out {
@@ -72,10 +72,8 @@ export class LoadingSpinnerComponent implements OnInit, OnDestroy {
   private easterEggs = [
     'Loading...',
     'Compiling the freshest salads...',
-    'Avoiding antipatterns...',
     'Initializing reactive power station...',
     'Optimizing quantum algorithms...',
-    'Reticulating splines...',
     'Generating witty loading messages...',
     'Caffeinating the code...',
     'Teaching pixels to dance...',
@@ -86,9 +84,7 @@ export class LoadingSpinnerComponent implements OnInit, OnDestroy {
     'Warming up the flux capacitor...',
     'Dividing by zero... wait, no!',
     'Implementing best practices...',
-    'Loading awesome content...',
     'Preparing digital magic...',
-    'Assembling the DOM circus...',
     'Feeding the algorithms...',
     'Polishing the pixels...',
     'Waking up the lazy loaders...',
@@ -98,13 +94,11 @@ export class LoadingSpinnerComponent implements OnInit, OnDestroy {
     'Training neural networks to be funny...',
     'Downloading more RAM...',
     'Asking AI for advice...',
-    'Procrastinating productively...',
-    'Making the impossible possible...'
   ];
 
   currentMessage = signal('Loading...');
   isTransitioning = signal(false);
-  
+
   private intervalId?: number;
   private messageIndex = 0;
   private hasShownEasterEgg = false;
@@ -113,7 +107,7 @@ export class LoadingSpinnerComponent implements OnInit, OnDestroy {
     // Start with normal loading, then show easter eggs
     this.intervalId = window.setInterval(() => {
       this.changeMessage();
-    }, 3000);
+    }, 6000);
   }
 
   ngOnDestroy() {
@@ -125,7 +119,7 @@ export class LoadingSpinnerComponent implements OnInit, OnDestroy {
   private changeMessage() {
     // Fade out current message
     this.isTransitioning.set(true);
-    
+
     setTimeout(() => {
       // After first "Loading..." show easter eggs
       if (this.messageIndex === 0 && !this.hasShownEasterEgg) {
@@ -142,9 +136,9 @@ export class LoadingSpinnerComponent implements OnInit, OnDestroy {
         }
         this.currentMessage.set(this.easterEggs[this.messageIndex]);
       }
-      
+
       // Fade in new message
       this.isTransitioning.set(false);
-    }, 300);
+    }, 500);
   }
 }
