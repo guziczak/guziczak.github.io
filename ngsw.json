@@ -1,0 +1,155 @@
+{
+  "configVersion": 1,
+  "timestamp": 1754665444859,
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/chunk-6UYEMTCA.js",
+        "/chunk-73PZSMKU.js",
+        "/chunk-D2HSGNYE.js",
+        "/chunk-GMIBRZET.js",
+        "/chunk-HDE2DK67.js",
+        "/chunk-IRQYBVJJ.js",
+        "/chunk-MQEC3PS4.js",
+        "/chunk-U2AHCPXY.js",
+        "/chunk-U5NKLI2O.js",
+        "/chunk-W4AHS3DZ.js",
+        "/chunk-YDWRERHT.js",
+        "/favicon.ico",
+        "/index.html",
+        "/main-RRBRBCBQ.js",
+        "/manifest.json",
+        "/polyfills-B6TNHZQ6.js",
+        "/styles-EB5GUUME.css"
+      ],
+      "patterns": []
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "urls": [
+        "/assets/flags/en.svg",
+        "/assets/flags/pl.svg",
+        "/assets/icons/cosmic-shooter.svg",
+        "/assets/icons/icy-tower.svg",
+        "/assets/icons/return.svg",
+        "/assets/icons/sky-dodge.svg",
+        "/assets/icons/snake-quest.svg",
+        "/assets/icons/speed-dash.svg",
+        "/assets/images/profile.jpg",
+        "/audio-off.svg",
+        "/audio-on.svg",
+        "/download.svg",
+        "/left.svg",
+        "/moon.svg",
+        "/photo.jpg",
+        "/pl.svg",
+        "/print.svg",
+        "/return.svg",
+        "/right.svg",
+        "/sun.svg",
+        "/uk.svg"
+      ],
+      "patterns": []
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "api-freshness",
+      "patterns": [
+        "\\/api\\/.*"
+      ],
+      "strategy": "freshness",
+      "maxSize": 100,
+      "maxAge": 3600000,
+      "timeoutMs": 10000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    },
+    {
+      "name": "json-data",
+      "patterns": [
+        "\\/data\\/(?:.+\\/)?[^/]*\\.json"
+      ],
+      "strategy": "performance",
+      "maxSize": 50,
+      "maxAge": 86400000,
+      "cacheQueryOptions": {
+        "ignoreVary": true
+      },
+      "version": 1
+    }
+  ],
+  "hashTable": {
+    "/assets/flags/en.svg": "7cbe32b148d97f6ede04e18fc5570ecb4f548d92",
+    "/assets/flags/pl.svg": "7f334a51210e37897e86945c505a88f2c6413d5b",
+    "/assets/icons/cosmic-shooter.svg": "0177d79caff95b9fa2964f3e1e941a2afe5432f1",
+    "/assets/icons/icy-tower.svg": "3c30f9400a8fd456bf68b58a5f1a95bdb6e0a8a6",
+    "/assets/icons/return.svg": "0b2e1729b34f755291964673b9454864850ba818",
+    "/assets/icons/sky-dodge.svg": "e49f79c51351fc72b9c16ff736707712127ea0d6",
+    "/assets/icons/snake-quest.svg": "6f054fd0c25e19325d374c719e6e3183ee0a2408",
+    "/assets/icons/speed-dash.svg": "d4c060db5ec3fa482046759fae6a09d7aa32f3bc",
+    "/assets/images/profile.jpg": "ab37e58d05a02c9898c7ebf55715b86fd869c2a8",
+    "/audio-off.svg": "b4cac02cf9d9e7e4c28ed965cf7c78e16283f91e",
+    "/audio-on.svg": "a467c3d3d8ae7555960fd279e53e9d72c64e379a",
+    "/chunk-6UYEMTCA.js": "69869b8c6f94f79ec1aef8edf8ad6ec80a5c15b9",
+    "/chunk-73PZSMKU.js": "581b8d53656a72f4e931f5d7fd4741a438323ee3",
+    "/chunk-D2HSGNYE.js": "ede763e55411a8ded69de11289560e6acafc4dbd",
+    "/chunk-GMIBRZET.js": "69af4704f5e20f06dcf4e0f82e22397398450556",
+    "/chunk-HDE2DK67.js": "a54e3a7ee5d8064bbd45bcbb92a34be77dfef552",
+    "/chunk-IRQYBVJJ.js": "c4b6ffcbdc950ccd481aa76e2e6d51ef9f9f42aa",
+    "/chunk-MQEC3PS4.js": "924d7c199f4426201eb3acc4d827237c85c8256a",
+    "/chunk-U2AHCPXY.js": "be00b6bcf44e9b7cce3d0beca3176b40632fa673",
+    "/chunk-U5NKLI2O.js": "59f49a54684142dfdefb39ab463f40d214eaeb4c",
+    "/chunk-W4AHS3DZ.js": "7f410b0f969d9e92b9c769de39c15a0e23067cc6",
+    "/chunk-YDWRERHT.js": "2ba3407c6dae5bb565b486d7c884ec9fbf3da695",
+    "/download.svg": "a1e1b21dbcabcc2eaff1c89d5f474370bb46dcbb",
+    "/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
+    "/index.html": "687070082136e3a28924953f1eea1ace84699f68",
+    "/left.svg": "793e8d7371f0af07ed796fa6711afa8f24a18725",
+    "/main-RRBRBCBQ.js": "7f1de4461beb7e4f0bda519a05d4323e2ee14c34",
+    "/manifest.json": "33607f7d802c3e3f4f02d507d46197c25e27f26f",
+    "/moon.svg": "930c04ac07fcc076b2a6b791be71cb4a77e1d8ab",
+    "/photo.jpg": "ab37e58d05a02c9898c7ebf55715b86fd869c2a8",
+    "/pl.svg": "7f334a51210e37897e86945c505a88f2c6413d5b",
+    "/polyfills-B6TNHZQ6.js": "bf76ac291d7f51c1139b7edcf86b359a30c08c64",
+    "/print.svg": "457c15f837a9e5d346446cd55eb98e8fb666a5dd",
+    "/return.svg": "0b2e1729b34f755291964673b9454864850ba818",
+    "/right.svg": "501477c300b4b23c4bf07860cb1bae48b190fd5b",
+    "/styles-EB5GUUME.css": "ced4d7543cbb98ddd0531af072a6b42c117391fc",
+    "/sun.svg": "a0725975df182f670e0da4a8c30c1df10e1b04ed",
+    "/uk.svg": "7cbe32b148d97f6ede04e18fc5570ecb4f548d92"
+  },
+  "navigationUrls": [
+    {
+      "positive": true,
+      "regex": "^\\/.*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*\\.[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*\\/.*$"
+    }
+  ],
+  "navigationRequestStrategy": "performance"
+}

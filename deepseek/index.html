@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Łukasz Guziczak - Full-stack Developer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body.dark-mode {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        body.dark-mode .container {
+            background-color: #1e1e1e;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        header img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        header h1 {
+            margin: 10px 0 5px;
+            font-size: 2.5em;
+        }
+
+        header p {
+            margin: 0;
+            font-size: 1.2em;
+            color: #777;
+        }
+
+        .contact-info {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .contact-info a {
+            color: #0073e6;
+            text-decoration: none;
+        }
+
+        .contact-info a:hover {
+            text-decoration: underline;
+        }
+
+        .skills, .achievements, .games {
+            margin: 40px 0;
+        }
+
+        .skills h2, .achievements h2, .games h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            color: #0073e6;
+        }
+
+        .skills ul, .achievements ul, .games ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .skills li, .achievements li, .games li {
+            background-color: #f9f9f9;
+            margin: 10px 0;
+            padding: 15px;
+            border-left: 5px solid #0073e6;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body.dark-mode .skills li, body.dark-mode .achievements li, body.dark-mode .games li {
+            background-color: #2d2d2d;
+            border-left: 5px solid #005bb5;
+        }
+
+        .contact-form {
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .contact-form button {
+            background-color: #0073e6;
+            color: #fff;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .contact-form button:hover {
+            background-color: #005bb5;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 10px;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body.dark-mode .modal-content {
+            background-color: #1e1e1e;
+            border-color: #444;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        body.dark-mode .close:hover {
+            color: #fff;
+        }
+
+        .modal-content form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-content form input, .modal-content form textarea {
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+
+        body.dark-mode .modal-content form input, body.dark-mode .modal-content form textarea {
+            background-color: #2d2d2d;
+            border-color: #444;
+            color: #e0e0e0;
+        }
+
+        .modal-content form button {
+            background-color: #0073e6;
+            color: #fff;
+            border: none;
+            padding: 15px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .modal-content form button:hover {
+            background-color: #005bb5;
+        }
+
+        .language-switcher {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+
+        .language-switcher img {
+            width: 40px;
+            height: 30px;
+            cursor: pointer;
+            margin-left: 10px;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+
+        .language-switcher img.active {
+            opacity: 1;
+        }
+
+        .cv-link, #certificates-link {
+            color: #0073e6;
+            text-decoration: none;
+            font-weight: bold;
+            position: relative;
+            display: inline-block;
+            transition: transform 0.3s ease, color 0.3s ease;
+        }
+
+        .cv-link:hover, #certificates-link:hover {
+            color: #005bb5;
+            transform: scale(1.1);
+        }
+
+        .cv-link::after, #certificates-link::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background-color: #0073e6;
+            bottom: -5px;
+            left: 0;
+            transform: scaleX(0);
+            transform-origin: bottom right;
+            transition: transform 0.3s ease;
+        }
+
+        .cv-link:hover::after, #certificates-link:hover::after {
+            transform: scaleX(1);
+            transform-origin: bottom left;
+        }
+
+        .cv-link.hover-effect, #certificates-link.hover-effect {
+            color: #005bb5;
+            transform: scale(1.1);
+        }
+
+        .cv-link.hover-effect::after, #certificates-link.hover-effect::after {
+            transform: scaleX(1);
+            transform-origin: bottom left;
+        }
+
+        /* Animacje dla zmiany języka */
+        .fade-out-up {
+            animation: fadeOutUp 0.5s ease forwards;
+        }
+
+        .fade-in-down {
+            animation: fadeInDown 0.5s ease forwards;
+        }
+
+        @keyframes fadeOutUp {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Animacje dla modala */
+        .modal.fade-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        .modal.fade-out {
+            animation: fadeOut 0.3s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+
+        /* Przycisk przełączania motywu */
+        .theme-switcher {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background-color: rgba(0, 115, 230, 0.8);
+            color: #fff;
+            border: none;
+            padding: 0;
+            font-size: 1.2em;
+            cursor: pointer;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease;
+            height: 40px;
+            width: 40px;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .theme-switcher:hover {
+            background-color: rgba(0, 91, 181, 0.8);
+        }
+
+        body.dark-mode .theme-switcher {
+            background-color: rgba(0, 91, 181, 0.8);
+        }
+
+        body.dark-mode .theme-switcher:hover {
+            background-color: rgba(0, 115, 230, 0.8);
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+            filter: invert(1); /* Odwróć kolory ikony */
+        }
+
+        /* Stylizacja sekcji gier */
+        .games ul {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .games li {
+            flex: 0 0 auto;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #0073e6;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 200px;
+        }
+
+        .games li:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .games li img {
+            width: 100px;
+            height: 100px;
+            border-radius: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .games li p {
+            margin-top: 10px;
+            font-size: 1.1em;
+            color: #333;
+            transition: color 0.3s ease;
+        }
+
+        .games li .repo-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #0073e6;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        .games li .repo-link:hover {
+            color: #005bb5;
+            text-decoration: underline;
+        }
+
+        body.dark-mode .games li {
+            background-color: #2d2d2d;
+            border-left: 5px solid #005bb5;
+        }
+
+        body.dark-mode .games li p {
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .games li .repo-link {
+            color: #005bb5;
+        }
+
+        body.dark-mode .games li .repo-link:hover {
+            color: #0073e6;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Przycisk przełączania motywu -->
+<button class="theme-switcher" onclick="toggleDarkMode()" id="themeButton">
+    <img src="moon.svg" alt="Dark Mode" class="icon" id="themeIcon">
+</button>
+
+<div class="container">
+    <!-- Przełącznik językowy -->
+    <div class="language-switcher">
+        <img src="uk.svg" alt="English" class="active" onclick="changeLanguage('en')">
+        <img src="pl.svg" alt="Polski" onclick="changeLanguage('pl')">
+    </div>
+
+    <header>
+        <img src="photo.jpg" alt="Łukasz Guziczak">
+        <h1 id="title">Łukasz Guziczak</h1>
+        <p id="subtitle">Full-stack Developer & Analyst</p>
+    </header>
+
+    <div class="contact-info">
+        <p id="phone"><a href="tel:+48693069832">+48 693 069 832</a> | <a href="mailto:guziczak@pm.me">guziczak@pm.me</a></p>
+        <p id="location">Wrocław, Poland</p>
+        <p>
+            <a href="https://linkedin.com/in/guziczak" target="_blank">LinkedIn</a> | 
+            <a href="https://github.com/guziczak" target="_blank">GitHub</a> |
+            <a href="cv.html" id="cv-link" class="cv-link">View my CV</a> |
+            <a href="certificates.html" id="certificates-link" class="cv-link">View my Certificates</a>
+        </p>
+    </div>
+
+    <div class="skills">
+        <h2 id="skills-title">Skills</h2>
+        <ul id="skills-list">
+            <li>Java, Python, SQL, Spring Framework, React.js, TypeScript, Node.js</li>
+            <li>Cloud technologies (AWS, Azure), Docker, Kubernetes, CI/CD (Jenkins, GitHub Actions)</li>
+            <li>AI tools (ChatGPT, DeepSeek, Copilot)</li>
+            <li>Microservices architecture, REST APIs, GraphQL</li>
+            <li>Test automation, problem solving, code review</li>
+        </ul>
+    </div>
+
+    <div class="achievements">
+        <h2 id="achievements-title">Achievements</h2>
+        <ul id="achievements-list">
+            <li>Implementation of user preset saving functionality for automatic analysis.</li>
+            <li>Development of an exception management system with email notifications.</li>
+            <li>Optimization of complex SQL queries for performance.</li>
+            <li>Integration of fiscal and label printers in the ERP system.</li>
+        </ul>
+    </div>
+
+    <!-- Sekcja gier -->
+<div class="games">
+    <h2 id="games-title">My Games</h2>
+    <p id="games-description">Check out the games I've developed. Click on a game to play it or visit the repository to see the code.</p>
+    <ul id="games-list">
+        <li onclick="window.location.href='https://guziczak.github.io/games/cosmic-shooter'">
+            <img src="resources/icons/cosmic-shooter.svg" alt="Cosmic Shooter">
+            <p>Cosmic Shooter</p>
+            <a href="https://github.com/guziczak/games/blob/main/cosmic-shooter/index.html" class="repo-link" onclick="event.stopPropagation()">View Code</a>
+        </li>
+        <li onclick="window.location.href='https://guziczak.github.io/games/speed-dash'">
+            <img src="resources/icons/speed-dash.svg" alt="Speed Dash">
+            <p>Speed Dash</p>
+            <a href="https://github.com/guziczak/games/blob/main/speed-dash/index.html" class="repo-link" onclick="event.stopPropagation()">View Code</a>
+        </li>
+        <li onclick="window.location.href='https://guziczak.github.io/games/sky-dodge'">
+            <img src="resources/icons/sky-dodge.svg" alt="Sky Dodge">
+            <p>Sky Dodge</p>
+            <a href="https://github.com/guziczak/games/blob/main/sky-dodge/index.html" class="repo-link" onclick="event.stopPropagation()">View Code</a>
+        </li>
+        <li onclick="window.location.href='https://guziczak.github.io/games/snake-quest'">
+            <img src="resources/icons/snake-quest.svg" alt="Snake Quest">
+            <p>Snake Quest</p>
+            <a href="https://github.com/guziczak/games/blob/main/snake-quest/index.html" class="repo-link" onclick="event.stopPropagation()">View Code</a>
+        </li>
+<li onclick="window.location.href='https://guziczak.github.io/games/icy-tower'">
+    <img src="resources/icons/icy-tower.svg" alt="Icy Tower">
+    <p>Icy Tower</p>
+    <a href="https://github.com/guziczak/games/blob/main/icy-tower/index.html" class="repo-link" onclick="event.stopPropagation()">View Code</a>
+</li>
+    </ul>
+</div>
+
+    <div class="contact-form">
+        <button onclick="openModal()" id="contact-button">Contact me</button>
+    </div>
+</div>
+
+<div id="contactModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2 id="contact-form-title">Contact Form</h2>
+        <form action="mailto:guziczak@pm.me" method="post" enctype="text/plain">
+            <input type="text" name="name" placeholder="Your name" required>
+            <input type="email" name="email" placeholder="Your email" required>
+            <textarea name="message" placeholder="Your message" rows="5" required></textarea>
+            <button type="submit">Send</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let isFirstLoad = true;
+    let scrollListenerAdded = false; // Flaga sprawdzająca, czy listener scrollowania został już dodany
+    let clickListenerAdded = false; // Flaga sprawdzająca, czy listener kliknięcia został już dodany
+    let touchListenerAdded = false; // Flaga sprawdzająca, czy listener touchstart został już dodany
+
+    // Funkcja do zmiany języka
+    function changeLanguage(lang) {
+        localStorage.setItem('selectedLanguage', lang);
+        applyLanguage(lang);
+    }
+
+    // Funkcja do zastosowania języka
+    function applyLanguage(lang) {
+        const elementsToAnimate = document.querySelectorAll('.container > *:not(.language-switcher)');
+        
+        if (!isFirstLoad) {
+            elementsToAnimate.forEach(element => {
+                element.classList.add('fade-out-up');
+            });
+        }
+
+        setTimeout(() => {
+            const elements = {
+                'en': {
+                    'title': 'Łukasz Guziczak',
+                    'subtitle': 'Full-stack Developer & Analyst',
+                    'phone': '<a href="tel:+48693069832">+48 693 069 832</a> | <a href="mailto:guziczak@pm.me">guziczak@pm.me</a>',
+                    'location': 'Wrocław, Poland',
+                    'cv-link': 'View my CV',
+                    'certificates-link': 'View my Certificates',
+                    'skills-title': 'Skills',
+                    'skills-list': [
+                        'Java, Python, SQL, Spring Framework, React.js, TypeScript, Node.js',
+                        'Cloud technologies (AWS, Azure), Docker, Kubernetes, CI/CD (Jenkins, GitHub Actions)',
+                        'AI tools (ChatGPT, DeepSeek, Copilot)',
+                        'Microservices architecture, REST APIs, GraphQL',
+                        'Test automation, problem solving, code review'
+                    ],
+                    'achievements-title': 'Achievements',
+                    'achievements-list': [
+                        'Implementation of user preset saving functionality for automatic analysis.',
+                        'Development of an exception management system with email notifications.',
+                        'Optimization of complex SQL queries for performance.',
+                        'Integration of fiscal and label printers in the ERP system.'
+                    ],
+                    'games-title': 'My Games',
+                    'games-description': 'Check out the games I\'ve developed. Click on a game to play it or visit the repository to see the code.',
+                    'contact-button': 'Contact me',
+                    'contact-form-title': 'Contact Form'
+                },
+                'pl': {
+                    'title': 'Łukasz Guziczak',
+                    'subtitle': 'Programista Full-stack & Analityk',
+                    'phone': '<a href="tel:+48693069832">+48 693 069 832</a> | <a href="mailto:guziczak@pm.me">guziczak@pm.me</a>',
+                    'location': 'Wrocław, Polska',
+                    'cv-link': 'Zobacz moje CV',
+                    'certificates-link': 'Zobacz moje Certyfikaty',
+                    'skills-title': 'Umiejętności',
+                    'skills-list': [
+                        'Java, Python, SQL, Spring Framework, React.js, TypeScript, Node.js',
+                        'Technologie chmurowe (AWS, Azure), Docker, Kubernetes, CI/CD (Jenkins, GitHub Actions)',
+                        'Narzędzia AI (ChatGPT, DeepSeek, Copilot)',
+                        'Architektura mikroserwisów, REST API, GraphQL',
+                        'Automatyzacja testów, rozwiązywanie problemów, przegląd kodu'
+                    ],
+                    'achievements-title': 'Osiągnięcia',
+                    'achievements-list': [
+                        'Wdrożenie funkcjonalności zapisywania presetów użytkownika do automatycznej analizy.',
+                        'Rozwinięcie systemu zarządzania wyjątkami z powiadomieniami e-mail.',
+                        'Optymalizacja złożonych zapytań SQL pod kątem wydajności.',
+                        'Integracja drukarek fiskalnych i etykietowych w systemie ERP.'
+                    ],
+                    'games-title': 'Moje Gry',
+                    'games-description': 'Sprawdź gry, które stworzyłem. Kliknij w grę, aby zagrać, lub odwiedź repozytorium, aby zobaczyć kod.',
+                    'contact-button': 'Skontaktuj się ze mną',
+                    'contact-form-title': 'Formularz kontaktowy'
+                }
+            };
+
+            // Aktualizacja treści na stronie
+            document.getElementById('title').innerText = elements[lang]['title'];
+            document.getElementById('subtitle').innerText = elements[lang]['subtitle'];
+            document.getElementById('phone').innerHTML = elements[lang]['phone'];
+            document.getElementById('location').innerText = elements[lang]['location'];
+            document.getElementById('cv-link').innerText = elements[lang]['cv-link'];
+            document.getElementById('certificates-link').innerText = elements[lang]['certificates-link'];
+            document.getElementById('skills-title').innerText = elements[lang]['skills-title'];
+            document.getElementById('skills-list').innerHTML = elements[lang]['skills-list'].map(item => `<li>${item}</li>`).join('');
+            document.getElementById('achievements-title').innerText = elements[lang]['achievements-title'];
+            document.getElementById('achievements-list').innerHTML = elements[lang]['achievements-list'].map(item => `<li>${item}</li>`).join('');
+            document.getElementById('games-title').innerText = elements[lang]['games-title'];
+            document.getElementById('games-description').innerText = elements[lang]['games-description'];
+            document.getElementById('contact-button').innerText = elements[lang]['contact-button'];
+            document.getElementById('contact-form-title').innerText = elements[lang]['contact-form-title'];
+
+            // Zmiana aktywnych flag
+            document.querySelectorAll('.language-switcher img').forEach(img => {
+                img.classList.remove('active');
+            });
+            document.querySelector(`.language-switcher img[alt="${lang === 'en' ? 'English' : 'Polski'}"]`).classList.add('active');
+
+            if (!isFirstLoad) {
+                elementsToAnimate.forEach(element => {
+                    element.classList.remove('fade-out-up');
+                    element.classList.add('fade-in-down');
+                });
+
+                setTimeout(() => {
+                    elementsToAnimate.forEach(element => {
+                        element.classList.remove('fade-in-down');
+                    });
+                }, 500);
+            }
+
+            isFirstLoad = false;
+        }, isFirstLoad ? 0 : 500);
+    }
+
+    // Sprawdź, czy w localStorage jest zapisany język
+    const savedLanguage = localStorage.getItem('selectedLanguage') || 'en';
+    changeLanguage(savedLanguage);
+
+    // Funkcje do modala
+    function openModal() {
+        const modal = document.getElementById('contactModal');
+        modal.style.display = 'block';
+        modal.classList.add('fade-in');
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('contactModal');
+        modal.classList.add('fade-out');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            modal.classList.remove('fade-out');
+        }, 300);
+    }
+
+    window.onclick = function(event) {
+        if (event.target == document.getElementById('contactModal')) {
+            closeModal();
+        }
+    }
+
+    // Funkcja do przełączania motywu ciemnego
+    function toggleDarkMode() {
+        const body = document.body;
+        body.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', body.classList.contains('dark-mode'));
+
+        // Zmiana ikonki w przycisku
+        const themeIcon = document.getElementById('themeIcon');
+        if (body.classList.contains('dark-mode')) {
+            themeIcon.src = 'sun.svg';
+            themeIcon.alt = 'Light Mode';
+        } else {
+            themeIcon.src = 'moon.svg';
+            themeIcon.alt = 'Dark Mode';
+        }
+    }
+
+    // Sprawdź, czy użytkownik ma zapisany preferowany motyw
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (savedDarkMode) {
+        document.body.classList.add('dark-mode');
+        document.getElementById('themeIcon').src = 'sun.svg';
+        document.getElementById('themeIcon').alt = 'Light Mode';
+    } else {
+        document.getElementById('themeIcon').src = 'moon.svg';
+        document.getElementById('themeIcon').alt = 'Dark Mode';
+    }
+
+    // Efekt hover po sekundzie
+    window.onload = function() {
+        setTimeout(function() {
+            const cvLink = document.getElementById('cv-link');
+            cvLink.classList.add('hover-effect');
+
+            setTimeout(function() {
+                cvLink.classList.remove('hover-effect');
+            }, 200);
+        }, 1000);
+    };
+
+    // Funkcja do pokazania przycisków
+    function showButtons() {
+        document.querySelector('.theme-switcher').style.display = 'inline-flex';
+    }
+</script>
+
+</body>
+</html>

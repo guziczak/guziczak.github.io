@@ -1,0 +1,34 @@
+{
+  "projects": [
+    {
+      "id": 1,
+      "title": "Analytical automation decision support system for healthcare",
+      "description": "A comprehensive system for healthcare analytics with features including user preset saving, automated analysis, appointment scheduling with payment integration, and optimized database performance.",
+      "imageSrc": "/assets/images/projects/healthcare-analytics.jpg",
+      "tags": ["Java", "Spring Boot", "React", "TypeScript", "PostgreSQL", "Azure", "Docker", "Kubernetes"],
+      "projectLink": "",
+      "codeLink": "https://github.com/guziczak",
+      "featured": true
+    },
+    {
+      "id": 2,
+      "title": "Resource management system for telecommunications platform",
+      "description": "A sophisticated platform for managing resources in advanced telecommunications systems, with features for resource allocation, monitoring, and optimization.",
+      "imageSrc": "/assets/images/projects/telecom-resource.jpg",
+      "tags": ["Java", "Angular", "Spring Boot", "Microservices", "AWS", "REST APIs"],
+      "projectLink": "",
+      "codeLink": "https://github.com/guziczak",
+      "featured": true
+    },
+    {
+      "id": 3,
+      "title": "ERP system for payments, accounting and payroll",
+      "description": "A modern ERP solution with fiscal printer integration, exception management with automated notifications, and label printer integration for inventory management.",
+      "imageSrc": "/assets/images/projects/erp-system.jpg",
+      "tags": ["Java", "Spring", "React", "TypeScript", "Microservices", "REST APIs"],
+      "projectLink": "",
+      "codeLink": "https://github.com/guziczak",
+      "featured": true
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "games": [
+    {
+      "id": 1,
+      "title": "Cosmic Shooter",
+      "description": "A space-themed shooter game with multiple levels and power-ups.",
+      "imageSrc": "/assets/icons/cosmic-shooter.svg",
+      "playLink": "https://guziczak.github.io/games/cosmic-shooter",
+      "codeLink": "https://github.com/guziczak/games/blob/main/cosmic-shooter/index.html",
+      "tags": ["JavaScript", "HTML5 Canvas", "Game Development"]
+    },
+    {
+      "id": 2,
+      "title": "Speed Dash",
+      "description": "A fast-paced racing game with multiple tracks and vehicles.",
+      "imageSrc": "/assets/icons/speed-dash.svg",
+      "playLink": "https://guziczak.github.io/games/speed-dash",
+      "codeLink": "https://github.com/guziczak/games/blob/main/speed-dash/index.html",
+      "tags": ["JavaScript", "HTML5", "Racing Game"]
+    },
+    {
+      "id": 3,
+      "title": "Sky Dodge",
+      "description": "An aerial dodge game with increasing difficulty and obstacles.",
+      "imageSrc": "/assets/icons/sky-dodge.svg",
+      "playLink": "https://guziczak.github.io/games/sky-dodge",
+      "codeLink": "https://github.com/guziczak/games/blob/main/sky-dodge/index.html",
+      "tags": ["JavaScript", "HTML5", "Arcade"]
+    },
+    {
+      "id": 4,
+      "title": "Snake Quest",
+      "description": "A modern take on the classic snake game with special power-ups.",
+      "imageSrc": "/assets/icons/snake-quest.svg",
+      "playLink": "https://guziczak.github.io/games/snake-quest",
+      "codeLink": "https://github.com/guziczak/games/blob/main/snake-quest/index.html",
+      "tags": ["JavaScript", "HTML5", "Classic Game"]
+    },
+    {
+      "id": 5,
+      "title": "Icy Tower",
+      "description": "A vertical platformer game with random platforms and collectibles.",
+      "imageSrc": "/assets/icons/icy-tower.svg",
+      "playLink": "https://guziczak.github.io/games/icy-tower",
+      "codeLink": "https://github.com/guziczak/games/blob/main/icy-tower/index.html",
+      "tags": ["JavaScript", "HTML5", "Platformer"]
+    }
+  ]
+}

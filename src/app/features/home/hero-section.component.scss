@@ -1,0 +1,328 @@
+@use '../../../styles/variables' as *;
+@use '../../../styles/mixins' as *;
+
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: clamp(5rem, 8vh, 7rem) 0 clamp(3rem, 6vh, 5rem);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 80%;
+    height: 150%;
+    background: radial-gradient(circle, rgba(0, 112, 243, 0.1) 0%, transparent 70%);
+    z-index: -1;
+    border-radius: 50%;
+  }
+}
+
+.hero-particles {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--color-primary);
+  opacity: 0.3;
+  animation: float 15s infinite ease-in-out;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(30px, -30px); }
+  50% { transform: translate(-20px, -15px); }
+  75% { transform: translate(10px, 30px); }
+}
+
+.hero-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+
+  @include media-down(md) {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+}
+
+.hero-text {
+  @include media-down(md) {
+    order: 2;
+  }
+}
+
+.hero-title {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 700;
+  margin-bottom: 1rem;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.hero-subtitle {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  margin-bottom: 2rem;
+  font-weight: 600;
+}
+
+.hero-description {
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  max-width: 600px;
+
+  @include media-down(md) {
+    margin: 0 auto 2rem;
+  }
+}
+
+.hero-cta {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 3rem;
+  flex-wrap: wrap;
+
+  @include media-down(md) {
+    justify-content: center;
+  }
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  min-height: 48px;
+  border-radius: 50px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+
+    &::before {
+      left: 100%;
+    }
+  }
+
+  &:active {
+    transform: translateY(-1px);
+  }
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+
+  &:hover {
+    background: var(--color-primary-dark);
+  }
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+
+  &:hover {
+    background: var(--color-primary);
+    color: white;
+  }
+}
+
+.btn-accent {
+  background: #28a745;
+  color: white;
+  border: 2px solid #28a745;
+  
+  &:hover {
+    background: #218838;
+    border-color: #218838;
+  }
+}
+
+.btn-floating {
+  animation: floatSpace 3s ease-in-out infinite;
+  
+  @keyframes floatSpace {
+    0% {
+      transform: translateY(0px);
+      box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+    }
+    50% {
+      transform: translateY(-10px);
+      box-shadow: 0 15px 25px rgba(40, 167, 69, 0.3);
+    }
+    100% {
+      transform: translateY(0px);
+      box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+    }
+  }
+  
+  &:hover {
+    animation-play-state: paused;
+  }
+}
+
+.hero-social {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+
+  @include media-down(md) {
+    justify-content: center;
+  }
+
+  .social-btn {
+    @include flex-center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: all 0.3s;
+    text-decoration: none;
+    border: 2px solid transparent;
+
+    &:hover {
+      background: var(--color-primary);
+      color: white;
+      transform: translateY(-3px);
+      border-color: var(--color-primary);
+    }
+  }
+}
+
+.hero-image {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  @include media-down(md) {
+    margin-bottom: 3rem;
+    order: 1;
+  }
+}
+
+.profile-container {
+  position: relative;
+  width: min(280px, 60vw);
+  height: min(280px, 60vw);
+  margin: 0 auto;
+}
+
+.profile-bg {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, var(--color-primary), var(--color-secondary));
+  opacity: 0.3;
+  animation: rotate 20s linear infinite;
+  will-change: transform;
+  
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+.profile-img-wrapper {
+  position: relative;
+  width: min(280px, 60vw);
+  height: min(280px, 60vw);
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -20px;
+    border-radius: 50%;
+    opacity: 0.5;
+  }
+
+  &::before {
+    background: linear-gradient(45deg, var(--color-primary), var(--color-secondary));
+    animation: rotate 20s linear infinite;
+    will-change: transform;
+    
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  &::after {
+    display: none; // Remove second animation for better performance
+  }
+}
+
+.profile-img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--bg-primary);
+  z-index: 1;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+@keyframes rotate {
+  to { transform: rotate(360deg); }
+}
+
+.typed-text {
+  display: inline-block;
+  min-height: 1.5em;
+}
+
+.cursor {
+  display: inline-block;
+  width: 3px;
+  height: 1.2em;
+  background: var(--color-primary);
+  margin-left: 2px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.gradient-text-safe {
+  color: var(--color-primary);
+  font-weight: 600;
+  position: relative;
+  
+  // Fallback for Dark Reader and accessibility
+  @media (prefers-color-scheme: dark) {
+    color: var(--color-primary);
+  }
+}
