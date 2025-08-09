@@ -1,12 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
 import { LanguageService } from '../../core/services/language.service';
+import { EmailService } from '../../core/services/email.service';
 
 @Component({
   selector: 'app-contact-section',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, HttpClientModule],
   template: `
     <section id="contact" class="contact-section section">
       <div class="container">
@@ -105,11 +107,22 @@ import { LanguageService } from '../../core/services/language.service';
       <!-- Contact Modal -->
       @if (isModalOpen()) {
         <div class="modal-overlay" (click)="closeModal()"></div>
-        <div class="modal" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+        <div class="modal" 
+             role="dialog" 
+             aria-labelledby="modalTitle" 
+             aria-modal="true"
+             [style.transform]="'translate(calc(-50% + ' + modalX + 'px), calc(-50% + ' + modalY + 'px))'">
           <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header" 
+                 (mousedown)="startDrag($event)"
+                 (touchstart)="startDrag($event)"
+                 style="cursor: move; user-select: none;">
               <h3 id="modalTitle">{{ t('contact.modalTitle') || 'Contact Me' }}</h3>
-              <button class="modal-close" (click)="closeModal()" aria-label="Close modal">
+              <button class="modal-close" 
+                      (click)="closeModal()" 
+                      (mousedown)="$event.stopPropagation()"
+                      (touchstart)="$event.stopPropagation()"
+                      aria-label="Close modal">
                 <i class="fas fa-times"></i>
               </button>
             </div>
@@ -163,7 +176,7 @@ import { LanguageService } from '../../core/services/language.service';
                       class="form-control" 
                       formControlName="message"
                       placeholder=" "
-                      rows="5"
+                      rows="3"
                       [class.error]="contactForm.get('message')?.invalid && contactForm.get('message')?.touched"
                     ></textarea>
                     <label class="form-label">{{ t('contact.yourMessage') || 'Your Message' }}</label>
@@ -190,7 +203,7 @@ import { LanguageService } from '../../core/services/language.service';
                     <i class="fas fa-check-circle"></i>
                   </div>
                   <h3>{{ t('contact.successTitle') || 'Message Sent!' }}</h3>
-                  <p>{{ t('contact.successMessage') || 'Thank you for reaching out. I\'ll get back to you soon.' }}</p>
+                  <p>{{ t('contact.successMessage') || "Thank you for reaching out. I'll get back to you soon." }}</p>
                   <button class="btn btn-primary" (click)="closeModal()">
                     {{ t('contact.done') || 'Done' }}
                   </button>
@@ -377,18 +390,20 @@ import { LanguageService } from '../../core/services/language.service';
     .modal-content {
       background: var(--bg-primary);
       border-radius: 12px;
-      width: min(500px, 90vw);
-      max-height: 90vh;
+      width: min(480px, 90vw);
+      max-height: 85vh;
       overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
 
     .modal-header {
-      padding: 1.5rem;
+      padding: 1rem 1.25rem;
       border-bottom: 1px solid var(--border-color);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: var(--bg-secondary);
+      border-radius: 12px 12px 0 0;
     }
 
     .modal-header h3 {
@@ -418,20 +433,20 @@ import { LanguageService } from '../../core/services/language.service';
     }
 
     .modal-body {
-      padding: 2rem;
+      padding: 1.25rem;
     }
 
     .form-group {
       position: relative;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
 
     .form-control {
       width: 100%;
-      padding: 1rem;
+      padding: 0.75rem;
       border: 2px solid var(--border-color);
       border-radius: 8px;
-      font-size: 1rem;
+      font-size: 0.95rem;
       background: var(--bg-primary);
       color: var(--text-primary);
       transition: all 0.3s;
@@ -448,13 +463,14 @@ import { LanguageService } from '../../core/services/language.service';
 
     .form-label {
       position: absolute;
-      left: 1rem;
-      top: 1rem;
+      left: 0.75rem;
+      top: 0.75rem;
       color: var(--text-secondary);
       transition: all 0.3s;
       pointer-events: none;
       background: var(--bg-primary);
       padding: 0 0.25rem;
+      font-size: 0.95rem;
     }
 
     .form-control:focus + .form-label,
@@ -473,18 +489,19 @@ import { LanguageService } from '../../core/services/language.service';
 
     textarea.form-control {
       resize: vertical;
-      min-height: 120px;
+      min-height: 80px;
+      max-height: 150px;
     }
 
     .modal-success {
       text-align: center;
-      padding: 2rem;
+      padding: 1.5rem;
     }
 
     .modal-success-icon {
-      font-size: 4rem;
+      font-size: 3rem;
       color: var(--color-success);
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
     }
 
     .modal-success h3 {
@@ -542,10 +559,18 @@ import { LanguageService } from '../../core/services/language.service';
 export class ContactSectionComponent {
   private languageService = inject(LanguageService);
   private fb = inject(FormBuilder);
+  private emailService = inject(EmailService);
 
   isModalOpen = signal(false);
   isSending = signal(false);
   isSuccess = signal(false);
+  
+  // Drag state
+  isDragging = false;
+  dragStartX = 0;
+  dragStartY = 0;
+  modalX = 0;
+  modalY = 0;
 
   contactForm = this.fb.group({
     name: ['', Validators.required],
@@ -578,19 +603,38 @@ export class ContactSectionComponent {
     if (this.contactForm.valid) {
       this.isSending.set(true);
       
-      // Simulate sending message
-      setTimeout(() => {
-        this.isSending.set(false);
-        this.isSuccess.set(true);
-        
-        // Log form data (in real app, send to backend)
-        console.log('Contact form submitted:', this.contactForm.value);
-        
-        // Reset after showing success
-        setTimeout(() => {
-          this.closeModal();
-        }, 3000);
-      }, 1500);
+      // Send email via Brevo API
+      this.emailService.sendEmail(this.contactForm.value).subscribe({
+        next: (success) => {
+          this.isSending.set(false);
+          this.isSuccess.set(true);
+          
+          if (!success) {
+            // Fallback to mailto if API fails
+            const formValue = this.contactForm.value;
+            const mailtoLink = `mailto:guziczak@pm.me?subject=${encodeURIComponent(formValue.subject || '')}&body=${encodeURIComponent(
+              `From: ${formValue.name || ''}\nEmail: ${formValue.email || ''}\n\n${formValue.message || ''}`
+            )}`;
+            window.location.href = mailtoLink;
+          }
+          
+          // Close modal after 3 seconds
+          setTimeout(() => {
+            this.closeModal();
+          }, 3000);
+        },
+        error: (error) => {
+          console.error('Email error:', error);
+          this.isSending.set(false);
+          
+          // Fallback to mailto
+          const formValue = this.contactForm.value;
+          const mailtoLink = `mailto:guziczak@pm.me?subject=${encodeURIComponent(formValue.subject || '')}&body=${encodeURIComponent(
+            `From: ${formValue.name || ''}\nEmail: ${formValue.email || ''}\n\n${formValue.message || ''}`
+          )}`;
+          window.location.href = mailtoLink;
+        }
+      });
     }
   }
 
@@ -598,5 +642,44 @@ export class ContactSectionComponent {
     this.contactForm.reset();
     this.isSuccess.set(false);
     this.isSending.set(false);
+    this.modalX = 0;
+    this.modalY = 0;
+  }
+
+  startDrag(event: MouseEvent | TouchEvent) {
+    this.isDragging = true;
+    const clientX = event instanceof MouseEvent ? event.clientX : event.touches[0].clientX;
+    const clientY = event instanceof MouseEvent ? event.clientY : event.touches[0].clientY;
+    
+    this.dragStartX = clientX - this.modalX;
+    this.dragStartY = clientY - this.modalY;
+    
+    event.preventDefault();
+    
+    const moveHandler = (e: MouseEvent | TouchEvent) => this.onDrag(e);
+    const endHandler = () => this.endDrag(moveHandler, endHandler);
+    
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('touchmove', moveHandler);
+    document.addEventListener('mouseup', endHandler);
+    document.addEventListener('touchend', endHandler);
+  }
+  
+  onDrag(event: MouseEvent | TouchEvent) {
+    if (!this.isDragging) return;
+    
+    const clientX = event instanceof MouseEvent ? event.clientX : event.touches[0].clientX;
+    const clientY = event instanceof MouseEvent ? event.clientY : event.touches[0].clientY;
+    
+    this.modalX = clientX - this.dragStartX;
+    this.modalY = clientY - this.dragStartY;
+  }
+  
+  endDrag(moveHandler: any, endHandler: any) {
+    this.isDragging = false;
+    document.removeEventListener('mousemove', moveHandler);
+    document.removeEventListener('touchmove', moveHandler);
+    document.removeEventListener('mouseup', endHandler);
+    document.removeEventListener('touchend', endHandler);
   }
 }
