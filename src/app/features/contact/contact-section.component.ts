@@ -15,7 +15,7 @@ import { LanguageService } from '../../core/services/language.service';
             {{ t('contact.title') || 'Contact Me' }}
           </h2>
           <p class="section-subtitle">
-            {{ t('contact.subtitle') || 'Let\'s discuss your next project' }}
+            {{ t('contact.subtitle') || "Let's discuss your next project" }}
           </p>
         </div>
 
@@ -86,13 +86,11 @@ import { LanguageService } from '../../core/services/language.service';
             <div class="contact-card">
               <div class="contact-card-header">
                 <i class="fas fa-comment-dots"></i>
-                <h4>{{ t('contact.letsConnect') || 'Let\'s Connect' }}</h4>
+                <h4>{{ t('contact.letsConnect') || "Let's Connect" }}</h4>
               </div>
               <div class="contact-card-body">
                 <p>
-                  {{ t('contact.cardText') || 
-                    'Feel free to reach out for job opportunities, collaborations, or just to say hello. I\'m always interested in new projects and challenges!' 
-                  }}
+                  {{ t('contact.cardText') || "Feel free to reach out for job opportunities, collaborations, or just to say hello. I'm always interested in new projects and challenges!" }}
                 </p>
                 <button class="btn btn-primary" (click)="toggleModal()">
                   <i class="fas fa-paper-plane"></i>

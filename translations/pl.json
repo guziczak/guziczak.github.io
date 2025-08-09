@@ -1,4 +1,15 @@
 {
+  "nav": {
+    "home": "Strona Główna",
+    "about": "O Mnie",
+    "skills": "Umiejętności",
+    "projects": "Projekty",
+    "achievements": "Osiągnięcia",
+    "games": "Gry",
+    "testimonials": "Rekomendacje",
+    "contact": "Kontakt",
+    "cv": "CV"
+  },
   "hero": {
     "title": "Łukasz Guziczak",
     "subtitle": "Przekształcam Pomysły w Cyfrową Rzeczywistość",

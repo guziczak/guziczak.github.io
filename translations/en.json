@@ -1,4 +1,15 @@
 {
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "skills": "Skills",
+    "projects": "Projects",
+    "achievements": "Achievements",
+    "games": "Games",
+    "testimonials": "Testimonials",
+    "contact": "Contact",
+    "cv": "CV"
+  },
   "hero": {
     "title": "Łukasz Guziczak",
     "subtitle": "Turning Ideas into Digital Reality",
