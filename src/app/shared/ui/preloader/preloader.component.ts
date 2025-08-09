@@ -341,7 +341,10 @@ export class PreloaderComponent implements OnInit {
     'YOLO deploying to prod...',
     'Breaking everything gracefully...',
     'Ignoring best practices...',
-    'git push --force origin master...'
+    'git push --force origin master...',
+    'Implementing best antipatterns...',
+    'Centering divs...',
+    'Writing page in flight, please wait...'
   ];
 
   private messageIntervalId?: number;

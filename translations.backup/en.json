@@ -43,7 +43,8 @@
   },
   "skills": {
     "title": "My Skills",
-    "subtitle": "Technologies and tools I work with to build efficient solutions"
+    "subtitle": "Technologies and tools I work with to build efficient solutions",
+    "note": "Click on skill categories to filter technologies"
   },
   "projects": {
     "title": "Recent Projects",
@@ -66,7 +67,8 @@
     "plays": "plays",
     "rating": "rating",
     "play": "Play",
-    "code": "Code"
+    "code": "Code",
+    "note": "Note: These games are best played on desktop devices for optimal experience"
   },
   "testimonials": {
     "title": "Recommendations",
@@ -94,7 +96,12 @@
     "title": "Certificates",
     "subtitle": "Professional certifications and completed courses",
     "viewCertificate": "View Certificate",
-    "all": "All"
+    "all": "All",
+    "filter": {
+      "all": "All"
+    },
+    "credential": "Credential ID",
+    "view": "View Certificate"
   },
   "footer": {
     "copyright": "© 2025 Łukasz Guziczak. All rights reserved.",

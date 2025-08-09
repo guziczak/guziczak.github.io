@@ -43,7 +43,8 @@
   },
   "skills": {
     "title": "Moje Umiejętności",
-    "subtitle": "Technologie i narzędzia, z którymi pracuję, aby budować wydajne rozwiązania"
+    "subtitle": "Technologie i narzędzia, z którymi pracuję, aby budować wydajne rozwiązania",
+    "note": "Kliknij na kategorie umiejętności, aby filtrować technologie"
   },
   "projects": {
     "title": "Ostatnie Projekty",
@@ -66,7 +67,8 @@
     "plays": "gra",
     "rating": "ocena",
     "play": "Graj",
-    "code": "Kod"
+    "code": "Kod",
+    "note": "Uwaga: Te gry najlepiej działają na urządzeniach desktopowych"
   },
   "testimonials": {
     "title": "Rekomendacje",
@@ -94,7 +96,12 @@
     "title": "Certyfikaty",
     "subtitle": "Profesjonalne certyfikaty i ukończone kursy",
     "viewCertificate": "Zobacz Certyfikat",
-    "all": "Wszystkie"
+    "all": "Wszystkie",
+    "filter": {
+      "all": "Wszystkie"
+    },
+    "credential": "ID Certyfikatu",
+    "view": "Zobacz Certyfikat"
   },
   "footer": {
     "copyright": "© 2025 Łukasz Guziczak. Wszelkie prawa zastrzeżone.",

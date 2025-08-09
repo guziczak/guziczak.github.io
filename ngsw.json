@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "timestamp": 1754723807972,
+  "timestamp": 1754734128615,
   "index": "/index.html",
   "assetGroups": [
     {
@@ -24,7 +24,7 @@
         "/chunk-YXY6DS2I.js",
         "/favicon.ico",
         "/index.html",
-        "/main-MPXDMD7W.js",
+        "/main-WADYSNED.js",
         "/manifest.json",
         "/polyfills-B6TNHZQ6.js",
         "/styles-EB5GUUME.css"
@@ -139,9 +139,9 @@
     "/data/testimonials.json": "53fa2a2733b62c91d5773e15ad595cd4eb3bc580",
     "/download.svg": "a1e1b21dbcabcc2eaff1c89d5f474370bb46dcbb",
     "/favicon.ico": "9c39f434fe1261f68c5e3eefdf734630d99c5670",
-    "/index.html": "2dd67bd0a0e3cb5feeedfa7333bb4ac05dca2825",
+    "/index.html": "8a7547c703bf01cb76c45aebf351182d52192f0b",
     "/left.svg": "793e8d7371f0af07ed796fa6711afa8f24a18725",
-    "/main-MPXDMD7W.js": "139a46f7190bbd6a10dd736fdc5244c25bd6e89a",
+    "/main-WADYSNED.js": "2e4ea63726669ba49807ae4c1c4b0cec1deb57c2",
     "/manifest.json": "33607f7d802c3e3f4f02d507d46197c25e27f26f",
     "/moon.svg": "930c04ac07fcc076b2a6b791be71cb4a77e1d8ab",
     "/photo.jpg": "ab37e58d05a02c9898c7ebf55715b86fd869c2a8",
@@ -152,8 +152,8 @@
     "/right.svg": "501477c300b4b23c4bf07860cb1bae48b190fd5b",
     "/styles-EB5GUUME.css": "ced4d7543cbb98ddd0531af072a6b42c117391fc",
     "/sun.svg": "a0725975df182f670e0da4a8c30c1df10e1b04ed",
-    "/translations/en.json": "aa7a3da829a3ef88ccecaccd72ab839407c76565",
-    "/translations/pl.json": "09a53197627da936ac9efd5be9113b9260fcc320",
+    "/translations/en.json": "0acd8ae5219fa292c213313277840a7914b3fc78",
+    "/translations/pl.json": "4a8ddadd3f667fc4f3d6ba972e90482a6bd93d40",
     "/uk.svg": "7cbe32b148d97f6ede04e18fc5570ecb4f548d92"
   },
   "navigationUrls": [
