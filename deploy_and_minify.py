@@ -46,6 +46,16 @@ def main():
             print("❌ Nie znaleziono folderu dist/. Najpierw uruchom: npm run build")
             sys.exit(1)
     
+    # Najpierw zaktualizuj base href w index.html w dist
+    index_path = os.path.join(dist_path, 'index.html')
+    if os.path.exists(index_path):
+        with open(index_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        content = content.replace('<base href="/">', '<base href="./">')
+        with open(index_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print("✓ Zaktualizowano base href w index.html")
+    
     print(f"📦 Kopiowanie plików z {dist_path}...")
     print("━" * 50)
     
