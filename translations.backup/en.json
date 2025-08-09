@@ -50,7 +50,11 @@
     "subtitle": "A selection of my recent work and contributions",
     "viewDemo": "Demo",
     "viewCode": "Code",
-    "all": "All"
+    "all": "All",
+    "filter": {
+      "all": "All"
+    },
+    "noProjects": "No projects found for this filter"
   },
   "achievements": {
     "title": "Key Achievements",

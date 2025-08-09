@@ -56,6 +56,14 @@ Chart.register(...registerables);
         position: relative;
         height: 400px;
         width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      
+      .chart-wrapper canvas {
+        max-width: 100%;
+        max-height: 100%;
       }
 
       @media (max-width: 768px) {
@@ -169,6 +177,15 @@ export class SkillsRadarChartComponent
       options: {
         responsive: true,
         maintainAspectRatio: true,
+        aspectRatio: 1,
+        layout: {
+          padding: {
+            top: 10,
+            right: 10,
+            bottom: 10,
+            left: 10
+          }
+        },
         elements: {
           line: {
             tension: 0.3
