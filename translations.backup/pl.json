@@ -1,0 +1,104 @@
+{
+  "nav": {
+    "home": "Strona Główna",
+    "about": "O Mnie",
+    "skills": "Umiejętności",
+    "projects": "Projekty",
+    "achievements": "Osiągnięcia",
+    "games": "Gry",
+    "testimonials": "Rekomendacje",
+    "contact": "Kontakt",
+    "cv": "CV"
+  },
+  "hero": {
+    "title": "Łukasz Guziczak",
+    "subtitle": "Przekształcam Pomysły w Cyfrową Rzeczywistość",
+    "description": "Pasjonuję się tworzeniem wydajnych, skalowalnych rozwiązań z wykorzystaniem nowoczesnych technologii. Specjalizuję się w Java, Python, React oraz rozwoju infrastruktury chmurowej.",
+    "cta": {
+      "contact": "Kontakt",
+      "projects": "Zobacz Projekty",
+      "cv": "Zobacz CV"
+    }
+  },
+  "about": {
+    "title": "O Mnie",
+    "subtitle": "Full-stack Developer & Analityk",
+    "description": "Jestem Full-stack Developerem i Analitykiem z pasją do budowania wydajnych i skalowalnych aplikacji. Z rozległym doświadczeniem w technologiach front-end i back-end, lubię rozwiązywać złożone problemy i optymalizować systemy.",
+    "profile": {
+      "tab": "Profil",
+      "title": "Programista Full-stack & Analityk"
+    },
+    "experience": {
+      "tab": "Doświadczenie"
+    },
+    "education": {
+      "tab": "Wykształcenie"
+    },
+    "location": "Wrocław, Polska",
+    "languages": "Polski (Ojczysty), Angielski (Biegły)",
+    "interests": "Technologia, AI/ML, Gaming, Elektronika",
+    "yearsExperience": "Lat Doświadczenia",
+    "projectsCompleted": "Ukończonych Projektów",
+    "technologies": "Technologii"
+  },
+  "skills": {
+    "title": "Moje Umiejętności",
+    "subtitle": "Technologie i narzędzia, z którymi pracuję, aby budować wydajne rozwiązania"
+  },
+  "projects": {
+    "title": "Ostatnie Projekty",
+    "subtitle": "Wybór moich ostatnich prac i wkładów",
+    "viewDemo": "Demo",
+    "viewCode": "Kod",
+    "all": "Wszystkie"
+  },
+  "achievements": {
+    "title": "Kluczowe Osiągnięcia",
+    "subtitle": "Kamienie milowe i osiągnięcia w mojej karierze"
+  },
+  "games": {
+    "title": "Moje Gry",
+    "subtitle": "Zabawne gry przeglądarkowe, które stworzyłem w wolnym czasie",
+    "plays": "gra",
+    "rating": "ocena",
+    "play": "Graj",
+    "code": "Kod"
+  },
+  "testimonials": {
+    "title": "Rekomendacje",
+    "subtitle": "Co koledzy mówią o współpracy ze mną"
+  },
+  "contact": {
+    "title": "Kontakt",
+    "subtitle": "Porozmawiajmy o Twoim następnym projekcie",
+    "getInTouch": "Skontaktuj się",
+    "location": "Wrocław, Polska",
+    "sendMessage": "Wyślij Wiadomość",
+    "letsConnect": "Połączmy się",
+    "cardText": "Skontaktuj się w sprawie ofert pracy, współpracy lub po prostu żeby się przywitać. Zawsze jestem zainteresowany nowymi projektami i wyzwaniami!",
+    "modalTitle": "Kontakt",
+    "yourName": "Twoje Imię",
+    "yourEmail": "Twój Email",
+    "subject": "Temat",
+    "yourMessage": "Twoja Wiadomość",
+    "send": "Wyślij Wiadomość",
+    "successTitle": "Wiadomość Wysłana!",
+    "successMessage": "Dziękuję za kontakt. Odpowiem wkrótce.",
+    "done": "Gotowe"
+  },
+  "certificates": {
+    "title": "Certyfikaty",
+    "subtitle": "Profesjonalne certyfikaty i ukończone kursy",
+    "viewCertificate": "Zobacz Certyfikat",
+    "all": "Wszystkie"
+  },
+  "footer": {
+    "copyright": "© 2025 Łukasz Guziczak. Wszelkie prawa zastrzeżone.",
+    "home": "Strona Główna",
+    "about": "O Mnie",
+    "skills": "Umiejętności",
+    "projects": "Projekty",
+    "contact": "Kontakt",
+    "cv": "CV"
+  }
+}
