@@ -15,58 +15,62 @@ import { CommonModule } from '@angular/common';
       </div>
     </div>
   `,
-  styles: [`
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1.5rem;
-      padding: 2rem;
-    }
+  styles: [
+    `
+      .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.5rem;
+        padding: 2rem;
+      }
 
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border: 4px solid var(--bg-tertiary);
-      border-top-color: var(--color-primary);
-      border-radius: 50%;
-      animation: spin 2s linear infinite;
-    }
+      .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid var(--bg-tertiary);
+        border-top-color: var(--color-primary);
+        border-radius: 50%;
+        animation: spin 2s linear infinite;
+      }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
 
-    .loading-text-container {
-      position: relative;
-      height: 24px;
-      overflow: hidden;
-    }
+      .loading-text-container {
+        position: relative;
+        height: 24px;
+        overflow: hidden;
+      }
 
-    .loading-text {
-      font-size: 1rem;
-      color: var(--text-secondary);
-      margin: 0;
-      animation: slideUp 0.8s ease-out;
-      transition: opacity 0.5s ease-out;
-    }
+      .loading-text {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        margin: 0;
+        animation: slideUp 0.8s ease-out;
+        transition: opacity 0.5s ease-out;
+      }
 
-    .loading-text.fade-out {
-      opacity: 0;
-    }
-
-    @keyframes slideUp {
-      from {
-        transform: translateY(100%);
+      .loading-text.fade-out {
         opacity: 0;
       }
-      to {
-        transform: translateY(0);
-        opacity: 1;
+
+      @keyframes slideUp {
+        from {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
       }
-    }
-  `]
+    `,
+  ],
 })
 export class LoadingSpinnerComponent implements OnInit, OnDestroy {
   private easterEggs = [
@@ -125,7 +129,8 @@ export class LoadingSpinnerComponent implements OnInit, OnDestroy {
       if (this.messageIndex === 0 && !this.hasShownEasterEgg) {
         this.hasShownEasterEgg = true;
         // Pick a random easter egg (skip the first "Loading...")
-        const randomIndex = Math.floor(Math.random() * (this.easterEggs.length - 1)) + 1;
+        const randomIndex =
+          Math.floor(Math.random() * (this.easterEggs.length - 1)) + 1;
         this.currentMessage.set(this.easterEggs[randomIndex]);
       } else {
         // Cycle through all messages

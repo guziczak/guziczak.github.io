@@ -4,11 +4,15 @@ import { RouterModule } from '@angular/router';
 import { LanguageService } from '../../core/services/language.service';
 import { ScrollService } from '../../core/services/scroll.service';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
+import { AnimatedTranslatePipe } from '../../shared/pipes/animated-translate.pipe';
+import { CONTACT_CONFIG } from '../../core/config/contact.config';
+import { PoweredByComponent } from '../../shared/ui/powered-by/powered-by.component';
+import { LanguageTransitionDirective } from '../../shared/directives/language-transition.directive';
 
 @Component({
   selector: 'app-hero-section',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslatePipe],
+  imports: [CommonModule, RouterModule, TranslatePipe, AnimatedTranslatePipe, PoweredByComponent, LanguageTransitionDirective],
   template: `
     <section class="hero" id="home">
       <!-- Animated background particles -->
@@ -42,52 +46,69 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
           </div>
 
           <div class="hero-text animate-on-scroll">
-            <h1 class="hero-title">{{ 'hero.title' | translate }}</h1>
-            <h2 class="hero-subtitle">
-              <span class="gradient-text-safe">{{ 'hero.subtitle' | translate }}</span>
+            <h1 class="hero-title" appLanguageTransition>{{ 'hero.title' | animatedTranslate }}</h1>
+            <h2 class="hero-subtitle" appLanguageTransition>
+              <span class="gradient-text-safe">{{
+                'hero.subtitle' | animatedTranslate
+              }}</span>
             </h2>
-            <p class="hero-description">{{ 'hero.description' | translate }}</p>
+            <p class="hero-description" appLanguageTransition>{{ 'hero.description' | animatedTranslate }}</p>
+            
+            <div class="hero-powered-by">
+              <app-powered-by></app-powered-by>
+            </div>
 
             <div class="hero-cta">
               <button (click)="scrollToContact()" class="btn btn-primary">
                 <i class="fas fa-paper-plane"></i>
-                <span>{{ 'hero.cta.contact' | translate }}</span>
+                <span appLanguageTransition>{{ 'hero.cta.contact' | animatedTranslate }}</span>
               </button>
               <button (click)="scrollToProjects()" class="btn btn-secondary">
                 <i class="fas fa-code"></i>
-                <span>{{ 'hero.cta.projects' | translate }}</span>
+                <span appLanguageTransition>{{ 'hero.cta.projects' | animatedTranslate }}</span>
               </button>
-              <a href="/cv" target="_blank" class="btn btn-accent btn-floating">
+              <a
+                href="/cv"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-accent btn-floating"
+              >
                 <i class="fas fa-file-alt"></i>
-                <span>{{ 'hero.cta.cv' | translate }}</span>
+                <span appLanguageTransition>{{ 'hero.cta.cv' | animatedTranslate }}</span>
               </a>
             </div>
 
             <div class="hero-social">
               <a
-                href="https://github.com/guziczak"
+                [href]="contactConfig.github"
                 target="_blank"
+                rel="noopener noreferrer"
                 class="social-btn"
                 aria-label="GitHub"
               >
                 <i class="fab fa-github"></i>
               </a>
               <a
-                href="https://linkedin.com/in/guziczak"
+                [href]="contactConfig.linkedin"
                 target="_blank"
+                rel="noopener noreferrer"
                 class="social-btn"
                 aria-label="LinkedIn"
               >
                 <i class="fab fa-linkedin-in"></i>
               </a>
               <a
-                href="mailto:guziczak@pm.me"
+                [href]="'mailto:' + contactConfig.email"
                 class="social-btn"
                 aria-label="Email"
               >
                 <i class="fas fa-envelope"></i>
               </a>
-              <a href="tel:+48693069832" class="social-btn" aria-label="Phone">
+              <a
+                [href]="'tel:' + contactConfig.phone"
+                class="social-btn"
+                aria-label="Phone"
+              >
                 <i class="fas fa-phone-alt"></i>
               </a>
             </div>
@@ -101,6 +122,9 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 export class HeroSectionComponent implements OnInit {
   private languageService = inject(LanguageService);
   private scrollService = inject(ScrollService);
+
+  // Contact configuration
+  protected readonly contactConfig = CONTACT_CONFIG;
 
   // Translation method
   protected t(key: string): string {

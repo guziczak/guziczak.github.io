@@ -68,6 +68,8 @@ export interface Testimonial {
   id: number;
   name: string;
   role: string;
+  company: string;
+  linkedinUrl?: string;
   quote: string;
   rating: number;
   avatar: string;

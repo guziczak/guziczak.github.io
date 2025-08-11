@@ -5,6 +5,8 @@ import { ThemeService } from '../../core/services/theme.service';
 import { LanguageService } from '../../core/services/language.service';
 import { ScrollService } from '../../core/services/scroll.service';
 import { FocusTrapDirective } from '../../shared/directives/focus-trap.directive';
+import { FlagIconComponent } from '../../shared/ui/flag-icon/flag-icon.component';
+import { LanguageTransitionDirective } from '../../shared/directives/language-transition.directive';
 
 interface NavItem {
   path: string;
@@ -15,7 +17,7 @@ interface NavItem {
 @Component({
   selector: 'app-navigation',
   standalone: true,
-  imports: [CommonModule, RouterModule, FocusTrapDirective],
+  imports: [CommonModule, RouterModule, FocusTrapDirective, FlagIconComponent, LanguageTransitionDirective],
   template: `
     <nav class="navbar" [class.scrolled]="isScrolled()">
       <div class="container nav-container">
@@ -64,11 +66,10 @@ interface NavItem {
               'Switch language to ' +
               (currentLanguage() === 'en' ? 'Polski' : 'English')
             "
+            [title]="currentLanguage() === 'en' ? 'Switch to Polish' : 'Przełącz na angielski'"
           >
-            <img
-              [src]="'assets/flags/' + currentLanguage() + '.svg'"
-              [alt]="currentLanguage() === 'en' ? 'English' : 'Polski'"
-            />
+            <app-flag-icon [lang]="currentLanguage() === 'en' ? 'pl' : 'en'"></app-flag-icon>
+            <span class="lang-code">{{ currentLanguage() === 'en' ? 'PL' : 'EN' }}</span>
           </button>
 
           <!-- Theme Toggle -->
@@ -191,8 +192,8 @@ export class NavigationComponent {
     this.themeService.toggleTheme();
   }
 
-  toggleLanguage(): void {
-    this.languageService.toggleLanguage();
+  async toggleLanguage(): Promise<void> {
+    await this.languageService.toggleLanguage();
   }
 
   toggleMobileMenu(): void {

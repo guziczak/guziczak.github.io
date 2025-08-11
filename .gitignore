@@ -109,3 +109,15 @@ Thumbs.db
 # Build artifacts
 *.zip
 *.tar.gz
+
+# Build chunks in root directory
+/*.js
+/*.js.map
+/*.css
+/*.css.map
+/chunk-*
+/main-*
+/polyfills-*
+/styles-*
+/*.br
+/*.gz

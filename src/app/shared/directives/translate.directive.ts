@@ -1,4 +1,12 @@
-import { Directive, ElementRef, Input, inject, OnInit, OnDestroy, Renderer2 } from '@angular/core';
+import {
+  Directive,
+  ElementRef,
+  Input,
+  inject,
+  OnInit,
+  OnDestroy,
+  Renderer2,
+} from '@angular/core';
 import { LanguageService } from '../../core/services/language.service';
 import { Subscription } from 'rxjs';
 
@@ -10,14 +18,14 @@ import { Subscription } from 'rxjs';
  */
 @Directive({
   selector: '[appTranslate]',
-  standalone: true
+  standalone: true,
 })
 export class TranslateDirective implements OnInit, OnDestroy {
-  @Input('appTranslate') key: string = '';
+  @Input('appTranslate') key = '';
   @Input() translateParams?: Record<string, any>;
   @Input() translateAttr?: string; // For translating attributes like 'title', 'placeholder'
   @Input() translateKey?: string; // Alternative key when using attribute translation
-  
+
   private languageService = inject(LanguageService);
   private el = inject(ElementRef);
   private renderer = inject(Renderer2);
@@ -25,7 +33,7 @@ export class TranslateDirective implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.updateTranslation();
-    
+
     // Subscribe to language changes
     this.setupLanguageSubscription();
   }
@@ -37,7 +45,7 @@ export class TranslateDirective implements OnInit, OnDestroy {
   private setupLanguageSubscription() {
     // Create effect to react to language changes
     let previousLang = this.languageService.currentLanguage();
-    
+
     // Use polling approach since we're using signals
     const checkInterval = setInterval(() => {
       const currentLang = this.languageService.currentLanguage();
@@ -49,25 +57,36 @@ export class TranslateDirective implements OnInit, OnDestroy {
 
     // Store interval ID for cleanup
     this.languageSubscription = {
-      unsubscribe: () => clearInterval(checkInterval)
+      unsubscribe: () => clearInterval(checkInterval),
     } as Subscription;
   }
 
   private updateTranslation() {
     const translationKey = this.translateKey || this.key;
-    
+
     if (!translationKey) {
       return;
     }
 
-    const translation = this.languageService.t(translationKey, this.translateParams);
+    const translation = this.languageService.t(
+      translationKey,
+      this.translateParams,
+    );
 
     if (this.translateAttr) {
       // Set attribute value
-      this.renderer.setAttribute(this.el.nativeElement, this.translateAttr, translation);
+      this.renderer.setAttribute(
+        this.el.nativeElement,
+        this.translateAttr,
+        translation,
+      );
     } else {
       // Set text content
-      this.renderer.setProperty(this.el.nativeElement, 'textContent', translation);
+      this.renderer.setProperty(
+        this.el.nativeElement,
+        'textContent',
+        translation,
+      );
     }
   }
 

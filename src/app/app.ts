@@ -44,7 +44,8 @@ export class AppComponent {
   constructor() {
     // Effect to track app initialization
     effect(() => {
-      console.log('App initialized:', this.appTitle());
+      // App initialization logic can be added here if needed
+      this.appTitle(); // Keep the signal subscription active
     });
   }
 }

@@ -10,7 +10,11 @@
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\""
+    "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\"",
+    "clean": "rm -rf dist .angular/cache node_modules/.cache",
+    "build:prod": "npm run clean && ng build --configuration production",
+    "deploy": "./scripts/deploy-github-pages.sh",
+    "serve:root": "python3 -m http.server 8080"
   },
   "prettier": {
     "overrides": [

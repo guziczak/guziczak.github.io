@@ -171,10 +171,19 @@
     }
     
     i { font-size: 1.125rem; }
-    img {
-      width: 24px;
-      height: 24px;
-      object-fit: cover;
+  }
+  
+  .lang-btn {
+    width: auto;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    flex-direction: row;
+    gap: 0.5rem;
+    
+    .lang-code {
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
     }
   }
   

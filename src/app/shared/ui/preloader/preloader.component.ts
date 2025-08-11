@@ -11,14 +11,19 @@ import { CommonModule } from '@angular/common';
         <div class="preloader-content">
           <div class="preloader-spinner"></div>
           <div class="preloader-text-container">
-            <div class="preloader-text" [class.fade-out]="isTextTransitioning()">
+            <div
+              class="preloader-text"
+              [class.fade-out]="isTextTransitioning()"
+            >
               {{ currentMessage() }}
             </div>
           </div>
           <div class="preloader-progress">
-            <div class="progress-bar" 
-                 [style.width.%]="progress()" 
-                 [class.complete]="progress() === 100"></div>
+            <div
+              class="progress-bar"
+              [style.width.%]="progress()"
+              [class.complete]="progress() === 100"
+            ></div>
           </div>
         </div>
         @if (showCelebration()) {
@@ -164,7 +169,7 @@ import { CommonModule } from '@angular/common';
         font-family: 'Arial Black', Helvetica, sans-serif;
         animation: slideInFromRight 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
         white-space: nowrap;
-        box-shadow: 
+        box-shadow:
           3px 3px 0 #000,
           6px 6px 15px rgba(0, 0, 0, 0.2);
         z-index: 10001;
@@ -218,12 +223,12 @@ import { CommonModule } from '@angular/common';
           font-size: 1rem;
           padding: 10px 15px;
         }
-        
+
         .celebration-text::before {
           border-width: 15px 0 15px 25px;
           right: -22px;
         }
-        
+
         .celebration-text::after {
           border-width: 11px 0 11px 18px;
           right: -18px;
@@ -274,12 +279,12 @@ export class PreloaderComponent implements OnInit {
     'NO FUCKING WAY!',
     'INSAAAANE!',
     'WHAT A LEGEND!',
-    'HE\'S ON FIRE!',
+    "HE'S ON FIRE!",
     'SOMEBODY STOP HIM!',
     'CALL 911!',
     'MOM GET THE CAMERA!',
     'WORLD RECORD!',
-    'SPECTACULAR!!!'
+    'SPECTACULAR!!!',
   ];
 
   private easterEggs = [
@@ -344,7 +349,7 @@ export class PreloaderComponent implements OnInit {
     'git push --force origin master...',
     'Implementing best antipatterns...',
     'Centering divs...',
-    'Writing page in flight, please wait...'
+    'Writing page in flight, please wait...',
   ];
 
   private messageIntervalId?: number;
@@ -367,20 +372,22 @@ export class PreloaderComponent implements OnInit {
   private changeMessage() {
     // Fade out current message
     this.isTextTransitioning.set(true);
-    
+
     setTimeout(() => {
       // After first "Loading..." show easter eggs
       if (this.messageIndex === 0 && !this.hasShownEasterEgg) {
         this.hasShownEasterEgg = true;
         // Pick a random easter egg (skip the first "Loading...")
-        const randomIndex = Math.floor(Math.random() * (this.easterEggs.length - 1)) + 1;
+        const randomIndex =
+          Math.floor(Math.random() * (this.easterEggs.length - 1)) + 1;
         this.currentMessage.set(this.easterEggs[randomIndex]);
       } else {
         // Cycle through messages randomly
-        const randomIndex = Math.floor(Math.random() * (this.easterEggs.length - 1)) + 1;
+        const randomIndex =
+          Math.floor(Math.random() * (this.easterEggs.length - 1)) + 1;
         this.currentMessage.set(this.easterEggs[randomIndex]);
       }
-      
+
       // Fade in new message
       this.isTextTransitioning.set(false);
     }, 200);
@@ -414,16 +421,17 @@ export class PreloaderComponent implements OnInit {
     // Only show celebration once
     if (this.celebrationShown) return;
     this.celebrationShown = true;
-    
+
     // Show celebration after salto animation
     setTimeout(() => {
-      const randomCelebration = this.celebrationMessages[
-        Math.floor(Math.random() * this.celebrationMessages.length)
-      ];
+      const randomCelebration =
+        this.celebrationMessages[
+          Math.floor(Math.random() * this.celebrationMessages.length)
+        ];
       this.celebrationMessage.set(randomCelebration);
       this.showCelebration.set(true);
     }, 700);
-    
+
     // Hide preloader after celebration
     setTimeout(() => {
       this.hidePreloader();
@@ -435,7 +443,7 @@ export class PreloaderComponent implements OnInit {
     if (this.messageIntervalId) {
       clearInterval(this.messageIntervalId);
     }
-    
+
     // First set hidden class for fade out animation
     this.isHidden.set(true);
 

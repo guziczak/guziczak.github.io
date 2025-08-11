@@ -42,7 +42,12 @@ import { ContactProtectionService } from '../../core/services/contact-protection
                 <i class="fas fa-code"></i>
                 <span>{{ t('hero.cta.projects') }}</span>
               </a>
-              <a href="/cv" target="_blank" class="btn btn-accent">
+              <a
+                href="/cv"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-accent"
+              >
                 <i class="fas fa-file-alt"></i>
                 <span>{{ t('hero.cta.cv') }}</span>
               </a>
@@ -52,6 +57,7 @@ import { ContactProtectionService } from '../../core/services/contact-protection
               <a
                 href="https://github.com/guziczak"
                 target="_blank"
+                rel="noopener noreferrer"
                 class="social-btn"
                 aria-label="GitHub"
               >
@@ -60,6 +66,7 @@ import { ContactProtectionService } from '../../core/services/contact-protection
               <a
                 href="https://linkedin.com/in/guziczak"
                 target="_blank"
+                rel="noopener noreferrer"
                 class="social-btn"
                 aria-label="LinkedIn"
               >

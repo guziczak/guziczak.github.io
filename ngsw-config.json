@@ -9,7 +9,6 @@
         "files": [
           "/favicon.ico",
           "/index.html",
-          "/manifest.json",
           "/*.css",
           "/*.js"
         ]
@@ -22,24 +21,8 @@
       "resources": {
         "files": [
           "/assets/**",
-          "/translations/**",
-          "/data/**",
           "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
         ]
-      }
-    }
-  ],
-  "dataGroups": [
-    {
-      "name": "api",
-      "urls": [
-        "/api/**"
-      ],
-      "cacheConfig": {
-        "strategy": "freshness",
-        "maxSize": 100,
-        "maxAge": "1h",
-        "timeout": "10s"
       }
     }
   ]

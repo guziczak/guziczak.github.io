@@ -44,10 +44,15 @@ import { LanguageService } from '../../core/services/language.service';
                 <a
                   href="https://linkedin.com/in/guziczak"
                   target="_blank"
+                  rel="noopener noreferrer"
                 >
                   <i class="fab fa-linkedin"></i> LinkedIn
                 </a>
-                <a href="https://github.com/guziczak" target="_blank">
+                <a
+                  href="https://github.com/guziczak"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <i class="fab fa-github"></i> GitHub
                 </a>
               </div>

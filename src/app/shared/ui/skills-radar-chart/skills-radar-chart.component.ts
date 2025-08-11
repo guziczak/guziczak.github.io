@@ -60,7 +60,7 @@ Chart.register(...registerables);
         justify-content: center;
         align-items: center;
       }
-      
+
       .chart-wrapper canvas {
         max-width: 100%;
         max-height: 100%;
@@ -110,11 +110,11 @@ export class SkillsRadarChartComponent
   private setupIntersectionObserver() {
     const options = {
       threshold: 0.3,
-      rootMargin: '0px'
+      rootMargin: '0px',
     };
 
     this.observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
+      entries.forEach((entry) => {
         if (entry.isIntersecting && !this.isVisible()) {
           this.isVisible.set(true);
           this.animateChartData();
@@ -122,7 +122,8 @@ export class SkillsRadarChartComponent
       });
     }, options);
 
-    const element = this.radarChartRef.nativeElement.parentElement?.parentElement;
+    const element =
+      this.radarChartRef.nativeElement.parentElement?.parentElement;
     if (element) {
       this.observer.observe(element);
     }
@@ -139,7 +140,7 @@ export class SkillsRadarChartComponent
     for (let i = 0; i <= steps; i++) {
       setTimeout(() => {
         const progress = i / steps;
-        const newData = this.originalData.map(value => value * progress);
+        const newData = this.originalData.map((value) => value * progress);
         if (this.chart && this.chart.data.datasets[0]) {
           this.chart.data.datasets[0].data = newData;
           this.chart.update('none'); // Update without animation
@@ -165,7 +166,7 @@ export class SkillsRadarChartComponent
 
     // Store original data for animation
     this.originalData = [...this.chartData().datasets[0].data];
-    
+
     // Start with zero values if not visible yet
     if (!this.isVisible()) {
       this.chartData().datasets[0].data = this.originalData.map(() => 0);
@@ -183,19 +184,19 @@ export class SkillsRadarChartComponent
             top: 10,
             right: 10,
             bottom: 10,
-            left: 10
-          }
+            left: 10,
+          },
         },
         elements: {
           line: {
-            tension: 0.3
+            tension: 0.3,
           },
           point: {
             hoverRadius: 8,
             hoverBackgroundColor: '#fff',
             hoverBorderColor: 'rgba(0, 112, 243, 1)',
-            hoverBorderWidth: 2
-          }
+            hoverBorderWidth: 2,
+          },
         },
         plugins: {
           legend: {

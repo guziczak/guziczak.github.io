@@ -59,7 +59,9 @@ type TabType = 'profile' | 'experience' | 'education';
             @if (activeTab() === 'profile') {
               <div class="profile-content">
                 <div class="profile-info">
-                  <h3 class="profile-title">{{ 'about.profile.title' | translate }}</h3>
+                  <h3 class="profile-title">
+                    {{ 'about.profile.title' | translate }}
+                  </h3>
                   <p class="profile-description">
                     {{ 'about.description' | translate }}
                   </p>

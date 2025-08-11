@@ -1,0 +1,24 @@
+
+=====================================
+GitHub Pages Deployment Info
+=====================================
+Generated: 2025-08-11 07:02:04
+
+Files deployed:
+- index.html
+- 16 JavaScript files
+- 1 CSS files
+- Assets folder with images and translations
+
+To deploy to GitHub Pages:
+1. git add .
+2. git commit -m "🚀 Deploy to GitHub Pages"
+3. git push
+
+Your site will be available at:
+https://[your-username].github.io/
+
+To test locally:
+- Python: python3 -m http.server 8080
+- Node.js: node test-server.js
+- Open: http://localhost:8080

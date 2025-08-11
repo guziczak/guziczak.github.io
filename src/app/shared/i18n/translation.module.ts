@@ -8,7 +8,7 @@ import { TranslateDirective } from '../directives/translate.directive';
  */
 @NgModule({
   imports: [TranslatePipe, TranslateDirective],
-  exports: [TranslatePipe, TranslateDirective]
+  exports: [TranslatePipe, TranslateDirective],
 })
 export class TranslationModule {}
 

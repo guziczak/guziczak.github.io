@@ -79,11 +79,22 @@
   font-size: 1.125rem;
   line-height: 1.7;
   color: var(--text-secondary);
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   max-width: 600px;
 
   @include media-down(md) {
-    margin: 0 auto 2rem;
+    margin: 0 auto 1.5rem;
+  }
+}
+
+.hero-powered-by {
+  display: inline-block;
+  margin-bottom: 2rem;
+  
+  @include media-down(md) {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
   }
 }
 

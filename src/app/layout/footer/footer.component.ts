@@ -28,9 +28,13 @@ import { LanguageService } from '../../core/services/language.service';
             <a routerLink="/contact" class="footer-link">{{
               t('nav.contact')
             }}</a>
-            <a href="/cv" target="_blank" class="footer-link">{{
-              t('nav.cv')
-            }}</a>
+            <a
+              href="/cv"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="footer-link"
+              >{{ t('nav.cv') }}</a
+            >
           </nav>
 
           <div class="footer-social">

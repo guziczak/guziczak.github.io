@@ -4,37 +4,37 @@ import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class EmailService {
   private readonly BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
-  
+
   // API key split for security (though it's still visible in the bundle)
   private readonly a = 'xkeysib-d2bb993880b31aec370449c';
   private readonly b = '9cc0390614409f8f82ddff56c5aba2b5';
   private readonly g = '4ab940d74';
   private readonly z = 'rtC5OCd1C2HJ0dON';
-  
+
   constructor(private http: HttpClient) {}
-  
+
   sendEmail(formData: any): Observable<boolean> {
     const apiKey = `${this.a}${this.b}${this.g}-${this.z}`;
-    
+
     const headers = new HttpHeaders({
-      'accept': 'application/json',
+      accept: 'application/json',
       'api-key': apiKey,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     });
-    
+
     const emailData = {
       sender: {
         name: `Portfolio Contact - ${formData.name}`,
-        email: 'd94wcrgcc6@privaterelay.appleid.com'
+        email: 'd94wcrgcc6@privaterelay.appleid.com',
       },
       to: [
         { email: 'guziczak@pm.me', name: 'LG ITS' },
         { email: 'guziczak@proton.me', name: 'LG ITS' },
-        { email: 'jguziczak@wp.pl', name: 'LG ITS - backup' }
+        { email: 'jguziczak@wp.pl', name: 'LG ITS - backup' },
       ],
       subject: formData.subject,
       htmlContent: `
@@ -61,16 +61,16 @@ export class EmailService {
             </div>
           </div>
         </div>
-      `
+      `,
     };
-    
+
     return this.http.post(this.BREVO_API_URL, emailData, { headers }).pipe(
       map(() => true),
-      catchError(error => {
+      catchError((error) => {
         console.error('Email sending failed:', error);
         // Still return success to user (fallback to mailto will be shown)
         return of(false);
-      })
+      }),
     );
   }
 }

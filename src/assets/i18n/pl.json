@@ -1,0 +1,105 @@
+{
+  "nav": {
+    "home": "Strona główna",
+    "about": "O mnie",
+    "skills": "Umiejętności",
+    "projects": "Projekty",
+    "games": "Gry",
+    "certificates": "Certyfikaty",
+    "contact": "Kontakt",
+    "cv": "CV"
+  },
+  "hero": {
+    "title": "Programista Full-stack & Analityk",
+    "subtitle": "Przekształcam Pomysły w Cyfrową Rzeczywistość",
+    "description": "Z pasją tworzę wydajne, skalowalne rozwiązania wykorzystując nowoczesne technologie. Specjalizuję się w Java, Python, React oraz infrastrukturze chmurowej.",
+    "cta": {
+      "contact": "Kontakt",
+      "projects": "Zobacz Projekty",
+      "cv": "Zobacz CV"
+    }
+  },
+  "about": {
+    "title": "O Mnie",
+    "profile": {
+      "tab": "Profil",
+      "title": "Programista Full-stack & Analityk"
+    },
+    "experience": {
+      "tab": "Doświadczenie"
+    },
+    "education": {
+      "tab": "Wykształcenie"
+    },
+    "description": "Jestem Programistą Full-stack i Analitykiem z pasją do budowania wydajnych i skalowalnych aplikacji. Z rozległym doświadczeniem w technologiach front-end i back-end, lubię rozwiązywać złożone problemy i optymalizować systemy.",
+    "location": "Wrocław, Polska",
+    "languages": "Polski (Ojczysty), Angielski (Biegły)",
+    "interests": "Technologia, AI/ML, Gaming, Elektronika",
+    "yearsExperience": "Lat Doświadczenia",
+    "projectsCompleted": "Ukończonych Projektów",
+    "technologies": "Technologii"
+  },
+  "skills": {
+    "title": "Moje Umiejętności",
+    "subtitle": "Technologie i narzędzia, z którymi pracuję tworząc wydajne rozwiązania",
+    "note": "Poziomy umiejętności reprezentują biegłość i doświadczenie w każdej technologii"
+  },
+  "projects": {
+    "title": "Ostatnie Projekty",
+    "subtitle": "Wybór moich ostatnich prac i projektów",
+    "filter": {
+      "all": "Wszystkie"
+    },
+    "noProjects": "Brak projektów dla wybranego filtra"
+  },
+  "achievements": {
+    "title": "Kluczowe Osiągnięcia",
+    "subtitle": "Kamienie milowe i osiągnięcia w mojej karierze"
+  },
+  "games": {
+    "title": "Moje Gry",
+    "subtitle": "Zabawne gry przeglądarkowe, które stworzyłem w wolnym czasie",
+    "play": "Graj",
+    "code": "Kod",
+    "note": "Wszystkie gry są zbudowane w czystym JavaScript i działają bezpośrednio w przeglądarce"
+  },
+  "certificates": {
+    "title": "Certyfikaty",
+    "subtitle": "Certyfikaty zawodowe i ukończone kursy",
+    "filter": {
+      "all": "Wszystkie"
+    },
+    "credential": "ID Certyfikatu",
+    "view": "Zobacz Certyfikat",
+    "noCertificates": "Brak certyfikatów dla wybranej kategorii"
+  },
+  "testimonials": {
+    "title": "Rekomendacje",
+    "subtitle": "Opinie profesjonalistów o współpracy ze mną"
+  },
+  "contact": {
+    "title": "Kontakt",
+    "subtitle": "Porozmawiajmy o Twoim następnym projekcie",
+    "getInTouch": "Skontaktuj się",
+    "location": "Wrocław, Polska",
+    "sendMessage": "Wyślij Wiadomość",
+    "letsConnect": "Połączmy się",
+    "cardText": "Skontaktuj się w sprawie ofert pracy, współpracy lub po prostu żeby się przywitać. Zawsze jestem zainteresowany nowymi projektami i wyzwaniami!",
+    "modalTitle": "Kontakt",
+    "yourName": "Twoje Imię",
+    "yourEmail": "Twój Email",
+    "subject": "Temat",
+    "yourMessage": "Twoja Wiadomość",
+    "send": "Wyślij Wiadomość",
+    "successTitle": "Wiadomość Wysłana!",
+    "successMessage": "Dziękuję za kontakt. Odpowiem wkrótce.",
+    "done": "Gotowe"
+  },
+  "common": {
+    "download": "Pobierz",
+    "viewAll": "Zobacz wszystkie",
+    "loading": "Ładowanie...",
+    "error": "Wystąpił błąd",
+    "retry": "Spróbuj ponownie"
+  }
+}
