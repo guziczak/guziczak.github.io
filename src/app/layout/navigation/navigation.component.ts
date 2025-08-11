@@ -45,29 +45,79 @@ interface NavItem {
             </li>
           }
           <li class="nav-item">
-            <a routerLink="/certificates" class="nav-link">
-              <i class="fas fa-certificate"></i> Certificates
+            <a routerLink="/certificates" class="nav-link certs-link">
+              <i class="fas fa-certificate"></i>
+              <span>Certificates</span>
             </a>
           </li>
           <li class="nav-item cv-nav-item">
             <a routerLink="/cv" class="nav-link">
-              <i class="fas fa-file-alt"></i> CV
+              <i class="fas fa-file-alt"></i>
+              <span>CV</span>
             </a>
           </li>
         </ul>
 
         <!-- Utility Buttons -->
         <div class="utility-buttons">
-          <!-- Language Switcher -->
-          <button
-            class="lang-btn"
-            (click)="toggleLanguage()"
-            [attr.aria-label]="'Switch language to ' + getNextLanguageName()"
-            [title]="getLanguageSwitchTitle()"
-          >
-            <app-flag-icon [lang]="getNextLanguageCode()"></app-flag-icon>
-            <span class="lang-code">{{ getNextLanguageCode().toUpperCase() }}</span>
-          </button>
+          <!-- Language Dropdown -->
+          <div class="language-dropdown" [class.open]="isLanguageDropdownOpen()">
+            <button
+              class="lang-btn"
+              (click)="toggleLanguageDropdown()"
+              [attr.aria-label]="'Current language: ' + getCurrentLanguageName()"
+              [attr.aria-expanded]="isLanguageDropdownOpen()"
+              aria-haspopup="listbox"
+            >
+              <app-flag-icon [lang]="currentLanguage()"></app-flag-icon>
+              <span class="lang-code">{{ currentLanguage().toUpperCase() }}</span>
+              <i class="fas fa-chevron-down dropdown-arrow"></i>
+            </button>
+            
+            @if (isLanguageDropdownOpen()) {
+              <div class="dropdown-menu" role="listbox">
+                <button
+                  class="dropdown-item"
+                  role="option"
+                  (click)="selectLanguage('en')"
+                  [class.active]="currentLanguage() === 'en'"
+                  [attr.aria-selected]="currentLanguage() === 'en'"
+                >
+                  <app-flag-icon lang="en"></app-flag-icon>
+                  <span>English</span>
+                  @if (currentLanguage() === 'en') {
+                    <i class="fas fa-check check-icon"></i>
+                  }
+                </button>
+                <button
+                  class="dropdown-item"
+                  role="option"
+                  (click)="selectLanguage('pl')"
+                  [class.active]="currentLanguage() === 'pl'"
+                  [attr.aria-selected]="currentLanguage() === 'pl'"
+                >
+                  <app-flag-icon lang="pl"></app-flag-icon>
+                  <span>Polski</span>
+                  @if (currentLanguage() === 'pl') {
+                    <i class="fas fa-check check-icon"></i>
+                  }
+                </button>
+                <button
+                  class="dropdown-item"
+                  role="option"
+                  (click)="selectLanguage('de')"
+                  [class.active]="currentLanguage() === 'de'"
+                  [attr.aria-selected]="currentLanguage() === 'de'"
+                >
+                  <app-flag-icon lang="de"></app-flag-icon>
+                  <span>Deutsch</span>
+                  @if (currentLanguage() === 'de') {
+                    <i class="fas fa-check check-icon"></i>
+                  }
+                </button>
+              </div>
+            }
+          </div>
 
           <!-- Theme Toggle -->
           <button
@@ -153,6 +203,7 @@ export class NavigationComponent {
   // Signals for reactive state
   isScrolled = signal(false);
   isMobileMenuOpen = signal(false);
+  isLanguageDropdownOpen = signal(false);
 
   // Computed signals
   isDarkMode = computed(() => this.themeService.isDarkMode());
@@ -183,14 +234,48 @@ export class NavigationComponent {
         window.removeEventListener('scroll', handleScroll);
       };
     });
+
+    // Close dropdown when clicking outside
+    effect(() => {
+      if (this.isLanguageDropdownOpen()) {
+        const handleClickOutside = (event: MouseEvent) => {
+          const target = event.target as HTMLElement;
+          if (!target.closest('.language-dropdown')) {
+            this.isLanguageDropdownOpen.set(false);
+          }
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        
+        return () => {
+          document.removeEventListener('click', handleClickOutside);
+        };
+      }
+      return () => {}; // Return empty cleanup when dropdown is closed
+    });
   }
 
   toggleTheme(): void {
     this.themeService.toggleTheme();
   }
 
-  async toggleLanguage(): Promise<void> {
-    await this.languageService.toggleLanguage();
+  toggleLanguageDropdown(): void {
+    this.isLanguageDropdownOpen.update(state => !state);
+  }
+
+  async selectLanguage(lang: 'en' | 'pl' | 'de'): Promise<void> {
+    this.languageService.setLanguage(lang);
+    this.isLanguageDropdownOpen.set(false);
+  }
+
+  getCurrentLanguageName(): string {
+    const lang = this.currentLanguage();
+    switch (lang) {
+      case 'en': return 'English';
+      case 'pl': return 'Polski';
+      case 'de': return 'Deutsch';
+      default: return 'English';
+    }
   }
 
   toggleMobileMenu(): void {
@@ -223,36 +308,4 @@ export class NavigationComponent {
     }
   }
 
-  getNextLanguageCode(): 'en' | 'pl' | 'de' {
-    const current = this.currentLanguage();
-    switch (current) {
-      case 'en': return 'pl';
-      case 'pl': return 'de';
-      case 'de': return 'en';
-      default: return 'en';
-    }
-  }
-
-  getNextLanguageName(): string {
-    const next = this.getNextLanguageCode();
-    switch (next) {
-      case 'en': return 'English';
-      case 'pl': return 'Polski';
-      case 'de': return 'Deutsch';
-      default: return 'English';
-    }
-  }
-
-  getLanguageSwitchTitle(): string {
-    const current = this.currentLanguage();
-    const next = this.getNextLanguageCode();
-    
-    const titles: Record<string, Record<string, string>> = {
-      'en': { 'pl': 'Switch to Polish', 'de': 'Switch to German' },
-      'pl': { 'de': 'Przełącz na niemiecki', 'en': 'Przełącz na angielski' },
-      'de': { 'en': 'Auf Englisch umschalten', 'pl': 'Auf Polnisch umschalten' }
-    };
-    
-    return titles[current]?.[next] || 'Switch language';
-  }
 }
