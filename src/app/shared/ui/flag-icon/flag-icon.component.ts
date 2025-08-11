@@ -1,7 +1,7 @@
 import { Component, Input, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-type FlagCode = 'en' | 'pl';
+type FlagCode = 'en' | 'pl' | 'de';
 
 @Component({
   selector: 'app-flag-icon',
@@ -42,6 +42,21 @@ type FlagCode = 'en' | 'pl';
           <!-- Polish Flag -->
           <rect width="60" height="15" fill="#fff" />
           <rect y="15" width="60" height="15" fill="#DC143C" />
+        </svg>
+      }
+      @case ('de') {
+        <svg
+          class="flag-icon"
+          viewBox="0 0 60 30"
+          xmlns="http://www.w3.org/2000/svg"
+          [attr.aria-label]="ariaLabel()"
+          role="img"
+        >
+          <title>{{ ariaLabel() }}</title>
+          <!-- German Flag -->
+          <rect width="60" height="10" fill="#000" />
+          <rect y="10" width="60" height="10" fill="#D00" />
+          <rect y="20" width="60" height="10" fill="#FFCE00" />
         </svg>
       }
       @default {
@@ -119,6 +134,7 @@ export class FlagIconComponent {
     const labels: Record<FlagCode, string> = {
       en: 'English language flag',
       pl: 'Polish language flag',
+      de: 'German language flag',
     };
     return labels[this.flag()] || `${this.flag()} flag`;
   });

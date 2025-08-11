@@ -2,7 +2,7 @@ import { Injectable, signal, effect, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
-export type Language = 'en' | 'pl';
+export type Language = 'en' | 'pl' | 'de';
 export type TranslationData = Record<string, any>;
 
 @Injectable({
@@ -30,8 +30,16 @@ export class LanguageService {
   constructor() {
     // Initialize language from storage or browser
     const savedLang = localStorage.getItem('language') as Language | null;
-    const browserLang = navigator.language.substring(0, 2) as Language;
-    const initialLang = savedLang || (browserLang === 'pl' ? 'pl' : 'en');
+    const browserLang = navigator.language.substring(0, 2);
+    const supportedLanguages: Language[] = ['en', 'pl', 'de'];
+    
+    // Determine initial language
+    let initialLang: Language = 'en';
+    if (savedLang && supportedLanguages.includes(savedLang)) {
+      initialLang = savedLang;
+    } else if (supportedLanguages.includes(browserLang as Language)) {
+      initialLang = browserLang as Language;
+    }
     
     // Set initial language
     this.language.set(initialLang);
@@ -141,10 +149,26 @@ export class LanguageService {
   }
 
   /**
-   * Toggle between available languages
+   * Toggle between available languages (cycles through en -> pl -> de -> en)
    */
   async toggleLanguage(): Promise<void> {
-    const newLang = this.language() === 'en' ? 'pl' : 'en';
+    const currentLang = this.language();
+    let newLang: Language;
+    
+    // Cycle through languages: en -> pl -> de -> en
+    switch (currentLang) {
+      case 'en':
+        newLang = 'pl';
+        break;
+      case 'pl':
+        newLang = 'de';
+        break;
+      case 'de':
+        newLang = 'en';
+        break;
+      default:
+        newLang = 'en';
+    }
     
     // Pre-load translations if not cached
     if (!this.cache.has(newLang)) {

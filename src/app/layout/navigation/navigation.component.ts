@@ -62,14 +62,11 @@ interface NavItem {
           <button
             class="lang-btn"
             (click)="toggleLanguage()"
-            [attr.aria-label]="
-              'Switch language to ' +
-              (currentLanguage() === 'en' ? 'Polski' : 'English')
-            "
-            [title]="currentLanguage() === 'en' ? 'Switch to Polish' : 'Przełącz na angielski'"
+            [attr.aria-label]="'Switch language to ' + getNextLanguageName()"
+            [title]="getLanguageSwitchTitle()"
           >
-            <app-flag-icon [lang]="currentLanguage() === 'en' ? 'pl' : 'en'"></app-flag-icon>
-            <span class="lang-code">{{ currentLanguage() === 'en' ? 'PL' : 'EN' }}</span>
+            <app-flag-icon [lang]="getNextLanguageCode()"></app-flag-icon>
+            <span class="lang-code">{{ getNextLanguageCode().toUpperCase() }}</span>
           </button>
 
           <!-- Theme Toggle -->
@@ -224,5 +221,38 @@ export class NavigationComponent {
         }, 100);
       });
     }
+  }
+
+  getNextLanguageCode(): 'en' | 'pl' | 'de' {
+    const current = this.currentLanguage();
+    switch (current) {
+      case 'en': return 'pl';
+      case 'pl': return 'de';
+      case 'de': return 'en';
+      default: return 'en';
+    }
+  }
+
+  getNextLanguageName(): string {
+    const next = this.getNextLanguageCode();
+    switch (next) {
+      case 'en': return 'English';
+      case 'pl': return 'Polski';
+      case 'de': return 'Deutsch';
+      default: return 'English';
+    }
+  }
+
+  getLanguageSwitchTitle(): string {
+    const current = this.currentLanguage();
+    const next = this.getNextLanguageCode();
+    
+    const titles: Record<string, Record<string, string>> = {
+      'en': { 'pl': 'Switch to Polish', 'de': 'Switch to German' },
+      'pl': { 'de': 'Przełącz na niemiecki', 'en': 'Przełącz na angielski' },
+      'de': { 'en': 'Auf Englisch umschalten', 'pl': 'Auf Polnisch umschalten' }
+    };
+    
+    return titles[current]?.[next] || 'Switch language';
   }
 }
