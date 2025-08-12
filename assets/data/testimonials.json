@@ -1,0 +1,54 @@
+{
+  "testimonials": [
+    {
+      "id": 1,
+      "name": "Iryna Galukhina",
+      "role": "Senior Requirements Engineer",
+      "company": "Asseco Solutions",
+      "linkedinUrl": "https://www.linkedin.com/in/iryna-galukhina/",
+      "quote": "I had the chance to meet Łukasz during a corporative development training, and I was really impressed of his grasp of programming concepts and how they fit into the bigger business picture. His collaborative spirit, problem-solving skills, and commitment to continuous learning position him as a valuable asset to any team.",
+      "rating": 5,
+      "avatar": "assets/images/avatars/avatar-1.jpg"
+    },
+    {
+      "id": 2,
+      "name": "Filip Lorek",
+      "role": "Founder and CEO",
+      "company": "Right Information",
+      "linkedinUrl": "https://www.linkedin.com/in/filip-lorek/",
+      "quote": "I highly recommend Lukasz as a valuable, hardworking software developer. He's invaluable and honest team member who supports his colleagues in any situation.",
+      "rating": 5,
+      "avatar": "assets/images/avatars/avatar-2.jpg"
+    },
+    {
+      "id": 3,
+      "name": "Ielyzaveta Lissova",
+      "role": "Project Manager",
+      "company": "Luxoft",
+      "linkedinUrl": "https://www.linkedin.com/in/ielyzaveta-lissova/",
+      "quote": "I had the pleasure of working closely with Łukasz during his participation in the Technology Academy. Łukasz consistently demonstrated a high level of responsibility and attentiveness. His dedication to learning and professional growth was evident in every task he undertook.",
+      "rating": 5,
+      "avatar": "assets/images/avatars/avatar-3.jpg"
+    },
+    {
+      "id": 4,
+      "name": "Nandun Senevirathna",
+      "role": "Electrical Engineer",
+      "company": "Philips Medical Systems",
+      "linkedinUrl": "https://www.linkedin.com/in/nandun-senevirathna/",
+      "quote": "During our collaboration in a project with the University of Twente as a project partner, I had the opportunity to work alongside Lukasz. Demonstrating exemplary dedication and strong collaborative skills, he adeptly navigated challenging circumstances, showcasing his proficiency as a team player.",
+      "rating": 5,
+      "avatar": "assets/images/avatars/avatar-4.jpg"
+    },
+    {
+      "id": 5,
+      "name": "Zbigniew Wesołowski",
+      "role": "Java Developer",
+      "company": "Streamsoft",
+      "linkedinUrl": "https://www.linkedin.com/in/zbigniew-wesolowski/",
+      "quote": "Lukasz and I worked together when he was at Streamsoft. He is an exceptionally hard worker who works well with others even in challenging situations. He is a team player with a strong sense of responsibility and I am sure he would be an asset to any team.",
+      "rating": 5,
+      "avatar": "assets/images/avatars/avatar-5.jpg"
+    }
+  ]
+}

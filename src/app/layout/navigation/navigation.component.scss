@@ -29,6 +29,18 @@
   align-items: center;
   gap: 0.75rem;
   box-sizing: border-box;
+  position: relative;
+  
+  // For large screens, increase max-width
+  @media (min-width: 1920px) {
+    max-width: 1600px;
+  }
+  
+  // For very large screens
+  @media (min-width: 2560px) {
+    max-width: 1920px;
+  }
+  
   
   @include media-down(xl) {
     padding: 0 1.25rem;
@@ -88,7 +100,11 @@
   flex: 1;
   justify-content: center;
   
+  // Hide desktop navigation on mobile/tablet and problematic zoom levels
   @include media-down(lg) { display: none; }
+  
+  // Also hide for 75% and 80% zoom where it overflows
+  @media (min-width: 3000px) { display: none; }
 }
 
 .nav-item {
@@ -197,6 +213,9 @@
   .mobile-menu-btn {
     display: none;
     @include media-down(lg) { display: flex; }
+    
+    // Show mobile menu for 75% and 80% zoom
+    @media (min-width: 3000px) { display: flex; }
   }
 }
 
@@ -289,24 +308,10 @@
   }
 }
 
-// Viewport-based responsive (dla rzeczywistej szerokości po zoomie)
-// 2560px przy 80% zoom = ~2048px viewport
-// 2560px przy 90% zoom = ~2304px viewport  
-// 2560px przy 100% zoom = 2560px viewport
-
-// Duże ekrany przy 100% zoom (2400px i więcej)
-@media (min-width: 2400px) {
+// Responsive dla większych ekranów
+@media (min-width: 1440px) {
   .nav-container {
-    max-width: 1440px;
-  }
-  .logo {
-    font-size: 1.5rem;
-    gap: 0.75rem;
-    
-    &-img {
-      width: 40px;
-      height: 40px;
-    }
+    max-width: 1400px;
   }
   .nav-links {
     gap: 1.25rem;
@@ -315,197 +320,41 @@
     padding: 0.5rem 0.75rem;
     font-size: 1rem;
   }
-  .nav-item.cv-nav-item a {
-    padding: 0.4rem 0.9rem;
+}
+
+// Mobile menu will be shown for 75% and 80% zoom levels instead
+
+// Responsive dla ekranów 1280-1440px
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .nav-links { 
+    gap: 0.75rem; 
+  }
+  .nav-item .nav-link {
+    padding: 0.4rem 0.6rem;
     font-size: 0.9rem;
   }
-  .utility-buttons {
-    gap: 0.75rem;
-    
-    button {
-      width: 48px;
-      height: 48px;
-      i { font-size: 1.125rem; }
-    }
-    
-    .lang-btn {
-      padding: 0.5rem 0.75rem;
-      .lang-code { 
-        font-size: 0.875rem;
-        display: inline; 
-      }
-      .dropdown-arrow { display: inline; }
-    }
-  }
 }
 
-// Ekrany 16:10 przy około 80-85% zoom (viewport ~2000-2400px)
-@media (min-width: 2000px) and (max-width: 2399px) {
-  .logo {
-    font-size: 1.25rem;
-    
-    &-img {
-      width: 36px;
-      height: 36px;
-    }
-  }
-  .nav-links { 
-    gap: 0.6rem; 
-  }
-  .nav-item .nav-link {
-    padding: 0.3rem 0.45rem;
-    font-size: 0.8rem;
-  }
-  .nav-item.cv-nav-item a {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    span { display: none; } // Ukryj "CV" zostaw tylko ikonę
-  }
-  .utility-buttons {
-    gap: 0.4rem;
-    
-    button {
-      width: 40px;
-      height: 40px;
-      i { font-size: 0.95rem; }
-    }
-    
-    .lang-btn {
-      padding: 0.35rem 0.5rem;
-      .lang-code { display: none; }
-      .dropdown-arrow { display: none; }
-    }
-  }
-}
-
-// Ekrany przy niższym zoomie (1800-2000px viewport)
-@media (min-width: 1800px) and (max-width: 1999px) {
-  .nav-links {
-    gap: 0.6rem;
-  }
-  .nav-item .nav-link {
-    padding: 0.3rem 0.45rem;
-    font-size: 0.8rem;
-  }
-  .nav-item.cv-nav-item a {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-  }
-}
-
-// Standardowe desktopy (1440-1800px viewport)
-@media (min-width: 1440px) and (max-width: 1799px) {
-  .nav-links {
-    gap: 0.6rem;
-  }
-  .nav-item .nav-link {
-    padding: 0.3rem 0.45rem;
-    font-size: 0.8rem;
-  }
-  .nav-item.cv-nav-item a {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-  }
-}
-
-// Mniejsze desktopy (1280-1440px viewport)
-@media (min-width: 1280px) and (max-width: 1439px) {
+// Responsive dla tabletów
+@media (min-width: 768px) and (max-width: 1279px) {
   .nav-links { 
     gap: 0.5rem; 
   }
-  .nav-item .nav-link {
-    padding: 0.25rem 0.4rem;
-    font-size: 0.75rem;
-  }
-  .nav-item.cv-nav-item a {
-    padding: 0.2rem 0.45rem;
-    font-size: 0.7rem;
-    span { display: none; }
-  }
-  .utility-buttons {
-    gap: 0.4rem;
-    
-    button {
-      width: 38px;
-      height: 38px;
-      i { font-size: 0.9rem; }
-    }
-    
-    .lang-btn {
+  .nav-item {
+    .nav-link {
       padding: 0.35rem 0.5rem;
-      .lang-code { display: none; }
-      .dropdown-arrow { display: none; }
-    }
-  }
-}
-
-// Małe desktopy i duże tablety (1024-1280px viewport)
-@media (min-width: 1024px) and (max-width: 1279px) {
-  .logo span { display: none; }
-  .nav-links { 
-    gap: 0.3rem; 
-  }
-  .nav-item {
-    .nav-link {
-      padding: 0.2rem 0.3rem;
-      font-size: 0.7rem;
-      
-      &.certs-link i { display: none; }
-    }
-    &.cv-nav-item a {
-      padding: 0.18rem 0.35rem;
-      font-size: 0.65rem;
-      i { font-size: 0.7rem; }
-      span { display: none; }
-    }
-  }
-  .utility-buttons {
-    gap: 0.3rem;
-    
-    button {
-      width: 34px;
-      height: 34px;
-      i { font-size: 0.8rem; }
-    }
-    
-    .lang-btn {
-      padding: 0.25rem 0.4rem;
-      .lang-code { display: none; }
-      .dropdown-arrow { display: none; }
-    }
-  }
-}
-
-// Tablety (768-1024px viewport)
-@media (min-width: 768px) and (max-width: 1023px) {
-  .nav-links { 
-    gap: 0.25rem; 
-  }
-  .nav-item {
-    .nav-link {
-      padding: 0.2rem 0.3rem;
-      font-size: 0.65rem;
+      font-size: 0.85rem;
       i { display: none; }
     }
     &.cv-nav-item a {
-      padding: 0.15rem 0.35rem;
-      font-size: 0.6rem;
-    }
-  }
-  .utility-buttons {
-    gap: 0.25rem;
-    
-    button {
-      width: 32px;
-      height: 32px;
-      i { font-size: 0.75rem; }
-    }
-    
-    .lang-btn {
-      padding: 0.2rem 0.35rem;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
     }
   }
 }
+
+// USUŃMY WSZYSTKIE PROBLEMATYCZNE MEDIA QUERIES
+// Zostawmy tylko podstawowe responsive dla tabletów i mobilek
 
 // Language Dropdown Styles
 .language-dropdown {

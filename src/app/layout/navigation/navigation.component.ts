@@ -6,7 +6,6 @@ import { LanguageService } from '../../core/services/language.service';
 import { ScrollService } from '../../core/services/scroll.service';
 import { FocusTrapDirective } from '../../shared/directives/focus-trap.directive';
 import { FlagIconComponent } from '../../shared/ui/flag-icon/flag-icon.component';
-import { LanguageTransitionDirective } from '../../shared/directives/language-transition.directive';
 
 interface NavItem {
   path: string;
@@ -17,10 +16,10 @@ interface NavItem {
 @Component({
   selector: 'app-navigation',
   standalone: true,
-  imports: [CommonModule, RouterModule, FocusTrapDirective, FlagIconComponent, LanguageTransitionDirective],
+  imports: [CommonModule, RouterModule, FocusTrapDirective, FlagIconComponent],
   template: `
     <nav class="navbar" [class.scrolled]="isScrolled()">
-      <div class="container nav-container">
+      <div class="nav-container">
         <!-- Logo -->
         <a (click)="navigateToHome()" class="logo">
           <img
@@ -33,7 +32,7 @@ interface NavItem {
 
         <!-- Desktop Navigation -->
         <ul class="nav-links">
-          @for (item of navItems; track item.path) {
+          @for (item of responsiveNavItems(); track item.path) {
             <li class="nav-item">
               <a
                 (click)="scrollToSection(item.path)"
@@ -47,7 +46,7 @@ interface NavItem {
           <li class="nav-item">
             <a routerLink="/certificates" class="nav-link certs-link">
               <i class="fas fa-certificate"></i>
-              <span>Certificates</span>
+              <span class="certs-text">Certificates</span>
             </a>
           </li>
           <li class="nav-item cv-nav-item">
@@ -220,6 +219,21 @@ export class NavigationComponent {
     { path: 'testimonials', label: 'Testimonials', icon: 'comments' },
     { path: 'contact', label: 'Contact', icon: 'envelope' },
   ];
+  
+  // Computed signal for responsive nav labels
+  responsiveNavItems = computed(() => {
+    // Check if viewport is in the 80% zoom range
+    const viewport = window.innerWidth;
+    if (viewport >= 2000 && viewport <= 2200) {
+      return this.navItems.map(item => ({
+        ...item,
+        label: item.label === 'Achievements' ? 'Awards' :
+               item.label === 'Testimonials' ? 'Reviews' :
+               item.label
+      }));
+    }
+    return this.navItems;
+  });
 
   constructor() {
     // Effect to handle scroll
