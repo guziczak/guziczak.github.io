@@ -19,6 +19,12 @@ export class AnimateOnViewDirective implements OnInit, OnDestroy {
   private el = inject(ElementRef);
   private observer?: IntersectionObserver;
   private hasAnimated = false;
+  
+  private readonly CONFIG = {
+    DEFAULT_THRESHOLD: 0.2,
+    ROOT_MARGIN: '0px',
+    PROGRESS_DELAY_MS: 200
+  };
 
   ngOnInit() {
     if ('IntersectionObserver' in window) {
@@ -31,8 +37,8 @@ export class AnimateOnViewDirective implements OnInit, OnDestroy {
 
   private createObserver() {
     const options = {
-      threshold: this.threshold,
-      rootMargin: '0px',
+      threshold: this.threshold || this.CONFIG.DEFAULT_THRESHOLD,
+      rootMargin: this.CONFIG.ROOT_MARGIN,
     };
 
     this.observer = new IntersectionObserver((entries) => {
@@ -62,7 +68,7 @@ export class AnimateOnViewDirective implements OnInit, OnDestroy {
       if (level) {
         setTimeout(() => {
           element.style.width = `${level}%`;
-        }, 200);
+        }, this.CONFIG.PROGRESS_DELAY_MS);
       }
     } else {
       // General animation

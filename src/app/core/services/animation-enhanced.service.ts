@@ -1,6 +1,19 @@
 import { Injectable, signal } from '@angular/core';
 import { animate, AnimationBuilder, style } from '@angular/animations';
 
+export enum AnimationDirection {
+  LEFT = 'left',
+  RIGHT = 'right',
+  UP = 'up',
+  DOWN = 'down'
+}
+
+export interface AnimationConfig {
+  duration?: number;
+  delay?: number;
+  easing?: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -35,7 +48,7 @@ export class AnimationEnhancedService {
 
   slideIn(
     element: HTMLElement,
-    direction: 'left' | 'right' | 'up' | 'down' = 'up',
+    direction: AnimationDirection = AnimationDirection.UP,
     duration = 400,
   ) {
     if (this.prefersReducedMotion()) {
@@ -45,10 +58,10 @@ export class AnimationEnhancedService {
     }
 
     const transforms = {
-      left: 'translateX(-100%)',
-      right: 'translateX(100%)',
-      up: 'translateY(100%)',
-      down: 'translateY(-100%)',
+      [AnimationDirection.LEFT]: 'translateX(-100%)',
+      [AnimationDirection.RIGHT]: 'translateX(100%)',
+      [AnimationDirection.UP]: 'translateY(100%)',
+      [AnimationDirection.DOWN]: 'translateY(-100%)',
     };
 
     const animation = this.builder.build([
@@ -102,7 +115,7 @@ export class AnimationEnhancedService {
           this.fadeIn(element, 400, delay);
           break;
         case 'slideIn':
-          this.slideIn(element, 'up', 400);
+          this.slideIn(element, AnimationDirection.UP, 400);
           break;
       }
     });
@@ -111,8 +124,10 @@ export class AnimationEnhancedService {
   parallax(element: HTMLElement, scrollY: number, speed = 0.5) {
     if (this.prefersReducedMotion()) return;
 
-    const yPos = -(scrollY * speed);
-    element.style.transform = `translateY(${yPos}px)`;
+    requestAnimationFrame(() => {
+      const yPos = -(scrollY * speed);
+      element.style.transform = `translateY(${yPos}px)`;
+    });
   }
 
   morphText(element: HTMLElement, newText: string, duration = 500) {
@@ -133,9 +148,11 @@ export class AnimationEnhancedService {
 
     const playerOut = fadeOut.create(element);
     playerOut.onDone(() => {
-      element.textContent = newText;
-      const playerIn = fadeIn.create(element);
-      playerIn.play();
+      requestAnimationFrame(() => {
+        element.textContent = newText;
+        const playerIn = fadeIn.create(element);
+        playerIn.play();
+      });
     });
     playerOut.play();
   }

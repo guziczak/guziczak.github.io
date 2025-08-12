@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, of, throwError, timer } from 'rxjs';
 import { catchError, map, shareReplay, retry, timeout } from 'rxjs/operators';
 import { NotificationService } from './notification.service';
 
@@ -85,37 +85,79 @@ export interface Game {
   tags: string[];
 }
 
+interface CacheEntry {
+  data$: Observable<any>;
+  timestamp: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class DataService {
   private http = inject(HttpClient);
   private notificationService = inject(NotificationService);
-  private cache = new Map<string, Observable<any>>();
-  private readonly TIMEOUT_MS = 10000;
-  private readonly RETRY_COUNT = 2;
+  private cache = new Map<string, CacheEntry>();
+  
+  private readonly CONFIG = {
+    TIMEOUT_MS: 10000,
+    RETRY_COUNT: 2,
+    CACHE_TTL_MS: 5 * 60 * 1000, // 5 minutes
+    RETRY_DELAY_MS: 1000,
+    MAX_RETRY_DELAY_MS: 10000
+  };
 
   private loadData<T>(path: string): Observable<T> {
-    if (!this.cache.has(path)) {
-      const data$ = this.http.get<T>(`/data/${path}`).pipe(
-        timeout(this.TIMEOUT_MS),
-        retry(this.RETRY_COUNT),
-        shareReplay(1),
-        catchError((error) => {
-          const errorMsg = `Failed to load ${path.replace('.json', '')} data`;
-          console.error(errorMsg, error);
-          this.notificationService.error(errorMsg);
-
-          // Return empty default based on path
-          if (path.includes('.json')) {
-            return of({} as T);
-          }
-          return throwError(() => error);
-        }),
-      );
-      this.cache.set(path, data$);
+    const cached = this.cache.get(path);
+    const now = Date.now();
+    
+    // Check if cache exists and is still valid
+    if (cached && (now - cached.timestamp) < this.CONFIG.CACHE_TTL_MS) {
+      return cached.data$ as Observable<T>;
     }
-    return this.cache.get(path) as Observable<T>;
+    
+    // Clear expired cache entry
+    if (cached) {
+      this.cache.delete(path);
+    }
+    
+    const data$ = this.http.get<T>(`/data/${path}`).pipe(
+      timeout(this.CONFIG.TIMEOUT_MS),
+      this.retryWithBackoff(this.CONFIG.RETRY_COUNT),
+      shareReplay(1),
+      catchError((error) => {
+        const errorMsg = `Failed to load ${path.replace('.json', '')} data`;
+        console.error(errorMsg, error);
+        this.notificationService.error(errorMsg);
+
+        // Return empty default based on path
+        if (path.includes('.json')) {
+          return of({} as T);
+        }
+        return throwError(() => error);
+      }),
+    );
+    
+    this.cache.set(path, { data$, timestamp: now });
+    return data$;
+  }
+  
+  private retryWithBackoff<T>(maxRetries: number) {
+    let retries = 0;
+    return (source: Observable<T>) =>
+      source.pipe(
+        retry({
+          count: maxRetries,
+          delay: (error) => {
+            retries++;
+            const delay = Math.min(
+              this.CONFIG.RETRY_DELAY_MS * Math.pow(2, retries - 1),
+              this.CONFIG.MAX_RETRY_DELAY_MS
+            );
+            console.log(`Retrying after ${delay}ms (attempt ${retries}/${maxRetries})`);
+            return timer(delay);
+          }
+        })
+      );
   }
 
   clearCache(): void {

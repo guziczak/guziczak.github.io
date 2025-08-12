@@ -10,6 +10,16 @@ export class LazyLoadDirective implements OnInit, OnDestroy {
     'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"%3E%3Crect width="1" height="1" fill="%23f0f0f0"/%3E%3C/svg%3E';
 
   private observer: IntersectionObserver | null = null;
+  
+  private readonly CONFIG = {
+    ROOT_MARGIN: '50px 0px',
+    THRESHOLD: 0.01,
+    FADE_DURATION: '0.5s',
+    BLUR_INITIAL: '10px',
+    BLUR_LOADED: '0',
+    SCALE_INITIAL: 0.95,
+    SCALE_LOADED: 1
+  };
 
   constructor(private el: ElementRef<HTMLImageElement | HTMLElement>) {}
 
@@ -37,8 +47,8 @@ export class LazyLoadDirective implements OnInit, OnDestroy {
 
   private createObserver() {
     const options = {
-      rootMargin: '50px 0px', // Start loading 50px before entering viewport
-      threshold: 0.01,
+      rootMargin: this.CONFIG.ROOT_MARGIN, // Start loading 50px before entering viewport
+      threshold: this.CONFIG.THRESHOLD,
     };
 
     this.observer = new IntersectionObserver((entries) => {
@@ -91,7 +101,7 @@ export class LazyLoadDirective implements OnInit, OnDestroy {
   }
 
   private animateFadeIn(element: HTMLElement) {
-    element.style.animation = 'lazyFadeIn 0.5s ease-in-out';
+    element.style.animation = `lazyFadeIn ${this.CONFIG.FADE_DURATION} ease-in-out`;
 
     // Remove animation after completion
     element.addEventListener(
@@ -106,29 +116,38 @@ export class LazyLoadDirective implements OnInit, OnDestroy {
 
 // Export for use in components
 export function provideLazyLoadStyles(): string {
+  const config = {
+    BLUR_INITIAL: '10px',
+    BLUR_LOADED: '0',
+    TRANSITION_DURATION: '0.5s',
+    ERROR_OPACITY: 0.5,
+    SCALE_INITIAL: 0.95,
+    SCALE_LOADED: 1
+  };
+  
   return `
     .lazy-loading {
-      filter: blur(10px);
-      transition: filter 0.5s ease-in-out;
+      filter: blur(${config.BLUR_INITIAL});
+      transition: filter ${config.TRANSITION_DURATION} ease-in-out;
     }
     
     .lazy-loaded {
-      filter: blur(0);
+      filter: blur(${config.BLUR_LOADED});
     }
     
     .lazy-error {
-      filter: blur(0);
-      opacity: 0.5;
+      filter: blur(${config.BLUR_LOADED});
+      opacity: ${config.ERROR_OPACITY};
     }
     
     @keyframes lazyFadeIn {
       from {
         opacity: 0;
-        transform: scale(0.95);
+        transform: scale(${config.SCALE_INITIAL});
       }
       to {
         opacity: 1;
-        transform: scale(1);
+        transform: scale(${config.SCALE_LOADED});
       }
     }
   `;

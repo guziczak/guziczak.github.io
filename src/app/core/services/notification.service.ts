@@ -22,14 +22,18 @@ export class NotificationService {
     () => this.notifications().length > 0,
   );
 
-  private defaultDuration = 5000;
+  private readonly CONFIG = {
+    DEFAULT_DURATION_MS: 5000,
+    ERROR_DURATION_MS: 8000,
+    ID_RANDOM_LENGTH: 9
+  };
 
   show(notification: Omit<Notification, 'id'>): string {
     const id = this.generateId();
     const newNotification: Notification = {
       ...notification,
       id,
-      duration: notification.duration ?? this.defaultDuration,
+      duration: notification.duration ?? this.CONFIG.DEFAULT_DURATION_MS,
     };
 
     this.notifications.update((current) => [...current, newNotification]);
@@ -49,7 +53,7 @@ export class NotificationService {
   }
 
   error(message: string, duration?: number): string {
-    return this.show({ type: 'error', message, duration: duration ?? 8000 });
+    return this.show({ type: 'error', message, duration: duration ?? this.CONFIG.ERROR_DURATION_MS });
   }
 
   warning(message: string, duration?: number): string {
@@ -71,6 +75,6 @@ export class NotificationService {
   }
 
   private generateId(): string {
-    return `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `notification-${Date.now()}-${Math.random().toString(36).substr(2, this.CONFIG.ID_RANDOM_LENGTH)}`;
   }
 }

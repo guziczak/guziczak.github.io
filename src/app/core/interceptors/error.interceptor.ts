@@ -6,7 +6,7 @@ import { Router } from '@angular/router';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notificationService = inject(NotificationService);
-  // const router = inject(Router); // Uncomment if needed for redirect
+  const router = inject(Router);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
@@ -23,7 +23,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             break;
           case 401:
             errorMessage = 'Unauthorized. Please log in.';
-            // Redirect to login if needed
+            // Redirect to login page
+            router.navigate(['/login'], { 
+              queryParams: { returnUrl: router.url } 
+            });
             break;
           case 403:
             errorMessage = "Forbidden. You don't have permission.";
