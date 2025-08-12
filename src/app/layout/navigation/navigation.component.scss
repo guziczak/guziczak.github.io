@@ -31,8 +31,21 @@
   box-sizing: border-box;
   position: relative;
   
+  // Special handling for 80% zoom - prevent overflow
+  @media (min-width: 1950px) and (max-width: 2050px) {
+    max-width: 100%;
+    width: 100%;
+    padding: 0 0.75rem;
+    gap: 0.3rem;
+    overflow-x: hidden;
+  }
+  
   // For large screens, increase max-width
-  @media (min-width: 1920px) {
+  @media (min-width: 1920px) and (max-width: 1949px) {
+    max-width: 1600px;
+  }
+  
+  @media (min-width: 2051px) and (max-width: 2559px) {
     max-width: 1600px;
   }
   
@@ -100,11 +113,68 @@
   flex: 1;
   justify-content: center;
   
-  // Hide desktop navigation on mobile/tablet and problematic zoom levels
+  // Hide desktop navigation on mobile/tablet
   @include media-down(lg) { display: none; }
   
-  // Also hide for 75% and 80% zoom where it overflows
-  @media (min-width: 3000px) { display: none; }
+  // Special handling for 80% zoom - extreme compactness
+  @media (min-width: 1950px) and (max-width: 2050px) {
+    gap: 0.25rem;
+    padding: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .nav-item .nav-link {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.35rem;
+    }
+    
+    // Hide some nav items on 80% zoom to save space
+    .nav-item:nth-child(n+6) {
+      display: none;
+    }
+    
+    // Even more compact for certificates and CV links
+    .nav-item.cv-nav-item a {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.7rem;
+    }
+    
+    .certs-link {
+      .certs-text {
+        display: none;
+      }
+      i {
+        font-size: 0.85rem;
+      }
+    }
+  }
+  
+  // Hide only for 75% zoom and extreme cases
+  @media (min-width: 2133px) and (max-width: 2400px) {
+    // Only hide if it's actually 75% zoom
+    @media (min-resolution: 0.74dppx) and (max-resolution: 0.76dppx) {
+      display: none;
+    }
+  }
+  
+  // Compact mode for very wide viewports but keep visible
+  @media (min-width: 2400px) and (max-width: 2666px) {
+    gap: 0.35rem;
+    .nav-item .nav-link {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.4rem;
+    }
+  }
+  
+  @media (min-width: 2667px) {
+    display: none;
+  }
 }
 
 .nav-item {
@@ -172,10 +242,25 @@
   flex-shrink: 0;
   margin-left: 0.5rem;
   
+  // Compact mode for 80% zoom
+  @media (min-width: 1950px) and (max-width: 2050px) {
+    gap: 0.4rem;
+    margin-left: 0.2rem;
+    flex-shrink: 1;
+  }
+  
   button {
     @include button-reset;
     width: 48px;
     height: 48px;
+    
+    // Smaller buttons for 80% zoom
+    @media (min-width: 1950px) and (max-width: 2050px) {
+      width: 40px;
+      height: 40px;
+      
+      i { font-size: 1rem; }
+    }
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -203,6 +288,21 @@
     flex-direction: row;
     gap: 0.5rem;
     
+    // Compact for 80% zoom
+    @media (min-width: 1950px) and (max-width: 2050px) {
+      padding: 0.35rem 0.5rem;
+      gap: 0.25rem;
+      min-width: auto;
+      
+      .lang-code {
+        display: none;
+      }
+      
+      .dropdown-arrow {
+        display: none;
+      }
+    }
+    
     .lang-code {
       font-size: 0.875rem;
       font-weight: 600;
@@ -214,8 +314,17 @@
     display: none;
     @include media-down(lg) { display: flex; }
     
-    // Show mobile menu for 75% and 80% zoom
-    @media (min-width: 3000px) { display: flex; }
+    // Show mobile menu only for 75% zoom
+    @media (min-width: 2133px) and (max-width: 2400px) {
+      @media (min-resolution: 0.74dppx) and (max-resolution: 0.76dppx) {
+        display: flex;
+      }
+    }
+    
+    // Show for very wide viewports
+    @media (min-width: 2667px) {
+      display: flex;
+    }
   }
 }
 
@@ -322,16 +431,14 @@
   }
 }
 
-// Mobile menu will be shown for 75% and 80% zoom levels instead
-
 // Responsive dla ekranów 1280-1440px
 @media (min-width: 1280px) and (max-width: 1439px) {
   .nav-links { 
-    gap: 0.75rem; 
+    gap: clamp(0.5rem, 1vw, 0.75rem); 
   }
   .nav-item .nav-link {
     padding: 0.4rem 0.6rem;
-    font-size: 0.9rem;
+    font-size: clamp(0.8rem, 1vw, 0.9rem);
   }
 }
 
@@ -353,8 +460,16 @@
   }
 }
 
-// USUŃMY WSZYSTKIE PROBLEMATYCZNE MEDIA QUERIES
-// Zostawmy tylko podstawowe responsive dla tabletów i mobilek
+// Dodatkowe wsparcie dla różnych poziomów zoom
+@media (min-width: 1600px) and (max-width: 2000px) {
+  .nav-links {
+    gap: clamp(0.4rem, 1.2vw, 1rem);
+  }
+  .nav-item .nav-link {
+    font-size: clamp(0.8rem, 1.1vw, 0.9rem);
+    padding: 0.35rem 0.55rem;
+  }
+}
 
 // Language Dropdown Styles
 .language-dropdown {

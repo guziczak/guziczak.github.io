@@ -1,6 +1,7 @@
 import { Component, signal, computed, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
+import { trigger, state, style, transition, animate } from '@angular/animations';
 import { ThemeService } from '../../core/services/theme.service';
 import { LanguageService } from '../../core/services/language.service';
 import { ScrollService } from '../../core/services/scroll.service';
@@ -17,6 +18,17 @@ interface NavItem {
   selector: 'app-navigation',
   standalone: true,
   imports: [CommonModule, RouterModule, FocusTrapDirective, FlagIconComponent],
+  animations: [
+    trigger('slideIn', [
+      transition(':enter', [
+        style({ transform: 'translateX(100%)' }),
+        animate('300ms ease-out', style({ transform: 'translateX(0)' }))
+      ]),
+      transition(':leave', [
+        animate('300ms ease-in', style({ transform: 'translateX(100%)' }))
+      ])
+    ])
+  ],
   template: `
     <nav class="navbar" [class.scrolled]="isScrolled()">
       <div class="nav-container">
@@ -222,9 +234,22 @@ export class NavigationComponent {
   
   // Computed signal for responsive nav labels
   responsiveNavItems = computed(() => {
-    // Check if viewport is in the 80% zoom range
     const viewport = window.innerWidth;
-    if (viewport >= 2000 && viewport <= 2200) {
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    
+    // Special handling for 80% zoom (viewport ~2000px)
+    if (viewport >= 1900 && viewport <= 2100) {
+      return this.navItems.map(item => ({
+        ...item,
+        label: item.label === 'Achievements' ? 'Awards' :
+               item.label === 'Testimonials' ? 'Reviews' :
+               item.label === 'Projects' ? 'Work' :
+               item.label
+      }));
+    }
+    
+    // For wider viewports that still need shorter labels
+    if (viewport > 2100 && viewport <= 2400) {
       return this.navItems.map(item => ({
         ...item,
         label: item.label === 'Achievements' ? 'Awards' :
@@ -232,6 +257,18 @@ export class NavigationComponent {
                item.label
       }));
     }
+    
+    // For constrained spaces at normal zoom
+    if (viewport >= 1024 && viewport < 1400) {
+      return this.navItems.map(item => ({
+        ...item,
+        label: item.label === 'Achievements' ? 'Awards' :
+               item.label === 'Testimonials' ? 'Reviews' :
+               item.label === 'Projects' ? 'Work' :
+               item.label
+      }));
+    }
+    
     return this.navItems;
   });
 
