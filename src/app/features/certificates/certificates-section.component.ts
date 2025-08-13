@@ -446,6 +446,9 @@ export class CertificatesSectionComponent {
   // Handle logo error
   onLogoError(event: Event): void {
     const img = event.target as HTMLImageElement;
-    img.src = 'assets/images/certificates/default-logo.png';
+    // Use a data URL for default logo to avoid 404 and infinite loop
+    img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"%3E%3Crect fill="%23f3f4f6" width="60" height="60" rx="8"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="system-ui" font-size="24"%3E%3F%3C/text%3E%3C/svg%3E';
+    // Remove the error handler to prevent infinite loop
+    img.onerror = null;
   }
 }

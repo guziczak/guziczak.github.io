@@ -315,8 +315,19 @@ export class NavigationComponent {
   }
 
   async selectLanguage(lang: 'en' | 'pl' | 'de'): Promise<void> {
+    // Add animation class to body for global transition
+    document.body.classList.add('language-changing');
+    
+    // Longer delay for fade out animation to complete
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     this.languageService.setLanguage(lang);
     this.isLanguageDropdownOpen.set(false);
+    
+    // Remove animation class after transition
+    setTimeout(() => {
+      document.body.classList.remove('language-changing');
+    }, 400);
   }
 
   getCurrentLanguageName(): string {

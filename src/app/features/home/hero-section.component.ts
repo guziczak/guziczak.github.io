@@ -4,13 +4,14 @@ import { RouterModule } from '@angular/router';
 import { LanguageService } from '../../core/services/language.service';
 import { ScrollService } from '../../core/services/scroll.service';
 import { AnimatedTranslatePipe } from '../../shared/pipes/animated-translate.pipe';
+import { LanguageTransitionDirective } from '../../shared/directives/language-transition.directive';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
 import { PoweredByComponent } from '../../shared/ui/powered-by/powered-by.component';
 
 @Component({
   selector: 'app-hero-section',
   standalone: true,
-  imports: [CommonModule, RouterModule, AnimatedTranslatePipe, PoweredByComponent],
+  imports: [CommonModule, RouterModule, AnimatedTranslatePipe, LanguageTransitionDirective, PoweredByComponent],
   template: `
     <section class="hero" id="home">
       <!-- Animated background particles -->

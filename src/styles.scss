@@ -226,6 +226,49 @@ button {
   }
 }
 
+// Language change animations
+body.language-changing {
+  // Main content areas fade out and drop slightly
+  .hero-title,
+  .hero-subtitle,
+  .hero-description,
+  .section-title,
+  .section-content,
+  p, h1, h2, h3, h4, h5, h6,
+  .btn, button, a,
+  span, li, td, th, label {
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.6, 1),
+                transform 0.3s cubic-bezier(0.4, 0, 0.6, 1) !important;
+    opacity: 0 !important;
+    transform: translateY(8px) !important;
+  }
+}
+
+// After language change - fade in and rise
+body:not(.language-changing) {
+  .hero-title,
+  .hero-subtitle,
+  .hero-description,
+  .section-title,
+  .section-content,
+  p, h1, h2, h3, h4, h5, h6,
+  .btn, button, a,
+  span, li, td, th, label {
+    animation: fadeInUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 // Reduced motion
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -234,5 +277,9 @@ button {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  
+  body.language-changing * {
+    transition: none !important;
   }
 }

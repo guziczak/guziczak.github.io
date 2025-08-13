@@ -414,6 +414,9 @@ export class ProjectsSectionComponent {
   // Handle image error
   onImageError(event: Event): void {
     const img = event.target as HTMLImageElement;
-    img.src = 'assets/images/projects/placeholder.jpg';
+    // Use a data URL for placeholder to avoid 404
+    img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"%3E%3Crect fill="%23f3f4f6" width="400" height="300"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239ca3af" font-family="system-ui" font-size="20"%3EProject Image%3C/text%3E%3C/svg%3E';
+    // Remove the error handler to prevent infinite loop
+    img.onerror = null;
   }
 }
