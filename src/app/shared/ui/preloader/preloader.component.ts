@@ -350,6 +350,7 @@ export class PreloaderComponent implements OnInit {
     'Implementing best antipatterns...',
     'Centering divs...',
     'Writing page in flight, please wait...',
+    'Hallucinating (just a little bit)...',
   ];
 
   private messageIntervalId?: number;
