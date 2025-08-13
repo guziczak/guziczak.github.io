@@ -209,6 +209,16 @@ def copy_to_root():
             shutil.copytree(src_folder, dst_folder)
             print(f"   📁 Copied folder: {folder_name}/")
     
+    # CRITICAL FIX: Ensure translations are in BOTH locations for compatibility
+    # Angular looks for them in assets/i18n/
+    src_translations = Path("src/assets/i18n")
+    if src_translations.exists():
+        dst_i18n = Path("assets/i18n")
+        if dst_i18n.exists():
+            shutil.rmtree(dst_i18n)
+        shutil.copytree(src_translations, dst_i18n)
+        print(f"   📁 Fixed translations: assets/i18n/")
+    
     print(f"   📄 Copied all root files")
     print_success(f"Entire build copied to root - ready to serve!")
     return True
