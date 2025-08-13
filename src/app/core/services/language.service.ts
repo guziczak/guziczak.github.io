@@ -68,6 +68,11 @@ export class LanguageService {
    * Get translation for a key with nested path support
    */
   t(key: string, params?: Record<string, any>): string {
+    // Don't warn about missing translations during initial load
+    if (this.isLoading() || Object.keys(this.translations()).length === 0) {
+      return key;
+    }
+
     const translation = this.getNestedTranslation(key);
 
     if (!translation) {
