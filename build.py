@@ -170,38 +170,10 @@ def minify_json_files():
         print_success(f"Minified {count} JSON files, saved {saved/1024:.1f} KB")
     return True
 
-def create_gzip_files():
-    """Create gzipped versions"""
-    print_step("🗜️", "CREATING GZIP FILES")
-    
-    dist_path = Path("dist/lukasz-portfolio/browser")
-    extensions = ['.js', '.css', '.html', '.json', '.svg', '.xml', '.txt']
-    count = 0
-    total_saved = 0
-    
-    for file_path in dist_path.rglob('*'):
-        if file_path.is_file() and file_path.suffix in extensions:
-            if file_path.suffix == '.gz':
-                continue
-            
-            original_size = file_path.stat().st_size
-            
-            # Only compress files > 1KB
-            if original_size > 1024:
-                gz_path = file_path.with_suffix(file_path.suffix + '.gz')
-                
-                with open(file_path, 'rb') as f_in:
-                    with gzip.open(gz_path, 'wb', compresslevel=9) as f_out:
-                        f_out.write(f_in.read())
-                
-                compressed_size = gz_path.stat().st_size
-                saved = original_size - compressed_size
-                
-                if saved > 0:
-                    total_saved += saved
-                    count += 1
-    
-    print_success(f"Created {count} gzip files, saved {total_saved/1024/1024:.2f} MB")
+def skip_gzip_files():
+    """Skip creating gzip files - not needed for local development"""
+    print_step("🗜️", "SKIPPING GZIP FILES")
+    print_info("Gzip files not needed for local development/IntelliJ")
     return True
 
 def copy_to_root():
@@ -252,19 +224,17 @@ def print_summary():
         total_size = sum(f.stat().st_size for f in dist_path.rglob('*') if f.is_file())
         js_files = list(dist_path.glob("*.js"))
         css_files = list(dist_path.glob("*.css"))
-        gz_files = list(dist_path.rglob("*.gz"))
         
         print(f"\n   📁 Build location: {BOLD}{dist_path}{RESET}")
         print(f"   📦 Total size: {BOLD}{total_size/1024/1024:.2f} MB{RESET}")
         print(f"   📜 JavaScript files: {len(js_files)}")
         print(f"   🎨 CSS files: {len(css_files)}")
-        print(f"   🗜️  Gzip files: {len(gz_files)}")
         
         # Find largest files
         print(f"\n   {BOLD}Largest files:{RESET}")
         files_with_size = []
         for f in dist_path.rglob('*'):
-            if f.is_file() and not f.suffix in ['.gz', '.br']:
+            if f.is_file():
                 files_with_size.append((f.stat().st_size, f))
         
         files_with_size.sort(reverse=True)
@@ -285,7 +255,7 @@ def main():
         install_deps,
         build_angular,
         minify_json_files,
-        create_gzip_files,
+        skip_gzip_files,  # Changed - no more gzip files
         copy_to_root
     ]
     
