@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LanguageTransitionDirective } from '../../directives/language-transition.directive';
 
 @Component({
   selector: 'app-powered-by',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, LanguageTransitionDirective],
   template: `
     <div class="powered-by">
       <span class="powered-text">Powered by</span>

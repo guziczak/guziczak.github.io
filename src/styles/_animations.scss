@@ -1,0 +1,162 @@
+// Global animation mixins and classes
+
+// Smooth fade transitions for language changes
+@mixin language-transition {
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+// Language change animation states
+.language-changing {
+  * {
+    @include language-transition;
+  }
+  
+  // Stagger animations for better UX
+  .hero-title { transition-delay: 0ms; }
+  .hero-subtitle { transition-delay: 50ms; }
+  .hero-description { transition-delay: 100ms; }
+  .btn { transition-delay: 150ms; }
+  .hero-powered-by { transition-delay: 200ms; }
+  .powered-by { transition-delay: 200ms; }
+  .social-btn { transition-delay: 250ms; }
+  
+  // Fade out state
+  &.fade-out {
+    .hero-title,
+    .hero-subtitle,
+    .hero-description,
+    .btn,
+    .hero-powered-by,
+    .powered-by,
+    .social-btn,
+    [appLanguageTransition] {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  
+  // Fade in state
+  &.fade-in {
+    .hero-title,
+    .hero-subtitle,
+    .hero-description,
+    .btn,
+    .hero-powered-by,
+    .powered-by,
+    .social-btn,
+    [appLanguageTransition] {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+// Skeleton loading animation
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-secondary) 25%,
+    var(--bg-tertiary) 50%,
+    var(--bg-secondary) 75%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+// Content placeholder during language change
+.content-placeholder {
+  min-height: 1.5em;
+  border-radius: 4px;
+  @extend .skeleton;
+  
+  &.title { min-height: 2.5em; }
+  &.subtitle { min-height: 2em; }
+  &.paragraph { min-height: 4em; }
+}
+
+// Smooth scroll behavior
+html {
+  scroll-behavior: smooth;
+}
+
+// Disable animations for users who prefer reduced motion
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+// Page transition animations
+.page-transition {
+  &-enter {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  
+  &-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+  }
+  
+  &-exit {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  &-exit-active {
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.3s ease-in, transform 0.3s ease-in;
+  }
+}
+
+// Stagger animation for lists
+@mixin stagger-animation($delay: 50ms, $max-items: 20) {
+  @for $i from 1 through $max-items {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * $delay};
+    }
+  }
+}
+
+.stagger-item {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.5s ease-out forwards;
+  @include stagger-animation(50ms, 20);
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Micro-interactions
+.interactive {
+  transition: transform 0.2s ease-out;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+  
+  &:active {
+    transform: scale(0.98);
+  }
+}

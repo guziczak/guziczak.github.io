@@ -53,7 +53,7 @@ import { PoweredByComponent } from '../../shared/ui/powered-by/powered-by.compon
             </h2>
             <p class="hero-description" appLanguageTransition>{{ 'hero.description' | animatedTranslate }}</p>
             
-            <div class="hero-powered-by">
+            <div class="hero-powered-by" appLanguageTransition>
               <app-powered-by></app-powered-by>
             </div>
 
