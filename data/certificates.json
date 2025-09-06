@@ -1,1 +1,64 @@
-{"certificates":[{"id":1,"name":"Web Applications with AngularJS","issuer":"The Johns Hopkins University","date":"Jun 2024","credential":"MNTRXU6AZV6U","skills":["AngularJS","JavaScript","CSS","HTML"],"category":"Web Development","logo":"/assets/images/certificates/johns-hopkins.png"},{"id":2,"name":"Foundations: Data, Data, Everywhere","issuer":"Google","date":"Jan 2023","credential":"9APHJHP9KE9H","skills":["Data Analysis"],"category":"Data Science","logo":"/assets/images/certificates/google.png"},{"id":3,"name":"Machine Learning","issuer":"Stanford University","date":"Aug 2022","credential":"W88ME7FTDEJH","skills":["Machine Learning"],"category":"Artificial Intelligence","logo":"/assets/images/certificates/stanford.png"},{"id":4,"name":"Luxoft Java Academy","issuer":"Luxoft","date":"Aug 2022","credential":"","skills":["Java","Spring Framework"],"category":"Software Development","logo":"/assets/images/certificates/luxoft.png"},{"id":5,"name":"EAS-026 Kafka Fundamentals","issuer":"Luxoft","date":"May 2022","credential":"","skills":["Kafka","Messaging","Distributed Systems"],"category":"Software Development","logo":"/assets/images/certificates/luxoft.png"},{"id":6,"name":"Java Programming Masterclass","issuer":"Udemy","date":"Dec 2021","credential":"UC-fbb8c104-5f3d-405a-8644-3b6e7b8d1657","skills":["Java","OOP"],"category":"Programming","logo":"/assets/images/certificates/udemy.png"}]}
+{
+  "certificates": [
+    {
+      "id": 1,
+      "name": "Web Applications with AngularJS",
+      "issuer": "The Johns Hopkins University",
+      "date": "Jun 2024",
+      "credential": "MNTRXU6AZV6U",
+      "skills": ["AngularJS", "JavaScript", "CSS", "HTML"],
+      "category": "Web Development",
+      "logo": "/assets/images/certificates/johns-hopkins.png"
+    },
+    {
+      "id": 2,
+      "name": "Foundations: Data, Data, Everywhere",
+      "issuer": "Google",
+      "date": "Jan 2023",
+      "credential": "9APHJHP9KE9H",
+      "skills": ["Data Analysis"],
+      "category": "Data Science",
+      "logo": "/assets/images/certificates/google.png"
+    },
+    {
+      "id": 3,
+      "name": "Machine Learning",
+      "issuer": "Stanford University",
+      "date": "Aug 2022",
+      "credential": "W88ME7FTDEJH",
+      "skills": ["Machine Learning"],
+      "category": "Artificial Intelligence",
+      "logo": "/assets/images/certificates/stanford.png"
+    },
+    {
+      "id": 4,
+      "name": "Luxoft Java Academy",
+      "issuer": "Luxoft",
+      "date": "Aug 2022",
+      "credential": "",
+      "skills": ["Java", "Spring Framework"],
+      "category": "Software Development",
+      "logo": "/assets/images/certificates/luxoft.png"
+    },
+    {
+      "id": 5,
+      "name": "EAS-026 Kafka Fundamentals",
+      "issuer": "Luxoft",
+      "date": "May 2022",
+      "credential": "",
+      "skills": ["Kafka", "Messaging", "Distributed Systems"],
+      "category": "Software Development",
+      "logo": "/assets/images/certificates/luxoft.png"
+    },
+    {
+      "id": 6,
+      "name": "Java Programming Masterclass",
+      "issuer": "Udemy",
+      "date": "Dec 2021",
+      "credential": "UC-fbb8c104-5f3d-405a-8644-3b6e7b8d1657",
+      "skills": ["Java", "OOP"],
+      "category": "Programming",
+      "logo": "/assets/images/certificates/udemy.png"
+    }
+  ]
+}

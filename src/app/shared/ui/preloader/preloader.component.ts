@@ -302,6 +302,7 @@ export class PreloaderComponent implements OnInit {
     'Deploying rubber ducks...',
     'Refactoring the universe...',
     'Warming up the flux capacitor...',
+    'Refueling the rocket...',
     'Dividing by zero... wait, no!',
     'Implementing best practices...',
     'Loading awesome content...',
