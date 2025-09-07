@@ -58,6 +58,7 @@
               "budgets": []
             },
             "production": {
+              "baseHref": "/",
               "budgets": [
                 {
                   "type": "initial",
