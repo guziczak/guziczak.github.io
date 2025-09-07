@@ -85,9 +85,9 @@ def build_production():
     print_info("Building production version with minification...")
     
     try:
-        # Build with relative base href for compatibility
+        # Build with absolute base href for GitHub Pages user site
         result = subprocess.run(
-            ['npm', 'run', 'build', '--', '--configuration', 'production', '--base-href=./'],
+            ['npm', 'run', 'build', '--', '--configuration', 'production', '--base-href=/'],
             capture_output=True,
             text=True
         )
@@ -166,7 +166,7 @@ def minify_html(content):
     return content
 
 def fix_base_href():
-    """Fix base href in index.html to use relative path and minify"""
+    """Fix base href in index.html to use absolute path for GitHub Pages and minify"""
     print_info("Fixing base href and minifying HTML...")
     
     index_file = Path('index.html')
@@ -179,10 +179,10 @@ def fix_base_href():
         content = index_file.read_text(encoding='utf-8')
         original_size = len(content)
         
-        # Replace base href with relative path
+        # Replace base href with absolute path for GitHub Pages user site
         content = re.sub(
             r'<base href="[^"]*">',
-            '<base href="./">',
+            '<base href="/">',
             content
         )
         
@@ -194,7 +194,7 @@ def fix_base_href():
         
         reduction = ((original_size - new_size) / original_size) * 100
         print_status(f"HTML minified (reduced by {reduction:.1f}%)")
-        print_status("Base href updated to relative path")
+        print_status("Base href updated to absolute path (/)")
         return True
         
     except Exception as e:
@@ -371,7 +371,7 @@ def main():
     
     print_status("Build minified and optimized")
     print_status("Files copied to root directory")
-    print_status("Base href set to relative path (./)")
+    print_status("Base href set to absolute path (/)")
     print_status("GitHub Pages configuration added")
     
     print("\n📋 Next steps:")
