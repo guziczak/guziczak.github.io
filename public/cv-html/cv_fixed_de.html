@@ -248,6 +248,9 @@ ol[role="list"] {
     font-size: var(--font-size-sm);
     font-weight: 500;
     color: #9ca3af;
+    /* Must outrank .sidebar (z-index: 10) and .main (z-index: 5) so the
+       page number stays visible in the bottom-right corner */
+    z-index: 100;
 }
 
 /* ==========================================================================
