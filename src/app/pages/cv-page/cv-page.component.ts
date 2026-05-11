@@ -614,7 +614,7 @@ export class CvPageComponent implements OnInit {
   private static readonly CV_PDF_BY_LANG: Record<string, string> = {
     en: '/cv_en.pdf',
     pl: '/cv_pl.pdf',
-    de: '/cv_en.pdf', // no DE PDF yet — fallback to EN
+    de: '/cv_de.pdf',
   };
 
   cvIframeUrl = computed<SafeResourceUrl>(() => {

@@ -1976,6 +1976,14 @@ ol[role="list"] {
   }
   fit();
   window.addEventListener('resize', fit);
+  // Reset on print so the PDF/print output uses the desktop layout
+  window.addEventListener('beforeprint', function () {
+    document.body.style.transform = '';
+    document.body.style.transformOrigin = '';
+    document.documentElement.style.height = '';
+    document.documentElement.style.overflow = '';
+  });
+  window.addEventListener('afterprint', fit);
 })();
 </script>
 
