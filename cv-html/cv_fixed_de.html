@@ -188,7 +188,8 @@ ol[role="list"] {
     margin: 0;
     background: var(--color-bg-white);
     overflow: hidden;
-    page-break-after: always;
+    /* No page-break-after — that would force an extra blank page after the
+       last .page. Page splitting is driven by page-break-before on .page--break. */
 }
 
 .page--break {
@@ -229,7 +230,10 @@ ol[role="list"] {
 
 @media print {
     .page--break {
-        margin-block-start: 20px;
+        /* page-break-before already starts a new physical page;
+           any margin here would push content off the bottom of A4
+           and create a phantom 3rd page */
+        margin-block-start: 0;
     }
     .page--break::before,
     .page--break::after {
@@ -1225,14 +1229,15 @@ ol[role="list"] {
    19. Print Styles
    ========================================================================== */
 
+@page {
+    size: A4;
+    margin: 0;
+}
+
 @media print {
     body {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-    }
-
-    .page {
-        page-break-after: always;
     }
 
     .page--break {
@@ -1960,12 +1965,19 @@ ol[role="list"] {
   // whitespace. Fix: read the natural content height, then set html to
   // (content × scale) with overflow: hidden so the scroll matches what's seen.
   var A4_PX = 794; // 210mm at 96dpi
+  function inPrintMode() {
+    return window.matchMedia && window.matchMedia('print').matches;
+  }
   function fit() {
-    var w = document.documentElement.clientWidth;
-    // Reset first so we measure the natural (unscaled) height
+    // Always reset first; we re-apply scaling only if needed for screen
     document.body.style.transform = '';
+    document.body.style.transformOrigin = '';
     document.documentElement.style.height = '';
     document.documentElement.style.overflow = '';
+    // Don't apply mobile scaling while printing — headless --print-to-pdf
+    // does not always fire beforeprint, so guard explicitly via matchMedia
+    if (inPrintMode()) return;
+    var w = document.documentElement.clientWidth;
     if (w >= A4_PX) return;
     var scale = w / A4_PX;
     var naturalHeight = document.body.scrollHeight;
