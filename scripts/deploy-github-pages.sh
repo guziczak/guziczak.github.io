@@ -65,6 +65,7 @@ PRESERVE=(
     "playwright.config.ts"
     "karma.conf.js"
     "sonnet"
+    "ngsw-config.json"
 )
 
 # Remove all files in root except preserved ones

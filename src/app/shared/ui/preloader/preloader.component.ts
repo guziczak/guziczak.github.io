@@ -359,9 +359,39 @@ export class PreloaderComponent implements OnInit {
   private messageIndex = 0;
   private hasShownEasterEgg = false;
 
+  private static readonly STORAGE_KEY = 'preloader-seen-at';
+  private static readonly TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
   ngOnInit() {
+    if (this.wasSeenRecently()) {
+      this.isVisible.set(false);
+      return;
+    }
     this.simulateLoading();
     this.startMessageRotation();
+  }
+
+  private wasSeenRecently(): boolean {
+    try {
+      const raw = localStorage.getItem(PreloaderComponent.STORAGE_KEY);
+      if (!raw) return false;
+      const seenAt = parseInt(raw, 10);
+      if (isNaN(seenAt)) return false;
+      return Date.now() - seenAt < PreloaderComponent.TTL_MS;
+    } catch {
+      return false;
+    }
+  }
+
+  private markAsSeen(): void {
+    try {
+      localStorage.setItem(
+        PreloaderComponent.STORAGE_KEY,
+        Date.now().toString(),
+      );
+    } catch {
+      // storage unavailable (private mode, quota) — silently skip
+    }
   }
 
   private startMessageRotation() {
@@ -445,6 +475,8 @@ export class PreloaderComponent implements OnInit {
     if (this.messageIntervalId) {
       clearInterval(this.messageIntervalId);
     }
+
+    this.markAsSeen();
 
     // First set hidden class for fade out animation
     this.isHidden.set(true);
