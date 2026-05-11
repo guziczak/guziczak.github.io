@@ -1912,10 +1912,23 @@ ol[role="list"] {
 
 <script>
 (function () {
-  var A4_PX = 794;
+  // CSS `zoom` is unsupported on iOS Safari, so we use `transform: scale()`.
+  // We scale the body and shrink the html height to match so there's no empty
+  // space below the scaled content.
+  var A4_PX = 794;        // 210mm at 96dpi
+  var A4_FULL_HEIGHT = 2246; // 2 pages × 297mm at 96dpi + margins
   function fit() {
     var w = document.documentElement.clientWidth;
-    document.documentElement.style.zoom = w < A4_PX ? (w / A4_PX) : 1;
+    if (w >= A4_PX) {
+      document.body.style.transform = '';
+      document.body.style.transformOrigin = '';
+      document.documentElement.style.minHeight = '';
+      return;
+    }
+    var scale = w / A4_PX;
+    document.body.style.transform = 'scale(' + scale + ')';
+    document.body.style.transformOrigin = 'top left';
+    document.documentElement.style.minHeight = (A4_FULL_HEIGHT * scale) + 'px';
   }
   fit();
   window.addEventListener('resize', fit);
