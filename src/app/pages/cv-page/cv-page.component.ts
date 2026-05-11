@@ -1,6 +1,7 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import {
   DataService,
   Experience,
@@ -201,25 +202,14 @@ import { LanguageService } from '../../core/services/language.service';
             </button>
           </div>
           <div class="cv-preview-container">
-            @if (currentLang() === 'en') {
-              <div class="cv-slides">
-                <img src="/cv_en/Slide1.PNG" alt="CV Page 1" class="cv-slide" />
-                <img src="/cv_en/Slide2.PNG" alt="CV Page 2" class="cv-slide" />
-              </div>
-            } @else {
-              <div class="cv-slides">
-                <img
-                  src="/cv_pl/Slide1.PNG"
-                  alt="CV Strona 1"
-                  class="cv-slide"
-                />
-                <img
-                  src="/cv_pl/Slide2.PNG"
-                  alt="CV Strona 2"
-                  class="cv-slide"
-                />
-              </div>
-            }
+            <div class="cv-iframe-wrapper">
+              <iframe
+                [src]="cvIframeUrl()"
+                class="cv-iframe"
+                title="CV"
+                loading="lazy"
+              ></iframe>
+            </div>
           </div>
         </section>
       </div>
@@ -543,15 +533,29 @@ import { LanguageService } from '../../core/services/language.service';
         padding: 20px;
       }
 
-      .cv-slides {
-        display: grid;
-        gap: 20px;
+      .cv-iframe-wrapper {
+        position: relative;
+        width: 100%;
+        max-width: 794px;
+        margin: 0 auto;
+        aspect-ratio: 794 / 2246;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        background: white;
       }
 
-      .cv-slide {
+      .cv-iframe {
         width: 100%;
-        border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        height: 100%;
+        border: 0;
+        display: block;
+      }
+
+      @media (max-width: 820px) {
+        .cv-iframe-wrapper {
+          max-width: 100%;
+        }
       }
 
       @media (max-width: 768px) {
@@ -586,11 +590,20 @@ import { LanguageService } from '../../core/services/language.service';
 export class CvPageComponent implements OnInit {
   private dataService = inject(DataService);
   private languageService = inject(LanguageService);
+  private sanitizer = inject(DomSanitizer);
 
   experience = signal<Experience[]>([]);
   education = signal<Education[]>([]);
   skills = signal<SkillCategory[]>([]);
   currentLang = signal<'en' | 'pl'>('en');
+
+  cvIframeUrl = computed<SafeResourceUrl>(() => {
+    const path =
+      this.currentLang() === 'en'
+        ? '/cv-html/cv_fixed.html'
+        : '/cv-html/cv_fixed_pl.html';
+    return this.sanitizer.bypassSecurityTrustResourceUrl(path);
+  });
 
   ngOnInit() {
     this.loadData();

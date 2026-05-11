@@ -1,6 +1,15 @@
-import { Component, signal, OnInit } from '@angular/core';
+import {
+  Component,
+  signal,
+  computed,
+  OnInit,
+  ViewChild,
+  ElementRef,
+  inject,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-cv-print-page',
@@ -34,43 +43,14 @@ import { RouterLink } from '@angular/router';
       </div>
 
       <div class="cv-print-content">
-        @if (currentLang() === 'en') {
-          <div class="cv-pages">
-            <div class="cv-page-wrapper">
-              <img
-                src="/cv_en/Slide1.PNG"
-                alt="CV Page 1"
-                class="cv-page-image"
-              />
-            </div>
-            <div class="page-break"></div>
-            <div class="cv-page-wrapper">
-              <img
-                src="/cv_en/Slide2.PNG"
-                alt="CV Page 2"
-                class="cv-page-image"
-              />
-            </div>
-          </div>
-        } @else {
-          <div class="cv-pages">
-            <div class="cv-page-wrapper">
-              <img
-                src="/cv_pl/Slide1.PNG"
-                alt="CV Strona 1"
-                class="cv-page-image"
-              />
-            </div>
-            <div class="page-break"></div>
-            <div class="cv-page-wrapper">
-              <img
-                src="/cv_pl/Slide2.PNG"
-                alt="CV Strona 2"
-                class="cv-page-image"
-              />
-            </div>
-          </div>
-        }
+        <div class="cv-iframe-wrapper">
+          <iframe
+            #cvFrame
+            [src]="cvIframeUrl()"
+            class="cv-iframe"
+            title="CV"
+          ></iframe>
+        </div>
       </div>
     </div>
   `,
@@ -153,31 +133,25 @@ import { RouterLink } from '@angular/router';
       }
 
       .cv-print-content {
-        padding-top: 100px;
+        padding: 100px 20px 40px;
         max-width: 850px;
         margin: 0 auto;
       }
 
-      .cv-pages {
-        background: white;
-        padding: 20px;
-      }
-
-      .cv-page-wrapper {
-        margin-bottom: 40px;
-        page-break-after: always;
-      }
-
-      .cv-page-image {
+      .cv-iframe-wrapper {
         width: 100%;
-        height: auto;
-        display: block;
+        max-width: 794px;
+        margin: 0 auto;
+        aspect-ratio: 794 / 2246;
+        background: white;
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
       }
 
-      .page-break {
+      .cv-iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
         display: block;
-        height: 40px;
       }
 
       @media print {
@@ -186,28 +160,15 @@ import { RouterLink } from '@angular/router';
         }
 
         .cv-print-content {
-          padding-top: 0;
-        }
-
-        .cv-pages {
           padding: 0;
-          background: none;
+          max-width: none;
         }
 
-        .cv-page-wrapper {
-          margin-bottom: 0;
-          page-break-after: always;
-        }
-
-        .cv-page-image {
+        .cv-iframe-wrapper {
+          aspect-ratio: auto;
+          height: 100vh;
           box-shadow: none;
-          max-height: 100vh;
-          width: auto;
-        }
-
-        .page-break {
-          page-break-after: always;
-          height: 0;
+          max-width: none;
         }
 
         body {
@@ -231,10 +192,20 @@ import { RouterLink } from '@angular/router';
   ],
 })
 export class CvPrintPageComponent implements OnInit {
+  private sanitizer = inject(DomSanitizer);
+  @ViewChild('cvFrame') cvFrame?: ElementRef<HTMLIFrameElement>;
+
   currentLang = signal<'en' | 'pl'>('en');
 
+  cvIframeUrl = computed<SafeResourceUrl>(() => {
+    const path =
+      this.currentLang() === 'en'
+        ? '/cv-html/cv_fixed.html'
+        : '/cv-html/cv_fixed_pl.html';
+    return this.sanitizer.bypassSecurityTrustResourceUrl(path);
+  });
+
   ngOnInit() {
-    // Get language from localStorage or default to 'en'
     const savedLang = localStorage.getItem('cv-language') as 'en' | 'pl';
     if (savedLang) {
       this.currentLang.set(savedLang);
@@ -247,6 +218,12 @@ export class CvPrintPageComponent implements OnInit {
   }
 
   printPage() {
-    window.print();
+    const frame = this.cvFrame?.nativeElement;
+    if (frame?.contentWindow) {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } else {
+      window.print();
+    }
   }
 }
