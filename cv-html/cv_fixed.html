@@ -1913,22 +1913,25 @@ ol[role="list"] {
 <script>
 (function () {
   // CSS `zoom` is unsupported on iOS Safari, so we use `transform: scale()`.
-  // We scale the body and shrink the html height to match so there's no empty
-  // space below the scaled content.
-  var A4_PX = 794;        // 210mm at 96dpi
-  var A4_FULL_HEIGHT = 2246; // 2 pages × 297mm at 96dpi + margins
+  // Caveat: transform doesn't change layout — body still claims its original
+  // ~2246px in the document flow even when visually scaled to ~1060px.
+  // Without clamping, the iframe scrolls past the visible content into blank
+  // whitespace. Fix: read the natural content height, then set html to
+  // (content × scale) with overflow: hidden so the scroll matches what's seen.
+  var A4_PX = 794; // 210mm at 96dpi
   function fit() {
     var w = document.documentElement.clientWidth;
-    if (w >= A4_PX) {
-      document.body.style.transform = '';
-      document.body.style.transformOrigin = '';
-      document.documentElement.style.minHeight = '';
-      return;
-    }
+    // Reset first so we measure the natural (unscaled) height
+    document.body.style.transform = '';
+    document.documentElement.style.height = '';
+    document.documentElement.style.overflow = '';
+    if (w >= A4_PX) return;
     var scale = w / A4_PX;
+    var naturalHeight = document.body.scrollHeight;
     document.body.style.transform = 'scale(' + scale + ')';
     document.body.style.transformOrigin = 'top left';
-    document.documentElement.style.minHeight = (A4_FULL_HEIGHT * scale) + 'px';
+    document.documentElement.style.height = (naturalHeight * scale) + 'px';
+    document.documentElement.style.overflow = 'hidden';
   }
   fit();
   window.addEventListener('resize', fit);
