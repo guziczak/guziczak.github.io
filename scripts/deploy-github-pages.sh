@@ -89,6 +89,11 @@ done
 print_status "Copying build files to root directory..."
 cp -r dist/lukasz-portfolio/browser/* .
 
+# Step 4b: SPA fallback for GitHub Pages — copy index.html to 404.html
+# so deep links like /cv, /certificates resolve to the Angular app
+print_status "Creating 404.html SPA fallback..."
+cp index.html 404.html
+
 # Step 4a: Ensure i18n files are copied
 if [ ! -d "assets/i18n" ]; then
     print_status "Copying i18n translations..."
