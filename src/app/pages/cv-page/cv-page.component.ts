@@ -73,24 +73,9 @@ import { LanguageService } from '../../core/services/language.service';
           </div>
         </header>
 
-        <!-- CV Preview Section — surfaced first so recruiters see the CV immediately -->
+        <!-- CV Preview Section — surfaced first so recruiters see the CV immediately.
+             Language follows the global LanguageService (nav dropdown). -->
         <section class="cv-preview-section cv-preview-section--top">
-          <div class="cv-preview-tabs">
-            <button
-              class="tab-btn"
-              [class.active]="currentLang() === 'en'"
-              (click)="switchLanguage('en')"
-            >
-              English Version
-            </button>
-            <button
-              class="tab-btn"
-              [class.active]="currentLang() === 'pl'"
-              (click)="switchLanguage('pl')"
-            >
-              Polish Version
-            </button>
-          </div>
           <div class="cv-preview-container">
             <div class="cv-iframe-wrapper">
               <iframe
@@ -616,19 +601,31 @@ export class CvPageComponent implements OnInit {
   experience = signal<Experience[]>([]);
   education = signal<Education[]>([]);
   skills = signal<SkillCategory[]>([]);
-  currentLang = signal<'en' | 'pl'>('en');
+
+  // Reactive: follows the global language (en/pl/de) from LanguageService
+  currentLang = this.languageService.currentLanguage;
+
+  private static readonly CV_HTML_BY_LANG: Record<string, string> = {
+    en: '/cv-html/cv_fixed.html',
+    pl: '/cv-html/cv_fixed_pl.html',
+    de: '/cv-html/cv_fixed_de.html',
+  };
+
+  private static readonly CV_PDF_BY_LANG: Record<string, string> = {
+    en: '/cv_en.pdf',
+    pl: '/cv_pl.pdf',
+    de: '/cv_en.pdf', // no DE PDF yet — fallback to EN
+  };
 
   cvIframeUrl = computed<SafeResourceUrl>(() => {
     const path =
-      this.currentLang() === 'en'
-        ? '/cv-html/cv_fixed.html'
-        : '/cv-html/cv_fixed_pl.html';
+      CvPageComponent.CV_HTML_BY_LANG[this.currentLang()] ??
+      CvPageComponent.CV_HTML_BY_LANG['en'];
     return this.sanitizer.bypassSecurityTrustResourceUrl(path);
   });
 
   ngOnInit() {
     this.loadData();
-    this.currentLang.set(this.languageService.currentLanguage() as 'en' | 'pl');
   }
 
   private loadData() {
@@ -645,12 +642,10 @@ export class CvPageComponent implements OnInit {
     });
   }
 
-  switchLanguage(lang: 'en' | 'pl') {
-    this.currentLang.set(lang);
-  }
-
   downloadCV() {
-    const cvUrl = this.currentLang() === 'en' ? '/cv_en.pdf' : '/cv_pl.pdf';
-    window.open(cvUrl, '_blank');
+    const url =
+      CvPageComponent.CV_PDF_BY_LANG[this.currentLang()] ??
+      CvPageComponent.CV_PDF_BY_LANG['en'];
+    window.open(url, '_blank');
   }
 }

@@ -1,6 +1,5 @@
 import {
   Component,
-  signal,
   computed,
   OnInit,
   ViewChild,
@@ -10,6 +9,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { LanguageService } from '../../core/services/language.service';
 
 @Component({
   selector: 'app-cv-print-page',
@@ -25,20 +25,6 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
           <button (click)="printPage()" class="btn-action btn-primary">
             <i class="fas fa-print"></i> Print
           </button>
-          <div class="language-switch">
-            <button
-              [class.active]="currentLang() === 'en'"
-              (click)="switchLanguage('en')"
-            >
-              English
-            </button>
-            <button
-              [class.active]="currentLang() === 'pl'"
-              (click)="switchLanguage('pl')"
-            >
-              Polish
-            </button>
-          </div>
         </div>
       </div>
 
@@ -182,40 +168,32 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
           flex-direction: column;
           align-items: stretch;
         }
-
-        .language-switch {
-          margin-left: 0;
-          justify-content: center;
-        }
       }
     `,
   ],
 })
 export class CvPrintPageComponent implements OnInit {
   private sanitizer = inject(DomSanitizer);
+  private languageService = inject(LanguageService);
   @ViewChild('cvFrame') cvFrame?: ElementRef<HTMLIFrameElement>;
 
-  currentLang = signal<'en' | 'pl'>('en');
+  // Reactive: follows the global language (en/pl/de) from LanguageService
+  currentLang = this.languageService.currentLanguage;
+
+  private static readonly CV_HTML_BY_LANG: Record<string, string> = {
+    en: '/cv-html/cv_fixed.html',
+    pl: '/cv-html/cv_fixed_pl.html',
+    de: '/cv-html/cv_fixed_de.html',
+  };
 
   cvIframeUrl = computed<SafeResourceUrl>(() => {
     const path =
-      this.currentLang() === 'en'
-        ? '/cv-html/cv_fixed.html'
-        : '/cv-html/cv_fixed_pl.html';
+      CvPrintPageComponent.CV_HTML_BY_LANG[this.currentLang()] ??
+      CvPrintPageComponent.CV_HTML_BY_LANG['en'];
     return this.sanitizer.bypassSecurityTrustResourceUrl(path);
   });
 
-  ngOnInit() {
-    const savedLang = localStorage.getItem('cv-language') as 'en' | 'pl';
-    if (savedLang) {
-      this.currentLang.set(savedLang);
-    }
-  }
-
-  switchLanguage(lang: 'en' | 'pl') {
-    this.currentLang.set(lang);
-    localStorage.setItem('cv-language', lang);
-  }
+  ngOnInit() {}
 
   printPage() {
     const frame = this.cvFrame?.nativeElement;

@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Lebenslauf - Łukasz Guziczak, KI-Lösungen">
+    <title>CV - Łukasz Guziczak</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>/* ==========================================================================
+   CV Stylesheet - BEM Methodology
+   Author: Łukasz Guziczak
+   ========================================================================== */
+
+/* ==========================================================================
+   1. CSS Custom Properties (Design Tokens)
+   ========================================================================== */
+
+:root {
+    /* Colors - Primary */
+    --color-primary: #1e3a5f;
+    --color-primary-dark: #0f172a;
+    --color-primary-light: #2d5a87;
+
+    /* Colors - Accent */
+    --color-accent: #0ea5e9;
+    --color-accent-secondary: #6366f1;
+    --color-accent-light: #38bdf8;
+
+    /* Colors - Text */
+    --color-text-dark: #1f2937;
+    --color-text-muted: #6b7280;
+    --color-text-light: #f8fafc;
+    --color-text-white: #ffffff;
+
+    /* Colors - Background */
+    --color-bg-white: #ffffff;
+    --color-bg-light: #f8fafc;
+    --color-bg-card: #f1f5f9;
+
+    /* Colors - Border */
+    --color-border-light: #e2e8f0;
+    --color-border-muted: #e5e7eb;
+
+    /* Colors - Recommendation */
+    --color-recommendation-bg: #fefce8;
+    --color-recommendation-bg-dark: #fef9c3;
+    --color-recommendation-border: #eab308;
+    --color-recommendation-text: #713f12;
+    --color-recommendation-text-dark: #854d0e;
+
+    /* Colors - Pie Chart */
+    --color-pie-education: #0ea5e9;
+    --color-pie-industry: #1e3a5f;
+    --color-pie-finance: #6366f1;
+    --color-pie-analytics: #2d5a87;
+    --color-pie-medical: #38bdf8;
+    /* Colors - Companies/Universities (Skills Timeline) */
+    --color-company-pwr: #8b5cf6;        /* violet - PWr education */
+    --color-company-twente: #f97316;     /* orange - Universität Twente */
+    --color-company-luxoft: #fbbf24;     /* amber/gold - Luxoft */
+    --color-company-streamsoft: #34d399; /* emerald - Streamsoft */
+    --color-company-rightinfo: #f43f5e;  /* rose/pink - Right Information */
+    --color-company-thorium: #e879f9;    /* fuchsia - Thorium */
+    --color-company-merito: #c084fc;     /* light purple - Merito */
+    --color-company-kamsoft: #2dd4bf;    /* teal/cyan - Kamsoft */
+    --color-company-astek: #60a5fa;      /* sky blue - Astek */
+    --color-company-natek: #fb923c;     /* orange - Natek */
+
+
+    /* Gradients */
+    --gradient-accent: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-secondary) 100%);
+    --gradient-sidebar: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    --gradient-card: linear-gradient(135deg, var(--color-bg-light) 0%, var(--color-bg-card) 100%);
+    --gradient-tech: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+
+    /* Layout */
+    --sidebar-width: 30%;
+    --main-width: 70%;
+    --page-width: 210mm;
+    --page-height: 297mm;
+
+    /* Spacing */
+    --spacing-xs: 3px;
+    --spacing-sm: 6px;
+    --spacing-md: 10px;
+    --spacing-lg: 14px;
+    --spacing-xl: 20px;
+
+    /* Typography */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-size-xs: 0.65rem;
+    --font-size-sm: 0.72rem;
+    --font-size-base: 0.8rem;
+    --font-size-md: 0.85rem;
+    --font-size-lg: 0.92rem;
+    --font-size-xl: 1rem;
+    --font-size-2xl: 1.8rem;
+    --line-height-tight: 1.2;
+    --line-height-normal: 1.4;
+    --line-height-relaxed: 1.5;
+
+    /* Border Radius */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-full: 50%;
+    --radius-photo: 14px;
+
+    /* Component Sizes */
+    --photo-size: 170px;
+    --logo-size: 40px;
+    --cert-logo-size: 28px;
+    --initials-size: 50px;
+    --pie-chart-size: 230px;
+    --timeline-dot-size: 8px;
+    --timeline-width: 3px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 6px 20px rgba(0, 0, 0, 0.3);
+
+    /* Focus */
+    --focus-ring: 0 0 0 2px var(--color-accent);
+    --focus-ring-offset: 0 0 0 4px rgba(14, 165, 233, 0.3);
+
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-normal: 200ms ease;
+
+    /* Opacity levels (for rgba calculations) */
+    --opacity-subtle: 0.08;
+    --opacity-light: 0.12;
+    --opacity-medium: 0.25;
+    --opacity-hover: 0.15;
+    --opacity-border: 0.3;
+}
+
+/* ==========================================================================
+   2. Reset & Base Styles
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: 12px;
+    line-height: var(--line-height-normal);
+    color: var(--color-text-dark);
+    background: var(--color-bg-white);
+    width: var(--page-width);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* Accessibility - Focus Styles */
+a:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* Remove list styles */
+ul[role="list"],
+ol[role="list"] {
+    list-style: none;
+}
+
+/* ==========================================================================
+   3. Page Layout
+   ========================================================================== */
+
+.page {
+    position: relative;
+    display: block;
+    width: var(--page-width);
+    height: var(--page-height);
+    margin: 0;
+    background: var(--color-bg-white);
+    overflow: hidden;
+    page-break-after: always;
+}
+
+.page--break {
+    margin-block-start: 20px;
+    page-break-before: always;
+}
+
+.page__number {
+    position: absolute;
+    inset-block-end: 15px;
+    inset-inline-end: 25px;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: #9ca3af;
+}
+
+/* ==========================================================================
+   4. Sidebar
+   ========================================================================== */
+
+.sidebar {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: var(--sidebar-width);
+    padding: var(--spacing-xl) var(--spacing-lg) 30px;
+    background: var(--gradient-sidebar);
+    color: var(--color-text-light);
+    text-align: center;
+    z-index: 10;
+}
+
+/* Sidebar text inheritance */
+.sidebar,
+.sidebar * {
+    color: var(--color-text-white);
+}
+
+.sidebar__photo {
+    width: var(--photo-size);
+    height: var(--photo-size);
+    margin-block-end: 12px;
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: var(--shadow-lg);
+    object-fit: cover;
+}
+
+.sidebar__mini-header {
+    display: flex;
+    justify-content: center;
+    margin-block-end: 10px;
+}
+
+.sidebar__initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--initials-size);
+    height: var(--initials-size);
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-lg);
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.sidebar__section {
+    margin-block-start: var(--spacing-lg);
+}
+
+.sidebar__heading {
+    margin-block-end: 10px;
+    padding-block-end: 6px;
+    border-block-end: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+/* ==========================================================================
+   5. Contact
+   ========================================================================== */
+
+.contact {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-block-end: 10px;
+    text-align: start;
+}
+
+.contact__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    transition: background var(--transition-normal);
+}
+
+.contact__item:hover,
+.contact__item:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.contact__item:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+.contact__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    font-size: 0.8rem;
+    color: var(--color-accent);
+}
+
+.contact__text {
+    font-size: var(--font-size-base);
+    font-weight: 400;
+}
+
+/* ==========================================================================
+   6. Skills
+   ========================================================================== */
+
+.skills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+}
+
+.skills__tag {
+    padding: 3px var(--spacing-sm);
+    background: rgba(14, 165, 233, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-xl);
+    font-size: 0.68rem;
+    font-weight: 500;
+}
+
+.skills__tag--primary {
+    background: rgba(14, 165, 233, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   7. Languages
+   ========================================================================== */
+
+.languages {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: start;
+}
+
+.languages__item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+}
+
+.languages__item strong {
+    color: var(--color-accent);
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   8. Certifications
+   ========================================================================== */
+
+.certifications {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.cert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: var(--spacing-sm) 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    text-align: start;
+    transition: background var(--transition-normal);
+}
+
+.cert:hover,
+.cert:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.cert:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+.cert__logo {
+    width: var(--cert-logo-size);
+    height: var(--cert-logo-size);
+    padding: 2px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.cert__details {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.cert__name {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+}
+
+.cert__issuer {
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+    color: var(--color-accent);
+}
+
+/* ==========================================================================
+   9. Pie Chart
+   ========================================================================== */
+
+.pie-chart {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-block-start: var(--spacing-sm);
+}
+
+.pie-chart__svg {
+    width: var(--pie-chart-size);
+    height: var(--pie-chart-size);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.pie-chart__svg path {
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 0.5;
+}
+
+/* Pie chart foreignObject labels */
+.pie-chart__fo-label {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--font-family);
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--color-text-white);
+    white-space: nowrap;
+}
+
+.pie-chart__fo-label i {
+    font-size: 10px;
+}
+
+.pie-chart__fo-label--center {
+    justify-content: center;
+    text-align: center;
+}
+
+.pie-chart__fo-label--right {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+.pie-chart__inside-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 11px;
+    color: var(--color-text-white);
+}
+
+.pie-chart__year-label {
+    font-family: var(--font-family);
+    font-size: 7px;
+    font-weight: 700;
+    fill: var(--color-text-white);
+}
+
+.pie-chart__legend {
+    display: none;
+}
+
+.pie-chart__legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.pie-chart__legend-item i {
+    font-size: 0.6rem;
+    opacity: 0.8;
+}
+
+.pie-chart__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+}
+
+.pie-chart__dot--education { background: var(--color-pie-education); }
+.pie-chart__dot--industry { background: var(--color-pie-industry); }
+.pie-chart__dot--finance { background: var(--color-pie-finance); }
+.pie-chart__dot--analytics { background: var(--color-pie-analytics); }
+.pie-chart__dot--medical { background: var(--color-pie-medical); }
+
+/* ==========================================================================
+   10. Skills Breakdown (Timeline Bars)
+   ========================================================================== */
+
+.skills-breakdown {
+    --track-max-width: calc(100% - 50px); /* icon 18px + gap 6px + years 26px */
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    /* Grid lines using box-shadow - more PDF compatible */
+    --line-color: rgba(255,255,255,0.3);
+    --col-width: calc((100% - 50px) / 6);
+}
+
+/* Vertical dashed grid lines container */
+.skills-breakdown__grid-lines {
+    display: none;
+}
+
+/* Grid lines wrapper positioned over skill bars */
+.skills-breakdown__lines-wrapper {
+    position: absolute;
+    top: 20px;
+    bottom: 48px;
+    left: 24px;
+    right: 32px;
+    display: flex;
+    justify-content: space-between;
+    padding-left: 16.67%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.skills-breakdown__line {
+    width: 1px;
+    height: 100%;
+    border-left: 1px dashed rgba(255, 255, 255, 0.4);
+}
+
+.skill-bar {
+    display: grid;
+    grid-template-columns: 18px 1fr 26px;
+    gap: 6px;
+    align-items: center;
+    position: relative;
+}
+
+
+.skill-bar--scale {
+    margin-block-end: -4px;
+}
+
+
+.skills-breakdown__scale {
+    position: relative;
+    width: 100%;
+    height: 12px;
+    font-size: 0.42rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.skills-breakdown__scale span {
+    position: absolute;
+    transform: translateX(-50%);
+    z-index: 5;
+}
+
+.skills-breakdown__scale span:nth-child(1) { left: 0%; transform: translateX(0); }
+.skills-breakdown__scale span:nth-child(2) { left: 20%; }
+.skills-breakdown__scale span:nth-child(3) { left: 40%; }
+.skills-breakdown__scale span:nth-child(4) { left: 60%; }
+.skills-breakdown__scale span:nth-child(5) { left: 80%; }
+.skills-breakdown__scale span:nth-child(6) { left: 100%; transform: translateX(-100%); }
+/* Grid lines for scale numbers 0,2,4,6,8,10 (all spans) */
+.skills-breakdown__scale span::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 1px;
+    height: 190px;
+    background: rgba(255, 255, 255, 0.35);
+}
+
+/* Align first and last grid lines with scale endpoints (0% and 100%),
+   not with center of label span which has variable width */
+.skills-breakdown__scale span:nth-child(1)::after {
+    left: 0;
+}
+.skills-breakdown__scale span:nth-child(6)::after {
+    left: auto;
+    right: 0;
+}
+
+.skill-bar__icon {
+    width: 18px;
+    height: 18px;
+    filter: brightness(0) invert(1);
+}
+
+/* Bolder Java icon - scale up SVG strokes */
+.skill-bar__icon[src*="java"] {
+    width: 22px;
+    height: 22px;
+    margin: -2px;
+    filter: brightness(0) invert(1) contrast(1.5);
+}
+
+.tech-logo__img[src*="java"] {
+    transform: scale(1.15);
+    filter: brightness(0) contrast(1.5);
+}
+
+
+.skill-bar__track {
+    display: flex;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.15);
+    gap: 1px;
+    /* Width set inline as percentage of 6 years */
+}
+
+.skill-bar__segment {
+    height: 100%;
+    transition: opacity var(--transition-normal);
+}
+
+.skill-bar__segment:hover {
+    opacity: 0.75;
+}
+
+.skill-bar__segment:first-child {
+    border-radius: 5px 0 0 5px;
+}
+
+.skill-bar__segment:last-child {
+    border-radius: 0 5px 5px 0;
+}
+
+/* Company/University colors - high contrast, colorblind-friendly palette */
+.skill-bar__segment--pwr { background: #8b5cf6; }        /* violet - PWr education */
+.skill-bar__segment--twente { background: #f97316; }     /* orange - Universität Twente */
+.skill-bar__segment--luxoft { background: #fbbf24; }     /* amber/gold - Luxoft */
+.skill-bar__segment--streamsoft { background: #34d399; } /* emerald - Streamsoft */
+.skill-bar__segment--rightinfo { background: #f43f5e; }  /* rose/pink - Right Information */
+.skill-bar__segment--thorium { background: #e879f9; }    /* fuchsia - Thorium */
+.skill-bar__segment--merito { background: #c084fc; }     /* light purple - Merito */
+.skill-bar__segment--kamsoft { background: #2dd4bf; }    /* teal/cyan - Kamsoft */
+.skill-bar__segment--astek { background: #60a5fa; }      /* sky blue - Astek */
+.skill-bar__segment--natek { background: #fb923c; }     /* orange - Natek */
+
+.skill-bar__years {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    min-width: 28px;
+    text-align: right;
+}
+
+.skills-breakdown__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    margin-block-start: 6px;
+    padding-block-start: 6px;
+    border-block-start: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.skills-breakdown__legend-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.65rem;
+}
+
+.skills-breakdown__legend-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.skills-breakdown__legend-logo {
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   11. Interests
+   ========================================================================== */
+
+.interests {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-sm);
+    margin-block-start: var(--spacing-sm);
+}
+
+.interests__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg);
+    font-size: 0.65rem;
+    font-weight: 500;
+}
+
+.interests__icon {
+    font-size: 1.4rem;
+    opacity: 0.9;
+}
+
+.interests__icon--img {
+    width: 24px;
+    height: 24px;
+    filter: invert(1);
+}
+
+/* ==========================================================================
+   11. Main Content
+   ========================================================================== */
+
+.main {
+    position: relative;
+    margin-inline-start: var(--sidebar-width);
+    width: var(--main-width);
+    padding: var(--spacing-xl) 30px 25px;
+    background: var(--color-bg-white);
+    color: var(--color-text-dark);
+    z-index: 5;
+    /* Flex container to push GDPR to bottom */
+    display: flex;
+    flex-direction: column;
+    min-height: calc(var(--page-height) - var(--spacing-xl) - 25px);
+}
+
+/* ==========================================================================
+   12. Header
+   ========================================================================== */
+
+.header {
+    margin-block-end: var(--spacing-md);
+    padding-block-end: 8px;
+    background: linear-gradient(to right, var(--color-primary), var(--color-accent)) bottom;
+    background-size: 100% 4px;
+    background-repeat: no-repeat;
+}
+
+.header__name {
+    margin: 0;
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-primary);
+}
+
+.header__title {
+    margin-block-start: var(--spacing-xs);
+    font-size: var(--font-size-xl);
+    font-weight: 500;
+    color: var(--color-accent);
+}
+
+/* ==========================================================================
+   13. Sections
+   ========================================================================== */
+
+.section {
+    margin-block-end: 5px;
+}
+
+.section__title {
+    position: relative;
+    margin-block-end: 4px;
+    padding-inline-start: calc(var(--spacing-md) + 3px);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-primary);
+}
+
+.section__title::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 3px;
+    inset-block: 0;
+    width: 3px;
+    background: var(--color-accent);
+    border-radius: 2px;
+}
+
+.section__text {
+    font-size: 0.8rem;
+    line-height: var(--line-height-relaxed);
+    color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   13b. What I Currently Do  — top-of-page Current snapshot
+   ========================================================================== */
+
+.current {
+    display: flex;
+    flex-direction: column;
+}
+
+.current-card {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 14px;
+    padding-block: 10px;
+    align-items: start;
+}
+
+.current-card + .current-card {
+    border-top: 1px solid var(--color-border-light);
+}
+
+.current-card__lead {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.current-card__year {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-feature-settings: "tnum";
+    white-space: nowrap;
+}
+
+.current-card__year::after {
+    content: '⟶';
+    color: var(--color-accent);
+    font-weight: 700;
+    font-size: 1.05em;
+    margin-inline-start: 4px;
+}
+
+.current-card--study .current-card__year::after {
+    color: var(--color-company-merito);
+}
+
+.current-card__logo-link {
+    display: block;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: transform var(--transition-normal);
+}
+
+.current-card__logo-link:hover {
+    transform: scale(1.06);
+}
+
+.current-card__logo-img {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    display: block;
+}
+
+.current-card__body {
+    min-width: 0;
+}
+
+.current-card__title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--color-primary);
+    letter-spacing: -0.005em;
+}
+
+.current-card__subtitle {
+    margin-block-start: 2px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+}
+
+.current-card__focus {
+    margin-block-start: 4px;
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+}
+
+/* ==========================================================================
+   14. Timeline
+   ========================================================================== */
+
+.timeline {
+    position: relative;
+    margin-inline-start: var(--spacing-xs);
+    padding-inline-start: 16px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-start: 8px;
+    inset-block-end: 20px;
+    width: var(--timeline-width);
+    background: var(--color-border-muted);
+    border-radius: 1px;
+}
+
+/* ==========================================================================
+   15. Job Entry
+   ========================================================================== */
+
+.job,
+.education {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    margin-block-end: 3px;
+    padding: 4px 7px;
+    background: var(--color-bg-light);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-lg);
+}
+
+.job::before,
+.education::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: -19px;
+    inset-block-start: 16px;
+    width: var(--timeline-dot-size);
+    height: var(--timeline-dot-size);
+    background: var(--color-accent);
+    border-radius: var(--radius-full);
+}
+
+.job__logo,
+.education__logo {
+    display: flex;
+    align-items: flex-start;
+    width: var(--logo-size);
+    padding-block-start: 2px;
+    flex-shrink: 0;
+}
+
+.job__logo-link,
+.education__logo-link {
+    display: block;
+    border-radius: var(--radius-md);
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.job__logo-link:hover,
+.education__logo-link:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.job__logo-link:focus-visible,
+.education__logo-link:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+.job__logo-img,
+.education__logo-img {
+    width: 100%;
+    border-radius: var(--radius-md);
+    display: block;
+}
+
+.job__content,
+.education__content {
+    flex: 1;
+    min-width: 0; /* Prevent flex overflow */
+}
+
+.job__header,
+.education__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    margin-block-end: var(--spacing-xs);
+}
+
+.job__title,
+.education__title {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.job__company,
+.education__school {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+}
+
+.job__date,
+.education__date {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--color-primary);
+    white-space: nowrap;
+    letter-spacing: -0.005em;
+    font-feature-settings: "tnum";
+}
+
+.job__project {
+    font-size: var(--font-size-md);
+    color: var(--color-text-muted);
+}
+
+.job__list {
+    margin-block-start: var(--spacing-xs);
+    padding-inline-start: 16px;
+    font-size: var(--font-size-md);
+    line-height: 1.3;
+    color: var(--color-text-muted);
+    list-style: disc;
+}
+
+.job__list li {
+    margin-block-end: 1px;
+}
+
+.education__note {
+    font-size: var(--font-size-md);
+    font-style: italic;
+    color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   16. Tech Stack
+   ========================================================================== */
+
+.tech-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-block-start: 3px;
+}
+
+.tech-stack__item {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    background: var(--gradient-tech);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    color: var(--color-text-white);
+}
+
+/* Tech logos with hidden text for ATS */
+.tech-logo {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+}
+
+.tech-logo__img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: brightness(0);  /* Force black */
+}
+
+/* Screen reader only - hidden visually but accessible to ATS/parsers */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ==========================================================================
+   17. Recommendation
+   ========================================================================== */
+
+.recommendation {
+    margin-block-start: 3px;
+    padding: 1px 0 1px 8px;
+    background: none;
+    border: none;
+    border-inline-start: 2px solid var(--color-border-light);
+    border-radius: 0;
+    font-size: var(--font-size-base);
+    color: var(--color-text-muted);
+}
+
+.recommendation p {
+    margin: 0;
+    line-height: 1.4;
+}
+
+.recommendation strong {
+    margin-inline-end: 3px;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--color-text-muted);
+}
+
+.recommendation cite {
+    display: block;
+    margin-block-start: 1px;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 0.68rem;
+    color: var(--color-text-dark);
+}
+
+/* ==========================================================================
+   18. GDPR Footer
+   ========================================================================== */
+
+.gdpr {
+    margin-top: auto;
+    padding-block-start: 6px;
+    border-block-start: 1px solid var(--color-border-muted);
+}
+
+.gdpr__text {
+    font-size: var(--font-size-xs);
+    line-height: var(--line-height-normal);
+    color: #9ca3af;
+}
+
+/* ==========================================================================
+   19. Print Styles
+   ========================================================================== */
+
+@media print {
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .page {
+        page-break-after: always;
+    }
+
+    .page--break {
+        page-break-before: always;
+    }
+
+    .job,
+    .education {
+        break-inside: avoid;
+    }
+
+    .sidebar {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Timeline line fix for print */
+    .timeline::before {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        background: var(--color-accent) !important;
+    }
+
+    /* Ensure focus styles don't print */
+    a:focus-visible,
+    button:focus-visible {
+        outline: none;
+    }
+}
+
+/* ==========================================================================
+   20. Reduced Motion
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
+
+/* ==========================================================================
+   21. High Contrast Mode
+   ========================================================================== */
+
+@media (prefers-contrast: more) {
+    :root {
+        --font-size-xs: 0.65rem;
+        --font-size-sm: 0.72rem;
+        --font-size-base: 0.82rem;
+        --font-size-md: 0.88rem;
+        --color-text-muted: #374151;
+        --color-border-light: #9ca3af;
+    }
+
+    .skills__tag,
+    .tech-stack__item {
+        border-width: 2px;
+    }
+
+    .job,
+    .education {
+        border-width: 2px;
+    }
+}
+
+/* ==========================================================================
+   22. Forced Colors (Windows High Contrast)
+   ========================================================================== */
+
+@media (forced-colors: active) {
+    .sidebar {
+        border-inline-end: 2px solid CanvasText;
+    }
+
+    .job,
+    .education {
+        border: 2px solid CanvasText;
+    }
+
+    .contact__item:focus-visible,
+    .cert:focus-visible {
+        outline: 3px solid Highlight;
+    }
+}
+</style>
+</head>
+<body>
+
+    <!-- PAGE 1 -->
+    <article class="page" aria-label="Lebenslauf Seite 1 von 2">
+        <aside class="sidebar">
+
+            <img src="photo_optimized.jpg" alt="Profile photo of Łukasz Guziczak" class="sidebar__photo">
+
+            <nav class="contact" aria-label="Kontaktinformationen">
+                <a href="tel:+48693069832" class="contact__item">
+                    <span class="contact__icon" aria-hidden="true"><i class="fas fa-phone"></i></span>
+                    <span class="contact__text">+48 693069832</span>
+                </a>
+                <a href="mailto:guziczak@pm.me" class="contact__item">
+                    <span class="contact__icon" aria-hidden="true"><i class="fas fa-envelope"></i></span>
+                    <span class="contact__text">guziczak@pm.me</span>
+                </a>
+                <a href="https://maps.google.com/?q=Wroclaw,Poland" target="_blank" rel="noopener noreferrer" class="contact__item">
+                    <span class="contact__icon" aria-hidden="true"><i class="fas fa-map-marker-alt"></i></span>
+                    <span class="contact__text">Wrocław, Polen</span>
+                </a>
+                <a href="https://linkedin.com/in/guziczak" target="_blank" rel="noopener noreferrer" class="contact__item">
+                    <span class="contact__icon" aria-hidden="true"><i class="fab fa-linkedin"></i></span>
+                    <span class="contact__text">/in/guziczak</span>
+                </a>
+                <a href="https://github.com/guziczak" target="_blank" rel="noopener noreferrer" class="contact__item">
+                    <span class="contact__icon" aria-hidden="true"><i class="fab fa-github"></i></span>
+                    <span class="contact__text">/guziczak</span>
+                </a>
+            </nav>
+
+            <section class="sidebar__section" aria-labelledby="skills-heading">
+                <h2 id="skills-heading" class="sidebar__heading">Fähigkeiten</h2>
+                <ul class="skills" role="list" aria-label="Liste der Fähigkeiten">
+                    <li class="skills__tag skills__tag--primary">Python</li>
+                    <li class="skills__tag skills__tag--primary">LLM-Integration</li>
+                    <li class="skills__tag skills__tag--primary">TensorFlow / PyTorch</li>
+                    <li class="skills__tag skills__tag--primary">Java 17/21</li>
+                    <li class="skills__tag">Spring Boot</li>
+                    <li class="skills__tag">Cloud (AWS, Azure)</li>
+                    <li class="skills__tag">Docker</li>
+                    <li class="skills__tag">Kubernetes</li>
+                    <li class="skills__tag">CI/CD</li>
+                    <li class="skills__tag">SQL (PostgreSQL)</li>
+                    <li class="skills__tag">React.js / TypeScript</li>
+                    <li class="skills__tag">Microservices</li>
+                </ul>
+            </section>
+
+            <section class="sidebar__section" aria-labelledby="skills-timeline-heading">
+                <h2 id="skills-timeline-heading" class="sidebar__heading">Erfahrung</h2>
+
+                <div class="skills-breakdown">
+                    <div class="skill-bar skill-bar--scale" aria-hidden="true">
+                        <span></span>
+                        <div class="skills-breakdown__scale"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div>
+                        <span></span>
+                    </div>
+
+                    <div class="skill-bar" role="group" aria-label="Python: 5.5 Jahre Erfahrung">
+                        <img src="https://cdn.simpleicons.org/python" class="skill-bar__icon" alt="" aria-hidden="true" title="Python">
+                        <div class="skill-bar__track" style="width: 55.83%" role="img" aria-hidden="true">
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Technische Universität Wrocław (47 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="Universität Twente (5 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito Universität (15 Mon.)"></div>
+                        </div>
+                        <span class="skill-bar__years" aria-hidden="true">5.5 J.</span>
+                        <span class="sr-only">Python Erfahrung:Technische Universität Wrocław (47 Mon.), Universität Twente (5 Mon.), WSB Merito Universität (15 Mon.). Gesamt:5.5 Jahre.</span>
+                    </div>
+                    <div class="skill-bar" role="group" aria-label="AI / ML: 9.5 Jahre Erfahrung">
+                        <img src="https://cdn.simpleicons.org/anthropic" class="skill-bar__icon" alt="" aria-hidden="true" title="AI / ML">
+                        <div class="skill-bar__track" style="width: 94.17%" role="img" aria-hidden="true">
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Technische Universität Wrocław (47 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="Universität Twente (5 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--luxoft" style="flex-grow: 6" title="Luxoft (6 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--streamsoft" style="flex-grow: 3" title="Streamsoft (3 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito Universität (15 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 Mon.)"></div>
+                        </div>
+                        <span class="skill-bar__years" aria-hidden="true">9.5 J.</span>
+                        <span class="sr-only">AI / ML Erfahrung:Technische Universität Wrocław (47 Mon.), Universität Twente (5 Mon.), Luxoft (6 Mon.), Streamsoft (3 Mon.), Right Information (13 Mon.), Thorium Space (6 Mon.), Kamsoft (7 Mon.), Astek (7 Mon.), WSB Merito Universität (15 Mon.), Natek (4 Mon.). Gesamt:9.5 Jahre.</span>
+                    </div>
+                    <div class="skill-bar" role="group" aria-label="Claude: 2.75 Jahre Erfahrung">
+                        <img src="https://cdn.simpleicons.org/claude" class="skill-bar__icon" alt="" aria-hidden="true" title="Claude">
+                        <div class="skill-bar__track" style="width: 27.50%; margin-inline-start: 66.67%" role="img" aria-hidden="true">
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito Universität (15 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 Mon.)"></div>
+                        </div>
+                        <span class="skill-bar__years" aria-hidden="true">2.75 J.</span>
+                        <span class="sr-only">Claude Erfahrung:Kamsoft (7 Mon.), Astek (7 Mon.), WSB Merito Universität (15 Mon.), Natek (4 Mon.). Gesamt:2.75 Jahre.</span>
+                    </div>
+                    <div class="skill-bar" role="group" aria-label="Java: 9 Jahre Erfahrung">
+                        <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="skill-bar__icon" alt="" aria-hidden="true" title="Java">
+                        <div class="skill-bar__track" style="width: 90.00%" role="img" aria-hidden="true">
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Technische Universität Wrocław (47 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--luxoft" style="flex-grow: 6" title="Luxoft (6 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--streamsoft" style="flex-grow: 3" title="Streamsoft (3 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito Universität (15 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 Mon.)"></div>
+                        </div>
+                        <span class="skill-bar__years" aria-hidden="true">9 J.</span>
+                        <span class="sr-only">Java Erfahrung:Technische Universität Wrocław (47 Mon.), Luxoft (6 Mon.), Streamsoft (3 Mon.), Right Information (13 Mon.), Thorium Space (6 Mon.), Kamsoft (7 Mon.), Astek (7 Mon.), WSB Merito Universität (15 Mon.), Natek (4 Mon.). Gesamt:9 Jahre.</span>
+                    </div>
+                    <div class="skill-bar" role="group" aria-label="Spring: 9 Jahre Erfahrung">
+                        <img src="https://cdn.simpleicons.org/spring" class="skill-bar__icon" alt="" aria-hidden="true" title="Spring">
+                        <div class="skill-bar__track" style="width: 90.00%" role="img" aria-hidden="true">
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Technische Universität Wrocław (47 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--luxoft" style="flex-grow: 6" title="Luxoft (6 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--streamsoft" style="flex-grow: 3" title="Streamsoft (3 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito Universität (15 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 Mon.)"></div>
+                        </div>
+                        <span class="skill-bar__years" aria-hidden="true">9 J.</span>
+                        <span class="sr-only">Spring Erfahrung:Technische Universität Wrocław (47 Mon.), Luxoft (6 Mon.), Streamsoft (3 Mon.), Right Information (13 Mon.), Thorium Space (6 Mon.), Kamsoft (7 Mon.), Astek (7 Mon.), WSB Merito Universität (15 Mon.), Natek (4 Mon.). Gesamt:9 Jahre.</span>
+                    </div>
+                    <div class="skill-bar" role="group" aria-label="Docker: 8.25 Jahre Erfahrung">
+                        <img src="https://cdn.simpleicons.org/docker" class="skill-bar__icon" alt="" aria-hidden="true" title="Docker">
+                        <div class="skill-bar__track" style="width: 82.50%" role="img" aria-hidden="true">
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Technische Universität Wrocław (47 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito Universität (15 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 Mon.)"></div>
+                        </div>
+                        <span class="skill-bar__years" aria-hidden="true">8.25 J.</span>
+                        <span class="sr-only">Docker Erfahrung:Technische Universität Wrocław (47 Mon.), Right Information (13 Mon.), Thorium Space (6 Mon.), Kamsoft (7 Mon.), Astek (7 Mon.), WSB Merito Universität (15 Mon.), Natek (4 Mon.). Gesamt:8.25 Jahre.</span>
+                    </div>
+                    <div class="skill-bar" role="group" aria-label="PostgreSQL: 8.25 Jahre Erfahrung">
+                        <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-plain.svg" class="skill-bar__icon" alt="" aria-hidden="true" title="PostgreSQL">
+                        <div class="skill-bar__track" style="width: 83.33%" role="img" aria-hidden="true">
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Technische Universität Wrocław (47 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="Universität Twente (5 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito Universität (15 Mon.)"></div>
+                        </div>
+                        <span class="skill-bar__years" aria-hidden="true">8.25 J.</span>
+                        <span class="sr-only">PostgreSQL Erfahrung:Technische Universität Wrocław (47 Mon.), Universität Twente (5 Mon.), Right Information (13 Mon.), Thorium Space (6 Mon.), Kamsoft (7 Mon.), Astek (7 Mon.), WSB Merito Universität (15 Mon.). Gesamt:8.25 Jahre.</span>
+                    </div>
+                    <div class="skill-bar" role="group" aria-label="React.js: 8.75 Jahre Erfahrung">
+                        <img src="https://cdn.simpleicons.org/react" class="skill-bar__icon" alt="" aria-hidden="true" title="React.js">
+                        <div class="skill-bar__track" style="width: 86.67%" role="img" aria-hidden="true">
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Technische Universität Wrocław (47 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="Universität Twente (5 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito Universität (15 Mon.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 Mon.)"></div>
+                        </div>
+                        <span class="skill-bar__years" aria-hidden="true">8.75 J.</span>
+                        <span class="sr-only">React.js Erfahrung:Technische Universität Wrocław (47 Mon.), Universität Twente (5 Mon.), Right Information (13 Mon.), Thorium Space (6 Mon.), Kamsoft (7 Mon.), Astek (7 Mon.), WSB Merito Universität (15 Mon.), Natek (4 Mon.). Gesamt:8.75 Jahre.</span>
+                    </div>
+                </div>
+                <div class="skills-breakdown__legend" role="list" aria-label="Companies and universities legend">
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#8b5cf6" aria-hidden="true"></span><img src="legend_icons/pwr.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Technische Universität Wrocław"><span class="sr-only">Technische Universität Wrocław</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#f97316" aria-hidden="true"></span><img src="legend_icons/twente.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Universität Twente"><span class="sr-only">Universität Twente</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#fbbf24" aria-hidden="true"></span><img src="legend_icons/luxoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Luxoft"><span class="sr-only">Luxoft</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#34d399" aria-hidden="true"></span><img src="legend_icons/streamsoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Streamsoft"><span class="sr-only">Streamsoft</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#f43f5e" aria-hidden="true"></span><img src="legend_icons/rightinfo.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Right Information"><span class="sr-only">Right Information</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#e879f9" aria-hidden="true"></span><img src="legend_icons/thorium.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Thorium Space"><span class="sr-only">Thorium Space</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#2dd4bf" aria-hidden="true"></span><img src="legend_icons/kamsoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Kamsoft"><span class="sr-only">Kamsoft</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#60a5fa" aria-hidden="true"></span><img src="legend_icons/astek.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Astek"><span class="sr-only">Astek</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#c084fc" aria-hidden="true"></span><img src="legend_icons/merito.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="WSB Merito Universität"><span class="sr-only">WSB Merito Universität</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#fb923c" aria-hidden="true"></span><img src="legend_icons/natek.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Natek"><span class="sr-only">Natek</span></span>
+                </div>
+            </section>
+        </aside>
+        <main class="main">
+
+            <header class="header">
+                <h1 class="header__name">Łukasz Guziczak</h1>
+                <p class="header__title">KI-Lösungen</p>
+            </header>
+
+            <section class="section" aria-labelledby="summary-heading">
+                <h2 id="summary-heading" class="section__title">Zusammenfassung</h2>
+                <p class="section__text">KI-Lösungsexperte mit über 5 Jahren Erfahrung in der produktiven Softwareentwicklung und M.Sc. in KI &amp; Maschinellem Lernen. Integriere seit 2024 LLMs und KI-Entwicklertools (Claude Code, Codex, Copilot CLI) in Unternehmensanwendungen. Solide Engineering-Grundlagen in Python, Java, Spring Boot und Cloud-Infrastruktur (AWS, Azure, Docker, Kubernetes). Entwickle intelligente, datengesteuerte Systeme für Gesundheitswesen, Luft- und Raumfahrt, IoT und Finanzen.</p>
+            </section>
+
+            <section class="section" aria-labelledby="current-heading">
+                <h2 id="current-heading" class="section__title">Aktuell</h2>
+                <div class="current">
+
+                    <article class="current-card current-card--work" aria-label="Arbeit: KI/ML-Ingenieur, 2025 – Aktuell">
+                        <div class="current-card__lead">
+                            <time class="current-card__year" datetime="2025" aria-hidden="true">2025</time>
+                            <a href="https://natek.eu" target="_blank" rel="noopener noreferrer" class="current-card__logo-link" title="Natek (Software House) Website besuchen">
+                                <img src="work_experience_logos/natek.jpg" class="current-card__logo-img" alt="Logo">
+                            </a>
+                        </div>
+                        <div class="current-card__body">
+                            <h3 class="current-card__title">KI/ML-Ingenieur</h3>
+                            <p class="current-card__subtitle">Natek · Software House</p>
+                            <p class="current-card__focus">EU AI Act Compliance · LLM-gesteuerte Workflows (Claude)</p>
+                        </div>
+                        <span class="sr-only">Arbeit: 2025 – Aktuell</span>
+                    </article>
+
+                    <article class="current-card current-card--study" aria-label="Studium: M.Sc. Informatik: KI &amp; Maschinelles Lernen, 2024 – 2026">
+                        <div class="current-card__lead">
+                            <time class="current-card__year" datetime="2024/2026" aria-hidden="true">2024</time>
+                            <a href="https://merito.pl" target="_blank" rel="noopener noreferrer" class="current-card__logo-link" title="WSB Merito Universität in Wrocław Website besuchen">
+                                <img src="universities/merito.jpg" class="current-card__logo-img" alt="Logo">
+                            </a>
+                        </div>
+                        <div class="current-card__body">
+                            <h3 class="current-card__title">M.Sc. Informatik: KI &amp; Maschinelles Lernen</h3>
+                            <p class="current-card__subtitle">WSB Merito Universität in Wrocław</p>
+                            <p class="current-card__focus">Masterarbeit: <strong>Multi-Label-EKG-Pathologie-Klassifikation mit ViT + DINO</strong></p>
+                        </div>
+                        <span class="sr-only">Studium: 2024 – 2026</span>
+                    </article>
+                </div>
+            </section>
+
+
+            <section class="section" aria-labelledby="experience-heading">
+                <h2 id="experience-heading" class="section__title">Berufserfahrung</h2>
+                <div class="timeline">
+
+                    <article class="job" aria-label="Position bei Astek">
+                        <div class="job__logo">
+                            <a href="https://astekgroup.fr/?lang=en" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Astek Website besuchen">
+                                <img src="work_experience_logos/astek.jpg" class="job__logo-img" alt="Logo Astek">
+                            </a>
+                        </div>
+                        <div class="job__content">
+                            <header class="job__header">
+                                <div>
+                                    <h3 class="job__title">KI/ML-Forschungsingenieur — IoT</h3>
+                                    <p class="job__company">Astek · Software House</p>
+                                </div>
+                                <time class="job__date" datetime="2025">2025</time>
+                            </header>
+                            <p class="job__project"><em>Projekt: BikeBox – intelligentes sicheres Fahrradparksystem (F&amp;E)</em></p>
+                            <ul class="job__list">
+                                <li>Entwickelte IoT-Backend mit Echtzeit-Sensordatenverarbeitung.</li>
+                                <li>Trainierte prädiktives Auslastungsmodell für Echtzeit-Buchungsentscheidungen.</li>
+                                <li>Konzipierte Microservices-Architektur für skalierbare Datenerfassung.</li>
+                            </ul>
+                            <div class="tech-stack" aria-label="Technologies">
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java 17"><span class="sr-only">Java 17</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/springboot" class="tech-logo__img" alt="" title="Spring Boot"><span class="sr-only">Spring Boot</span></span>
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg" class="tech-logo__img" alt="" title="Azure"><span class="sr-only">Azure</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/kubernetes" class="tech-logo__img" alt="" title="Kubernetes"><span class="sr-only">Kubernetes</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/anthropic" class="tech-logo__img" alt="" title="AI / ML"><span class="sr-only">AI / ML</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/claude" class="tech-logo__img" alt="" title="Claude"><span class="sr-only">Claude</span></span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="job" aria-label="Position bei Kamsoft">
+                        <div class="job__logo">
+                            <a href="https://kamsoft.pl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Kamsoft Website besuchen">
+                                <img src="work_experience_logos/kamsoft_new.jpg" class="job__logo-img" alt="Logo Kamsoft">
+                            </a>
+                        </div>
+                        <div class="job__content">
+                            <header class="job__header">
+                                <div>
+                                    <h3 class="job__title">KI-Lösungen — Healthcare-Analytics</h3>
+                                    <p class="job__company">Kamsoft · SaaS</p>
+                                </div>
+                                <time class="job__date" datetime="2024/2025">2024 – 2025</time>
+                            </header>
+                            <p class="job__project"><em>Projekt: KI-gestütztes Entscheidungssystem für das Gesundheitswesen</em></p>
+                            <ul class="job__list">
+                                <li>Implementierte Analyse-Automatisierung mit Entscheidungsunterstützung für medizinische Diagnostik.</li>
+                                <li>Optimierte Datenverarbeitungs-Pipelines für große Gesundheitsdatensätze.</li>
+                            </ul>
+                            <div class="tech-stack" aria-label="Technologies">
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java 17"><span class="sr-only">Java 17</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/springboot" class="tech-logo__img" alt="" title="Spring Boot"><span class="sr-only">Spring Boot</span></span>
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-plain.svg" class="tech-logo__img" alt="" title="PostgreSQL"><span class="sr-only">PostgreSQL</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/docker" class="tech-logo__img" alt="" title="Docker"><span class="sr-only">Docker</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/anthropic" class="tech-logo__img" alt="" title="AI / ML"><span class="sr-only">AI / ML</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/claude" class="tech-logo__img" alt="" title="Claude"><span class="sr-only">Claude</span></span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="job" aria-label="Position bei Thorium Space Technology">
+                        <div class="job__logo">
+                            <a href="https://thorium.space" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Thorium Space Technology Website besuchen">
+                                <img src="work_experience_logos/thorium_space_new.jpg" class="job__logo-img" alt="Logo Thorium Space Technology">
+                            </a>
+                        </div>
+                        <div class="job__content">
+                            <header class="job__header">
+                                <div>
+                                    <h3 class="job__title">ML- und Daten-Ingenieur — Luft- und Raumfahrt</h3>
+                                    <p class="job__company">Thorium Space Technology · Luft- und Raumfahrt</p>
+                                </div>
+                                <time class="job__date" datetime="2024">2024</time>
+                            </header>
+                            <p class="job__project"><em>Projekt: Datengesteuerte Ressourcenverwaltung für Telekommunikationsplattformen</em></p>
+                            <ul class="job__list">
+                                <li>Konzipierte Ressourcenallokationssysteme für Satellitenkommunikationsplattformen.</li>
+                                <li>Entwickelte Echtzeit-Telemetrieverarbeitungsmodule zur Bandbreitenoptimierung.</li>
+                            </ul>
+                            <div class="tech-stack" aria-label="Technologies">
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java"><span class="sr-only">Java</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/springboot" class="tech-logo__img" alt="" title="Spring Boot"><span class="sr-only">Spring Boot</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/react" class="tech-logo__img" alt="" title="React.js"><span class="sr-only">React.js</span></span>
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-plain.svg" class="tech-logo__img" alt="" title="PostgreSQL"><span class="sr-only">PostgreSQL</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/anthropic" class="tech-logo__img" alt="" title="AI / ML"><span class="sr-only">AI / ML</span></span>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+        </main>
+        <span class="page__number" aria-hidden="true">1 / 2</span>
+    </article>
+
+    <!-- PAGE 2 -->
+    <article class="page page--break" aria-label="Lebenslauf Seite 2 von 2">
+        <aside class="sidebar">
+
+            <div class="sidebar__mini-header" aria-hidden="true">
+                <span class="sidebar__initials">ŁG</span>
+            </div>
+
+            <section class="sidebar__section" aria-labelledby="languages-heading">
+                <h2 id="languages-heading" class="sidebar__heading">Sprachen</h2>
+                <ul class="languages" role="list">
+
+                    <li class="languages__item">
+                        <span>Englisch (Technisch)</span>
+                        <strong>C2</strong>
+                    </li>
+                    <li class="languages__item">
+                        <span>Polnisch (Muttersprache)</span>
+                        <strong>Muttersprache</strong>
+                    </li>
+                    <li class="languages__item">
+                        <span>Deutsch</span>
+                        <strong>B1</strong>
+                    </li>
+                </ul>
+            </section>
+
+            <section class="sidebar__section" aria-labelledby="certs-heading">
+                <h2 id="certs-heading" class="sidebar__heading">Zertifizierungen</h2>
+                <ul class="certifications" role="list">
+
+                    <li>
+                        <a href="https://www.coursera.org/account/accomplishments/verify/W88ME7FTDEJH" class="cert" target="_blank" rel="noopener noreferrer">
+                            <img src="courses_logos/stanford2.svg" class="cert__logo" alt="Logo Stanford University">
+                            <div class="cert__details">
+                                <span class="cert__name">Maschinelles Lernen</span>
+                                <span class="cert__issuer">Stanford University</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.coursera.org/account/accomplishments/verify/9APHJHP9KE9H" class="cert" target="_blank" rel="noopener noreferrer">
+                            <img src="courses_logos/google.svg" class="cert__logo" alt="Logo Google">
+                            <div class="cert__details">
+                                <span class="cert__name">Datengrundlagen</span>
+                                <span class="cert__issuer">Google</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.linkedin.com/posts/lukasz-guziczak_luxoft-java-academy-activity-6968880524735967232-t9CI" class="cert" target="_blank" rel="noopener noreferrer">
+                            <img src="work_experience_logos/luxoft_new.jpeg" class="cert__logo" alt="Logo Luxoft">
+                            <div class="cert__details">
+                                <span class="cert__name">Java Academy</span>
+                                <span class="cert__issuer">Luxoft</span>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </section>
+
+            <section class="sidebar__section" aria-labelledby="industry-heading">
+                <h2 id="industry-heading" class="sidebar__heading">Branchenerfahrung</h2>
+
+                <figure class="pie-chart" role="figure" aria-labelledby="pie-chart-desc">
+                    <span id="pie-chart-desc" class="sr-only">Aufschlüsselung Branchenerfahrung: Bildung 5,25 Jahre (40%), Industrie 2,5 Jahre (19%), Finanzen 2,25 Jahre (17%), Analytik 2 Jahre (15%), Medizin 1 Jahr (8%). Gesamt: 13 Jahre.</span>
+                    <svg class="pie-chart__svg" viewBox="-30 -30 160 160" aria-hidden="true">
+                        <path d="M 50,50 L 50.0,4.0 A 46,46 0 0,1 76.1,87.9 Z" fill="#0ea5e9" />
+                        <path d="M 50,50 L 76.1,87.9 A 46,46 0 0,1 23.9,87.9 Z" fill="#1e3a5f" />
+                        <path d="M 50,50 L 23.9,87.9 A 46,46 0 0,1 4.3,44.5 Z" fill="#6366f1" />
+                        <path d="M 50,50 L 4.3,44.5 A 46,46 0 0,1 28.6,9.3 Z" fill="#2d5a87" />
+                        <path d="M 50,50 L 28.6,9.3 A 46,46 0 0,1 50.0,4.0 Z" fill="#38bdf8" />
+                        <foreignObject x="68.9" y="34.3" width="15" height="15">
+                            <i class="fas fa-graduation-cap pie-chart__inside-icon" xmlns="http://www.w3.org/1999/xhtml" aria-hidden="true"></i>
+                        </foreignObject>
+                        <foreignObject x="42.5" y="70.1" width="15" height="15">
+                            <i class="fas fa-industry pie-chart__inside-icon" xmlns="http://www.w3.org/1999/xhtml" aria-hidden="true"></i>
+                        </foreignObject>
+                        <foreignObject x="17.3" y="53.8" width="15" height="15">
+                            <i class="fas fa-building-columns pie-chart__inside-icon" xmlns="http://www.w3.org/1999/xhtml" aria-hidden="true"></i>
+                        </foreignObject>
+                        <foreignObject x="19.8" y="26.8" width="15" height="15">
+                            <i class="fas fa-chart-line pie-chart__inside-icon" xmlns="http://www.w3.org/1999/xhtml" aria-hidden="true"></i>
+                        </foreignObject>
+                        <foreignObject x="35.9" y="15.7" width="15" height="15">
+                            <i class="fas fa-stethoscope pie-chart__inside-icon" xmlns="http://www.w3.org/1999/xhtml" aria-hidden="true"></i>
+                        </foreignObject>
+                        <text x="97.7" y="36.9" text-anchor="start" class="pie-chart__year-label">5.25 J.</text>
+                        <text x="50.0" y="101.8" text-anchor="middle" class="pie-chart__year-label">2.5 J.</text>
+                        <text x="4.4" y="72.3" text-anchor="end" class="pie-chart__year-label">2.25 J.</text>
+                        <text x="8.9" y="23.4" text-anchor="end" class="pie-chart__year-label">2 J.</text>
+                        <text x="38.0" y="3.3" text-anchor="end" class="pie-chart__year-label">1 Jahr</text>
+                    </svg>
+                </figure>
+            </section>
+
+            <section class="sidebar__section" aria-labelledby="interests-heading">
+                <h2 id="interests-heading" class="sidebar__heading">Interessen</h2>
+                <ul class="interests" role="list">
+
+                    <li class="interests__item">
+                        <i class="fas fa-microchip interests__icon" aria-hidden="true"></i>
+                        <span>Neue Technologien</span>
+                    </li>
+                    <li class="interests__item">
+                        <i class="fas fa-person-skiing interests__icon" aria-hidden="true"></i>
+                        <span>Skifahren</span>
+                    </li>
+                </ul>
+            </section>
+        </aside>
+        <main class="main">
+
+            <section class="section" aria-labelledby="experience2-heading">
+                <h2 id="experience2-heading" class="section__title">Berufserfahrung (Fortsetzung)</h2>
+                <div class="timeline">
+
+                    <article class="job" aria-label="Position bei Right Information">
+                        <div class="job__logo">
+                            <a href="https://rightinformation.com" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Right Information Website besuchen">
+                                <img src="work_experience_logos/right_information_new.jpg" class="job__logo-img" alt="Logo Right Information">
+                            </a>
+                        </div>
+                        <div class="job__content">
+                            <header class="job__header">
+                                <div>
+                                    <h3 class="job__title">KI-unterstützter Daten-Ingenieur</h3>
+                                    <p class="job__company">Right Information · Software House</p>
+                                </div>
+                                <time class="job__date" datetime="2023/2024">2023 – 2024</time>
+                            </header>
+                            <p class="job__project"><em>Projekt: ERP-System für Zahlungen, Buchhaltung und Gehaltsabrechnung</em></p>
+                            <ul class="job__list">
+                                <li>Migrierte Legacy-System auf moderne Architektur; KI-unterstützte Entwicklung mit ChatGPT.</li>
+                                <li>Implementierte automatisierte Datenverarbeitungs-Workflows mit intelligenten Benachrichtigungssystemen.</li>
+                            </ul>
+                            <div class="tech-stack" aria-label="Technologies">
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java"><span class="sr-only">Java</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/springboot" class="tech-logo__img" alt="" title="Spring Boot"><span class="sr-only">Spring Boot</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/react" class="tech-logo__img" alt="" title="React.js"><span class="sr-only">React.js</span></span>
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-plain.svg" class="tech-logo__img" alt="" title="PostgreSQL"><span class="sr-only">PostgreSQL</span></span>
+                                <span class="tech-logo"><img src="https://raw.githubusercontent.com/simple-icons/simple-icons/13.0.0/icons/openai.svg" class="tech-logo__img" alt="" title="ChatGPT"><span class="sr-only">ChatGPT</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/anthropic" class="tech-logo__img" alt="" title="AI / ML"><span class="sr-only">AI / ML</span></span>
+                            </div>
+                            <blockquote class="recommendation">
+                                <p><strong>"Ich kann Łukasz als wertvollen, fleißigen Software-Entwickler wärmstens empfehlen..."</strong> <cite>– Filip Lorek, Gründer &amp; CEO</cite></p>
+                            </blockquote>
+                        </div>
+                    </article>
+
+                    <article class="job" aria-label="Position bei Streamsoft">
+                        <div class="job__logo">
+                            <a href="https://streamsoft.pl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Streamsoft Website besuchen">
+                                <img src="work_experience_logos/streamsoft.jpeg" class="job__logo-img" alt="Logo Streamsoft">
+                            </a>
+                        </div>
+                        <div class="job__content">
+                            <header class="job__header">
+                                <div>
+                                    <h3 class="job__title">Daten-Ingenieur</h3>
+                                    <p class="job__company">Streamsoft · SaaS</p>
+                                </div>
+                                <time class="job__date" datetime="2022/2023">2022 – 2023</time>
+                            </header>
+                            <p class="job__project"><em>Projekt: ERP-Software und Finanztechnologie-Lösungen</em></p>
+                            <ul class="job__list">
+                                <li>Entwickelte datenintensive ERP-Lösungen zur Verarbeitung großer Finanzdatensätze mit Java.</li>
+                            </ul>
+                            <div class="tech-stack" aria-label="Technologies">
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java"><span class="sr-only">Java</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/spring" class="tech-logo__img" alt="" title="Spring"><span class="sr-only">Spring</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/hibernate" class="tech-logo__img" alt="" title="Hibernate"><span class="sr-only">Hibernate</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/liquibase" class="tech-logo__img" alt="" title="Liquibase"><span class="sr-only">Liquibase</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/anthropic" class="tech-logo__img" alt="" title="AI / ML"><span class="sr-only">AI / ML</span></span>
+                            </div>
+                            <blockquote class="recommendation">
+                                <p><strong>"Er ist ein außergewöhnlich fleißiger Mitarbeiter, der gut im Team arbeitet..."</strong> <cite>– Zbigniew Wesołowski, Java-Entwickler</cite></p>
+                            </blockquote>
+                        </div>
+                    </article>
+
+                    <article class="job" aria-label="Position bei Luxoft">
+                        <div class="job__logo">
+                            <a href="https://luxoft.com" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Luxoft Website besuchen">
+                                <img src="work_experience_logos/luxoft_new.jpeg" class="job__logo-img" alt="Logo Luxoft">
+                            </a>
+                        </div>
+                        <div class="job__content">
+                            <header class="job__header">
+                                <div>
+                                    <h3 class="job__title">Software- und Daten-Ingenieur</h3>
+                                    <p class="job__company">Luxoft · Software House</p>
+                                </div>
+                                <time class="job__date" datetime="2022">2022</time>
+                            </header>
+                            <p class="job__project"><em>Projekt: ERP-Systeme und Finanzanwendungen</em></p>
+                            <ul class="job__list">
+                                <li>Entwickelte Enterprise-Datensysteme mit Java/Spring/Liquibase zur Verarbeitung hoher Finanztransaktionsvolumina.</li>
+                            </ul>
+                            <div class="tech-stack" aria-label="Technologies">
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java"><span class="sr-only">Java</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/spring" class="tech-logo__img" alt="" title="Spring"><span class="sr-only">Spring</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/hibernate" class="tech-logo__img" alt="" title="Hibernate"><span class="sr-only">Hibernate</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/liquibase" class="tech-logo__img" alt="" title="Liquibase"><span class="sr-only">Liquibase</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/anthropic" class="tech-logo__img" alt="" title="AI / ML"><span class="sr-only">AI / ML</span></span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="job" aria-label="Position bei Universität Twente, Niederlande">
+                        <div class="job__logo">
+                            <a href="https://utwente.nl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Universität Twente, Niederlande Website besuchen">
+                                <img src="work_experience_logos/university_of_twente..jpeg" class="job__logo-img" alt="Logo Universität Twente, Niederlande">
+                            </a>
+                        </div>
+                        <div class="job__content">
+                            <header class="job__header">
+                                <div>
+                                    <h3 class="job__title">Forschungsingenieur — Data Science</h3>
+                                    <p class="job__company">Universität Twente, Niederlande · International</p>
+                                </div>
+                                <time class="job__date" datetime="2021/2022">2021 – 2022</time>
+                            </header>
+                            <ul class="job__list">
+                                <li>Entwickelte Anwendungen zur Datenverarbeitung und wissenschaftlichen Visualisierung für Forschungsprojekte.</li>
+                                <li>Konzipierte Python-Backend für automatisierte Analyse-Workflows und Datenpipelines.</li>
+                            </ul>
+                            <div class="tech-stack" aria-label="Technologies">
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/python" class="tech-logo__img" alt="" title="Python"><span class="sr-only">Python</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/react" class="tech-logo__img" alt="" title="React.js"><span class="sr-only">React.js</span></span>
+                                <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-plain.svg" class="tech-logo__img" alt="" title="PostgreSQL"><span class="sr-only">PostgreSQL</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/anthropic" class="tech-logo__img" alt="" title="AI / ML"><span class="sr-only">AI / ML</span></span>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section" aria-labelledby="education-heading">
+                <h2 id="education-heading" class="section__title">Ausbildung</h2>
+                <div class="timeline">
+
+                    <article class="education" aria-label="Ausbildung: WSB Merito Universität in Wrocław">
+                        <div class="education__logo">
+                            <a href="https://merito.pl" target="_blank" rel="noopener noreferrer" class="education__logo-link" title="WSB Merito Universität in Wrocław Website besuchen">
+                                <img src="universities/merito.jpg" class="education__logo-img" alt="Logo WSB Merito Universität in Wrocław">
+                            </a>
+                        </div>
+                        <div class="education__content">
+                            <header class="education__header">
+                                <div>
+                                    <h3 class="education__title">M.Sc. Informatik: KI &amp; Maschinelles Lernen</h3>
+                                    <p class="education__school">WSB Merito Universität in Wrocław</p>
+                                </div>
+                                <time class="education__date" datetime="2024/2026">2024 - 2026</time>
+                            </header>
+                            <p class="education__note"><em>Masterarbeit: <strong>Multi-Label-EKG-Pathologie-Klassifikation mit ViT + DINO</strong></em></p>
+                            <div class="tech-stack" aria-label="Technologies">
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/python" class="tech-logo__img" alt="" title="Python"><span class="sr-only">Python</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/tensorflow" class="tech-logo__img" alt="" title="TensorFlow"><span class="sr-only">TensorFlow</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/pytorch" class="tech-logo__img" alt="" title="PyTorch"><span class="sr-only">PyTorch</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/anthropic" class="tech-logo__img" alt="" title="AI / ML"><span class="sr-only">AI / ML</span></span>
+                                <span class="tech-logo"><img src="https://cdn.simpleicons.org/claude" class="tech-logo__img" alt="" title="Claude"><span class="sr-only">Claude</span></span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="education" aria-label="Ausbildung: Technische Universität Wrocław">
+                        <div class="education__logo">
+                            <a href="https://pwr.edu.pl" target="_blank" rel="noopener noreferrer" class="education__logo-link" title="Technische Universität Wrocław Website besuchen">
+                                <img src="universities/university_of_technology_wroclaw.png" class="education__logo-img" alt="Logo Technische Universität Wrocław">
+                            </a>
+                        </div>
+                        <div class="education__content">
+                            <header class="education__header">
+                                <div>
+                                    <h3 class="education__title">M.Eng. &amp; B.Eng. Elektronik</h3>
+                                    <p class="education__school">Technische Universität Wrocław</p>
+                                </div>
+                                <time class="education__date" datetime="2016/2021">2016 - 2021</time>
+                            </header>
+                            <p class="education__note"><em>Masterarbeit auf Englisch verfasst</em></p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <footer class="gdpr">
+                <p class="gdpr__text">Ich willige in die Verarbeitung meiner personenbezogenen Daten zu Bewerbungszwecken ein (DSGVO Art. 6 Abs. 1 lit. a).</p>
+            </footer>
+        </main>
+        <span class="page__number" aria-hidden="true">2 / 2</span>
+    </article>
+
+<script>
+(function () {
+  var A4_PX = 794;
+  function fit() {
+    var w = document.documentElement.clientWidth;
+    document.documentElement.style.zoom = w < A4_PX ? (w / A4_PX) : 1;
+  }
+  fit();
+  window.addEventListener('resize', fit);
+})();
+</script>
+
+</body>
+</html>
