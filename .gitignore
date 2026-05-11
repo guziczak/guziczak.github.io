@@ -110,14 +110,20 @@ Thumbs.db
 *.zip
 *.tar.gz
 
-# Build chunks in root directory
-/*.js
+# Build chunks in root directory — DO NOT ignore: GitHub Pages serves them from main
+# /*.js
+# /*.js.map
+# /*.css
+# /*.css.map
+# /chunk-*
+# /main-*
+# /polyfills-*
+# /styles-*
+# /*.br
+# /*.gz
+
+# But keep source-map files out of git (large, regenerable)
 /*.js.map
-/*.css
 /*.css.map
-/chunk-*
-/main-*
-/polyfills-*
-/styles-*
 /*.br
 /*.gz
