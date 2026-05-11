@@ -37,7 +37,7 @@ import { LanguageService } from '../../core/services/language.service';
             <img src="/photo.jpg" alt="Łukasz Guziczak" class="profile-image" />
             <div class="profile-info">
               <h1>Łukasz Guziczak</h1>
-              <h2>Full-stack Developer & Analyst</h2>
+              <h2>AI Solutions</h2>
               <div class="contact-info">
                 <a href="mailto:guziczak@pm.me">
                   <i class="fas fa-envelope"></i> guziczak&#64;pm.me
@@ -73,7 +73,40 @@ import { LanguageService } from '../../core/services/language.service';
           </div>
         </header>
 
+        <!-- CV Preview Section — surfaced first so recruiters see the CV immediately -->
+        <section class="cv-preview-section cv-preview-section--top">
+          <div class="cv-preview-tabs">
+            <button
+              class="tab-btn"
+              [class.active]="currentLang() === 'en'"
+              (click)="switchLanguage('en')"
+            >
+              English Version
+            </button>
+            <button
+              class="tab-btn"
+              [class.active]="currentLang() === 'pl'"
+              (click)="switchLanguage('pl')"
+            >
+              Polish Version
+            </button>
+          </div>
+          <div class="cv-preview-container">
+            <div class="cv-iframe-wrapper">
+              <iframe
+                [src]="cvIframeUrl()"
+                class="cv-iframe"
+                title="CV"
+              ></iframe>
+            </div>
+          </div>
+        </section>
+
         <div class="cv-content">
+          <h3 class="cv-content__header">
+            <i class="fas fa-list-ul"></i> Detailed breakdown
+          </h3>
+
           <!-- Professional Summary -->
           <section class="cv-section">
             <h3><i class="fas fa-user"></i> Professional Summary</h3>
@@ -181,37 +214,6 @@ import { LanguageService } from '../../core/services/language.service';
             </div>
           </section>
         </div>
-
-        <!-- CV Preview Section -->
-        <section class="cv-preview-section">
-          <h3>CV Preview</h3>
-          <div class="cv-preview-tabs">
-            <button
-              class="tab-btn"
-              [class.active]="currentLang() === 'en'"
-              (click)="switchLanguage('en')"
-            >
-              English Version
-            </button>
-            <button
-              class="tab-btn"
-              [class.active]="currentLang() === 'pl'"
-              (click)="switchLanguage('pl')"
-            >
-              Polish Version
-            </button>
-          </div>
-          <div class="cv-preview-container">
-            <div class="cv-iframe-wrapper">
-              <iframe
-                [src]="cvIframeUrl()"
-                class="cv-iframe"
-                title="CV"
-                loading="lazy"
-              ></iframe>
-            </div>
-          </div>
-        </section>
       </div>
     </div>
 
@@ -497,10 +499,29 @@ import { LanguageService } from '../../core/services/language.service';
         padding: 40px;
       }
 
+      .cv-preview-section--top {
+        margin-bottom: 40px;
+      }
+
       .cv-preview-section h3 {
         font-size: 1.8rem;
         margin-bottom: 30px;
         text-align: center;
+      }
+
+      .cv-content__header {
+        font-size: 1.4rem;
+        margin-bottom: 30px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .cv-content__header i {
+        color: var(--color-primary);
       }
 
       .cv-preview-tabs {
