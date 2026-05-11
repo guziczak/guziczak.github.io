@@ -192,8 +192,49 @@ ol[role="list"] {
 }
 
 .page--break {
-    margin-block-start: 20px;
+    margin-block-start: 60px;
     page-break-before: always;
+    position: relative;
+}
+
+/* Subtle divider with page indicator between page 1 and page 2 */
+.page--break::before,
+.page--break::after {
+    position: absolute;
+    pointer-events: none;
+}
+
+.page--break::after {
+    content: '';
+    top: -32px;
+    left: 8%;
+    right: 8%;
+    height: 1px;
+    background: var(--color-border-light);
+}
+
+.page--break::before {
+    content: 'Seite 2 / 2';
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-bg-white);
+    padding: 0 14px;
+    font-size: 0.65rem;
+    color: var(--color-text-muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+@media print {
+    .page--break {
+        margin-block-start: 20px;
+    }
+    .page--break::before,
+    .page--break::after {
+        display: none;
+    }
 }
 
 .page__number {
