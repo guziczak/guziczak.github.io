@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ScrollService } from '../../core/services/scroll.service';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
+import { createSwiatlo, SwiatloPlayer } from './swiatlo-player';
 
 /**
  * The Manifesto — the fold. The CV cover, alive.
@@ -58,6 +59,14 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
         <a [href]="contact.linkedin" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
         <a [href]="'mailto:' + contact.email" aria-label="Email"><i class="fas fa-envelope"></i></a>
       </div>
+
+      <button class="manifesto__music" type="button"
+              [class.is-playing]="musicOn()" (click)="toggleMusic()"
+              [attr.aria-pressed]="musicOn()"
+              aria-label="Play 'światło w ciemności' — my own composition, synthesised live">
+        <span class="manifesto__eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>światło w ciemności</span>
+      </button>
     </section>
   `,
   styles: [
@@ -269,9 +278,53 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
         transform: translateY(-2px);
       }
 
+      /* The bell — Łukasz's own composition, opt-in, off by default. */
+      .manifesto__music {
+        position: absolute;
+        bottom: clamp(1.5rem, 4vw, 3rem);
+        right: clamp(2rem, 6vw, 6rem);
+        z-index: 2;
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 16px 8px 13px;
+        background: rgba(56, 189, 248, 0.04);
+        border: 1px solid rgba(56, 189, 248, 0.18);
+        border-radius: var(--radius-full);
+        color: var(--text-tertiary);
+        font-family: inherit;
+        font-size: 0.62rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: color 0.3s ease, border-color 0.3s ease,
+                    background-color 0.3s ease, box-shadow 0.3s ease;
+        animation: engrave 0.85s cubic-bezier(0.33, 1, 0.68, 1) both;
+        animation-delay: 1s;
+      }
+      .manifesto__music:hover {
+        color: var(--color-primary);
+        border-color: rgba(56, 189, 248, 0.5);
+        background: rgba(56, 189, 248, 0.08);
+      }
+      .manifesto__music.is-playing {
+        color: var(--color-primary);
+        border-color: rgba(56, 189, 248, 0.6);
+        box-shadow: 0 0 22px rgba(56, 189, 248, 0.25);
+      }
+      .manifesto__eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
+      .manifesto__eq i { width: 2px; height: 3px; background: currentColor; border-radius: 1px; }
+      .manifesto__music.is-playing .manifesto__eq i { animation: eqBar 0.9s ease-in-out infinite; }
+      .manifesto__music.is-playing .manifesto__eq i:nth-child(2) { animation-duration: 0.7s; }
+      .manifesto__music.is-playing .manifesto__eq i:nth-child(3) { animation-duration: 1.15s; }
+      .manifesto__music.is-playing .manifesto__eq i:nth-child(4) { animation-duration: 0.82s; }
+      @keyframes eqBar { 0%, 100% { height: 3px; } 50% { height: 11px; } }
+
       @media (max-width: 640px) {
         .manifesto__stamp { font-size: 0.68rem; }
         .manifesto__social { position: static; margin-top: 2.5rem; }
+        .manifesto__music { position: static; align-self: flex-start; margin-top: 1.5rem; }
       }
     `,
   ],
@@ -284,6 +337,10 @@ export class HeroSectionComponent implements AfterViewInit {
   protected readonly typedDone = signal(false);
   private readonly punchWord = 'Cute';
 
+  protected readonly musicOn = signal(false);
+  private notes: number[][] | null = null;
+  private player: SwiatloPlayer | null = null;
+
   /** The manifesto's punch types itself in, then the cursor commits to a period. */
   ngAfterViewInit(): void {
     if (typeof window === 'undefined') {
@@ -291,6 +348,11 @@ export class HeroSectionComponent implements AfterViewInit {
       this.typedDone.set(true);
       return;
     }
+    // Load Łukasz's composition for opt-in playback (the bell — never autoplays).
+    fetch('swiatlo.json')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && d.notes) this.notes = d.notes; })
+      .catch(() => {});
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (reduce) {
       this.typed.set(this.punchWord);
@@ -312,6 +374,15 @@ export class HeroSectionComponent implements AfterViewInit {
 
   enter(): void {
     this.scrollService.scrollToSection('projects');
+  }
+
+  /** The bell — opt-in. The click is the gesture browsers need to start audio. */
+  toggleMusic(): void {
+    if (!this.notes) return;
+    if (!this.player) {
+      this.player = createSwiatlo(this.notes, { onState: (on) => this.musicOn.set(on) });
+    }
+    this.player.toggle();
   }
 
   /** Doubled so the vertical drift loops seamlessly. */
