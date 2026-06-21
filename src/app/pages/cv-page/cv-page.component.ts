@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -77,11 +77,13 @@ import { LanguageService } from '../../core/services/language.service';
              Language follows the global LanguageService (nav dropdown). -->
         <section class="cv-preview-section cv-preview-section--top">
           <div class="cv-preview-container">
-            <div class="cv-iframe-wrapper">
+            <div class="cv-iframe-wrapper" #cvWrapper>
               <iframe
                 [src]="cvIframeUrl()"
                 class="cv-iframe"
                 title="CV"
+                (load)="fitCv()"
+                #cvFrame
               ></iframe>
             </div>
           </div>
@@ -431,7 +433,7 @@ import { LanguageService } from '../../core/services/language.service';
         width: 100%;
         max-width: 794px;
         margin: 0 auto;
-        aspect-ratio: 794 / 2246;
+        min-height: 200px;
         border-radius: 8px;
         overflow: hidden;
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
@@ -439,10 +441,11 @@ import { LanguageService } from '../../core/services/language.service';
       }
 
       .cv-iframe {
-        width: 100%;
-        height: 100%;
+        width: 794px;
+        height: 1123px;
         border: 0;
         display: block;
+        transform-origin: top left;
       }
 
       @media (max-width: 820px) {
@@ -484,6 +487,10 @@ export class CvPageComponent implements OnInit {
   private dataService = inject(DataService);
   private languageService = inject(LanguageService);
   private sanitizer = inject(DomSanitizer);
+
+  @ViewChild('cvFrame') private cvFrame?: ElementRef<HTMLIFrameElement>;
+  @ViewChild('cvWrapper') private cvWrapper?: ElementRef<HTMLElement>;
+  private static readonly CV_DOC_WIDTH = 794;
 
   experience = signal<Experience[]>([]);
   education = signal<Education[]>([]);
@@ -534,5 +541,40 @@ export class CvPageComponent implements OnInit {
       CvPageComponent.CV_PDF_BY_LANG[this.currentLang()] ??
       CvPageComponent.CV_PDF_BY_LANG['en'];
     window.open(url, '_blank');
+  }
+
+  /**
+   * Fit the fixed-width (A4 / 794px) CV document to the frame:
+   * scale to the wrapper width, set height to the content, kill inner scrollbars.
+   * The outer page scrolls — the preview never does.
+   */
+  fitCv(): void {
+    const frame = this.cvFrame?.nativeElement;
+    const wrapper = this.cvWrapper?.nativeElement;
+    if (!frame || !wrapper) return;
+
+    let docHeight = 1123;
+    try {
+      const doc = frame.contentDocument ?? frame.contentWindow?.document;
+      if (doc) {
+        doc.documentElement.style.overflow = 'hidden';
+        docHeight =
+          doc.documentElement.scrollHeight || doc.body.scrollHeight || docHeight;
+      }
+    } catch {
+      // same-origin iframe; ignore
+    }
+
+    const h = docHeight + 2;
+    const scale = Math.min(1, wrapper.clientWidth / CvPageComponent.CV_DOC_WIDTH);
+    frame.style.width = CvPageComponent.CV_DOC_WIDTH + 'px';
+    frame.style.height = h + 'px';
+    frame.style.transform = `scale(${scale})`;
+    wrapper.style.height = Math.ceil(h * scale) + 'px';
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.fitCv();
   }
 }
