@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ScrollService } from '../../core/services/scroll.service';
@@ -30,7 +30,7 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
         <p class="manifesto__lead" style="--i: 0">
           They say AI loses the thread past 1,000 lines of code.
         </p>
-        <p class="manifesto__punch" style="--i: 1">Cute<span class="manifesto__dot" aria-hidden="true"></span></p>
+        <p class="manifesto__punch" style="--i: 1"><span class="manifesto__type">{{ typed() }}</span><span class="manifesto__dot" [class.manifesto__dot--period]="typedDone()" aria-hidden="true"></span></p>
         <p class="manifesto__reframe" style="--i: 2">
           That's where I start — <span class="manifesto__num">20,000</span> lines.
           One file. One person.
@@ -152,27 +152,31 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
         margin: 0.2rem 0 1.2rem;
       }
 
-      /* The period after "Cute" is a code cursor: it blinks like a prompt, then
-         commits into a solid accent full-stop. A coder's period — returns 0. */
+      /* "Cute" types itself in (ngAfterViewInit); the cursor blinks like a prompt,
+         then commits into a solid accent full-stop. A coder's period — returns 0. */
+      .manifesto__type { white-space: pre; }
       .manifesto__dot {
         display: inline-block;
-        width: 0.13em;
-        height: 0.13em;
-        border-radius: 50%;
+        width: 0.07em;
+        height: 0.62em;
+        border-radius: 0.035em;
         background: var(--color-primary);
         vertical-align: baseline;
-        margin-left: 0.12em;
-        animation: cursorCommit 1.7s cubic-bezier(0.55, 0, 0.2, 1) both;
-        animation-delay: 1.3s;
+        margin-left: 0.04em;
+        transition: width 0.25s ease, height 0.25s ease, border-radius 0.25s ease,
+                    margin-left 0.25s ease;
+        animation: caretBlink 1s step-end infinite;
       }
-      @keyframes cursorCommit {
-        0%   { opacity: 0; width: 0.06em; height: 0.62em; border-radius: 0.03em; }
-        9%   { opacity: 1; }
-        26%  { opacity: 0.08; }
-        41%  { opacity: 1; }
-        58%  { opacity: 0.08; }
-        72%  { opacity: 1; width: 0.06em; height: 0.62em; border-radius: 0.03em; }
-        100% { opacity: 1; width: 0.13em; height: 0.13em; border-radius: 50%; }
+      .manifesto__dot--period {
+        width: 0.14em;
+        height: 0.14em;
+        border-radius: 50%;
+        margin-left: 0.12em;
+        animation: none;
+      }
+      @keyframes caretBlink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
       }
       .manifesto__reframe {
         font-size: clamp(1.5rem, 4vw, 2.6rem);
@@ -272,9 +276,39 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
     `,
   ],
 })
-export class HeroSectionComponent {
+export class HeroSectionComponent implements AfterViewInit {
   private scrollService = inject(ScrollService);
   protected readonly contact = CONTACT_CONFIG;
+
+  protected readonly typed = signal('');
+  protected readonly typedDone = signal(false);
+  private readonly punchWord = 'Cute';
+
+  /** The manifesto's punch types itself in, then the cursor commits to a period. */
+  ngAfterViewInit(): void {
+    if (typeof window === 'undefined') {
+      this.typed.set(this.punchWord);
+      this.typedDone.set(true);
+      return;
+    }
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      this.typed.set(this.punchWord);
+      this.typedDone.set(true);
+      return;
+    }
+    let i = 1;
+    const tick = () => {
+      this.typed.set(this.punchWord.slice(0, i));
+      if (i < this.punchWord.length) {
+        i++;
+        setTimeout(tick, 120);
+      } else {
+        this.typedDone.set(true);
+      }
+    };
+    setTimeout(tick, 1500);
+  }
 
   enter(): void {
     this.scrollService.scrollToSection('projects');
