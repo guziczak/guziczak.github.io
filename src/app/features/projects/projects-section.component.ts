@@ -1,5 +1,36 @@
-import { Component } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LanguageService } from '../../core/services/language.service';
+
+const PROOF: Record<string, any> = {
+  en: {
+    eyebrow: 'The proof', title: 'The code says the rest.',
+    s1flag: "In production · maintained by the bank's team", s1where: 'Natek · embedded at a bank',
+    s1desc: "Sole engineer, end to end. Local vision + language models on the bank's own GPUs — extracting structured data from scanned financial statements. No document ever leaves the network. Built for EU AI Act readiness and GDPR.",
+    s2flag: 'Built solo · Sold', s2where: 'A commercial product',
+    s2desc: 'An AI scribe for veterinary clinics — it turns the conversation in the room into clinical documentation. Architected, built and shipped alone, end to end. Then sold.',
+    rangeLabel: 'And the range —',
+    r1: 'Single-file IDE · Git/GitHub client', r2: 'Art-studio site · shipped for a client', r3: 'Sheet-music player',
+  },
+  pl: {
+    eyebrow: 'Dowód', title: 'Resztę mówi kod.',
+    s1flag: 'Na produkcji · utrzymywany przez zespół banku', s1where: 'Natek · oddelegowany do banku',
+    s1desc: 'Jedyny inżynier, end to end. Lokalne modele wizyjne i językowe na GPU banku — ekstrakcja danych ustrukturyzowanych ze skanów sprawozdań finansowych. Żaden dokument nie opuszcza sieci. Pod kątem EU AI Act i RODO.',
+    s2flag: 'Zbudowany solo · Sprzedany', s2where: 'Produkt komercyjny',
+    s2desc: 'AI-skryba dla klinik weterynaryjnych — zamienia rozmowę w gabinecie w dokumentację kliniczną. Zaprojektowany, zbudowany i wdrożony w pojedynkę, end to end. Potem sprzedany.',
+    rangeLabel: 'A do tego zasięg —',
+    r1: 'Jednoplikowe IDE · klient Git/GitHub', r2: 'Strona studia artystycznego · dla klienta', r3: 'Odtwarzacz nut',
+  },
+  de: {
+    eyebrow: 'Der Beweis', title: 'Den Rest sagt der Code.',
+    s1flag: 'In Produktion · gepflegt vom Bank-Team', s1where: 'Natek · in einer Bank',
+    s1desc: 'Alleiniger Entwickler, end to end. Lokale Vision- und Sprachmodelle auf den GPUs der Bank — Extraktion strukturierter Daten aus gescannten Finanzberichten. Kein Dokument verlässt das Netzwerk. Für EU AI Act und DSGVO ausgelegt.',
+    s2flag: 'Allein gebaut · Verkauft', s2where: 'Ein kommerzielles Produkt',
+    s2desc: 'Ein KI-Schreiber für Tierkliniken — verwandelt das Gespräch im Raum in klinische Dokumentation. Allein konzipiert, gebaut und ausgeliefert, end to end. Dann verkauft.',
+    rangeLabel: 'Und die Bandbreite —',
+    r1: 'Single-File-IDE · Git/GitHub-Client', r2: 'Kunststudio-Website · für einen Kunden', r3: 'Notenplayer',
+  },
+};
 
 /**
  * The Proof — system slabs, not a card grid.
@@ -13,36 +44,29 @@ import { CommonModule } from '@angular/common';
   template: `
     <section class="proof" id="projects">
       <header class="proof__head animate-on-scroll">
-        <span class="proof__eyebrow">The proof</span>
-        <h2 class="proof__title">The code says the rest.</h2>
+        <span class="proof__eyebrow">{{ p().eyebrow }}</span>
+        <h2 class="proof__title">{{ p().title }}</h2>
       </header>
 
       <article class="slab animate-on-scroll">
         <div class="slab__meta">
           <span class="slab__index">01</span>
-          <span class="slab__flag">In production · maintained by the bank's team</span>
+          <span class="slab__flag">{{ p().s1flag }}</span>
         </div>
         <h3 class="slab__name">On-prem Document AI</h3>
-        <p class="slab__where">Natek · embedded at a bank</p>
-        <p class="slab__desc">
-          Sole engineer, end to end. Local vision + language models on the bank's own
-          GPUs — extracting structured data from scanned financial statements. No document
-          ever leaves the network. Built for EU AI Act readiness and GDPR.
-        </p>
+        <p class="slab__where">{{ p().s1where }}</p>
+        <p class="slab__desc">{{ p().s1desc }}</p>
         <p class="slab__tech">Python · PyTorch · Computer Vision (ViT) · Local LLMs (vLLM) · Structured Outputs</p>
       </article>
 
       <article class="slab animate-on-scroll">
         <div class="slab__meta">
           <span class="slab__index">02</span>
-          <span class="slab__flag">Built solo · Sold</span>
+          <span class="slab__flag">{{ p().s2flag }}</span>
         </div>
         <h3 class="slab__name">OpisAI</h3>
-        <p class="slab__where">A commercial product</p>
-        <p class="slab__desc">
-          An AI scribe for veterinary clinics — it turns the conversation in the room into
-          clinical documentation. Architected, built and shipped alone, end to end. Then sold.
-        </p>
+        <p class="slab__where">{{ p().s2where }}</p>
+        <p class="slab__desc">{{ p().s2desc }}</p>
         <p class="slab__tech">LLMs · Structured Outputs · Python · Full-stack</p>
         <a class="slab__link" href="https://guziczak.github.io/opisai" target="_blank" rel="noopener noreferrer">
           guziczak.github.io/opisai <span aria-hidden="true">→</span>
@@ -50,16 +74,16 @@ import { CommonModule } from '@angular/common';
       </article>
 
       <div class="range animate-on-scroll">
-        <span class="range__label">And the range —</span>
+        <span class="range__label">{{ p().rangeLabel }}</span>
         <div class="range__items">
           <a class="range__item" href="https://github.com/guziczak/ide" target="_blank" rel="noopener noreferrer">
-            <b>ForgeIDE</b><span>Single-file IDE · Git/GitHub client</span>
+            <b>ForgeIDE</b><span>{{ p().r1 }}</span>
           </a>
           <a class="range__item" href="https://guziczak.github.io/siekart" target="_blank" rel="noopener noreferrer">
-            <b>Siek-Art</b><span>Art-studio site · shipped for a client</span>
+            <b>Siek-Art</b><span>{{ p().r2 }}</span>
           </a>
           <a class="range__item" href="https://github.com/guziczak/noteplayer" target="_blank" rel="noopener noreferrer">
-            <b>noteplayer</b><span>Sheet-music player</span>
+            <b>noteplayer</b><span>{{ p().r3 }}</span>
           </a>
         </div>
       </div>
@@ -190,4 +214,7 @@ import { CommonModule } from '@angular/common';
     `,
   ],
 })
-export class ProjectsSectionComponent {}
+export class ProjectsSectionComponent {
+  private languageService = inject(LanguageService);
+  protected readonly p = computed(() => PROOF[this.languageService.currentLanguage()] ?? PROOF['en']);
+}

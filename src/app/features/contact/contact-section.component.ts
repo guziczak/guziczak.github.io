@@ -1,6 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
+import { LanguageService } from '../../core/services/language.service';
+
+const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: string }> = {
+  en: { line: 'You read this far.', cta: "Let's build something.", cvText: 'The full CV follows.', cvNote: "(You won't need it.)" },
+  pl: { line: 'Doczytałeś tak daleko.', cta: 'Zróbmy coś razem.', cvText: 'Pełne CV poniżej.', cvNote: '(Nie będzie ci potrzebne.)' },
+  de: { line: 'Sie haben bis hierher gelesen.', cta: 'Lassen Sie uns etwas bauen.', cvText: 'Vollständiger Lebenslauf folgt.', cvNote: '(Sie werden ihn nicht brauchen.)' },
+};
 
 /**
  * The quiet exit — no form, no begging. A cold close, three direct contacts,
@@ -13,8 +20,8 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
   template: `
     <section class="exit" id="contact">
       <div class="exit__inner animate-on-scroll">
-        <p class="exit__line">You read this far.</p>
-        <h2 class="exit__cta">Let's build something.</h2>
+        <p class="exit__line">{{ e().line }}</p>
+        <h2 class="exit__cta">{{ e().cta }}</h2>
 
         <div class="exit__contacts">
           <a [href]="'mailto:' + contact.email">{{ contact.email }}</a>
@@ -25,7 +32,7 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
         </div>
 
         <a class="exit__cv" href="/cv" target="_blank" rel="noopener noreferrer">
-          The full CV follows. <span>(You won't need it.)</span>
+          {{ e().cvText }} <span>{{ e().cvNote }}</span>
         </a>
       </div>
     </section>
@@ -80,5 +87,7 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
   ],
 })
 export class ContactSectionComponent {
+  private languageService = inject(LanguageService);
   protected readonly contact = CONTACT_CONFIG;
+  protected readonly e = computed(() => EXIT[this.languageService.currentLanguage()] ?? EXIT['en']);
 }

@@ -1,9 +1,43 @@
-import { Component, inject, signal, AfterViewInit } from '@angular/core';
+import { Component, inject, signal, computed, effect, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ScrollService } from '../../core/services/scroll.service';
+import { LanguageService } from '../../core/services/language.service';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
 import { createSwiatlo, SwiatloPlayer } from './swiatlo-player';
+
+const MANIFESTO: Record<string, any> = {
+  en: {
+    stamp: ['In the lab since 2016. In production since 2024. Not since ChatGPT.', 'Currently embedded at a bank — on-prem, regulated.'],
+    lead: 'They say AI loses the thread past 1,000 lines of code.',
+    punch: 'Cute',
+    reframeA: "That's where I start — ", reframeB: ' lines. One file. One person.',
+    proof1: 'A month to a working PoC. Three to production. No team.',
+    proof2: "Their teams maintain it. I'm on the next.",
+    rest: 'The code says the rest.',
+    enter: 'Enter', cvText: 'The full CV', cvNote: "(You won't need it.)",
+  },
+  pl: {
+    stamp: ['W laboratorium od 2016. Na produkcji od 2024. Nie od ChatGPT.', 'Obecnie w banku — on-prem, regulowany.'],
+    lead: 'Mówią, że AI gubi wątek po 1000 liniach kodu.',
+    punch: 'Urocze',
+    reframeA: 'Ja tam zaczynam — ', reframeB: ' linii. Jeden plik. Jeden człowiek.',
+    proof1: 'Miesiąc do działającego PoC. Trzy do produkcji. Bez zespołu.',
+    proof2: 'Ich zespoły to utrzymują. Ja jestem przy następnym.',
+    rest: 'Resztę mówi kod.',
+    enter: 'Wejdź', cvText: 'Pełne CV', cvNote: '(Nie będzie ci potrzebne.)',
+  },
+  de: {
+    stamp: ['Im Labor seit 2016. In Produktion seit 2024. Nicht seit ChatGPT.', 'Derzeit in einer Bank — On-Prem, reguliert.'],
+    lead: 'Sie sagen, KI verliert den Faden nach 1.000 Zeilen Code.',
+    punch: 'Niedlich',
+    reframeA: 'Da fange ich an — ', reframeB: ' Zeilen. Eine Datei. Eine Person.',
+    proof1: 'Ein Monat bis zum funktionierenden PoC. Drei bis zur Produktion. Kein Team.',
+    proof2: 'Ihre Teams pflegen es. Ich bin schon beim nächsten.',
+    rest: 'Den Rest sagt der Code.',
+    enter: 'Eintreten', cvText: 'Der vollständige Lebenslauf', cvNote: '(Sie werden ihn nicht brauchen.)',
+  },
+};
 
 /**
  * The Manifesto — the fold. The CV cover, alive.
@@ -23,33 +57,24 @@ import { createSwiatlo, SwiatloPlayer } from './swiatlo-player';
 
       <div class="manifesto__stamp">
         <span class="manifesto__kicker">Łukasz Guziczak · AI Engineer</span>
-        <span>In the lab since 2016. In production since 2024. Not since ChatGPT.</span>
-        <span>Currently embedded at a bank — on-prem, regulated.</span>
+        <span>{{ m().stamp[0] }}</span>
+        <span>{{ m().stamp[1] }}</span>
       </div>
 
       <div class="manifesto__inner">
-        <p class="manifesto__lead" style="--i: 0">
-          They say AI loses the thread past 1,000 lines of code.
-        </p>
+        <p class="manifesto__lead" style="--i: 0">{{ m().lead }}</p>
         <p class="manifesto__punch" style="--i: 1"><span class="manifesto__type">{{ typed() }}</span><span class="manifesto__dot" [class.manifesto__dot--period]="typedDone()" aria-hidden="true"></span></p>
-        <p class="manifesto__reframe" style="--i: 2">
-          That's where I start — <span class="manifesto__num">20,000</span> lines.
-          One file. One person.
-        </p>
-        <p class="manifesto__proof" style="--i: 3">
-          A month to a working PoC. Three to production. No team.
-        </p>
-        <p class="manifesto__proof" style="--i: 4">
-          Their teams maintain it. I'm on the next.
-        </p>
-        <p class="manifesto__rest" style="--i: 5">The code says the rest.</p>
+        <p class="manifesto__reframe" style="--i: 2">{{ m().reframeA }}<span class="manifesto__num">20,000</span>{{ m().reframeB }}</p>
+        <p class="manifesto__proof" style="--i: 3">{{ m().proof1 }}</p>
+        <p class="manifesto__proof" style="--i: 4">{{ m().proof2 }}</p>
+        <p class="manifesto__rest" style="--i: 5">{{ m().rest }}</p>
 
         <div class="manifesto__cta" style="--i: 6">
           <button (click)="enter()" class="manifesto__enter">
-            Enter <span class="manifesto__arrow">↓</span>
+            {{ m().enter }} <span class="manifesto__arrow">↓</span>
           </button>
           <a href="/cv" target="_blank" rel="noopener noreferrer" class="manifesto__cv">
-            The full CV <span class="manifesto__cv-note">(You won't need it.)</span>
+            {{ m().cvText }} <span class="manifesto__cv-note">{{ m().cvNote }}</span>
           </a>
         </div>
       </div>
@@ -339,11 +364,38 @@ import { createSwiatlo, SwiatloPlayer } from './swiatlo-player';
 })
 export class HeroSectionComponent implements AfterViewInit {
   private scrollService = inject(ScrollService);
+  private languageService = inject(LanguageService);
   protected readonly contact = CONTACT_CONFIG;
+
+  protected readonly m = computed(
+    () => MANIFESTO[this.languageService.currentLanguage()] ?? MANIFESTO['en'],
+  );
 
   protected readonly typed = signal('');
   protected readonly typedDone = signal(false);
-  private readonly punchWord = 'Cute';
+
+  constructor() {
+    let first = true;
+    // Type the punch on load; re-type when the language changes.
+    effect((onCleanup) => {
+      const word = this.m().punch as string;
+      if (typeof window === 'undefined') { this.typed.set(word); this.typedDone.set(true); return; }
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) { this.typed.set(word); this.typedDone.set(true); return; }
+      this.typed.set('');
+      this.typedDone.set(false);
+      let i = 1;
+      let timer: ReturnType<typeof setTimeout>;
+      const tick = () => {
+        this.typed.set(word.slice(0, i));
+        if (i < word.length) { i++; timer = setTimeout(tick, 120); }
+        else this.typedDone.set(true);
+      };
+      timer = setTimeout(tick, first ? 1500 : 250);
+      first = false;
+      onCleanup(() => clearTimeout(timer));
+    });
+  }
 
   protected readonly musicOn = signal(false);
   private notes: number[][] | null = null;
@@ -351,11 +403,7 @@ export class HeroSectionComponent implements AfterViewInit {
 
   /** The manifesto's punch types itself in, then the cursor commits to a period. */
   ngAfterViewInit(): void {
-    if (typeof window === 'undefined') {
-      this.typed.set(this.punchWord);
-      this.typedDone.set(true);
-      return;
-    }
+    if (typeof window === 'undefined') return;
     // Load Łukasz's composition for opt-in playback (the bell — never autoplays).
     fetch('swiatlo.json')
       .then((r) => (r.ok ? r.json() : null))
@@ -374,24 +422,6 @@ export class HeroSectionComponent implements AfterViewInit {
     };
     document.addEventListener('pointerdown', kick, { passive: true });
     document.addEventListener('keydown', kick);
-
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) {
-      this.typed.set(this.punchWord);
-      this.typedDone.set(true);
-      return;
-    }
-    let i = 1;
-    const tick = () => {
-      this.typed.set(this.punchWord.slice(0, i));
-      if (i < this.punchWord.length) {
-        i++;
-        setTimeout(tick, 120);
-      } else {
-        this.typedDone.set(true);
-      }
-    };
-    setTimeout(tick, 1500);
   }
 
   enter(): void {

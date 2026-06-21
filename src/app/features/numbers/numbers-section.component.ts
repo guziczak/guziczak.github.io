@@ -1,5 +1,27 @@
-import { Component } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LanguageService } from '../../core/services/language.service';
+
+const NUMBERS: Record<string, { big: string; small: string }[]> = {
+  en: [
+    { big: '2', small: 'LLM systems in production' },
+    { big: 'SOLD', small: 'own AI product — OpisAI' },
+    { big: '2016', small: 'real ML since — not since ChatGPT' },
+    { big: '5+', small: 'years production engineering' },
+  ],
+  pl: [
+    { big: '2', small: 'systemy LLM na produkcji' },
+    { big: 'SPRZEDANE', small: 'własny produkt AI — OpisAI' },
+    { big: '2016', small: 'prawdziwy ML od — nie od ChatGPT' },
+    { big: '5+', small: 'lat inżynierii produkcyjnej' },
+  ],
+  de: [
+    { big: '2', small: 'LLM-Systeme in Produktion' },
+    { big: 'VERKAUFT', small: 'eigenes KI-Produkt — OpisAI' },
+    { big: '2016', small: 'echtes ML seit — nicht seit ChatGPT' },
+    { big: '5+', small: 'Jahre Produktionsengineering' },
+  ],
+};
 
 /**
  * The Numbers — a dark band of hard, verifiable ammunition.
@@ -13,22 +35,12 @@ import { CommonModule } from '@angular/common';
   template: `
     <section class="numbers" id="numbers">
       <div class="numbers__row">
-        <div class="num animate-on-scroll">
-          <span class="num__big">2</span>
-          <span class="num__small">LLM systems in production</span>
-        </div>
-        <div class="num animate-on-scroll">
-          <span class="num__big">SOLD</span>
-          <span class="num__small">own AI product — OpisAI</span>
-        </div>
-        <div class="num animate-on-scroll">
-          <span class="num__big">2016</span>
-          <span class="num__small">real ML since — not since ChatGPT</span>
-        </div>
-        <div class="num animate-on-scroll">
-          <span class="num__big">5+</span>
-          <span class="num__small">years production engineering</span>
-        </div>
+        @for (n of nums(); track n.small) {
+          <div class="num animate-on-scroll">
+            <span class="num__big">{{ n.big }}</span>
+            <span class="num__small">{{ n.small }}</span>
+          </div>
+        }
       </div>
     </section>
   `,
@@ -75,4 +87,9 @@ import { CommonModule } from '@angular/common';
     `,
   ],
 })
-export class NumbersSectionComponent {}
+export class NumbersSectionComponent {
+  private languageService = inject(LanguageService);
+  protected readonly nums = computed(
+    () => NUMBERS[this.languageService.currentLanguage()] ?? NUMBERS['en'],
+  );
+}
