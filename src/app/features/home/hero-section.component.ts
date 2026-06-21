@@ -30,7 +30,7 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
         <p class="manifesto__lead" style="--i: 0">
           They say AI loses the thread past 1,000 lines of code.
         </p>
-        <p class="manifesto__punch" style="--i: 1">Cute.</p>
+        <p class="manifesto__punch" style="--i: 1">Cute<span class="manifesto__dot" aria-hidden="true"></span></p>
         <p class="manifesto__reframe" style="--i: 2">
           That's where I start — <span class="manifesto__num">20,000</span> lines.
           One file. One person.
@@ -150,6 +150,29 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
         line-height: 0.95;
         color: var(--text-primary);
         margin: 0.2rem 0 1.2rem;
+      }
+
+      /* The period after "Cute" is a code cursor: it blinks like a prompt, then
+         commits into a solid accent full-stop. A coder's period — returns 0. */
+      .manifesto__dot {
+        display: inline-block;
+        width: 0.13em;
+        height: 0.13em;
+        border-radius: 50%;
+        background: var(--color-primary);
+        vertical-align: baseline;
+        margin-left: 0.12em;
+        animation: cursorCommit 1.7s cubic-bezier(0.55, 0, 0.2, 1) both;
+        animation-delay: 1.3s;
+      }
+      @keyframes cursorCommit {
+        0%   { opacity: 0; width: 0.06em; height: 0.62em; border-radius: 0.03em; }
+        9%   { opacity: 1; }
+        26%  { opacity: 0.08; }
+        41%  { opacity: 1; }
+        58%  { opacity: 0.08; }
+        72%  { opacity: 1; width: 0.06em; height: 0.62em; border-radius: 0.03em; }
+        100% { opacity: 1; width: 0.13em; height: 0.13em; border-radius: 50%; }
       }
       .manifesto__reframe {
         font-size: clamp(1.5rem, 4vw, 2.6rem);
