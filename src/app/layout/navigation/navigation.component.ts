@@ -175,8 +175,12 @@ export class NavigationComponent {
         this.pastFold.set(!onHome || window.scrollY > window.innerHeight * 0.55);
       };
       window.addEventListener('scroll', update, { passive: true });
+      const sub = this.router.events.subscribe(() => update());
       update();
-      onCleanup(() => window.removeEventListener('scroll', update));
+      onCleanup(() => {
+        window.removeEventListener('scroll', update);
+        sub.unsubscribe();
+      });
     });
 
     // Close the language menu on outside click.
