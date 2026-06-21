@@ -1,377 +1,222 @@
 import { Component, signal, computed, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { trigger, state, style, transition, animate } from '@angular/animations';
-import { ThemeService } from '../../core/services/theme.service';
 import { LanguageService } from '../../core/services/language.service';
-import { ScrollService } from '../../core/services/scroll.service';
-import { FocusTrapDirective } from '../../shared/directives/focus-trap.directive';
 import { FlagIconComponent } from '../../shared/ui/flag-icon/flag-icon.component';
 
-interface NavItem {
-  path: string;
-  label: string;
-  icon: string;
-}
-
+/**
+ * The carved sign — not a neon over the chapel.
+ * Nothing at the fold; a quiet obsidian bar fades in once you scroll into the nave.
+ * Holds only what must be global: name (back to top), CV, language.
+ */
 @Component({
   selector: 'app-navigation',
   standalone: true,
-  imports: [CommonModule, RouterModule, FocusTrapDirective, FlagIconComponent],
-  animations: [
-    trigger('slideIn', [
-      transition(':enter', [
-        style({ transform: 'translateX(100%)' }),
-        animate('300ms ease-out', style({ transform: 'translateX(0)' }))
-      ]),
-      transition(':leave', [
-        animate('300ms ease-in', style({ transform: 'translateX(100%)' }))
-      ])
-    ])
-  ],
+  imports: [CommonModule, RouterModule, FlagIconComponent],
   template: `
-    <nav class="navbar" [class.scrolled]="isScrolled()">
-      <div class="nav-container">
-        <!-- Logo -->
-        <a (click)="navigateToHome()" class="logo">
-          <img
-            src="assets/images/profile.jpg"
-            alt="Łukasz Guziczak"
-            class="logo-img"
-          />
-          <span>Łukasz Guziczak</span>
-        </a>
+    <nav class="bar" [class.visible]="pastFold()">
+      <a (click)="toTop()" class="bar__mark">Łukasz Guziczak</a>
 
-        <!-- Desktop Navigation -->
-        <ul class="nav-links">
-          @for (item of responsiveNavItems(); track item.path) {
-            <li class="nav-item">
-              <a
-                (click)="scrollToSection(item.path)"
-                [class.active]="activeSection() === item.path"
-                class="nav-link"
-              >
-                {{ item.label }}
-              </a>
-            </li>
+      <div class="bar__right">
+        <a routerLink="/cv" class="bar__cv">CV</a>
+
+        <div class="lang" [class.open]="langOpen()">
+          <button
+            class="lang__btn"
+            (click)="toggleLang()"
+            [attr.aria-expanded]="langOpen()"
+            [attr.aria-label]="'Language: ' + langName()"
+            aria-haspopup="listbox"
+          >
+            <app-flag-icon [lang]="lang()"></app-flag-icon>
+            <span>{{ lang().toUpperCase() }}</span>
+            <i class="fas fa-chevron-down lang__arrow"></i>
+          </button>
+          @if (langOpen()) {
+            <div class="lang__menu" role="listbox">
+              <button class="lang__item" role="option" (click)="pick('en')" [class.active]="lang() === 'en'">
+                <app-flag-icon lang="en"></app-flag-icon><span>English</span>
+              </button>
+              <button class="lang__item" role="option" (click)="pick('pl')" [class.active]="lang() === 'pl'">
+                <app-flag-icon lang="pl"></app-flag-icon><span>Polski</span>
+              </button>
+              <button class="lang__item" role="option" (click)="pick('de')" [class.active]="lang() === 'de'">
+                <app-flag-icon lang="de"></app-flag-icon><span>Deutsch</span>
+              </button>
+            </div>
           }
-          <li class="nav-item">
-            <a routerLink="/certificates" class="nav-link certs-link">
-              <i class="fas fa-certificate"></i>
-              <span class="certs-text">Certificates</span>
-            </a>
-          </li>
-          <li class="nav-item cv-nav-item">
-            <a routerLink="/cv" class="nav-link">
-              <i class="fas fa-file-alt"></i>
-              <span>CV</span>
-            </a>
-          </li>
-        </ul>
-
-        <!-- Utility Buttons -->
-        <div class="utility-buttons">
-          <!-- Language Dropdown -->
-          <div class="language-dropdown" [class.open]="isLanguageDropdownOpen()">
-            <button
-              class="lang-btn"
-              (click)="toggleLanguageDropdown()"
-              [attr.aria-label]="'Current language: ' + getCurrentLanguageName()"
-              [attr.aria-expanded]="isLanguageDropdownOpen()"
-              aria-haspopup="listbox"
-            >
-              <app-flag-icon [lang]="currentLanguage()"></app-flag-icon>
-              <span class="lang-code">{{ currentLanguage().toUpperCase() }}</span>
-              <i class="fas fa-chevron-down dropdown-arrow"></i>
-            </button>
-            
-            @if (isLanguageDropdownOpen()) {
-              <div class="dropdown-menu" role="listbox">
-                <button
-                  class="dropdown-item"
-                  role="option"
-                  (click)="selectLanguage('en')"
-                  [class.active]="currentLanguage() === 'en'"
-                  [attr.aria-selected]="currentLanguage() === 'en'"
-                >
-                  <app-flag-icon lang="en"></app-flag-icon>
-                  <span>English</span>
-                  @if (currentLanguage() === 'en') {
-                    <i class="fas fa-check check-icon"></i>
-                  }
-                </button>
-                <button
-                  class="dropdown-item"
-                  role="option"
-                  (click)="selectLanguage('pl')"
-                  [class.active]="currentLanguage() === 'pl'"
-                  [attr.aria-selected]="currentLanguage() === 'pl'"
-                >
-                  <app-flag-icon lang="pl"></app-flag-icon>
-                  <span>Polski</span>
-                  @if (currentLanguage() === 'pl') {
-                    <i class="fas fa-check check-icon"></i>
-                  }
-                </button>
-                <button
-                  class="dropdown-item"
-                  role="option"
-                  (click)="selectLanguage('de')"
-                  [class.active]="currentLanguage() === 'de'"
-                  [attr.aria-selected]="currentLanguage() === 'de'"
-                >
-                  <app-flag-icon lang="de"></app-flag-icon>
-                  <span>Deutsch</span>
-                  @if (currentLanguage() === 'de') {
-                    <i class="fas fa-check check-icon"></i>
-                  }
-                </button>
-              </div>
-            }
-          </div>
-
-          <!-- Theme Toggle -->
-          <button
-            class="theme-btn"
-            (click)="toggleTheme()"
-            [attr.aria-label]="
-              'Switch to ' + (isDarkMode() ? 'light' : 'dark') + ' mode'
-            "
-          >
-            <i [class]="'fas fa-' + (isDarkMode() ? 'sun' : 'moon')"></i>
-          </button>
-
-          <!-- Mobile Menu Toggle -->
-          <button
-            class="mobile-menu-btn"
-            (click)="toggleMobileMenu()"
-            [attr.aria-expanded]="isMobileMenuOpen()"
-            aria-label="Toggle mobile menu"
-          >
-            <i
-              [class]="'fas fa-' + (isMobileMenuOpen() ? 'times' : 'bars')"
-            ></i>
-          </button>
         </div>
       </div>
     </nav>
-
-    <!-- Mobile Menu -->
-    @if (isMobileMenuOpen()) {
-      <div class="mobile-menu-overlay" (click)="closeMobileMenu()"></div>
-      <div class="mobile-nav-menu" [@slideIn] appFocusTrap>
-        <div class="mobile-nav-header">
-          <div class="mobile-nav-title">Menu</div>
-          <button class="mobile-nav-close" (click)="closeMobileMenu()">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <ul class="mobile-nav-items">
-          @for (item of navItems; track item.path) {
-            <li class="mobile-nav-item">
-              <a
-                (click)="scrollToSection(item.path); closeMobileMenu()"
-                class="mobile-nav-link"
-                [class.active]="activeSection() === item.path"
-              >
-                <i [class]="'fas fa-' + item.icon + ' mobile-nav-icon'"></i>
-                <span>{{ item.label }}</span>
-              </a>
-            </li>
-          }
-          <li class="mobile-nav-item">
-            <a
-              routerLink="/certificates"
-              class="mobile-nav-link"
-              (click)="closeMobileMenu()"
-            >
-              <i class="fas fa-certificate mobile-nav-icon"></i>
-              <span>Certificates Page</span>
-            </a>
-          </li>
-          <li class="mobile-nav-item">
-            <a
-              routerLink="/cv"
-              class="mobile-nav-link cv-mobile-link"
-              (click)="closeMobileMenu()"
-            >
-              <i class="fas fa-file-alt mobile-nav-icon"></i>
-              <span>CV</span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    }
   `,
-  styleUrl: './navigation.component.scss',
+  styles: [
+    `
+      .bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 clamp(1.5rem, 5vw, 4rem);
+        background: rgba(11, 17, 32, 0.72);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border-color);
+        opacity: 0;
+        transform: translateY(-100%);
+        pointer-events: none;
+        transition: opacity 0.4s ease, transform 0.45s cubic-bezier(0.33, 1, 0.68, 1);
+      }
+      .bar.visible {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      .bar__mark {
+        color: var(--text-primary);
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        font-size: 0.98rem;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .bar__mark:hover { color: var(--text-primary); text-decoration: none; }
+
+      .bar__right { display: flex; align-items: center; gap: 1.2rem; }
+
+      .bar__cv {
+        color: var(--color-primary);
+        border: 1px solid var(--border-color-dark);
+        padding: 0.4rem 1.1rem;
+        border-radius: var(--radius-full);
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition: border-color 0.25s ease, background-color 0.25s ease;
+      }
+      .bar__cv:hover {
+        border-color: var(--color-primary);
+        background: rgba(56, 189, 248, 0.08);
+        text-decoration: none;
+      }
+
+      .lang { position: relative; }
+      .lang__btn {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: none;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 0.35rem 0.6rem;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.82rem;
+        transition: color 0.25s ease, border-color 0.25s ease;
+      }
+      .lang__btn:hover { color: var(--text-primary); border-color: var(--border-color-dark); }
+      .lang__arrow { font-size: 0.65rem; transition: transform 0.25s ease; }
+      .lang.open .lang__arrow { transform: rotate(180deg); }
+
+      .lang__menu {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 0.5rem);
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 0.4rem;
+        min-width: 150px;
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .lang__item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.5rem 0.6rem;
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 0.9rem;
+        text-align: left;
+        width: 100%;
+        transition: background-color 0.2s ease, color 0.2s ease;
+      }
+      .lang__item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+      .lang__item.active { color: var(--color-primary); }
+    `,
+  ],
 })
 export class NavigationComponent {
-  private themeService = inject(ThemeService);
   private languageService = inject(LanguageService);
-  private scrollService = inject(ScrollService);
   private router = inject(Router);
 
-  // Signals for reactive state
-  isScrolled = signal(false);
-  isMobileMenuOpen = signal(false);
-  isLanguageDropdownOpen = signal(false);
-
-  // Computed signals
-  isDarkMode = computed(() => this.themeService.isDarkMode());
-  currentLanguage = computed(() => this.languageService.currentLanguage());
-  activeSection = computed(() => this.scrollService.currentSection());
-
-  navItems: NavItem[] = [
-    { path: 'home', label: 'Home', icon: 'home' },
-    { path: 'about', label: 'About', icon: 'user' },
-    { path: 'skills', label: 'Skills', icon: 'code' },
-    { path: 'projects', label: 'Projects', icon: 'project-diagram' },
-    { path: 'achievements', label: 'Achievements', icon: 'trophy' },
-    { path: 'games', label: 'Games', icon: 'gamepad' },
-    { path: 'testimonials', label: 'Testimonials', icon: 'comments' },
-    { path: 'contact', label: 'Contact', icon: 'envelope' },
-  ];
-  
-  // Computed signal for responsive nav labels
-  responsiveNavItems = computed(() => {
-    const viewport = window.innerWidth;
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    
-    // Special handling for 80% zoom (viewport ~2000px)
-    if (viewport >= 1900 && viewport <= 2100) {
-      return this.navItems.map(item => ({
-        ...item,
-        label: item.label === 'Achievements' ? 'Awards' :
-               item.label === 'Testimonials' ? 'Reviews' :
-               item.label === 'Projects' ? 'Work' :
-               item.label
-      }));
-    }
-    
-    // For wider viewports that still need shorter labels
-    if (viewport > 2100 && viewport <= 2400) {
-      return this.navItems.map(item => ({
-        ...item,
-        label: item.label === 'Achievements' ? 'Awards' :
-               item.label === 'Testimonials' ? 'Reviews' :
-               item.label
-      }));
-    }
-    
-    // For constrained spaces at normal zoom
-    if (viewport >= 1024 && viewport < 1400) {
-      return this.navItems.map(item => ({
-        ...item,
-        label: item.label === 'Achievements' ? 'Awards' :
-               item.label === 'Testimonials' ? 'Reviews' :
-               item.label === 'Projects' ? 'Work' :
-               item.label
-      }));
-    }
-    
-    return this.navItems;
-  });
+  pastFold = signal(false);
+  langOpen = signal(false);
+  lang = computed(() => this.languageService.currentLanguage());
 
   constructor() {
-    // Effect to handle scroll
-    effect(() => {
-      const handleScroll = () => {
-        this.isScrolled.set(window.scrollY > 50);
+    // Reveal the bar once scrolled past ~the fold (or immediately on non-home routes).
+    effect((onCleanup) => {
+      const update = () => {
+        const url = this.router.url;
+        const onHome = url === '/' || url === '/home' || url.startsWith('/?') || url.startsWith('/#');
+        this.pastFold.set(!onHome || window.scrollY > window.innerHeight * 0.55);
       };
-
-      window.addEventListener('scroll', handleScroll, { passive: true });
-
-      return () => {
-        window.removeEventListener('scroll', handleScroll);
-      };
+      window.addEventListener('scroll', update, { passive: true });
+      update();
+      onCleanup(() => window.removeEventListener('scroll', update));
     });
 
-    // Close dropdown when clicking outside
-    effect(() => {
-      if (this.isLanguageDropdownOpen()) {
-        const handleClickOutside = (event: MouseEvent) => {
-          const target = event.target as HTMLElement;
-          if (!target.closest('.language-dropdown')) {
-            this.isLanguageDropdownOpen.set(false);
-          }
-        };
-
-        document.addEventListener('click', handleClickOutside);
-        
-        return () => {
-          document.removeEventListener('click', handleClickOutside);
-        };
-      }
-      return () => {}; // Return empty cleanup when dropdown is closed
+    // Close the language menu on outside click.
+    effect((onCleanup) => {
+      if (!this.langOpen()) return;
+      const onClick = (e: MouseEvent) => {
+        if (!(e.target as HTMLElement).closest('.lang')) this.langOpen.set(false);
+      };
+      document.addEventListener('click', onClick);
+      onCleanup(() => document.removeEventListener('click', onClick));
     });
   }
 
-  toggleTheme(): void {
-    this.themeService.toggleTheme();
+  toTop(): void {
+    const url = this.router.url;
+    if (url === '/' || url === '/home') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      this.router.navigate(['/']).then(() =>
+        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100),
+      );
+    }
   }
 
-  toggleLanguageDropdown(): void {
-    this.isLanguageDropdownOpen.update(state => !state);
+  toggleLang(): void {
+    this.langOpen.update((v) => !v);
   }
 
-  async selectLanguage(lang: 'en' | 'pl' | 'de'): Promise<void> {
-    // Add animation classes to body for global transition
+  async pick(l: 'en' | 'pl' | 'de'): Promise<void> {
     document.body.classList.add('language-changing', 'fade-out');
-    
-    // Longer delay for fade out animation to complete
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    this.languageService.setLanguage(lang);
-    this.isLanguageDropdownOpen.set(false);
-    
-    // Switch to fade-in
+    await new Promise((r) => setTimeout(r, 300));
+    this.languageService.setLanguage(l);
+    this.langOpen.set(false);
     document.body.classList.remove('fade-out');
     document.body.classList.add('fade-in');
-    
-    // Remove animation classes after transition
-    setTimeout(() => {
-      document.body.classList.remove('language-changing', 'fade-in');
-    }, 400);
+    setTimeout(() => document.body.classList.remove('language-changing', 'fade-in'), 400);
   }
 
-  getCurrentLanguageName(): string {
-    const lang = this.currentLanguage();
-    switch (lang) {
-      case 'en': return 'English';
-      case 'pl': return 'Polski';
-      case 'de': return 'Deutsch';
-      default: return 'English';
-    }
+  langName(): string {
+    const l = this.lang();
+    return l === 'en' ? 'English' : l === 'pl' ? 'Polski' : 'Deutsch';
   }
-
-  toggleMobileMenu(): void {
-    this.isMobileMenuOpen.update((state) => !state);
-    document.body.style.overflow = this.isMobileMenuOpen() ? 'hidden' : '';
-  }
-
-  closeMobileMenu(): void {
-    this.isMobileMenuOpen.set(false);
-    document.body.style.overflow = '';
-  }
-
-  scrollToSection(sectionId: string): void {
-    this.scrollService.scrollToSection(sectionId);
-  }
-
-  navigateToHome(): void {
-    // Check if we're on the home page
-    if (this.router.url === '/' || this.router.url === '/home') {
-      // If on home page, scroll to top
-      this.scrollToSection('home');
-    } else {
-      // If on any other page, navigate to home
-      this.router.navigate(['/']).then(() => {
-        // After navigation, scroll to top
-        setTimeout(() => {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 100);
-      });
-    }
-  }
-
 }

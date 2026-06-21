@@ -37,7 +37,7 @@ import { LanguageService } from '../../core/services/language.service';
             <img src="/photo.jpg" alt="Łukasz Guziczak" class="profile-image" />
             <div class="profile-info">
               <h1>Łukasz Guziczak</h1>
-              <h2>AI Solutions</h2>
+              <h2>AI Engineer</h2>
               <div class="contact-info">
                 <a href="mailto:guziczak@pm.me">
                   <i class="fas fa-envelope"></i> guziczak&#64;pm.me
@@ -86,119 +86,6 @@ import { LanguageService } from '../../core/services/language.service';
             </div>
           </div>
         </section>
-
-        <div class="cv-content">
-          <h3 class="cv-content__header">
-            <i class="fas fa-list-ul"></i> Detailed breakdown
-          </h3>
-
-          <!-- Professional Summary -->
-          <section class="cv-section">
-            <h3><i class="fas fa-user"></i> Professional Summary</h3>
-            <p>
-              Experienced Full-stack Developer with a strong background in Java,
-              Spring Boot, React, and cloud technologies. Proven track record of
-              developing scalable enterprise solutions, optimizing database
-              performance, and implementing microservices architectures.
-              Passionate about clean code, continuous learning, and delivering
-              high-quality software that meets business objectives.
-            </p>
-          </section>
-
-          <!-- Experience -->
-          <section class="cv-section">
-            <h3><i class="fas fa-briefcase"></i> Professional Experience</h3>
-            <div class="timeline">
-              @for (exp of experience(); track exp.id) {
-                <div class="timeline-item" [class.current]="exp.current">
-                  <div class="timeline-marker"></div>
-                  <div class="timeline-content">
-                    <div class="timeline-header">
-                      <h4>{{ exp.title }}</h4>
-                      <span class="timeline-date">{{ exp.period }}</span>
-                    </div>
-                    <h5>{{ exp.company }}</h5>
-                    <p>{{ exp.description }}</p>
-                    @if (exp.technologies && exp.technologies.length > 0) {
-                      <div class="tech-tags">
-                        @for (tech of exp.technologies; track tech) {
-                          <span class="tech-tag">{{ tech }}</span>
-                        }
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          </section>
-
-          <!-- Education -->
-          <section class="cv-section">
-            <h3><i class="fas fa-graduation-cap"></i> Education</h3>
-            <div class="timeline">
-              @for (edu of education(); track edu.id) {
-                <div class="timeline-item" [class.current]="edu.current">
-                  <div class="timeline-marker"></div>
-                  <div class="timeline-content">
-                    <div class="timeline-header">
-                      <h4>{{ edu.title }}</h4>
-                      <span class="timeline-date">{{ edu.period }}</span>
-                    </div>
-                    <h5>{{ edu.institution }}</h5>
-                    <p>{{ edu.description }}</p>
-                    @if (edu.skills && edu.skills.length > 0) {
-                      <div class="tech-tags">
-                        @for (skill of edu.skills; track skill) {
-                          <span class="tech-tag">{{ skill }}</span>
-                        }
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          </section>
-
-          <!-- Skills -->
-          <section class="cv-section">
-            <h3><i class="fas fa-code"></i> Technical Skills</h3>
-            <div class="skills-grid">
-              @for (category of skills(); track category.category) {
-                <div class="skill-category">
-                  <h4>{{ category.category }}</h4>
-                  <div class="skill-items">
-                    @for (skill of category.items; track skill.name) {
-                      <div class="skill-item">
-                        <span class="skill-name">{{ skill.name }}</span>
-                        <div class="skill-bar">
-                          <div
-                            class="skill-progress"
-                            [style.width.%]="skill.level"
-                          ></div>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          </section>
-
-          <!-- Languages -->
-          <section class="cv-section">
-            <h3><i class="fas fa-language"></i> Languages</h3>
-            <div class="languages">
-              <div class="language-item">
-                <span class="language-name">Polish</span>
-                <span class="language-level">Native</span>
-              </div>
-              <div class="language-item">
-                <span class="language-name">English</span>
-                <span class="language-level">Professional</span>
-              </div>
-            </div>
-          </section>
-        </div>
       </div>
     </div>
 

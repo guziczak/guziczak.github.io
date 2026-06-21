@@ -1,39 +1,40 @@
 // Design Tokens - CSS Custom Properties for theming
+// Cathedral theme: permanently obsidian. The site is the dark cover of the CV.
 :root {
-  // Colors
-  --color-primary: #0070f3;
-  --color-primary-dark: #0050a0;
-  --color-primary-light: #3291ff;
-  --color-secondary: #34d399;
-  --color-secondary-dark: #2bb583;
+  // Colors — sky accent on obsidian (lifted from cv.html cover)
+  --color-primary: #38bdf8;
+  --color-primary-dark: #0ea5e9;
+  --color-primary-light: #7dd3fc;
+  --color-secondary: #6366f1;
+  --color-secondary-dark: #4f46e5;
   --color-tertiary: #8b5cf6;
-  --color-error: #ef4444;
-  --color-warning: #f59e0b;
-  --color-success: #10b981;
-  
-  // Background colors
-  --bg-primary: #ffffff;
-  --bg-primary-rgb: 255, 255, 255;
-  --bg-secondary: #f9fafb;
-  --bg-tertiary: #f3f4f6;
-  --bg-card: #ffffff;
-  
-  // Text colors - improved contrast for WCAG AA compliance
-  --text-primary: #1f2937;
-  --text-secondary: #4b5563; // Improved from #6b7280 for better contrast
-  --text-tertiary: #6b7280; // Was #9ca3af
-  --text-inverse: #ffffff;
-  
-  // Border colors
-  --border-color: #e5e7eb;
-  --border-color-dark: #d1d5db;
-  
-  // Shadows
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  
+  --color-error: #f87171;
+  --color-warning: #fbbf24;
+  --color-success: #34d399;
+
+  // Background colors — deep obsidian
+  --bg-primary: #0b1120;        // canvas, deepest
+  --bg-primary-rgb: 11, 17, 32;
+  --bg-secondary: #0f172a;      // sections (CV obsidian)
+  --bg-tertiary: #1e293b;       // lifted surfaces
+  --bg-card: #0f172a;
+
+  // Text colors — light on dark
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-inverse: #0b1120;      // text on accent surfaces
+
+  // Border colors — barely there
+  --border-color: rgba(148, 163, 184, 0.14);
+  --border-color-dark: rgba(148, 163, 184, 0.26);
+
+  // Shadows — cold, deep
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px -2px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 24px 56px -8px rgba(0, 0, 0, 0.6);
+
   // Spacing
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -42,48 +43,48 @@
   --spacing-xl: 2rem;
   --spacing-2xl: 3rem;
   --spacing-3xl: 4rem;
-  
+
   // Border radius
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
   --radius-full: 9999px;
-  
-  // Typography
+
+  // Typography — all Inter, cold (Poppins dropped: too round / performer)
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-heading: 'Poppins', var(--font-sans);
-  --font-mono: 'Fira Code', 'Consolas', monospace;
-  
+  --font-heading: var(--font-sans);
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
   // Transitions
   --transition-fast: 150ms;
   --transition-base: 300ms;
   --transition-slow: 500ms;
 }
 
-// Dark mode overrides
+// Dark mode override — same obsidian, so the theme toggle never lightens the cathedral
 [data-theme="dark"] {
-  --color-primary: #3291ff;
-  --color-primary-dark: #0070f3;
-  --color-primary-light: #52a8ff;
-  
-  --bg-primary: #111827;
-  --bg-primary-rgb: 17, 24, 39;
-  --bg-secondary: #1f2937;
-  --bg-tertiary: #374151;
-  --bg-card: #1f2937;
-  
-  --text-primary: #f3f4f6;
-  --text-secondary: #d1d5db; // Improved from #9ca3af for better contrast in dark mode
-  --text-tertiary: #9ca3af; // Was #6b7280
-  
-  --border-color: #374151;
-  --border-color-dark: #4b5563;
-  
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  --color-primary: #38bdf8;
+  --color-primary-dark: #0ea5e9;
+  --color-primary-light: #7dd3fc;
+
+  --bg-primary: #0b1120;
+  --bg-primary-rgb: 11, 17, 32;
+  --bg-secondary: #0f172a;
+  --bg-tertiary: #1e293b;
+  --bg-card: #0f172a;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+
+  --border-color: rgba(148, 163, 184, 0.14);
+  --border-color-dark: rgba(148, 163, 184, 0.26);
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px -2px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 24px 56px -8px rgba(0, 0, 0, 0.6);
 }
 
 // SCSS Variables for compile-time values

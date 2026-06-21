@@ -2,7 +2,6 @@ import { Component, signal, effect } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavigationComponent } from './layout/navigation/navigation.component';
 import { FooterComponent } from './layout/footer/footer.component';
-import { PreloaderComponent } from './shared/ui/preloader/preloader.component';
 import { ToastComponent } from './shared/ui/toast/toast.component';
 
 @Component({
@@ -12,11 +11,9 @@ import { ToastComponent } from './shared/ui/toast/toast.component';
     RouterOutlet,
     NavigationComponent,
     FooterComponent,
-    PreloaderComponent,
     ToastComponent,
   ],
   template: `
-    <app-preloader />
     <app-toast />
     <app-navigation />
     <router-outlet />

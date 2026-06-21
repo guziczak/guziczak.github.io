@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="CV - Łukasz Guziczak, AI Solutions">
+    <meta name="description" content="CV - Łukasz Guziczak, AI Engineer">
     <title>CV - Łukasz Guziczak</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -152,6 +152,10 @@
     padding: 0;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     font-family: var(--font-family);
     font-size: 12px;
@@ -188,57 +192,12 @@ ol[role="list"] {
     margin: 0;
     background: var(--color-bg-white);
     overflow: hidden;
-    /* No page-break-after — that would force an extra blank page after the
-       last .page. Page splitting is driven by page-break-before on .page--break. */
+    page-break-after: always;
 }
 
 .page--break {
-    margin-block-start: 60px;
+    margin-block-start: 20px;
     page-break-before: always;
-    position: relative;
-}
-
-/* Subtle divider with page indicator between page 1 and page 2 */
-.page--break::before,
-.page--break::after {
-    position: absolute;
-    pointer-events: none;
-}
-
-.page--break::after {
-    content: '';
-    top: -32px;
-    left: 8%;
-    right: 8%;
-    height: 1px;
-    background: var(--color-border-light);
-}
-
-.page--break::before {
-    content: 'Page 2 / 2';
-    top: -40px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--color-bg-white);
-    padding: 0 14px;
-    font-size: 0.65rem;
-    color: var(--color-text-muted);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    font-weight: 500;
-}
-
-@media print {
-    .page--break {
-        /* page-break-before already starts a new physical page;
-           any margin here would push content off the bottom of A4
-           and create a phantom 3rd page */
-        margin-block-start: 0;
-    }
-    .page--break::before,
-    .page--break::after {
-        display: none;
-    }
 }
 
 .page__number {
@@ -248,9 +207,165 @@ ol[role="list"] {
     font-size: var(--font-size-sm);
     font-weight: 500;
     color: #9ca3af;
-    /* Must outrank .sidebar (z-index: 10) and .main (z-index: 5) so the
-       page number stays visible in the bottom-right corner */
-    z-index: 100;
+}
+
+/* ==========================================================================
+   3b. Cover — bold statement page (design-forward)
+   ========================================================================== */
+
+.page--cover {
+    background:
+        radial-gradient(680px 460px at 82% -8%, rgba(56, 189, 248, 0.32), transparent 62%),
+        linear-gradient(165deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: var(--color-text-white);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 64px 56px 48px;
+}
+
+.cover__kicker {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--color-accent-light);
+}
+
+.cover__stamp {
+    margin-top: 7px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #8ea3ba;
+}
+
+.cover__lead {
+    font-size: 1.7rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: #aebfd0;
+    max-width: 640px;
+}
+
+.cover__punch {
+    font-size: 5.2rem;
+    font-weight: 800;
+    font-style: italic;
+    line-height: 1;
+    color: var(--color-accent-light);
+    margin-block: 12px 22px;
+}
+
+.cover__reframe {
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--color-text-white);
+    max-width: 540px;
+}
+
+.cover__proof {
+    margin-block-start: 12px;
+    font-size: 1.55rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #dbe6f1;
+    max-width: 27ch;
+}
+
+.cover__rest {
+    margin-block-start: 18px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-style: italic;
+    color: var(--color-accent-light);
+}
+
+.cover__stats {
+    display: flex;
+    gap: 42px;
+}
+
+.cover__stat-big {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--color-accent-light);
+}
+
+.cover__stat-small {
+    display: block;
+    margin-block-start: 5px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #8ea3ba;
+}
+
+.cover__rule {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.14);
+    margin-block: 20px 0;
+}
+
+.cover__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-block-start: 14px;
+    font-size: 0.62rem;
+}
+
+.cover__contact { color: #aebfd0; }
+.cover__cta { color: #7e93ab; font-style: italic; text-decoration: none; }
+.cover__cta:hover { color: var(--color-accent-light); }
+.cover__cta-arrow { color: var(--color-accent-light); font-style: normal; font-weight: 700; }
+.cover__num { color: var(--color-accent-light); }
+
+/* Cover entrance — the manifesto engraves itself in.
+   Screen only: print and PDF render the settled, static cover. */
+@media screen and (prefers-reduced-motion: no-preference) {
+    @keyframes coverEngrave {
+        from { opacity: 0; transform: translateY(16px); filter: blur(8px); }
+        to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+    }
+    @keyframes coverNumGlow {
+        0%   { text-shadow: 0 0 0 rgba(56, 189, 248, 0); }
+        60%  { text-shadow: 0 0 30px rgba(56, 189, 248, 0.6); }
+        100% { text-shadow: 0 0 18px rgba(56, 189, 248, 0.35); }
+    }
+
+    .page--cover .cover__kicker,
+    .page--cover .cover__stamp,
+    .page--cover .cover__lead,
+    .page--cover .cover__punch,
+    .page--cover .cover__reframe,
+    .page--cover .cover__proof,
+    .page--cover .cover__rest,
+    .page--cover .cover__stats,
+    .page--cover .cover__rule,
+    .page--cover .cover__footer {
+        animation: coverEngrave 0.85s cubic-bezier(0.33, 1, 0.68, 1) both;
+    }
+
+    .page--cover .cover__kicker  { animation-delay: 0.05s; }
+    .page--cover .cover__stamp   { animation-delay: 0.15s; }
+    .page--cover .cover__lead    { animation-delay: 0.45s; }
+    .page--cover .cover__punch   { animation-delay: 0.60s; }
+    .page--cover .cover__reframe { animation-delay: 0.80s; }
+    .page--cover .cover__proof   { animation-delay: 0.95s; }
+    .page--cover .cover__proof + .cover__proof { animation-delay: 1.05s; }
+    .page--cover .cover__rest    { animation-delay: 1.20s; }
+    .page--cover .cover__stats   { animation-delay: 1.40s; }
+    .page--cover .cover__rule    { animation-delay: 1.50s; }
+    .page--cover .cover__footer  { animation-delay: 1.60s; }
+
+    /* The one bright point blooms as it lands, then settles to a soft glow. */
+    .page--cover .cover__num {
+        animation: coverNumGlow 1.6s ease-out 1.6s both;
+    }
 }
 
 /* ==========================================================================
@@ -976,6 +1091,104 @@ ol[role="list"] {
     line-height: 1.4;
 }
 
+.current-card--product .current-card__year::after {
+    color: var(--color-accent);
+}
+
+.current-card__logo-link--static {
+    cursor: default;
+}
+
+.current-card__logo-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-md);
+    background: var(--gradient-accent);
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+/* OpisAI — glossy glass bubble (mirrors the Typst CV / the app's on-screen bubble) */
+.opisai-bubble {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 34% 31%, #c8ecfc 0%, #5cc6f5 38%, #0ea5e9 72%, #0a6b96 100%);
+    box-shadow: inset 0 0 0 0.5px #06506f, 0 1px 2px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+.opisai-bubble::before {
+    content: '';
+    position: absolute;
+    top: 7%;
+    left: 13%;
+    width: 54%;
+    height: 36%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
+}
+
+.opisai-bubble::after {
+    content: '';
+    position: absolute;
+    top: 14%;
+    left: 19%;
+    width: 22%;
+    height: 15%;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.opisai-bubble__label {
+    position: relative;
+    z-index: 1;
+    font-size: 0.4rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #06334a;
+    line-height: 1;
+}
+
+/* Sidebar Projects — side projects / client work */
+.projects {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+}
+.project {
+    display: block;
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    transition: background var(--transition-fast);
+}
+.project:hover { background: rgba(255, 255, 255, 0.1); }
+.project__name { display: block; color: #fff; font-weight: 700; font-size: 0.8rem; }
+.project__desc { display: block; color: rgba(255, 255, 255, 0.62); font-size: 0.66rem; line-height: 1.3; margin-top: 2px; }
+.project__link { display: block; color: var(--color-accent-light); font-size: 0.64rem; font-weight: 600; margin-top: 5px; letter-spacing: 0.1px; }
+.project__link::after { content: ' ↗'; opacity: 0.6; }
+
+.skills__group {
+    margin: 11px 0 5px;
+    text-align: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-accent-light);
+}
+.skills__group:first-of-type { margin-top: 2px; }
+
 /* ==========================================================================
    14. Timeline
    ========================================================================== */
@@ -1232,15 +1445,14 @@ ol[role="list"] {
    19. Print Styles
    ========================================================================== */
 
-@page {
-    size: A4;
-    margin: 0;
-}
-
 @media print {
     body {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+    }
+
+    .page {
+        page-break-after: always;
     }
 
     .page--break {
@@ -1332,11 +1544,47 @@ ol[role="list"] {
 </head>
 <body>
 
+    <!-- COVER -->
+    <article class="page page--cover" aria-label="Cover statement">
+        <div class="cover__top">
+          <p class="cover__kicker">Łukasz Guziczak — AI Engineer</p>
+          <p class="cover__stamp">In the lab since 2016. In production since 2024. Not since ChatGPT.<br>Currently embedded at a bank — on-prem, regulated.</p>
+        </div>
+        <div class="cover__hook">
+            <p class="cover__lead">They say AI loses the thread past 1,000<br>lines of code.</p>
+            <p class="cover__punch">Cute.</p>
+            <p class="cover__reframe">That's where I start — <span class="cover__num">20,000</span> lines.<br>One file.<br>One person.</p>
+            <p class="cover__proof">A month to a working PoC. Three to production. No team.</p><p class="cover__proof">Their teams maintain it. I'm on the next.</p>
+            <p class="cover__rest">The code says the rest.</p>
+        </div>
+        <div class="cover__bottom">
+            <div class="cover__stats">
+                    <div class="cover__stat">
+                        <span class="cover__stat-big">2</span>
+                        <span class="cover__stat-small">LLM systems in prod</span>
+                    </div>
+                    <div class="cover__stat">
+                        <span class="cover__stat-big">SOLD</span>
+                        <span class="cover__stat-small">own AI product</span>
+                    </div>
+                    <div class="cover__stat">
+                        <span class="cover__stat-big">5+</span>
+                        <span class="cover__stat-small">yrs engineering</span>
+                    </div>
+            </div>
+            <div class="cover__rule"></div>
+            <div class="cover__footer">
+                <span class="cover__contact">guziczak@pm.me   ·   github.com/guziczak   ·   in/guziczak</span>
+                <a class="cover__cta" href="#cv-start">The full CV follows <span class="cover__cta-arrow">↓</span> (You won't need it.)</a>
+            </div>
+        </div>
+    </article>
+
     <!-- PAGE 1 -->
-    <article class="page" aria-label="CV page 1 of 2">
+    <article class="page" id="cv-start" aria-label="CV page 1 of 2">
         <aside class="sidebar">
 
-            <img src="photo_optimized.jpg" alt="Profile photo of Łukasz Guziczak" class="sidebar__photo">
+            <img src="assets/photo_optimized.jpg" alt="Profile photo of Łukasz Guziczak" class="sidebar__photo">
 
             <nav class="contact" aria-label="Contact information">
                 <a href="tel:+48693069832" class="contact__item">
@@ -1363,19 +1611,33 @@ ol[role="list"] {
 
             <section class="sidebar__section" aria-labelledby="skills-heading">
                 <h2 id="skills-heading" class="sidebar__heading">Skills</h2>
-                <ul class="skills" role="list" aria-label="Skills list">
-                    <li class="skills__tag skills__tag--primary">Python</li>
-                    <li class="skills__tag skills__tag--primary">LLM Integration</li>
-                    <li class="skills__tag skills__tag--primary">TensorFlow / PyTorch</li>
-                    <li class="skills__tag skills__tag--primary">Java 17/21</li>
+                <p class="skills__group">GenAI · LLM</p>
+                <ul class="skills" role="list" aria-label="GenAI · LLM">
+                    <li class="skills__tag">RAG · Vector DBs</li>
+                    <li class="skills__tag">LLM Agents</li>
+                    <li class="skills__tag">Local LLMs · vLLM/Ollama</li>
+                    <li class="skills__tag">Claude · GPT · Gemini</li>
+                    <li class="skills__tag">Structured Outputs · Evals</li>
+                    <li class="skills__tag">Fine-tuning (LoRA)</li>
+                </ul>
+                <p class="skills__group">Machine Learning</p>
+                <ul class="skills" role="list" aria-label="Machine Learning">
+                    <li class="skills__tag">PyTorch · TensorFlow</li>
+                    <li class="skills__tag">Computer Vision (ViT)</li>
+                </ul>
+                <p class="skills__group">Engineering</p>
+                <ul class="skills" role="list" aria-label="Engineering">
+                    <li class="skills__tag">Python</li>
+                    <li class="skills__tag">Java 17/21</li>
                     <li class="skills__tag">Spring Boot</li>
-                    <li class="skills__tag">Cloud (AWS, Azure)</li>
-                    <li class="skills__tag">Docker</li>
-                    <li class="skills__tag">Kubernetes</li>
-                    <li class="skills__tag">CI/CD</li>
+                    <li class="skills__tag">FastAPI</li>
                     <li class="skills__tag">SQL (PostgreSQL)</li>
-                    <li class="skills__tag">React.js / TypeScript</li>
-                    <li class="skills__tag">Microservices</li>
+                </ul>
+                <p class="skills__group">Cloud · Infra</p>
+                <ul class="skills" role="list" aria-label="Cloud · Infra">
+                    <li class="skills__tag">AWS · Azure</li>
+                    <li class="skills__tag">Docker · Kubernetes</li>
+                    <li class="skills__tag">CI/CD</li>
                 </ul>
             </section>
 
@@ -1504,16 +1766,16 @@ ol[role="list"] {
                     </div>
                 </div>
                 <div class="skills-breakdown__legend" role="list" aria-label="Companies and universities legend">
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#8b5cf6" aria-hidden="true"></span><img src="legend_icons/pwr.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Wroclaw University of Technology"><span class="sr-only">Wroclaw University of Technology</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#f97316" aria-hidden="true"></span><img src="legend_icons/twente.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="University of Twente"><span class="sr-only">University of Twente</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#fbbf24" aria-hidden="true"></span><img src="legend_icons/luxoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Luxoft"><span class="sr-only">Luxoft</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#34d399" aria-hidden="true"></span><img src="legend_icons/streamsoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Streamsoft"><span class="sr-only">Streamsoft</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#f43f5e" aria-hidden="true"></span><img src="legend_icons/rightinfo.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Right Information"><span class="sr-only">Right Information</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#e879f9" aria-hidden="true"></span><img src="legend_icons/thorium.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Thorium Space"><span class="sr-only">Thorium Space</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#2dd4bf" aria-hidden="true"></span><img src="legend_icons/kamsoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Kamsoft"><span class="sr-only">Kamsoft</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#60a5fa" aria-hidden="true"></span><img src="legend_icons/astek.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Astek"><span class="sr-only">Astek</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#c084fc" aria-hidden="true"></span><img src="legend_icons/merito.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="WSB Merito University"><span class="sr-only">WSB Merito University</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#fb923c" aria-hidden="true"></span><img src="legend_icons/natek.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Natek"><span class="sr-only">Natek</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#8b5cf6" aria-hidden="true"></span><img src="assets/legend_icons/pwr.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Wroclaw University of Technology"><span class="sr-only">Wroclaw University of Technology</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#f97316" aria-hidden="true"></span><img src="assets/legend_icons/twente.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="University of Twente"><span class="sr-only">University of Twente</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#fbbf24" aria-hidden="true"></span><img src="assets/legend_icons/luxoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Luxoft"><span class="sr-only">Luxoft</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#34d399" aria-hidden="true"></span><img src="assets/legend_icons/streamsoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Streamsoft"><span class="sr-only">Streamsoft</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#f43f5e" aria-hidden="true"></span><img src="assets/legend_icons/rightinfo.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Right Information"><span class="sr-only">Right Information</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#e879f9" aria-hidden="true"></span><img src="assets/legend_icons/thorium.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Thorium Space"><span class="sr-only">Thorium Space</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#2dd4bf" aria-hidden="true"></span><img src="assets/legend_icons/kamsoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Kamsoft"><span class="sr-only">Kamsoft</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#60a5fa" aria-hidden="true"></span><img src="assets/legend_icons/astek.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Astek"><span class="sr-only">Astek</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#c084fc" aria-hidden="true"></span><img src="assets/legend_icons/merito.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="WSB Merito University"><span class="sr-only">WSB Merito University</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#fb923c" aria-hidden="true"></span><img src="assets/legend_icons/natek.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Natek"><span class="sr-only">Natek</span></span>
                 </div>
             </section>
         </aside>
@@ -1521,46 +1783,42 @@ ol[role="list"] {
 
             <header class="header">
                 <h1 class="header__name">Łukasz Guziczak</h1>
-                <p class="header__title">AI Solutions</p>
+                <p class="header__title">AI Engineer</p>
             </header>
 
             <section class="section" aria-labelledby="summary-heading">
                 <h2 id="summary-heading" class="section__title">Summary</h2>
-                <p class="section__text">AI Solutions professional with 5+ years of production software engineering and MSc in AI &amp; Machine Learning. Integrating LLMs and AI dev tools (Claude Code, Codex, Copilot CLI) into enterprise applications since 2024. Strong engineering foundation in Python, Java, Spring Boot, and cloud infrastructure (AWS, Azure, Docker, Kubernetes). Building intelligent, data-driven systems across healthcare, aerospace, IoT, and finance domains.</p>
+                <p class="section__text">AI Engineer who ships LLM systems to production. Sole engineer of an on-prem document-AI platform — local vision + language models on company GPUs — and creator of OpisAI, a commercial AI clinical-documentation assistant built solo and sold. ML from the foundations since 2016 — Electronics, Stanford's ML (2020); shipping it since 2024. 5+ years of production engineering (Python, Java/Spring, cloud) across healthcare, aerospace and fintech; MSc in AI &amp; Machine Learning — thesis on medical-imaging transformers.</p>
             </section>
 
             <section class="section" aria-labelledby="current-heading">
                 <h2 id="current-heading" class="section__title">Now</h2>
                 <div class="current">
 
-                    <article class="current-card current-card--work" aria-label="Work: AI/ML Engineer, 2025 – Now">
+                    <article class="current-card current-card--product" aria-label="Product: OpisAI — Own AI Product (built &amp; sold), 2026">
                         <div class="current-card__lead">
-                            <time class="current-card__year" datetime="2025" aria-hidden="true">2025</time>
-                            <a href="https://natek.eu" target="_blank" rel="noopener noreferrer" class="current-card__logo-link" title="Visit Natek (Software House) website">
-                                <img src="work_experience_logos/natek.jpg" class="current-card__logo-img" alt="Logo">
-                            </a>
+                            <time class="current-card__year" datetime="2026" aria-hidden="true">2026</time>
+                            <span class="current-card__logo-link current-card__logo-link--static"><span class="opisai-bubble" aria-hidden="true"><span class="opisai-bubble__label">OpisAI</span></span></span>
                         </div>
                         <div class="current-card__body">
-                            <h3 class="current-card__title">AI/ML Engineer</h3>
-                            <p class="current-card__subtitle">Natek · Software House</p>
-                            <p class="current-card__focus">EU AI Act compliance · LLM-powered workflows (Claude)</p>
+                            <h3 class="current-card__title">OpisAI — Own AI Product (built &amp; sold)</h3>
+                            <p class="current-card__subtitle">Founder &amp; sole engineer · AI scribe for vet clinics</p>
+                            <p class="current-card__focus"><strong>Sold commercially</strong>, in daily clinical use · Claude / GPT / Gemini</p>
                         </div>
-                        <span class="sr-only">Work: 2025 – Now</span>
+                        <span class="sr-only">Product: 2026</span>
                     </article>
 
-                    <article class="current-card current-card--study" aria-label="Study: MSc Informatics: AI &amp; Machine Learning, 2024 – 2026">
+                    <article class="current-card current-card--work" aria-label="Work: AI Engineer — Document AI Platform, 2025 – Now">
                         <div class="current-card__lead">
-                            <time class="current-card__year" datetime="2024/2026" aria-hidden="true">2024</time>
-                            <a href="https://merito.pl" target="_blank" rel="noopener noreferrer" class="current-card__logo-link" title="Visit WSB Merito University in Wroclaw website">
-                                <img src="universities/merito.jpg" class="current-card__logo-img" alt="Logo">
-                            </a>
+                            <time class="current-card__year" datetime="2025" aria-hidden="true">2025</time>
+                            <a href="https://natek.eu" target="_blank" rel="noopener noreferrer" class="current-card__logo-link" title="Visit Natek · embedded at a bank website"><img src="assets/work_experience_logos/natek.jpg" class="current-card__logo-img" alt="Logo"></a>
                         </div>
                         <div class="current-card__body">
-                            <h3 class="current-card__title">MSc Informatics: AI &amp; Machine Learning</h3>
-                            <p class="current-card__subtitle">WSB Merito University in Wroclaw</p>
-                            <p class="current-card__focus">Thesis: <strong>Multi-label ECG pathology classification with ViT + DINO</strong></p>
+                            <h3 class="current-card__title">AI Engineer — Document AI Platform</h3>
+                            <p class="current-card__subtitle">Natek · embedded at a bank</p>
+                            <p class="current-card__focus">In production, maintained by the bank's team · local LLMs + vision · EU AI Act</p>
                         </div>
-                        <span class="sr-only">Study: 2024 – 2026</span>
+                        <span class="sr-only">Work: 2025 – Now</span>
                     </article>
                 </div>
             </section>
@@ -1573,7 +1831,7 @@ ol[role="list"] {
                     <article class="job" aria-label="Position at Astek">
                         <div class="job__logo">
                             <a href="https://astekgroup.fr/?lang=en" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Astek website">
-                                <img src="work_experience_logos/astek.jpg" class="job__logo-img" alt="Logo Astek">
+                                <img src="assets/work_experience_logos/astek.jpg" class="job__logo-img" alt="Logo Astek">
                             </a>
                         </div>
                         <div class="job__content">
@@ -1604,7 +1862,7 @@ ol[role="list"] {
                     <article class="job" aria-label="Position at Kamsoft">
                         <div class="job__logo">
                             <a href="https://kamsoft.pl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Kamsoft website">
-                                <img src="work_experience_logos/kamsoft_new.jpg" class="job__logo-img" alt="Logo Kamsoft">
+                                <img src="assets/work_experience_logos/kamsoft_new.jpg" class="job__logo-img" alt="Logo Kamsoft">
                             </a>
                         </div>
                         <div class="job__content">
@@ -1634,7 +1892,7 @@ ol[role="list"] {
                     <article class="job" aria-label="Position at Thorium Space Technology">
                         <div class="job__logo">
                             <a href="https://thorium.space" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Thorium Space Technology website">
-                                <img src="work_experience_logos/thorium_space_new.jpg" class="job__logo-img" alt="Logo Thorium Space Technology">
+                                <img src="assets/work_experience_logos/thorium_space_new.jpg" class="job__logo-img" alt="Logo Thorium Space Technology">
                             </a>
                         </div>
                         <div class="job__content">
@@ -1698,7 +1956,7 @@ ol[role="list"] {
 
                     <li>
                         <a href="https://www.coursera.org/account/accomplishments/verify/W88ME7FTDEJH" class="cert" target="_blank" rel="noopener noreferrer">
-                            <img src="courses_logos/stanford2.svg" class="cert__logo" alt="Logo Stanford University">
+                            <img src="assets/courses_logos/stanford2.svg" class="cert__logo" alt="Logo Stanford University">
                             <div class="cert__details">
                                 <span class="cert__name">Machine Learning</span>
                                 <span class="cert__issuer">Stanford University</span>
@@ -1707,7 +1965,7 @@ ol[role="list"] {
                     </li>
                     <li>
                         <a href="https://www.coursera.org/account/accomplishments/verify/9APHJHP9KE9H" class="cert" target="_blank" rel="noopener noreferrer">
-                            <img src="courses_logos/google.svg" class="cert__logo" alt="Logo Google">
+                            <img src="assets/courses_logos/google.svg" class="cert__logo" alt="Logo Google">
                             <div class="cert__details">
                                 <span class="cert__name">Data Foundations</span>
                                 <span class="cert__issuer">Google</span>
@@ -1716,7 +1974,7 @@ ol[role="list"] {
                     </li>
                     <li>
                         <a href="https://www.linkedin.com/posts/lukasz-guziczak_luxoft-java-academy-activity-6968880524735967232-t9CI" class="cert" target="_blank" rel="noopener noreferrer">
-                            <img src="work_experience_logos/luxoft_new.jpeg" class="cert__logo" alt="Logo Luxoft">
+                            <img src="assets/work_experience_logos/luxoft_new.jpeg" class="cert__logo" alt="Logo Luxoft">
                             <div class="cert__details">
                                 <span class="cert__name">Java Academy</span>
                                 <span class="cert__issuer">Luxoft</span>
@@ -1761,18 +2019,37 @@ ol[role="list"] {
                 </figure>
             </section>
 
-            <section class="sidebar__section" aria-labelledby="interests-heading">
-                <h2 id="interests-heading" class="sidebar__heading">Interests</h2>
-                <ul class="interests" role="list">
+            <section class="sidebar__section" aria-labelledby="projects-heading">
+                <h2 id="projects-heading" class="sidebar__heading">Shipped Projects</h2>
+                <ul class="projects" role="list">
 
-                    <li class="interests__item">
-                        <i class="fas fa-microchip interests__icon" aria-hidden="true"></i>
-                        <span>New Tech</span>
-                    </li>
-                    <li class="interests__item">
-                        <i class="fas fa-person-skiing interests__icon" aria-hidden="true"></i>
-                        <span>Skiing</span>
-                    </li>
+                    <li><a class="project" href="https://guziczak.github.io/opisai" target="_blank" rel="noopener noreferrer">
+                        <span class="project__name">OpisAI</span>
+                        <span class="project__desc">AI scribe for vet clinics · built &amp; sold</span>
+                        <span class="project__link">guziczak.github.io/opisai</span>
+                    </a></li>
+                    <li><a class="project" href="https://guziczak.github.io/siekart" target="_blank" rel="noopener noreferrer">
+                        <span class="project__name">Siek-Art</span>
+                        <span class="project__desc">Art-studio website · shipped for a client</span>
+                        <span class="project__link">guziczak.github.io/siekart</span>
+                    </a></li>
+                </ul>
+            </section>
+
+            <section class="sidebar__section" aria-labelledby="drawer-heading">
+                <h2 id="drawer-heading" class="sidebar__heading">From the Drawer</h2>
+                <ul class="projects" role="list">
+
+                    <li><a class="project" href="https://github.com/guziczak/ide" target="_blank" rel="noopener noreferrer">
+                        <span class="project__name">ForgeIDE</span>
+                        <span class="project__desc">Single-file IDE · Git/GitHub client</span>
+                        <span class="project__link">github.com/guziczak/ide</span>
+                    </a></li>
+                    <li><a class="project" href="https://github.com/guziczak/noteplayer" target="_blank" rel="noopener noreferrer">
+                        <span class="project__name">noteplayer</span>
+                        <span class="project__desc">Sheet-music player</span>
+                        <span class="project__link">github.com/guziczak/noteplayer</span>
+                    </a></li>
                 </ul>
             </section>
         </aside>
@@ -1785,7 +2062,7 @@ ol[role="list"] {
                     <article class="job" aria-label="Position at Right Information">
                         <div class="job__logo">
                             <a href="https://rightinformation.com" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Right Information website">
-                                <img src="work_experience_logos/right_information_new.jpg" class="job__logo-img" alt="Logo Right Information">
+                                <img src="assets/work_experience_logos/right_information_new.jpg" class="job__logo-img" alt="Logo Right Information">
                             </a>
                         </div>
                         <div class="job__content">
@@ -1818,7 +2095,7 @@ ol[role="list"] {
                     <article class="job" aria-label="Position at Streamsoft">
                         <div class="job__logo">
                             <a href="https://streamsoft.pl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Streamsoft website">
-                                <img src="work_experience_logos/streamsoft.jpeg" class="job__logo-img" alt="Logo Streamsoft">
+                                <img src="assets/work_experience_logos/streamsoft.jpeg" class="job__logo-img" alt="Logo Streamsoft">
                             </a>
                         </div>
                         <div class="job__content">
@@ -1849,7 +2126,7 @@ ol[role="list"] {
                     <article class="job" aria-label="Position at Luxoft">
                         <div class="job__logo">
                             <a href="https://luxoft.com" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Luxoft website">
-                                <img src="work_experience_logos/luxoft_new.jpeg" class="job__logo-img" alt="Logo Luxoft">
+                                <img src="assets/work_experience_logos/luxoft_new.jpeg" class="job__logo-img" alt="Logo Luxoft">
                             </a>
                         </div>
                         <div class="job__content">
@@ -1877,7 +2154,7 @@ ol[role="list"] {
                     <article class="job" aria-label="Position at University of Twente, Netherlands">
                         <div class="job__logo">
                             <a href="https://utwente.nl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit University of Twente, Netherlands website">
-                                <img src="work_experience_logos/university_of_twente..jpeg" class="job__logo-img" alt="Logo University of Twente, Netherlands">
+                                <img src="assets/work_experience_logos/university_of_twente..jpeg" class="job__logo-img" alt="Logo University of Twente, Netherlands">
                             </a>
                         </div>
                         <div class="job__content">
@@ -1910,7 +2187,7 @@ ol[role="list"] {
                     <article class="education" aria-label="Education at WSB Merito University in Wroclaw">
                         <div class="education__logo">
                             <a href="https://merito.pl" target="_blank" rel="noopener noreferrer" class="education__logo-link" title="Visit WSB Merito University in Wroclaw website">
-                                <img src="universities/merito.jpg" class="education__logo-img" alt="Logo WSB Merito University in Wroclaw">
+                                <img src="assets/universities/merito.jpg" class="education__logo-img" alt="Logo WSB Merito University in Wroclaw">
                             </a>
                         </div>
                         <div class="education__content">
@@ -1935,7 +2212,7 @@ ol[role="list"] {
                     <article class="education" aria-label="Education at Wroclaw University of Science and Technology">
                         <div class="education__logo">
                             <a href="https://pwr.edu.pl" target="_blank" rel="noopener noreferrer" class="education__logo-link" title="Visit Wroclaw University of Science and Technology website">
-                                <img src="universities/university_of_technology_wroclaw.png" class="education__logo-img" alt="Logo Wroclaw University of Science and Technology">
+                                <img src="assets/universities/university_of_technology_wroclaw.png" class="education__logo-img" alt="Logo Wroclaw University of Science and Technology">
                             </a>
                         </div>
                         <div class="education__content">
@@ -1958,49 +2235,6 @@ ol[role="list"] {
         </main>
         <span class="page__number" aria-hidden="true">2 / 2</span>
     </article>
-
-<script>
-(function () {
-  // CSS `zoom` is unsupported on iOS Safari, so we use `transform: scale()`.
-  // Caveat: transform doesn't change layout — body still claims its original
-  // ~2246px in the document flow even when visually scaled to ~1060px.
-  // Without clamping, the iframe scrolls past the visible content into blank
-  // whitespace. Fix: read the natural content height, then set html to
-  // (content × scale) with overflow: hidden so the scroll matches what's seen.
-  var A4_PX = 794; // 210mm at 96dpi
-  function inPrintMode() {
-    return window.matchMedia && window.matchMedia('print').matches;
-  }
-  function fit() {
-    // Always reset first; we re-apply scaling only if needed for screen
-    document.body.style.transform = '';
-    document.body.style.transformOrigin = '';
-    document.documentElement.style.height = '';
-    document.documentElement.style.overflow = '';
-    // Don't apply mobile scaling while printing — headless --print-to-pdf
-    // does not always fire beforeprint, so guard explicitly via matchMedia
-    if (inPrintMode()) return;
-    var w = document.documentElement.clientWidth;
-    if (w >= A4_PX) return;
-    var scale = w / A4_PX;
-    var naturalHeight = document.body.scrollHeight;
-    document.body.style.transform = 'scale(' + scale + ')';
-    document.body.style.transformOrigin = 'top left';
-    document.documentElement.style.height = (naturalHeight * scale) + 'px';
-    document.documentElement.style.overflow = 'hidden';
-  }
-  fit();
-  window.addEventListener('resize', fit);
-  // Reset on print so the PDF/print output uses the desktop layout
-  window.addEventListener('beforeprint', function () {
-    document.body.style.transform = '';
-    document.body.style.transformOrigin = '';
-    document.documentElement.style.height = '';
-    document.documentElement.style.overflow = '';
-  });
-  window.addEventListener('afterprint', fit);
-})();
-</script>
 
 </body>
 </html>

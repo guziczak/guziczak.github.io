@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="CV - Łukasz Guziczak, Rozwiązania AI">
+    <meta name="description" content="CV - Łukasz Guziczak, AI Engineer">
     <title>CV - Łukasz Guziczak</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -59,7 +59,7 @@
     --color-pie-medical: #38bdf8;
     /* Colors - Companies/Universities (Skills Timeline) */
     --color-company-pwr: #8b5cf6;        /* violet - PWr education */
-    --color-company-twente: #f97316;     /* orange - Uniwersytet w Twente */
+    --color-company-twente: #f97316;     /* orange - University of Twente */
     --color-company-luxoft: #fbbf24;     /* amber/gold - Luxoft */
     --color-company-streamsoft: #34d399; /* emerald - Streamsoft */
     --color-company-rightinfo: #f43f5e;  /* rose/pink - Right Information */
@@ -152,6 +152,10 @@
     padding: 0;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 body {
     font-family: var(--font-family);
     font-size: 12px;
@@ -188,57 +192,12 @@ ol[role="list"] {
     margin: 0;
     background: var(--color-bg-white);
     overflow: hidden;
-    /* No page-break-after — that would force an extra blank page after the
-       last .page. Page splitting is driven by page-break-before on .page--break. */
+    page-break-after: always;
 }
 
 .page--break {
-    margin-block-start: 60px;
+    margin-block-start: 20px;
     page-break-before: always;
-    position: relative;
-}
-
-/* Subtle divider with page indicator between page 1 and page 2 */
-.page--break::before,
-.page--break::after {
-    position: absolute;
-    pointer-events: none;
-}
-
-.page--break::after {
-    content: '';
-    top: -32px;
-    left: 8%;
-    right: 8%;
-    height: 1px;
-    background: var(--color-border-light);
-}
-
-.page--break::before {
-    content: 'Strona 2 z 2';
-    top: -40px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--color-bg-white);
-    padding: 0 14px;
-    font-size: 0.65rem;
-    color: var(--color-text-muted);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    font-weight: 500;
-}
-
-@media print {
-    .page--break {
-        /* page-break-before already starts a new physical page;
-           any margin here would push content off the bottom of A4
-           and create a phantom 3rd page */
-        margin-block-start: 0;
-    }
-    .page--break::before,
-    .page--break::after {
-        display: none;
-    }
 }
 
 .page__number {
@@ -248,9 +207,165 @@ ol[role="list"] {
     font-size: var(--font-size-sm);
     font-weight: 500;
     color: #9ca3af;
-    /* Must outrank .sidebar (z-index: 10) and .main (z-index: 5) so the
-       page number stays visible in the bottom-right corner */
-    z-index: 100;
+}
+
+/* ==========================================================================
+   3b. Cover — bold statement page (design-forward)
+   ========================================================================== */
+
+.page--cover {
+    background:
+        radial-gradient(680px 460px at 82% -8%, rgba(56, 189, 248, 0.32), transparent 62%),
+        linear-gradient(165deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: var(--color-text-white);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 64px 56px 48px;
+}
+
+.cover__kicker {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--color-accent-light);
+}
+
+.cover__stamp {
+    margin-top: 7px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #8ea3ba;
+}
+
+.cover__lead {
+    font-size: 1.7rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: #aebfd0;
+    max-width: 640px;
+}
+
+.cover__punch {
+    font-size: 5.2rem;
+    font-weight: 800;
+    font-style: italic;
+    line-height: 1;
+    color: var(--color-accent-light);
+    margin-block: 12px 22px;
+}
+
+.cover__reframe {
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--color-text-white);
+    max-width: 540px;
+}
+
+.cover__proof {
+    margin-block-start: 12px;
+    font-size: 1.55rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #dbe6f1;
+    max-width: 27ch;
+}
+
+.cover__rest {
+    margin-block-start: 18px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-style: italic;
+    color: var(--color-accent-light);
+}
+
+.cover__stats {
+    display: flex;
+    gap: 42px;
+}
+
+.cover__stat-big {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--color-accent-light);
+}
+
+.cover__stat-small {
+    display: block;
+    margin-block-start: 5px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #8ea3ba;
+}
+
+.cover__rule {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.14);
+    margin-block: 20px 0;
+}
+
+.cover__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-block-start: 14px;
+    font-size: 0.62rem;
+}
+
+.cover__contact { color: #aebfd0; }
+.cover__cta { color: #7e93ab; font-style: italic; text-decoration: none; }
+.cover__cta:hover { color: var(--color-accent-light); }
+.cover__cta-arrow { color: var(--color-accent-light); font-style: normal; font-weight: 700; }
+.cover__num { color: var(--color-accent-light); }
+
+/* Cover entrance — the manifesto engraves itself in.
+   Screen only: print and PDF render the settled, static cover. */
+@media screen and (prefers-reduced-motion: no-preference) {
+    @keyframes coverEngrave {
+        from { opacity: 0; transform: translateY(16px); filter: blur(8px); }
+        to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+    }
+    @keyframes coverNumGlow {
+        0%   { text-shadow: 0 0 0 rgba(56, 189, 248, 0); }
+        60%  { text-shadow: 0 0 30px rgba(56, 189, 248, 0.6); }
+        100% { text-shadow: 0 0 18px rgba(56, 189, 248, 0.35); }
+    }
+
+    .page--cover .cover__kicker,
+    .page--cover .cover__stamp,
+    .page--cover .cover__lead,
+    .page--cover .cover__punch,
+    .page--cover .cover__reframe,
+    .page--cover .cover__proof,
+    .page--cover .cover__rest,
+    .page--cover .cover__stats,
+    .page--cover .cover__rule,
+    .page--cover .cover__footer {
+        animation: coverEngrave 0.85s cubic-bezier(0.33, 1, 0.68, 1) both;
+    }
+
+    .page--cover .cover__kicker  { animation-delay: 0.05s; }
+    .page--cover .cover__stamp   { animation-delay: 0.15s; }
+    .page--cover .cover__lead    { animation-delay: 0.45s; }
+    .page--cover .cover__punch   { animation-delay: 0.60s; }
+    .page--cover .cover__reframe { animation-delay: 0.80s; }
+    .page--cover .cover__proof   { animation-delay: 0.95s; }
+    .page--cover .cover__proof + .cover__proof { animation-delay: 1.05s; }
+    .page--cover .cover__rest    { animation-delay: 1.20s; }
+    .page--cover .cover__stats   { animation-delay: 1.40s; }
+    .page--cover .cover__rule    { animation-delay: 1.50s; }
+    .page--cover .cover__footer  { animation-delay: 1.60s; }
+
+    /* The one bright point blooms as it lands, then settles to a soft glow. */
+    .page--cover .cover__num {
+        animation: coverNumGlow 1.6s ease-out 1.6s both;
+    }
 }
 
 /* ==========================================================================
@@ -715,7 +830,7 @@ ol[role="list"] {
 
 /* Company/University colors - high contrast, colorblind-friendly palette */
 .skill-bar__segment--pwr { background: #8b5cf6; }        /* violet - PWr education */
-.skill-bar__segment--twente { background: #f97316; }     /* orange - Uniwersytet w Twente */
+.skill-bar__segment--twente { background: #f97316; }     /* orange - University of Twente */
 .skill-bar__segment--luxoft { background: #fbbf24; }     /* amber/gold - Luxoft */
 .skill-bar__segment--streamsoft { background: #34d399; } /* emerald - Streamsoft */
 .skill-bar__segment--rightinfo { background: #f43f5e; }  /* rose/pink - Right Information */
@@ -976,6 +1091,104 @@ ol[role="list"] {
     line-height: 1.4;
 }
 
+.current-card--product .current-card__year::after {
+    color: var(--color-accent);
+}
+
+.current-card__logo-link--static {
+    cursor: default;
+}
+
+.current-card__logo-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-md);
+    background: var(--gradient-accent);
+    color: #fff;
+    font-size: 0.9rem;
+}
+
+/* OpisAI — glossy glass bubble (mirrors the Typst CV / the app's on-screen bubble) */
+.opisai-bubble {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 34% 31%, #c8ecfc 0%, #5cc6f5 38%, #0ea5e9 72%, #0a6b96 100%);
+    box-shadow: inset 0 0 0 0.5px #06506f, 0 1px 2px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+.opisai-bubble::before {
+    content: '';
+    position: absolute;
+    top: 7%;
+    left: 13%;
+    width: 54%;
+    height: 36%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
+}
+
+.opisai-bubble::after {
+    content: '';
+    position: absolute;
+    top: 14%;
+    left: 19%;
+    width: 22%;
+    height: 15%;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.opisai-bubble__label {
+    position: relative;
+    z-index: 1;
+    font-size: 0.4rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #06334a;
+    line-height: 1;
+}
+
+/* Sidebar Projects — side projects / client work */
+.projects {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+}
+.project {
+    display: block;
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    transition: background var(--transition-fast);
+}
+.project:hover { background: rgba(255, 255, 255, 0.1); }
+.project__name { display: block; color: #fff; font-weight: 700; font-size: 0.8rem; }
+.project__desc { display: block; color: rgba(255, 255, 255, 0.62); font-size: 0.66rem; line-height: 1.3; margin-top: 2px; }
+.project__link { display: block; color: var(--color-accent-light); font-size: 0.64rem; font-weight: 600; margin-top: 5px; letter-spacing: 0.1px; }
+.project__link::after { content: ' ↗'; opacity: 0.6; }
+
+.skills__group {
+    margin: 11px 0 5px;
+    text-align: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-accent-light);
+}
+.skills__group:first-of-type { margin-top: 2px; }
+
 /* ==========================================================================
    14. Timeline
    ========================================================================== */
@@ -1232,15 +1445,14 @@ ol[role="list"] {
    19. Print Styles
    ========================================================================== */
 
-@page {
-    size: A4;
-    margin: 0;
-}
-
 @media print {
     body {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+    }
+
+    .page {
+        page-break-after: always;
     }
 
     .page--break {
@@ -1332,13 +1544,49 @@ ol[role="list"] {
 </head>
 <body>
 
+    <!-- COVER -->
+    <article class="page page--cover" aria-label="Cover statement">
+        <div class="cover__top">
+          <p class="cover__kicker">Łukasz Guziczak — AI Engineer</p>
+          <p class="cover__stamp">In the lab since 2016. In production since 2024. Not since ChatGPT.<br>Currently embedded at a bank — on-prem, regulated.</p>
+        </div>
+        <div class="cover__hook">
+            <p class="cover__lead">They say AI loses the thread past 1,000<br>lines of code.</p>
+            <p class="cover__punch">Cute.</p>
+            <p class="cover__reframe">That's where I start — <span class="cover__num">20,000</span> lines.<br>One file.<br>One person.</p>
+            <p class="cover__proof">A month to a working PoC. Three to production. No team.</p><p class="cover__proof">Their teams maintain it. I'm on the next.</p>
+            <p class="cover__rest">The code says the rest.</p>
+        </div>
+        <div class="cover__bottom">
+            <div class="cover__stats">
+                    <div class="cover__stat">
+                        <span class="cover__stat-big">2</span>
+                        <span class="cover__stat-small">LLM systems in prod</span>
+                    </div>
+                    <div class="cover__stat">
+                        <span class="cover__stat-big">SOLD</span>
+                        <span class="cover__stat-small">own AI product</span>
+                    </div>
+                    <div class="cover__stat">
+                        <span class="cover__stat-big">5+</span>
+                        <span class="cover__stat-small">yrs engineering</span>
+                    </div>
+            </div>
+            <div class="cover__rule"></div>
+            <div class="cover__footer">
+                <span class="cover__contact">guziczak@pm.me   ·   github.com/guziczak   ·   in/guziczak</span>
+                <a class="cover__cta" href="#cv-start">The full CV follows <span class="cover__cta-arrow">↓</span> (You won't need it.)</a>
+            </div>
+        </div>
+    </article>
+
     <!-- PAGE 1 -->
-    <article class="page" aria-label="CV strona 1 z 2">
+    <article class="page" id="cv-start" aria-label="CV page 1 of 2">
         <aside class="sidebar">
 
-            <img src="photo_optimized.jpg" alt="Profile photo of Łukasz Guziczak" class="sidebar__photo">
+            <img src="assets/photo_optimized.jpg" alt="Profile photo of Łukasz Guziczak" class="sidebar__photo">
 
-            <nav class="contact" aria-label="Informacje kontaktowe">
+            <nav class="contact" aria-label="Contact information">
                 <a href="tel:+48693069832" class="contact__item">
                     <span class="contact__icon" aria-hidden="true"><i class="fas fa-phone"></i></span>
                     <span class="contact__text">+48 693069832</span>
@@ -1349,7 +1597,7 @@ ol[role="list"] {
                 </a>
                 <a href="https://maps.google.com/?q=Wroclaw,Poland" target="_blank" rel="noopener noreferrer" class="contact__item">
                     <span class="contact__icon" aria-hidden="true"><i class="fas fa-map-marker-alt"></i></span>
-                    <span class="contact__text">Wrocław, Polska</span>
+                    <span class="contact__text">Wroclaw, Poland</span>
                 </a>
                 <a href="https://linkedin.com/in/guziczak" target="_blank" rel="noopener noreferrer" class="contact__item">
                     <span class="contact__icon" aria-hidden="true"><i class="fab fa-linkedin"></i></span>
@@ -1362,25 +1610,39 @@ ol[role="list"] {
             </nav>
 
             <section class="sidebar__section" aria-labelledby="skills-heading">
-                <h2 id="skills-heading" class="sidebar__heading">Umiejętności</h2>
-                <ul class="skills" role="list" aria-label="Lista umiejętności">
-                    <li class="skills__tag skills__tag--primary">Python</li>
-                    <li class="skills__tag skills__tag--primary">Integracja LLM</li>
-                    <li class="skills__tag skills__tag--primary">TensorFlow / PyTorch</li>
-                    <li class="skills__tag skills__tag--primary">Java 17/21</li>
+                <h2 id="skills-heading" class="sidebar__heading">Skills</h2>
+                <p class="skills__group">GenAI · LLM</p>
+                <ul class="skills" role="list" aria-label="GenAI · LLM">
+                    <li class="skills__tag">RAG · Vector DBs</li>
+                    <li class="skills__tag">LLM Agents</li>
+                    <li class="skills__tag">Local LLMs · vLLM/Ollama</li>
+                    <li class="skills__tag">Claude · GPT · Gemini</li>
+                    <li class="skills__tag">Structured Outputs · Evals</li>
+                    <li class="skills__tag">Fine-tuning (LoRA)</li>
+                </ul>
+                <p class="skills__group">Machine Learning</p>
+                <ul class="skills" role="list" aria-label="Machine Learning">
+                    <li class="skills__tag">PyTorch · TensorFlow</li>
+                    <li class="skills__tag">Computer Vision (ViT)</li>
+                </ul>
+                <p class="skills__group">Engineering</p>
+                <ul class="skills" role="list" aria-label="Engineering">
+                    <li class="skills__tag">Python</li>
+                    <li class="skills__tag">Java 17/21</li>
                     <li class="skills__tag">Spring Boot</li>
-                    <li class="skills__tag">Chmura (AWS, Azure)</li>
-                    <li class="skills__tag">Docker</li>
-                    <li class="skills__tag">Kubernetes</li>
-                    <li class="skills__tag">CI/CD</li>
+                    <li class="skills__tag">FastAPI</li>
                     <li class="skills__tag">SQL (PostgreSQL)</li>
-                    <li class="skills__tag">React.js / TypeScript</li>
-                    <li class="skills__tag">Mikroserwisy</li>
+                </ul>
+                <p class="skills__group">Cloud · Infra</p>
+                <ul class="skills" role="list" aria-label="Cloud · Infra">
+                    <li class="skills__tag">AWS · Azure</li>
+                    <li class="skills__tag">Docker · Kubernetes</li>
+                    <li class="skills__tag">CI/CD</li>
                 </ul>
             </section>
 
             <section class="sidebar__section" aria-labelledby="skills-timeline-heading">
-                <h2 id="skills-timeline-heading" class="sidebar__heading">Doświadczenie</h2>
+                <h2 id="skills-timeline-heading" class="sidebar__heading">Experience</h2>
 
                 <div class="skills-breakdown">
                     <div class="skill-bar skill-bar--scale" aria-hidden="true">
@@ -1389,131 +1651,131 @@ ol[role="list"] {
                         <span></span>
                     </div>
 
-                    <div class="skill-bar" role="group" aria-label="Python: 5.5 lat doświadczenia">
+                    <div class="skill-bar" role="group" aria-label="Python: 5.5 years of experience">
                         <img src="https://cdn.simpleicons.org/python" class="skill-bar__icon" alt="" aria-hidden="true" title="Python">
                         <div class="skill-bar__track" style="width: 55.83%" role="img" aria-hidden="true">
-                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Politechnika Wrocławska (47 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="Uniwersytet w Twente (5 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="Uniwersytet WSB Merito (15 mies.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Wroclaw University of Technology (47 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="University of Twente (5 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito University (15 mo)"></div>
                         </div>
-                        <span class="skill-bar__years" aria-hidden="true">5.5 lat</span>
-                        <span class="sr-only">Python doświadczenie:Politechnika Wrocławska (47 mies.), Uniwersytet w Twente (5 mies.), Uniwersytet WSB Merito (15 mies.). Łącznie:5.5 lat.</span>
+                        <span class="skill-bar__years" aria-hidden="true">5.5 yrs</span>
+                        <span class="sr-only">Python experience: Wroclaw University of Technology (47 mo), University of Twente (5 mo), WSB Merito University (15 mo). Total: 5.5 years.</span>
                     </div>
-                    <div class="skill-bar" role="group" aria-label="AI / ML: 9.5 lat doświadczenia">
+                    <div class="skill-bar" role="group" aria-label="AI / ML: 9.5 years of experience">
                         <img src="https://cdn.simpleicons.org/anthropic" class="skill-bar__icon" alt="" aria-hidden="true" title="AI / ML">
                         <div class="skill-bar__track" style="width: 94.17%" role="img" aria-hidden="true">
-                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Politechnika Wrocławska (47 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="Uniwersytet w Twente (5 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--luxoft" style="flex-grow: 6" title="Luxoft (6 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--streamsoft" style="flex-grow: 3" title="Streamsoft (3 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="Uniwersytet WSB Merito (15 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mies.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Wroclaw University of Technology (47 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="University of Twente (5 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--luxoft" style="flex-grow: 6" title="Luxoft (6 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--streamsoft" style="flex-grow: 3" title="Streamsoft (3 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito University (15 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mo)"></div>
                         </div>
-                        <span class="skill-bar__years" aria-hidden="true">9.5 lat</span>
-                        <span class="sr-only">AI / ML doświadczenie:Politechnika Wrocławska (47 mies.), Uniwersytet w Twente (5 mies.), Luxoft (6 mies.), Streamsoft (3 mies.), Right Information (13 mies.), Thorium Space (6 mies.), Kamsoft (7 mies.), Astek (7 mies.), Uniwersytet WSB Merito (15 mies.), Natek (4 mies.). Łącznie:9.5 lat.</span>
+                        <span class="skill-bar__years" aria-hidden="true">9.5 yrs</span>
+                        <span class="sr-only">AI / ML experience: Wroclaw University of Technology (47 mo), University of Twente (5 mo), Luxoft (6 mo), Streamsoft (3 mo), Right Information (13 mo), Thorium Space (6 mo), Kamsoft (7 mo), Astek (7 mo), WSB Merito University (15 mo), Natek (4 mo). Total: 9.5 years.</span>
                     </div>
-                    <div class="skill-bar" role="group" aria-label="Claude: 2.75 lat doświadczenia">
+                    <div class="skill-bar" role="group" aria-label="Claude: 2.75 years of experience">
                         <img src="https://cdn.simpleicons.org/claude" class="skill-bar__icon" alt="" aria-hidden="true" title="Claude">
                         <div class="skill-bar__track" style="width: 27.50%; margin-inline-start: 66.67%" role="img" aria-hidden="true">
-                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="Uniwersytet WSB Merito (15 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mies.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito University (15 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mo)"></div>
                         </div>
-                        <span class="skill-bar__years" aria-hidden="true">2.75 lat</span>
-                        <span class="sr-only">Claude doświadczenie:Kamsoft (7 mies.), Astek (7 mies.), Uniwersytet WSB Merito (15 mies.), Natek (4 mies.). Łącznie:2.75 lat.</span>
+                        <span class="skill-bar__years" aria-hidden="true">2.75 yrs</span>
+                        <span class="sr-only">Claude experience: Kamsoft (7 mo), Astek (7 mo), WSB Merito University (15 mo), Natek (4 mo). Total: 2.75 years.</span>
                     </div>
-                    <div class="skill-bar" role="group" aria-label="Java: 9 lat doświadczenia">
+                    <div class="skill-bar" role="group" aria-label="Java: 9 years of experience">
                         <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="skill-bar__icon" alt="" aria-hidden="true" title="Java">
                         <div class="skill-bar__track" style="width: 90.00%" role="img" aria-hidden="true">
-                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Politechnika Wrocławska (47 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--luxoft" style="flex-grow: 6" title="Luxoft (6 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--streamsoft" style="flex-grow: 3" title="Streamsoft (3 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="Uniwersytet WSB Merito (15 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mies.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Wroclaw University of Technology (47 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--luxoft" style="flex-grow: 6" title="Luxoft (6 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--streamsoft" style="flex-grow: 3" title="Streamsoft (3 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito University (15 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mo)"></div>
                         </div>
-                        <span class="skill-bar__years" aria-hidden="true">9 lat</span>
-                        <span class="sr-only">Java doświadczenie:Politechnika Wrocławska (47 mies.), Luxoft (6 mies.), Streamsoft (3 mies.), Right Information (13 mies.), Thorium Space (6 mies.), Kamsoft (7 mies.), Astek (7 mies.), Uniwersytet WSB Merito (15 mies.), Natek (4 mies.). Łącznie:9 lat.</span>
+                        <span class="skill-bar__years" aria-hidden="true">9 yrs</span>
+                        <span class="sr-only">Java experience: Wroclaw University of Technology (47 mo), Luxoft (6 mo), Streamsoft (3 mo), Right Information (13 mo), Thorium Space (6 mo), Kamsoft (7 mo), Astek (7 mo), WSB Merito University (15 mo), Natek (4 mo). Total: 9 years.</span>
                     </div>
-                    <div class="skill-bar" role="group" aria-label="Spring: 9 lat doświadczenia">
+                    <div class="skill-bar" role="group" aria-label="Spring: 9 years of experience">
                         <img src="https://cdn.simpleicons.org/spring" class="skill-bar__icon" alt="" aria-hidden="true" title="Spring">
                         <div class="skill-bar__track" style="width: 90.00%" role="img" aria-hidden="true">
-                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Politechnika Wrocławska (47 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--luxoft" style="flex-grow: 6" title="Luxoft (6 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--streamsoft" style="flex-grow: 3" title="Streamsoft (3 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="Uniwersytet WSB Merito (15 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mies.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Wroclaw University of Technology (47 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--luxoft" style="flex-grow: 6" title="Luxoft (6 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--streamsoft" style="flex-grow: 3" title="Streamsoft (3 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito University (15 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mo)"></div>
                         </div>
-                        <span class="skill-bar__years" aria-hidden="true">9 lat</span>
-                        <span class="sr-only">Spring doświadczenie:Politechnika Wrocławska (47 mies.), Luxoft (6 mies.), Streamsoft (3 mies.), Right Information (13 mies.), Thorium Space (6 mies.), Kamsoft (7 mies.), Astek (7 mies.), Uniwersytet WSB Merito (15 mies.), Natek (4 mies.). Łącznie:9 lat.</span>
+                        <span class="skill-bar__years" aria-hidden="true">9 yrs</span>
+                        <span class="sr-only">Spring experience: Wroclaw University of Technology (47 mo), Luxoft (6 mo), Streamsoft (3 mo), Right Information (13 mo), Thorium Space (6 mo), Kamsoft (7 mo), Astek (7 mo), WSB Merito University (15 mo), Natek (4 mo). Total: 9 years.</span>
                     </div>
-                    <div class="skill-bar" role="group" aria-label="Docker: 8.25 lat doświadczenia">
+                    <div class="skill-bar" role="group" aria-label="Docker: 8.25 years of experience">
                         <img src="https://cdn.simpleicons.org/docker" class="skill-bar__icon" alt="" aria-hidden="true" title="Docker">
                         <div class="skill-bar__track" style="width: 82.50%" role="img" aria-hidden="true">
-                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Politechnika Wrocławska (47 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="Uniwersytet WSB Merito (15 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mies.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Wroclaw University of Technology (47 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito University (15 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mo)"></div>
                         </div>
-                        <span class="skill-bar__years" aria-hidden="true">8.25 lat</span>
-                        <span class="sr-only">Docker doświadczenie:Politechnika Wrocławska (47 mies.), Right Information (13 mies.), Thorium Space (6 mies.), Kamsoft (7 mies.), Astek (7 mies.), Uniwersytet WSB Merito (15 mies.), Natek (4 mies.). Łącznie:8.25 lat.</span>
+                        <span class="skill-bar__years" aria-hidden="true">8.25 yrs</span>
+                        <span class="sr-only">Docker experience: Wroclaw University of Technology (47 mo), Right Information (13 mo), Thorium Space (6 mo), Kamsoft (7 mo), Astek (7 mo), WSB Merito University (15 mo), Natek (4 mo). Total: 8.25 years.</span>
                     </div>
-                    <div class="skill-bar" role="group" aria-label="PostgreSQL: 8.25 lat doświadczenia">
+                    <div class="skill-bar" role="group" aria-label="PostgreSQL: 8.25 years of experience">
                         <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-plain.svg" class="skill-bar__icon" alt="" aria-hidden="true" title="PostgreSQL">
                         <div class="skill-bar__track" style="width: 83.33%" role="img" aria-hidden="true">
-                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Politechnika Wrocławska (47 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="Uniwersytet w Twente (5 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="Uniwersytet WSB Merito (15 mies.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Wroclaw University of Technology (47 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="University of Twente (5 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito University (15 mo)"></div>
                         </div>
-                        <span class="skill-bar__years" aria-hidden="true">8.25 lat</span>
-                        <span class="sr-only">PostgreSQL doświadczenie:Politechnika Wrocławska (47 mies.), Uniwersytet w Twente (5 mies.), Right Information (13 mies.), Thorium Space (6 mies.), Kamsoft (7 mies.), Astek (7 mies.), Uniwersytet WSB Merito (15 mies.). Łącznie:8.25 lat.</span>
+                        <span class="skill-bar__years" aria-hidden="true">8.25 yrs</span>
+                        <span class="sr-only">PostgreSQL experience: Wroclaw University of Technology (47 mo), University of Twente (5 mo), Right Information (13 mo), Thorium Space (6 mo), Kamsoft (7 mo), Astek (7 mo), WSB Merito University (15 mo). Total: 8.25 years.</span>
                     </div>
-                    <div class="skill-bar" role="group" aria-label="React.js: 8.75 lat doświadczenia">
+                    <div class="skill-bar" role="group" aria-label="React.js: 8.75 years of experience">
                         <img src="https://cdn.simpleicons.org/react" class="skill-bar__icon" alt="" aria-hidden="true" title="React.js">
                         <div class="skill-bar__track" style="width: 86.67%" role="img" aria-hidden="true">
-                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Politechnika Wrocławska (47 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="Uniwersytet w Twente (5 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="Uniwersytet WSB Merito (15 mies.)"></div>
-                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mies.)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--pwr" style="flex-grow: 47" title="Wroclaw University of Technology (47 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--twente" style="flex-grow: 5" title="University of Twente (5 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--rightinfo" style="flex-grow: 13" title="Right Information (13 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--thorium" style="flex-grow: 6" title="Thorium Space (6 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--kamsoft" style="flex-grow: 7" title="Kamsoft (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--astek" style="flex-grow: 7" title="Astek (7 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--merito" style="flex-grow: 15" title="WSB Merito University (15 mo)"></div>
+                            <div class="skill-bar__segment skill-bar__segment--natek" style="flex-grow: 4" title="Natek (4 mo)"></div>
                         </div>
-                        <span class="skill-bar__years" aria-hidden="true">8.75 lat</span>
-                        <span class="sr-only">React.js doświadczenie:Politechnika Wrocławska (47 mies.), Uniwersytet w Twente (5 mies.), Right Information (13 mies.), Thorium Space (6 mies.), Kamsoft (7 mies.), Astek (7 mies.), Uniwersytet WSB Merito (15 mies.), Natek (4 mies.). Łącznie:8.75 lat.</span>
+                        <span class="skill-bar__years" aria-hidden="true">8.75 yrs</span>
+                        <span class="sr-only">React.js experience: Wroclaw University of Technology (47 mo), University of Twente (5 mo), Right Information (13 mo), Thorium Space (6 mo), Kamsoft (7 mo), Astek (7 mo), WSB Merito University (15 mo), Natek (4 mo). Total: 8.75 years.</span>
                     </div>
                 </div>
                 <div class="skills-breakdown__legend" role="list" aria-label="Companies and universities legend">
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#8b5cf6" aria-hidden="true"></span><img src="legend_icons/pwr.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Politechnika Wrocławska"><span class="sr-only">Politechnika Wrocławska</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#f97316" aria-hidden="true"></span><img src="legend_icons/twente.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Uniwersytet w Twente"><span class="sr-only">Uniwersytet w Twente</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#fbbf24" aria-hidden="true"></span><img src="legend_icons/luxoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Luxoft"><span class="sr-only">Luxoft</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#34d399" aria-hidden="true"></span><img src="legend_icons/streamsoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Streamsoft"><span class="sr-only">Streamsoft</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#f43f5e" aria-hidden="true"></span><img src="legend_icons/rightinfo.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Right Information"><span class="sr-only">Right Information</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#e879f9" aria-hidden="true"></span><img src="legend_icons/thorium.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Thorium Space"><span class="sr-only">Thorium Space</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#2dd4bf" aria-hidden="true"></span><img src="legend_icons/kamsoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Kamsoft"><span class="sr-only">Kamsoft</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#60a5fa" aria-hidden="true"></span><img src="legend_icons/astek.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Astek"><span class="sr-only">Astek</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#c084fc" aria-hidden="true"></span><img src="legend_icons/merito.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Uniwersytet WSB Merito"><span class="sr-only">Uniwersytet WSB Merito</span></span>
-                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#fb923c" aria-hidden="true"></span><img src="legend_icons/natek.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Natek"><span class="sr-only">Natek</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#8b5cf6" aria-hidden="true"></span><img src="assets/legend_icons/pwr.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Wroclaw University of Technology"><span class="sr-only">Wroclaw University of Technology</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#f97316" aria-hidden="true"></span><img src="assets/legend_icons/twente.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="University of Twente"><span class="sr-only">University of Twente</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#fbbf24" aria-hidden="true"></span><img src="assets/legend_icons/luxoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Luxoft"><span class="sr-only">Luxoft</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#34d399" aria-hidden="true"></span><img src="assets/legend_icons/streamsoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Streamsoft"><span class="sr-only">Streamsoft</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#f43f5e" aria-hidden="true"></span><img src="assets/legend_icons/rightinfo.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Right Information"><span class="sr-only">Right Information</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#e879f9" aria-hidden="true"></span><img src="assets/legend_icons/thorium.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Thorium Space"><span class="sr-only">Thorium Space</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#2dd4bf" aria-hidden="true"></span><img src="assets/legend_icons/kamsoft.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Kamsoft"><span class="sr-only">Kamsoft</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#60a5fa" aria-hidden="true"></span><img src="assets/legend_icons/astek.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Astek"><span class="sr-only">Astek</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#c084fc" aria-hidden="true"></span><img src="assets/legend_icons/merito.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="WSB Merito University"><span class="sr-only">WSB Merito University</span></span>
+                    <span class="skills-breakdown__legend-item" role="listitem"><span class="skills-breakdown__legend-dot" style="background:#fb923c" aria-hidden="true"></span><img src="assets/legend_icons/natek.jpg" class="skills-breakdown__legend-logo" alt="" aria-hidden="true" title="Natek"><span class="sr-only">Natek</span></span>
                 </div>
             </section>
         </aside>
@@ -1521,74 +1783,70 @@ ol[role="list"] {
 
             <header class="header">
                 <h1 class="header__name">Łukasz Guziczak</h1>
-                <p class="header__title">Rozwiązania AI</p>
+                <p class="header__title">AI Engineer</p>
             </header>
 
             <section class="section" aria-labelledby="summary-heading">
-                <h2 id="summary-heading" class="section__title">Podsumowanie</h2>
-                <p class="section__text">Specjalista AI z 5+ latami doświadczenia w inżynierii produkcyjnej i tytułem magistra AI/ML. Od 2024 integruję LLM-y oraz narzędzia AI (Claude Code, Codex, Copilot CLI) w aplikacjach korporacyjnych. Solidne fundamenty w Pythonie, Javie, Spring Boot oraz chmurze (AWS, Azure, Docker, Kubernetes). Buduję inteligentne systemy dla ochrony zdrowia, lotnictwa, IoT i finansów.</p>
+                <h2 id="summary-heading" class="section__title">Summary</h2>
+                <p class="section__text">AI Engineer who ships LLM systems to production. Sole engineer of an on-prem document-AI platform — local vision + language models on company GPUs — and creator of OpisAI, a commercial AI clinical-documentation assistant built solo and sold. ML from the foundations since 2016 — Electronics, Stanford's ML (2020); shipping it since 2024. 5+ years of production engineering (Python, Java/Spring, cloud) across healthcare, aerospace and fintech; MSc in AI &amp; Machine Learning — thesis on medical-imaging transformers.</p>
             </section>
 
             <section class="section" aria-labelledby="current-heading">
-                <h2 id="current-heading" class="section__title">Obecnie</h2>
+                <h2 id="current-heading" class="section__title">Now</h2>
                 <div class="current">
 
-                    <article class="current-card current-card--work" aria-label="Praca: Inżynier AI/ML, 2025 – Obecnie">
+                    <article class="current-card current-card--product" aria-label="Product: OpisAI — Own AI Product (built &amp; sold), 2026">
                         <div class="current-card__lead">
-                            <time class="current-card__year" datetime="2025" aria-hidden="true">2025</time>
-                            <a href="https://natek.eu" target="_blank" rel="noopener noreferrer" class="current-card__logo-link" title="Odwiedź stronę Natek (Software House)">
-                                <img src="work_experience_logos/natek.jpg" class="current-card__logo-img" alt="Logo">
-                            </a>
+                            <time class="current-card__year" datetime="2026" aria-hidden="true">2026</time>
+                            <span class="current-card__logo-link current-card__logo-link--static"><span class="opisai-bubble" aria-hidden="true"><span class="opisai-bubble__label">OpisAI</span></span></span>
                         </div>
                         <div class="current-card__body">
-                            <h3 class="current-card__title">Inżynier AI/ML</h3>
-                            <p class="current-card__subtitle">Natek · Software House</p>
-                            <p class="current-card__focus">Zgodność z AI Act UE · Procesy oparte na LLM (Claude)</p>
+                            <h3 class="current-card__title">OpisAI — Own AI Product (built &amp; sold)</h3>
+                            <p class="current-card__subtitle">Founder &amp; sole engineer · AI scribe for vet clinics</p>
+                            <p class="current-card__focus"><strong>Sold commercially</strong>, in daily clinical use · Claude / GPT / Gemini</p>
                         </div>
-                        <span class="sr-only">Praca: 2025 – Obecnie</span>
+                        <span class="sr-only">Product: 2026</span>
                     </article>
 
-                    <article class="current-card current-card--study" aria-label="Studia: Magister Informatyki: AI i Uczenie Maszynowe, 2024 – 2026">
+                    <article class="current-card current-card--work" aria-label="Work: AI Engineer — Document AI Platform, 2025 – Now">
                         <div class="current-card__lead">
-                            <time class="current-card__year" datetime="2024/2026" aria-hidden="true">2024</time>
-                            <a href="https://merito.pl" target="_blank" rel="noopener noreferrer" class="current-card__logo-link" title="Odwiedź stronę Uniwersytetu WSB Merito we Wrocławiu">
-                                <img src="universities/merito.jpg" class="current-card__logo-img" alt="Logo">
-                            </a>
+                            <time class="current-card__year" datetime="2025" aria-hidden="true">2025</time>
+                            <a href="https://natek.eu" target="_blank" rel="noopener noreferrer" class="current-card__logo-link" title="Visit Natek · embedded at a bank website"><img src="assets/work_experience_logos/natek.jpg" class="current-card__logo-img" alt="Logo"></a>
                         </div>
                         <div class="current-card__body">
-                            <h3 class="current-card__title">Magister Informatyki: AI i Uczenie Maszynowe</h3>
-                            <p class="current-card__subtitle">Uniwersytet WSB Merito we Wrocławiu</p>
-                            <p class="current-card__focus">Praca dyplomowa: <strong>Wieloetykietowa klasyfikacja patologii EKG z użyciem ViT + DINO</strong></p>
+                            <h3 class="current-card__title">AI Engineer — Document AI Platform</h3>
+                            <p class="current-card__subtitle">Natek · embedded at a bank</p>
+                            <p class="current-card__focus">In production, maintained by the bank's team · local LLMs + vision · EU AI Act</p>
                         </div>
-                        <span class="sr-only">Studia: 2024 – 2026</span>
+                        <span class="sr-only">Work: 2025 – Now</span>
                     </article>
                 </div>
             </section>
 
 
             <section class="section" aria-labelledby="experience-heading">
-                <h2 id="experience-heading" class="section__title">Doświadczenie Zawodowe</h2>
+                <h2 id="experience-heading" class="section__title">Work Experience</h2>
                 <div class="timeline">
 
-                    <article class="job" aria-label="Stanowisko w Astek">
+                    <article class="job" aria-label="Position at Astek">
                         <div class="job__logo">
-                            <a href="https://astekgroup.fr/?lang=en" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Odwiedź stronę Astek">
-                                <img src="work_experience_logos/astek.jpg" class="job__logo-img" alt="Logo Astek">
+                            <a href="https://astekgroup.fr/?lang=en" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Astek website">
+                                <img src="assets/work_experience_logos/astek.jpg" class="job__logo-img" alt="Logo Astek">
                             </a>
                         </div>
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier Badawczy AI/ML — IoT</h3>
+                                    <h3 class="job__title">AI/ML Research Engineer — IoT</h3>
                                     <p class="job__company">Astek · Software House</p>
                                 </div>
                                 <time class="job__date" datetime="2025">2025</time>
                             </header>
-                            <p class="job__project"><em>Projekt: BikeBox – inteligentny system przechowywania rowerów (R&amp;D)</em></p>
+                            <p class="job__project"><em>Project: BikeBox – smart secure bicycle storage system (R&amp;D)</em></p>
                             <ul class="job__list">
-                                <li>Zbudowałem backend IoT z przetwarzaniem danych z czujników w czasie rzeczywistym.</li>
-                                <li>Wytrenowałem predykcyjny model obłożenia stacji do decyzji rezerwacyjnych w czasie rzeczywistym.</li>
-                                <li>Zaprojektowałem architekturę mikroserwisów do skalowalnego zbierania danych.</li>
+                                <li>Developed IoT backend with real-time sensor data processing and monitoring pipelines.</li>
+                                <li>Trained predictive occupancy model enabling real-time booking decisions based on station demand forecasting.</li>
+                                <li>Designed microservices architecture for scalable smart infrastructure data collection.</li>
                             </ul>
                             <div class="tech-stack" aria-label="Technologies">
                                 <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java 17"><span class="sr-only">Java 17</span></span>
@@ -1601,24 +1859,24 @@ ol[role="list"] {
                         </div>
                     </article>
 
-                    <article class="job" aria-label="Stanowisko w Kamsoft">
+                    <article class="job" aria-label="Position at Kamsoft">
                         <div class="job__logo">
-                            <a href="https://kamsoft.pl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Odwiedź stronę Kamsoft">
-                                <img src="work_experience_logos/kamsoft_new.jpg" class="job__logo-img" alt="Logo Kamsoft">
+                            <a href="https://kamsoft.pl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Kamsoft website">
+                                <img src="assets/work_experience_logos/kamsoft_new.jpg" class="job__logo-img" alt="Logo Kamsoft">
                             </a>
                         </div>
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Rozwiązania AI — Analityka w Ochronie Zdrowia</h3>
+                                    <h3 class="job__title">AI Solutions — Healthcare Analytics</h3>
                                     <p class="job__company">Kamsoft · SaaS</p>
                                 </div>
                                 <time class="job__date" datetime="2024/2025">2024 – 2025</time>
                             </header>
-                            <p class="job__project"><em>Projekt: System wspomagania decyzji AI dla ochrony zdrowia</em></p>
+                            <p class="job__project"><em>Project: AI-powered analytical decision support system for healthcare</em></p>
                             <ul class="job__list">
-                                <li>Zaimplementowałem automatyzację analityczną wspomagającą decyzje w diagnostyce medycznej.</li>
-                                <li>Zoptymalizowałem pipeline'y przetwarzania dużych zbiorów danych medycznych.</li>
+                                <li>Built analytical automation features with data-driven decision support for medical diagnostics.</li>
+                                <li>Engineered optimized data processing pipelines for large-scale healthcare datasets.</li>
                             </ul>
                             <div class="tech-stack" aria-label="Technologies">
                                 <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java 17"><span class="sr-only">Java 17</span></span>
@@ -1631,24 +1889,24 @@ ol[role="list"] {
                         </div>
                     </article>
 
-                    <article class="job" aria-label="Stanowisko w Thorium Space Technology">
+                    <article class="job" aria-label="Position at Thorium Space Technology">
                         <div class="job__logo">
-                            <a href="https://thorium.space" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Odwiedź stronę Thorium Space Technology">
-                                <img src="work_experience_logos/thorium_space_new.jpg" class="job__logo-img" alt="Logo Thorium Space Technology">
+                            <a href="https://thorium.space" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Thorium Space Technology website">
+                                <img src="assets/work_experience_logos/thorium_space_new.jpg" class="job__logo-img" alt="Logo Thorium Space Technology">
                             </a>
                         </div>
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier ML i Danych — Lotnictwo</h3>
-                                    <p class="job__company">Thorium Space Technology · Lotnictwo</p>
+                                    <h3 class="job__title">ML &amp; Data Engineer — Aerospace</h3>
+                                    <p class="job__company">Thorium Space Technology · Aerospace</p>
                                 </div>
                                 <time class="job__date" datetime="2024">2024</time>
                             </header>
-                            <p class="job__project"><em>Projekt: Zarządzanie zasobami dla platform telekomunikacyjnych</em></p>
+                            <p class="job__project"><em>Project: Data-driven resource management for telecommunications platforms</em></p>
                             <ul class="job__list">
-                                <li>Zaprojektowałem systemy alokacji zasobów dla platform komunikacji satelitarnej.</li>
-                                <li>Zbudowałem moduły przetwarzania telemetrii w czasie rzeczywistym dla optymalizacji pasma.</li>
+                                <li>Designed intelligent resource allocation systems for satellite communication platforms.</li>
+                                <li>Built real-time telemetry processing modules for satellite bandwidth allocation optimization.</li>
                             </ul>
                             <div class="tech-stack" aria-label="Technologies">
                                 <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java"><span class="sr-only">Java</span></span>
@@ -1666,7 +1924,7 @@ ol[role="list"] {
     </article>
 
     <!-- PAGE 2 -->
-    <article class="page page--break" aria-label="CV strona 2 z 2">
+    <article class="page page--break" aria-label="CV page 2 of 2">
         <aside class="sidebar">
 
             <div class="sidebar__mini-header" aria-hidden="true">
@@ -1674,51 +1932,51 @@ ol[role="list"] {
             </div>
 
             <section class="sidebar__section" aria-labelledby="languages-heading">
-                <h2 id="languages-heading" class="sidebar__heading">Języki</h2>
+                <h2 id="languages-heading" class="sidebar__heading">Languages</h2>
                 <ul class="languages" role="list">
 
                     <li class="languages__item">
-                        <span>Angielski (Techniczny)</span>
+                        <span>English (Technical)</span>
                         <strong>C2</strong>
                     </li>
                     <li class="languages__item">
-                        <span>Polski (Ojczysty)</span>
-                        <strong>Ojczysty</strong>
+                        <span>Polish (Native)</span>
+                        <strong>Native</strong>
                     </li>
                     <li class="languages__item">
-                        <span>Niemiecki</span>
+                        <span>German</span>
                         <strong>B1</strong>
                     </li>
                 </ul>
             </section>
 
             <section class="sidebar__section" aria-labelledby="certs-heading">
-                <h2 id="certs-heading" class="sidebar__heading">Certyfikaty</h2>
+                <h2 id="certs-heading" class="sidebar__heading">Certifications</h2>
                 <ul class="certifications" role="list">
 
                     <li>
                         <a href="https://www.coursera.org/account/accomplishments/verify/W88ME7FTDEJH" class="cert" target="_blank" rel="noopener noreferrer">
-                            <img src="courses_logos/stanford2.svg" class="cert__logo" alt="Logo Stanford University">
+                            <img src="assets/courses_logos/stanford2.svg" class="cert__logo" alt="Logo Stanford University">
                             <div class="cert__details">
-                                <span class="cert__name">Uczenie Maszynowe</span>
+                                <span class="cert__name">Machine Learning</span>
                                 <span class="cert__issuer">Stanford University</span>
                             </div>
                         </a>
                     </li>
                     <li>
                         <a href="https://www.coursera.org/account/accomplishments/verify/9APHJHP9KE9H" class="cert" target="_blank" rel="noopener noreferrer">
-                            <img src="courses_logos/google.svg" class="cert__logo" alt="Logo Google">
+                            <img src="assets/courses_logos/google.svg" class="cert__logo" alt="Logo Google">
                             <div class="cert__details">
-                                <span class="cert__name">Podstawy Danych</span>
+                                <span class="cert__name">Data Foundations</span>
                                 <span class="cert__issuer">Google</span>
                             </div>
                         </a>
                     </li>
                     <li>
                         <a href="https://www.linkedin.com/posts/lukasz-guziczak_luxoft-java-academy-activity-6968880524735967232-t9CI" class="cert" target="_blank" rel="noopener noreferrer">
-                            <img src="work_experience_logos/luxoft_new.jpeg" class="cert__logo" alt="Logo Luxoft">
+                            <img src="assets/work_experience_logos/luxoft_new.jpeg" class="cert__logo" alt="Logo Luxoft">
                             <div class="cert__details">
-                                <span class="cert__name">Akademia Java</span>
+                                <span class="cert__name">Java Academy</span>
                                 <span class="cert__issuer">Luxoft</span>
                             </div>
                         </a>
@@ -1727,10 +1985,10 @@ ol[role="list"] {
             </section>
 
             <section class="sidebar__section" aria-labelledby="industry-heading">
-                <h2 id="industry-heading" class="sidebar__heading">Doświadczenie Branżowe</h2>
+                <h2 id="industry-heading" class="sidebar__heading">Industry Experience</h2>
 
                 <figure class="pie-chart" role="figure" aria-labelledby="pie-chart-desc">
-                    <span id="pie-chart-desc" class="sr-only">Podział doświadczenia branżowego: Edukacja 5,25 lat (40%), Przemysł 2,5 lat (19%), Finanse 2,25 lat (17%), Analityka 2 lata (15%), Medycyna 1 rok (8%). Łącznie: 13 lat.</span>
+                    <span id="pie-chart-desc" class="sr-only">Industry experience breakdown: Education sector 5.25 years (40%), Industry sector 2.5 years (19%), Finance sector 2.25 years (17%), Analytics sector 2 years (15%), Medical sector 1 years (8%). Total: 13 years.</span>
                     <svg class="pie-chart__svg" viewBox="-30 -30 160 160" aria-hidden="true">
                         <path d="M 50,50 L 50.0,4.0 A 46,46 0 0,1 76.1,87.9 Z" fill="#0ea5e9" />
                         <path d="M 50,50 L 76.1,87.9 A 46,46 0 0,1 23.9,87.9 Z" fill="#1e3a5f" />
@@ -1752,54 +2010,73 @@ ol[role="list"] {
                         <foreignObject x="35.9" y="15.7" width="15" height="15">
                             <i class="fas fa-stethoscope pie-chart__inside-icon" xmlns="http://www.w3.org/1999/xhtml" aria-hidden="true"></i>
                         </foreignObject>
-                        <text x="97.7" y="36.9" text-anchor="start" class="pie-chart__year-label">5.25 lat</text>
-                        <text x="50.0" y="101.8" text-anchor="middle" class="pie-chart__year-label">2.5 lat</text>
-                        <text x="4.4" y="72.3" text-anchor="end" class="pie-chart__year-label">2.25 lat</text>
-                        <text x="8.9" y="23.4" text-anchor="end" class="pie-chart__year-label">2 lata</text>
-                        <text x="38.0" y="3.3" text-anchor="end" class="pie-chart__year-label">1 rok</text>
+                        <text x="97.7" y="36.9" text-anchor="start" class="pie-chart__year-label">5.25 yrs</text>
+                        <text x="50.0" y="101.8" text-anchor="middle" class="pie-chart__year-label">2.5 yrs</text>
+                        <text x="4.4" y="72.3" text-anchor="end" class="pie-chart__year-label">2.25 yrs</text>
+                        <text x="8.9" y="23.4" text-anchor="end" class="pie-chart__year-label">2 yrs</text>
+                        <text x="38.0" y="3.3" text-anchor="end" class="pie-chart__year-label">1 yrs</text>
                     </svg>
                 </figure>
             </section>
 
-            <section class="sidebar__section" aria-labelledby="interests-heading">
-                <h2 id="interests-heading" class="sidebar__heading">Zainteresowania</h2>
-                <ul class="interests" role="list">
+            <section class="sidebar__section" aria-labelledby="projects-heading">
+                <h2 id="projects-heading" class="sidebar__heading">Shipped Projects</h2>
+                <ul class="projects" role="list">
 
-                    <li class="interests__item">
-                        <i class="fas fa-microchip interests__icon" aria-hidden="true"></i>
-                        <span>Nowe Technologie</span>
-                    </li>
-                    <li class="interests__item">
-                        <i class="fas fa-person-skiing interests__icon" aria-hidden="true"></i>
-                        <span>Narciarstwo</span>
-                    </li>
+                    <li><a class="project" href="https://guziczak.github.io/opisai" target="_blank" rel="noopener noreferrer">
+                        <span class="project__name">OpisAI</span>
+                        <span class="project__desc">AI scribe for vet clinics · built &amp; sold</span>
+                        <span class="project__link">guziczak.github.io/opisai</span>
+                    </a></li>
+                    <li><a class="project" href="https://guziczak.github.io/siekart" target="_blank" rel="noopener noreferrer">
+                        <span class="project__name">Siek-Art</span>
+                        <span class="project__desc">Art-studio website · shipped for a client</span>
+                        <span class="project__link">guziczak.github.io/siekart</span>
+                    </a></li>
+                </ul>
+            </section>
+
+            <section class="sidebar__section" aria-labelledby="drawer-heading">
+                <h2 id="drawer-heading" class="sidebar__heading">From the Drawer</h2>
+                <ul class="projects" role="list">
+
+                    <li><a class="project" href="https://github.com/guziczak/ide" target="_blank" rel="noopener noreferrer">
+                        <span class="project__name">ForgeIDE</span>
+                        <span class="project__desc">Single-file IDE · Git/GitHub client</span>
+                        <span class="project__link">github.com/guziczak/ide</span>
+                    </a></li>
+                    <li><a class="project" href="https://github.com/guziczak/noteplayer" target="_blank" rel="noopener noreferrer">
+                        <span class="project__name">noteplayer</span>
+                        <span class="project__desc">Sheet-music player</span>
+                        <span class="project__link">github.com/guziczak/noteplayer</span>
+                    </a></li>
                 </ul>
             </section>
         </aside>
         <main class="main">
 
             <section class="section" aria-labelledby="experience2-heading">
-                <h2 id="experience2-heading" class="section__title">Doświadczenie Zawodowe (cd.)</h2>
+                <h2 id="experience2-heading" class="section__title">Work Experience (cont.)</h2>
                 <div class="timeline">
 
-                    <article class="job" aria-label="Stanowisko w Right Information">
+                    <article class="job" aria-label="Position at Right Information">
                         <div class="job__logo">
-                            <a href="https://rightinformation.com" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Odwiedź stronę Right Information">
-                                <img src="work_experience_logos/right_information_new.jpg" class="job__logo-img" alt="Logo Right Information">
+                            <a href="https://rightinformation.com" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Right Information website">
+                                <img src="assets/work_experience_logos/right_information_new.jpg" class="job__logo-img" alt="Logo Right Information">
                             </a>
                         </div>
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier Danych Wspomagany AI</h3>
+                                    <h3 class="job__title">AI-Assisted Data Engineer</h3>
                                     <p class="job__company">Right Information · Software House</p>
                                 </div>
                                 <time class="job__date" datetime="2023/2024">2023 – 2024</time>
                             </header>
-                            <p class="job__project"><em>Projekt: System ERP dla płatności, księgowości i kadr</em></p>
+                            <p class="job__project"><em>Project: ERP system for payments, accounting and payroll</em></p>
                             <ul class="job__list">
-                                <li>Zmigrowałem starszy system do nowoczesnej architektury; pionierskie podejście do rozwoju wspomaganego AI z ChatGPT.</li>
-                                <li>Wdrożyłem zautomatyzowane workflow'y przetwarzania danych z inteligentnymi systemami powiadomień.</li>
+                                <li>Migrated legacy system to modern architecture; pioneered AI-assisted development with ChatGPT.</li>
+                                <li>Implemented automated data processing workflows with intelligent notification systems.</li>
                             </ul>
                             <div class="tech-stack" aria-label="Technologies">
                                 <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java"><span class="sr-only">Java</span></span>
@@ -1810,28 +2087,28 @@ ol[role="list"] {
                                 <span class="tech-logo"><img src="https://cdn.simpleicons.org/anthropic" class="tech-logo__img" alt="" title="AI / ML"><span class="sr-only">AI / ML</span></span>
                             </div>
                             <blockquote class="recommendation">
-                                <p><strong>"Z pełnym przekonaniem polecam Łukasza jako wartościowego, pracowitego programistę..."</strong> <cite>– Filip Lorek, Założyciel i CEO</cite></p>
+                                <p><strong>"I highly recommend Lukasz as a valuable, hardworking software developer..."</strong> <cite>– Filip Lorek, Founder &amp; CEO</cite></p>
                             </blockquote>
                         </div>
                     </article>
 
-                    <article class="job" aria-label="Stanowisko w Streamsoft">
+                    <article class="job" aria-label="Position at Streamsoft">
                         <div class="job__logo">
-                            <a href="https://streamsoft.pl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Odwiedź stronę Streamsoft">
-                                <img src="work_experience_logos/streamsoft.jpeg" class="job__logo-img" alt="Logo Streamsoft">
+                            <a href="https://streamsoft.pl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Streamsoft website">
+                                <img src="assets/work_experience_logos/streamsoft.jpeg" class="job__logo-img" alt="Logo Streamsoft">
                             </a>
                         </div>
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier Danych</h3>
+                                    <h3 class="job__title">Data Engineer</h3>
                                     <p class="job__company">Streamsoft · SaaS</p>
                                 </div>
                                 <time class="job__date" datetime="2022/2023">2022 – 2023</time>
                             </header>
-                            <p class="job__project"><em>Projekt: Oprogramowanie ERP i rozwiązania fintech</em></p>
+                            <p class="job__project"><em>Project: ERP software and financial technology solutions</em></p>
                             <ul class="job__list">
-                                <li>Rozwijałem rozwiązania ERP o dużej intensywności danych przetwarzające zbiory finansowe w Javie.</li>
+                                <li>Developed data-intensive ERP solutions processing large-scale financial datasets with Java.</li>
                             </ul>
                             <div class="tech-stack" aria-label="Technologies">
                                 <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java"><span class="sr-only">Java</span></span>
@@ -1841,28 +2118,28 @@ ol[role="list"] {
                                 <span class="tech-logo"><img src="https://cdn.simpleicons.org/anthropic" class="tech-logo__img" alt="" title="AI / ML"><span class="sr-only">AI / ML</span></span>
                             </div>
                             <blockquote class="recommendation">
-                                <p><strong>"To wyjątkowo pracowita osoba, która świetnie współpracuje z zespołem..."</strong> <cite>– Zbigniew Wesołowski, Programista Java</cite></p>
+                                <p><strong>"He is an exceptionally hard worker who works well with others..."</strong> <cite>– Zbigniew Wesołowski, Java Developer</cite></p>
                             </blockquote>
                         </div>
                     </article>
 
-                    <article class="job" aria-label="Stanowisko w Luxoft">
+                    <article class="job" aria-label="Position at Luxoft">
                         <div class="job__logo">
-                            <a href="https://luxoft.com" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Odwiedź stronę Luxoft">
-                                <img src="work_experience_logos/luxoft_new.jpeg" class="job__logo-img" alt="Logo Luxoft">
+                            <a href="https://luxoft.com" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit Luxoft website">
+                                <img src="assets/work_experience_logos/luxoft_new.jpeg" class="job__logo-img" alt="Logo Luxoft">
                             </a>
                         </div>
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier Oprogramowania i Danych</h3>
+                                    <h3 class="job__title">Software &amp; Data Engineer</h3>
                                     <p class="job__company">Luxoft · Software House</p>
                                 </div>
                                 <time class="job__date" datetime="2022">2022</time>
                             </header>
-                            <p class="job__project"><em>Projekt: Systemy ERP i aplikacje finansowe</em></p>
+                            <p class="job__project"><em>Project: ERP systems and financial applications</em></p>
                             <ul class="job__list">
-                                <li>Zbudowałem korporacyjne systemy danych w Java/Spring/Liquibase do przetwarzania transakcji finansowych o dużym wolumenie.</li>
+                                <li>Built enterprise data systems with Java/Spring/Liquibase for high-volume financial transaction processing.</li>
                             </ul>
                             <div class="tech-stack" aria-label="Technologies">
                                 <span class="tech-logo"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg" class="tech-logo__img" alt="" title="Java"><span class="sr-only">Java</span></span>
@@ -1874,23 +2151,23 @@ ol[role="list"] {
                         </div>
                     </article>
 
-                    <article class="job" aria-label="Stanowisko w Uniwersytet w Twente, Holandia">
+                    <article class="job" aria-label="Position at University of Twente, Netherlands">
                         <div class="job__logo">
-                            <a href="https://utwente.nl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Odwiedź stronę Uniwersytet w Twente, Holandia">
-                                <img src="work_experience_logos/university_of_twente..jpeg" class="job__logo-img" alt="Logo Uniwersytet w Twente, Holandia">
+                            <a href="https://utwente.nl" target="_blank" rel="noopener noreferrer" class="job__logo-link" title="Visit University of Twente, Netherlands website">
+                                <img src="assets/work_experience_logos/university_of_twente..jpeg" class="job__logo-img" alt="Logo University of Twente, Netherlands">
                             </a>
                         </div>
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier Badawczy — Data Science</h3>
-                                    <p class="job__company">Uniwersytet w Twente, Holandia · Międzynarodowe</p>
+                                    <h3 class="job__title">Research Engineer — Data Science</h3>
+                                    <p class="job__company">University of Twente, Netherlands · International</p>
                                 </div>
                                 <time class="job__date" datetime="2021/2022">2021 – 2022</time>
                             </header>
                             <ul class="job__list">
-                                <li>Tworzyłem aplikacje do przetwarzania danych i wizualizacji naukowej na potrzeby projektów badawczych.</li>
-                                <li>Zaprojektowałem backend w Pythonie dla zautomatyzowanych workflow'ów analitycznych i pipeline'ów danych.</li>
+                                <li>Developed data processing and scientific visualization applications for research projects.</li>
+                                <li>Designed Python backend for automated analytical workflows and data pipelines.</li>
                             </ul>
                             <div class="tech-stack" aria-label="Technologies">
                                 <span class="tech-logo"><img src="https://cdn.simpleicons.org/python" class="tech-logo__img" alt="" title="Python"><span class="sr-only">Python</span></span>
@@ -1904,24 +2181,24 @@ ol[role="list"] {
             </section>
 
             <section class="section" aria-labelledby="education-heading">
-                <h2 id="education-heading" class="section__title">Wykształcenie</h2>
+                <h2 id="education-heading" class="section__title">Education</h2>
                 <div class="timeline">
 
-                    <article class="education" aria-label="Wykształcenie: Uniwersytet WSB Merito we Wrocławiu">
+                    <article class="education" aria-label="Education at WSB Merito University in Wroclaw">
                         <div class="education__logo">
-                            <a href="https://merito.pl" target="_blank" rel="noopener noreferrer" class="education__logo-link" title="Odwiedź stronę Uniwersytetu WSB Merito we Wrocławiu">
-                                <img src="universities/merito.jpg" class="education__logo-img" alt="Logo Uniwersytetu WSB Merito we Wrocławiu">
+                            <a href="https://merito.pl" target="_blank" rel="noopener noreferrer" class="education__logo-link" title="Visit WSB Merito University in Wroclaw website">
+                                <img src="assets/universities/merito.jpg" class="education__logo-img" alt="Logo WSB Merito University in Wroclaw">
                             </a>
                         </div>
                         <div class="education__content">
                             <header class="education__header">
                                 <div>
-                                    <h3 class="education__title">Magister Informatyki: AI i Uczenie Maszynowe</h3>
-                                    <p class="education__school">Uniwersytet WSB Merito we Wrocławiu</p>
+                                    <h3 class="education__title">MSc Informatics: AI &amp; Machine Learning</h3>
+                                    <p class="education__school">WSB Merito University in Wroclaw</p>
                                 </div>
                                 <time class="education__date" datetime="2024/2026">2024 - 2026</time>
                             </header>
-                            <p class="education__note"><em>Praca dyplomowa: <strong>Wieloetykietowa klasyfikacja patologii EKG z użyciem ViT + DINO</strong></em></p>
+                            <p class="education__note"><em>Thesis: <strong>Multi-label ECG pathology classification with ViT + DINO</strong></em></p>
                             <div class="tech-stack" aria-label="Technologies">
                                 <span class="tech-logo"><img src="https://cdn.simpleicons.org/python" class="tech-logo__img" alt="" title="Python"><span class="sr-only">Python</span></span>
                                 <span class="tech-logo"><img src="https://cdn.simpleicons.org/tensorflow" class="tech-logo__img" alt="" title="TensorFlow"><span class="sr-only">TensorFlow</span></span>
@@ -1932,75 +2209,32 @@ ol[role="list"] {
                         </div>
                     </article>
 
-                    <article class="education" aria-label="Wykształcenie: Politechnika Wrocławska">
+                    <article class="education" aria-label="Education at Wroclaw University of Science and Technology">
                         <div class="education__logo">
-                            <a href="https://pwr.edu.pl" target="_blank" rel="noopener noreferrer" class="education__logo-link" title="Odwiedź stronę Politechniki Wrocławskiej">
-                                <img src="universities/university_of_technology_wroclaw.png" class="education__logo-img" alt="Logo Politechniki Wrocławskiej">
+                            <a href="https://pwr.edu.pl" target="_blank" rel="noopener noreferrer" class="education__logo-link" title="Visit Wroclaw University of Science and Technology website">
+                                <img src="assets/universities/university_of_technology_wroclaw.png" class="education__logo-img" alt="Logo Wroclaw University of Science and Technology">
                             </a>
                         </div>
                         <div class="education__content">
                             <header class="education__header">
                                 <div>
-                                    <h3 class="education__title">Magister i Inżynier Elektroniki</h3>
-                                    <p class="education__school">Politechnika Wrocławska</p>
+                                    <h3 class="education__title">MEng &amp; BEng in Electronics</h3>
+                                    <p class="education__school">Wroclaw University of Science and Technology</p>
                                 </div>
                                 <time class="education__date" datetime="2016/2021">2016 - 2021</time>
                             </header>
-                            <p class="education__note"><em>Praca magisterska napisana w języku angielskim</em></p>
+                            <p class="education__note"><em>Master's thesis written in English</em></p>
                         </div>
                     </article>
                 </div>
             </section>
 
             <footer class="gdpr">
-                <p class="gdpr__text">Wyrażam zgodę na przetwarzanie moich danych osobowych dla potrzeb procesu rekrutacji (RODO art. 6 ust. 1 lit. a).</p>
+                <p class="gdpr__text">I consent to processing of my personal data for recruitment purposes (GDPR Art. 6.1a).</p>
             </footer>
         </main>
         <span class="page__number" aria-hidden="true">2 / 2</span>
     </article>
-
-<script>
-(function () {
-  // CSS `zoom` is unsupported on iOS Safari, so we use `transform: scale()`.
-  // Caveat: transform doesn't change layout — body still claims its original
-  // ~2246px in the document flow even when visually scaled to ~1060px.
-  // Without clamping, the iframe scrolls past the visible content into blank
-  // whitespace. Fix: read the natural content height, then set html to
-  // (content × scale) with overflow: hidden so the scroll matches what's seen.
-  var A4_PX = 794; // 210mm at 96dpi
-  function inPrintMode() {
-    return window.matchMedia && window.matchMedia('print').matches;
-  }
-  function fit() {
-    // Always reset first; we re-apply scaling only if needed for screen
-    document.body.style.transform = '';
-    document.body.style.transformOrigin = '';
-    document.documentElement.style.height = '';
-    document.documentElement.style.overflow = '';
-    // Don't apply mobile scaling while printing — headless --print-to-pdf
-    // does not always fire beforeprint, so guard explicitly via matchMedia
-    if (inPrintMode()) return;
-    var w = document.documentElement.clientWidth;
-    if (w >= A4_PX) return;
-    var scale = w / A4_PX;
-    var naturalHeight = document.body.scrollHeight;
-    document.body.style.transform = 'scale(' + scale + ')';
-    document.body.style.transformOrigin = 'top left';
-    document.documentElement.style.height = (naturalHeight * scale) + 'px';
-    document.documentElement.style.overflow = 'hidden';
-  }
-  fit();
-  window.addEventListener('resize', fit);
-  // Reset on print so the PDF/print output uses the desktop layout
-  window.addEventListener('beforeprint', function () {
-    document.body.style.transform = '';
-    document.body.style.transformOrigin = '';
-    document.documentElement.style.height = '';
-    document.documentElement.style.overflow = '';
-  });
-  window.addEventListener('afterprint', fit);
-})();
-</script>
 
 </body>
 </html>
