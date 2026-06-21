@@ -9,8 +9,6 @@ import {
   Skill,
   SkillCategory,
 } from '../../core/services/data.service';
-import { NavigationComponent } from '../../layout/navigation/navigation.component';
-import { FooterComponent } from '../../layout/footer/footer.component';
 import { ScrollProgressComponent } from '../../shared/ui/scroll-progress/scroll-progress.component';
 import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.component';
 import { LanguageService } from '../../core/services/language.service';
@@ -21,14 +19,11 @@ import { LanguageService } from '../../core/services/language.service';
   imports: [
     CommonModule,
     RouterLink,
-    NavigationComponent,
-    FooterComponent,
     ScrollProgressComponent,
     BackToTopComponent,
   ],
   template: `
     <app-scroll-progress />
-    <app-navigation />
 
     <div class="cv-page">
       <div class="container">
@@ -91,7 +86,6 @@ import { LanguageService } from '../../core/services/language.service';
       </div>
     </div>
 
-    <app-footer />
     <app-back-to-top />
   `,
   styles: [

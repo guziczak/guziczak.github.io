@@ -2,8 +2,6 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DataService, Certificate } from '../../core/services/data.service';
-import { NavigationComponent } from '../../layout/navigation/navigation.component';
-import { FooterComponent } from '../../layout/footer/footer.component';
 import { ScrollProgressComponent } from '../../shared/ui/scroll-progress/scroll-progress.component';
 import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.component';
 
@@ -13,14 +11,11 @@ import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.comp
   imports: [
     CommonModule,
     RouterLink,
-    NavigationComponent,
-    FooterComponent,
     ScrollProgressComponent,
     BackToTopComponent,
   ],
   template: `
     <app-scroll-progress />
-    <app-navigation />
 
     <div class="certificates-page">
       <div class="container">
@@ -102,7 +97,6 @@ import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.comp
       </div>
     </div>
 
-    <app-footer />
     <app-back-to-top />
   `,
   styles: [
