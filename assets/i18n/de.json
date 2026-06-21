@@ -10,9 +10,9 @@
     "cv": "Lebenslauf"
   },
   "hero": {
-    "title": "Full-Stack-Entwickler & Analyst",
-    "subtitle": "Ideen in digitale Realität verwandeln",
-    "description": "Leidenschaftlich bei der Entwicklung effizienter, skalierbarer Lösungen mit modernen Technologien. Ich spezialisiere mich auf Java, Python, React und Cloud-Infrastruktur-Entwicklung.",
+    "title": "AI Engineer",
+    "subtitle": "LLM-Systeme in Produktion · On-Prem GenAI · Document AI",
+    "description": "Ich bringe LLM-Systeme in Produktion. Alleiniger Entwickler einer On-Prem-Document-AI-Plattform in einer Bank und Schöpfer von OpisAI — einem kommerziellen KI-Assistenten, allein gebaut und verkauft. Echtes ML seit 2016, in Produktion seit 2024.",
     "cta": {
       "contact": "Kontaktieren",
       "projects": "Projekte ansehen",
@@ -23,7 +23,7 @@
     "title": "Über mich",
     "profile": {
       "tab": "Profil",
-      "title": "Full-Stack-Entwickler & Analyst"
+      "title": "AI Engineer"
     },
     "experience": {
       "tab": "Erfahrung"
@@ -31,7 +31,7 @@
     "education": {
       "tab": "Ausbildung"
     },
-    "description": "Ich bin ein Full-Stack-Entwickler und Analyst mit Leidenschaft für die Entwicklung effizienter und skalierbarer Anwendungen. Mit umfangreicher Erfahrung in Front-End- und Back-End-Technologien löse ich gerne komplexe Probleme und optimiere Systeme.",
+    "description": "Ich bin AI Engineer — ich bringe LLM-Systeme in Produktion, von On-Prem-GenAI in regulierten Umgebungen bis zu meinem eigenen kommerziellen Produkt OpisAI. Solide Production-Engineering-Basis (Python, Java/Spring, Cloud) und echte ML-Wurzeln seit 2016.",
     "location": "Breslau, Polen",
     "languages": "Polnisch (Muttersprache), Englisch (Fließend), Deutsch (Grundkenntnisse)",
     "interests": "Technologie, KI/ML, Gaming, Elektronik",

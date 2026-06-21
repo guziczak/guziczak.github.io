@@ -10,9 +10,9 @@
     "cv": "CV"
   },
   "hero": {
-    "title": "Programista Full-stack & Analityk",
-    "subtitle": "Przekształcam Pomysły w Cyfrową Rzeczywistość",
-    "description": "Z pasją tworzę wydajne, skalowalne rozwiązania wykorzystując nowoczesne technologie. Specjalizuję się w Java, Python, React oraz infrastrukturze chmurowej.",
+    "title": "AI Engineer",
+    "subtitle": "Systemy LLM na produkcji · on-prem GenAI · Document AI",
+    "description": "Dowożę systemy LLM na produkcję. Jedyny inżynier platformy on-prem Document AI w banku oraz twórca OpisAI — komercyjnego asystenta AI zbudowanego solo i sprzedanego. Prawdziwy ML od 2016, na produkcji od 2024.",
     "cta": {
       "contact": "Kontakt",
       "projects": "Zobacz Projekty",
@@ -23,7 +23,7 @@
     "title": "O Mnie",
     "profile": {
       "tab": "Profil",
-      "title": "Programista Full-stack & Analityk"
+      "title": "AI Engineer"
     },
     "experience": {
       "tab": "Doświadczenie"
@@ -31,7 +31,7 @@
     "education": {
       "tab": "Wykształcenie"
     },
-    "description": "Jestem Programistą Full-stack i Analitykiem z pasją do budowania wydajnych i skalowalnych aplikacji. Z rozległym doświadczeniem w technologiach front-end i back-end, lubię rozwiązywać złożone problemy i optymalizować systemy.",
+    "description": "Jestem AI Engineerem — dowożę systemy LLM na produkcję, od on-prem GenAI w środowiskach regulowanych po własny produkt komercyjny OpisAI. Solidny fundament inżynierii produkcyjnej (Python, Java/Spring, chmura) i realne korzenie ML od 2016.",
     "location": "Wrocław, Polska",
     "languages": "Polski (Ojczysty), Angielski (Biegły)",
     "interests": "Technologia, AI/ML, Gaming, Elektronika",
