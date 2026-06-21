@@ -322,7 +322,15 @@ import { createSwiatlo, SwiatloPlayer } from './swiatlo-player';
       @keyframes eqBar { 0%, 100% { height: 3px; } 50% { height: 11px; } }
 
       @media (max-width: 640px) {
-        .manifesto__stamp { font-size: 0.68rem; }
+        .manifesto {
+          justify-content: flex-start;
+          padding-top: 3.5rem;
+        }
+        .manifesto__stamp {
+          position: static;
+          font-size: 0.68rem;
+          margin-bottom: 2.25rem;
+        }
         .manifesto__social { position: static; margin-top: 2.5rem; }
         .manifesto__music { position: static; align-self: flex-start; margin-top: 1.5rem; }
       }
@@ -353,6 +361,20 @@ export class HeroSectionComponent implements AfterViewInit {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d && d.notes) this.notes = d.notes; })
       .catch(() => {});
+
+    // The bell is too small to aim at — start on the first interaction anywhere.
+    const kick = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest && target.closest('.manifesto__music')) return;
+      if (!this.notes) return;
+      document.removeEventListener('pointerdown', kick);
+      document.removeEventListener('keydown', kick);
+      if (!this.player) this.toggleMusic();
+      else if (!this.player.isPlaying()) this.toggleMusic();
+    };
+    document.addEventListener('pointerdown', kick, { passive: true });
+    document.addEventListener('keydown', kick);
+
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (reduce) {
       this.typed.set(this.punchWord);

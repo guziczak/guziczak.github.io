@@ -1732,34 +1732,34 @@ class OnPremExtractor:
         return Statement.model_validate(self.to_schema(blocks))</pre></div>
         <div class="cover__top">
           <p class="cover__kicker">Łukasz Guziczak — AI Engineer</p>
-          <p class="cover__stamp">In the lab since 2016. In production since 2024. Not since ChatGPT.<br>Currently embedded at a bank — on-prem, regulated.</p>
+          <p class="cover__stamp">W laboratorium od 2016. Na produkcji od 2024. Nie od ChatGPT.<br>Obecnie w banku — on-prem, regulowany.</p>
         </div>
         <div class="cover__hook">
-            <p class="cover__lead">They say AI loses the thread past 1,000<br>lines of code.</p>
-            <p class="cover__punch"><span class="cover__type" data-text="Cute"></span><span class="cover__dot" aria-hidden="true"></span></p>
-            <p class="cover__reframe">That's where I start — <span class="cover__num">20,000</span> lines.<br>One file.<br>One person.</p>
-            <p class="cover__proof">A month to a working PoC. Three to production. No team.</p><p class="cover__proof">Their teams maintain it. I'm on the next.</p>
-            <p class="cover__rest">The code says the rest.</p>
+            <p class="cover__lead">Mówią, że AI gubi wątek po<br>1000 liniach kodu.</p>
+            <p class="cover__punch"><span class="cover__type" data-text="Urocze"></span><span class="cover__dot" aria-hidden="true"></span></p>
+            <p class="cover__reframe">Ja tam zaczynam — <span class="cover__num">20,000</span> linii.<br>Jeden plik.<br>Jeden człowiek.</p>
+            <p class="cover__proof">Miesiąc do działającego PoC. Trzy do produkcji. Bez zespołu.</p><p class="cover__proof">Ich zespoły to utrzymują. Ja jestem przy następnym.</p>
+            <p class="cover__rest">Resztę mówi kod.</p>
         </div>
         <div class="cover__bottom">
             <div class="cover__stats">
                     <div class="cover__stat">
                         <span class="cover__stat-big">2</span>
-                        <span class="cover__stat-small">LLM systems in prod</span>
+                        <span class="cover__stat-small">systemy LLM na produkcji</span>
                     </div>
                     <div class="cover__stat">
-                        <span class="cover__stat-big">SOLD</span>
-                        <span class="cover__stat-small">own AI product</span>
+                        <span class="cover__stat-big">SPRZEDANE</span>
+                        <span class="cover__stat-small">własny produkt AI</span>
                     </div>
                     <div class="cover__stat">
                         <span class="cover__stat-big">5+</span>
-                        <span class="cover__stat-small">yrs engineering</span>
+                        <span class="cover__stat-small">lat inżynierii</span>
                     </div>
             </div>
             <div class="cover__rule"></div>
             <div class="cover__footer">
                 <span class="cover__contact">guziczak@pm.me   ·   github.com/guziczak   ·   in/guziczak</span>
-                <a class="cover__cta" href="#cv-start">The full CV follows <span class="cover__cta-arrow">↓</span> (You won't need it.)</a>
+                <a class="cover__cta" href="#cv-start">Pełne CV poniżej <span class="cover__cta-arrow">↓</span> (Nie będzie ci potrzebne.)</a>
             </div>
             <button class="cover__music" type="button" aria-pressed="false" aria-label="Play 'światło w ciemności' — my own composition, synthesised live">
                 <span class="cover__music-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
@@ -2599,6 +2599,16 @@ class OnPremExtractor:
           }
         });
         btn.addEventListener('click', function () { player.toggle(); });
+
+        // Nobody aims at a small button — start on the first interaction anywhere.
+        function kick(e) {
+          if (e && e.target && e.target.closest && e.target.closest('.cover__music')) return;
+          document.removeEventListener('pointerdown', kick);
+          document.removeEventListener('keydown', kick);
+          if (!player.isPlaying()) player.toggle();
+        }
+        document.addEventListener('pointerdown', kick, { passive: true });
+        document.addEventListener('keydown', kick);
       })();
     </script>
 

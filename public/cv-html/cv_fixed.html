@@ -2599,6 +2599,16 @@ class OnPremExtractor:
           }
         });
         btn.addEventListener('click', function () { player.toggle(); });
+
+        // Nobody aims at a small button — start on the first interaction anywhere.
+        function kick(e) {
+          if (e && e.target && e.target.closest && e.target.closest('.cover__music')) return;
+          document.removeEventListener('pointerdown', kick);
+          document.removeEventListener('keydown', kick);
+          if (!player.isPlaying()) player.toggle();
+        }
+        document.addEventListener('pointerdown', kick, { passive: true });
+        document.addEventListener('keydown', kick);
       })();
     </script>
 
