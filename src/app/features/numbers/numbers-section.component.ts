@@ -35,7 +35,7 @@ const NUMBERS: Record<string, { big: string; small: string }[]> = {
   template: `
     <section class="numbers" id="numbers">
       <div class="numbers__row">
-        @for (n of nums(); track n.small) {
+        @for (n of nums(); track $index) {
           <div class="num animate-on-scroll">
             <span class="num__big">{{ n.big }}</span>
             <span class="num__small">{{ n.small }}</span>
