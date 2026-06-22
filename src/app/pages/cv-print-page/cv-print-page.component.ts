@@ -45,17 +45,15 @@ import { LanguageService } from '../../core/services/language.service';
       .print-page {
         min-height: 100vh;
         background: #f5f5f5;
+        /* The global nav (navigation.component) is fixed at top, 60px tall.
+           Offset the page below it so our toolbar isn't hidden under it. */
+        padding-top: 60px;
       }
 
       .print-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
         background: white;
         padding: 20px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        z-index: 100;
       }
 
       .print-actions {
@@ -119,7 +117,7 @@ import { LanguageService } from '../../core/services/language.service';
       }
 
       .cv-print-content {
-        padding: 100px 20px 40px;
+        padding: 40px 20px;
         max-width: 850px;
         margin: 0 auto;
       }
@@ -143,6 +141,10 @@ import { LanguageService } from '../../core/services/language.service';
       @media print {
         .no-print {
           display: none !important;
+        }
+
+        .print-page {
+          padding-top: 0;
         }
 
         .cv-print-content {

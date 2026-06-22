@@ -4,7 +4,7 @@ import { LanguageService } from '../../core/services/language.service';
 
 const PROOF: Record<string, any> = {
   en: {
-    eyebrow: 'The proof', title: 'The code says the rest.',
+    eyebrow: 'The proof', title: 'Not promises — systems.',
     s1flag: "In production · maintained by the bank's team", s1where: 'Natek · embedded at a bank',
     s1desc: "Sole engineer, end to end. Local vision + language models on the bank's own GPUs — extracting structured data from scanned financial statements. No document ever leaves the network. Built for EU AI Act readiness and GDPR.",
     s2flag: 'Built solo · Sold', s2where: 'A commercial product',
@@ -13,7 +13,7 @@ const PROOF: Record<string, any> = {
     r1: 'Single-file IDE · Git/GitHub client', r2: 'Art-studio site · shipped for a client', r3: 'Sheet-music player',
   },
   pl: {
-    eyebrow: 'Dowód', title: 'Resztę mówi kod.',
+    eyebrow: 'Dowód', title: 'Nie obietnice — systemy.',
     s1flag: 'Na produkcji · utrzymywany przez zespół banku', s1where: 'Natek · oddelegowany do banku',
     s1desc: 'Jedyny inżynier, end to end. Lokalne modele wizyjne i językowe na GPU banku — ekstrakcja danych ustrukturyzowanych ze skanów sprawozdań finansowych. Żaden dokument nie opuszcza sieci. Pod kątem EU AI Act i RODO.',
     s2flag: 'Zbudowany solo · Sprzedany', s2where: 'Produkt komercyjny',
@@ -22,7 +22,7 @@ const PROOF: Record<string, any> = {
     r1: 'Jednoplikowe IDE · klient Git/GitHub', r2: 'Strona studia artystycznego · dla klienta', r3: 'Odtwarzacz nut',
   },
   de: {
-    eyebrow: 'Der Beweis', title: 'Den Rest sagt der Code.',
+    eyebrow: 'Der Beweis', title: 'Keine Versprechen — Systeme.',
     s1flag: 'In Produktion · gepflegt vom Bank-Team', s1where: 'Natek · in einer Bank',
     s1desc: 'Alleiniger Entwickler, end to end. Lokale Vision- und Sprachmodelle auf den GPUs der Bank — Extraktion strukturierter Daten aus gescannten Finanzberichten. Kein Dokument verlässt das Netzwerk. Für EU AI Act und DSGVO ausgelegt.',
     s2flag: 'Allein gebaut · Verkauft', s2where: 'Ein kommerzielles Produkt',

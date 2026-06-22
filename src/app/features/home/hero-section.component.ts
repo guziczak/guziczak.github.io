@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect, AfterViewInit } from '@angular/core';
+import { Component, inject, signal, computed, effect, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ScrollService } from '../../core/services/scroll.service';
@@ -49,27 +49,27 @@ const MANIFESTO: Record<string, any> = {
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <section class="manifesto" id="home">
+    <section class="manifesto" id="home" [class.is-seq]="animate()">
       <!-- Signature: a whisper of real code, drifting, near-invisible -->
       <div class="manifesto__code" aria-hidden="true">
         <pre>{{ codeLoop }}</pre>
       </div>
 
-      <div class="manifesto__stamp">
+      <div class="manifesto__stamp reveal" [class.is-in]="step() >= 1">
         <span class="manifesto__kicker">Łukasz Guziczak · AI Engineer</span>
         <span>{{ m().stamp[0] }}</span>
         <span>{{ m().stamp[1] }}</span>
       </div>
 
       <div class="manifesto__inner">
-        <p class="manifesto__lead" style="--i: 0">{{ m().lead }}</p>
-        <p class="manifesto__punch" style="--i: 1"><span class="manifesto__type">{{ typed() }}</span><span class="manifesto__dot" [class.manifesto__dot--period]="typedDone()" aria-hidden="true"></span></p>
-        <p class="manifesto__reframe" style="--i: 2">{{ m().reframeA }}<span class="manifesto__num">20,000</span>{{ m().reframeB }}</p>
-        <p class="manifesto__proof" style="--i: 3">{{ m().proof1 }}</p>
-        <p class="manifesto__proof" style="--i: 4">{{ m().proof2 }}</p>
-        <p class="manifesto__rest" style="--i: 5">{{ m().rest }}</p>
+        <p class="manifesto__lead reveal" [class.is-in]="step() >= 2">{{ m().lead }}</p>
+        <p class="manifesto__punch reveal" [class.is-in]="step() >= 3"><span class="manifesto__type">{{ typed() }}</span><span class="manifesto__dot" [class.manifesto__dot--period]="typedDone()" aria-hidden="true"></span></p>
+        <p class="manifesto__reframe reveal" [class.is-in]="step() >= 4">{{ m().reframeA }}<span class="manifesto__num">20,000</span>{{ m().reframeB }}</p>
+        <p class="manifesto__proof reveal" [class.is-in]="step() >= 5">{{ m().proof1 }}</p>
+        <p class="manifesto__proof reveal" [class.is-in]="step() >= 6">{{ m().proof2 }}</p>
+        <p class="manifesto__rest reveal" [class.is-in]="step() >= 7">{{ m().rest }}</p>
 
-        <div class="manifesto__cta" style="--i: 6">
+        <div class="manifesto__cta reveal" [class.is-in]="step() >= 8">
           <button (click)="enter()" class="manifesto__enter">
             {{ m().enter }} <span class="manifesto__arrow">↓</span>
           </button>
@@ -79,13 +79,14 @@ const MANIFESTO: Record<string, any> = {
         </div>
       </div>
 
-      <div class="manifesto__social" style="--i: 7">
+      <div class="manifesto__social reveal" [class.is-in]="step() >= 8">
         <a [href]="contact.github" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><i class="fab fa-github"></i></a>
         <a [href]="contact.linkedin" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
         <a [href]="'mailto:' + contact.email" aria-label="Email"><i class="fas fa-envelope"></i></a>
       </div>
 
-      <button class="manifesto__music" type="button"
+      <button class="manifesto__music reveal" type="button"
+              [class.is-in]="step() >= 8"
               [class.is-playing]="musicOn()" (click)="toggleMusic()"
               [attr.aria-pressed]="musicOn()"
               aria-label="Play 'światło w ciemności' — my own composition, synthesised live">
@@ -145,7 +146,6 @@ const MANIFESTO: Record<string, any> = {
         font-size: 0.78rem;
         letter-spacing: 0.02em;
         color: var(--text-tertiary);
-        animation: engrave 0.9s var(--ease, cubic-bezier(0.33, 1, 0.68, 1)) both;
       }
       .manifesto__kicker {
         color: var(--color-primary);
@@ -161,14 +161,33 @@ const MANIFESTO: Record<string, any> = {
         z-index: 2;
         max-width: 56rem;
       }
-      .manifesto__inner > * {
-        animation: engrave 0.85s cubic-bezier(0.33, 1, 0.68, 1) both;
-        animation-delay: calc(0.18s + var(--i) * 0.12s);
+      /* Guided reveal — each line settles into focus on its own beat (driven by \`step\`).
+         Active only while the JS sequence runs (.is-seq); without it (no-JS / SSR /
+         reduced motion) everything is visible, so the manifesto is always readable. */
+      .manifesto.is-seq .reveal {
+        opacity: 0;
+        transform: translateY(12px);
+        filter: blur(4px);
+        pointer-events: none;
+        transition:
+          opacity 0.7s ease,
+          transform 0.7s cubic-bezier(0.33, 1, 0.68, 1),
+          filter 0.7s ease;
       }
-
-      @keyframes engrave {
-        from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
-        to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+      .manifesto.is-seq .reveal.is-in {
+        opacity: 1;
+        transform: none;
+        filter: none;
+        pointer-events: auto;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .manifesto.is-seq .reveal {
+          opacity: 1;
+          transform: none;
+          filter: none;
+          transition: none;
+          pointer-events: auto;
+        }
       }
 
       .manifesto__lead {
@@ -290,8 +309,6 @@ const MANIFESTO: Record<string, any> = {
         display: flex;
         gap: 1.4rem;
         z-index: 2;
-        animation: engrave 0.85s cubic-bezier(0.33, 1, 0.68, 1) both;
-        animation-delay: calc(0.18s + var(--i) * 0.12s);
       }
       .manifesto__social a {
         color: var(--text-tertiary);
@@ -325,8 +342,6 @@ const MANIFESTO: Record<string, any> = {
         cursor: pointer;
         transition: color 0.3s ease, border-color 0.3s ease,
                     background-color 0.3s ease, box-shadow 0.3s ease;
-        animation: engrave 0.85s cubic-bezier(0.33, 1, 0.68, 1) both;
-        animation-delay: 1s;
       }
       .manifesto__music:hover {
         color: var(--color-primary);
@@ -362,7 +377,7 @@ const MANIFESTO: Record<string, any> = {
     `,
   ],
 })
-export class HeroSectionComponent implements AfterViewInit {
+export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   private scrollService = inject(ScrollService);
   private languageService = inject(LanguageService);
   protected readonly contact = CONTACT_CONFIG;
@@ -371,30 +386,94 @@ export class HeroSectionComponent implements AfterViewInit {
     () => MANIFESTO[this.languageService.currentLanguage()] ?? MANIFESTO['en'],
   );
 
+  // Guided, reading-paced reveal. `step` gates each line into view one beat at a time;
+  // `animate` is false for no-JS / SSR / reduced motion (whole manifesto shown at once).
+  protected readonly step = signal(0);
+  protected readonly animate = signal(false);
   protected readonly typed = signal('');
   protected readonly typedDone = signal(false);
 
+  // Absolute ms from load when each line settles in — tune freely, lower = brisker.
+  // The punch starts typing exactly when its line appears (REVEAL_MS.punch).
+  private readonly REVEAL_MS = {
+    stamp: 250, lead: 1450, punch: 2950, reframe: 4350,
+    proof1: 5850, proof2: 7200, rest: 8400, cta: 9500,
+  };
+  private static readonly MAX_STEP = 8;
+
+  private timers: ReturnType<typeof setTimeout>[] = [];
+  private punchTimer?: ReturnType<typeof setTimeout>;
+  private skip?: () => void;
+
   constructor() {
-    let first = true;
-    // Type the punch on load; re-type when the language changes.
+    const hasWin = typeof window !== 'undefined';
+    const reduce =
+      hasWin && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    // The punch types itself in — on load when its line appears, and on every language change.
+    let firstType = true;
     effect((onCleanup) => {
       const word = this.m().punch as string;
-      if (typeof window === 'undefined') { this.typed.set(word); this.typedDone.set(true); return; }
-      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      if (reduce) { this.typed.set(word); this.typedDone.set(true); return; }
-      this.typed.set('');
-      this.typedDone.set(false);
-      let i = 1;
-      let timer: ReturnType<typeof setTimeout>;
-      const tick = () => {
-        this.typed.set(word.slice(0, i));
-        if (i < word.length) { i++; timer = setTimeout(tick, 120); }
-        else this.typedDone.set(true);
-      };
-      timer = setTimeout(tick, first ? 1500 : 250);
-      first = false;
-      onCleanup(() => clearTimeout(timer));
+      if (!hasWin || reduce) {
+        this.typed.set(word);
+        this.typedDone.set(true);
+        return;
+      }
+      const delay = firstType ? this.REVEAL_MS.punch : 250;
+      firstType = false;
+      onCleanup(this.typeWord(word, delay));
     });
+
+    if (!hasWin || reduce) {
+      // No guided sequence: show the whole manifesto immediately.
+      this.animate.set(false);
+      this.step.set(HeroSectionComponent.MAX_STEP);
+      this.typed.set(this.m().punch as string);
+      this.typedDone.set(true);
+    } else {
+      // Hidden initial state is set before first paint; then walk the beats.
+      this.animate.set(true);
+      this.step.set(0);
+      this.startReveal();
+    }
+  }
+
+  /** Type `word` one glyph at a time after `delay` ms; returns a cleanup fn. */
+  private typeWord(word: string, delay: number): () => void {
+    clearTimeout(this.punchTimer);
+    this.typed.set('');
+    this.typedDone.set(false);
+    let i = 1;
+    const tick = () => {
+      this.typed.set(word.slice(0, i));
+      if (i < word.length) {
+        i++;
+        this.punchTimer = setTimeout(tick, 120);
+      } else {
+        this.typedDone.set(true);
+      }
+    };
+    this.punchTimer = setTimeout(tick, delay);
+    return () => clearTimeout(this.punchTimer);
+  }
+
+  /** Reveal one line per beat, in reading order. */
+  private startReveal(): void {
+    const at = (ms: number, s: number) =>
+      this.timers.push(setTimeout(() => this.step.set(s), ms));
+    const R = this.REVEAL_MS;
+    at(R.stamp, 1); at(R.lead, 2); at(R.punch, 3); at(R.reframe, 4);
+    at(R.proof1, 5); at(R.proof2, 6); at(R.rest, 7); at(R.cta, 8);
+  }
+
+  /** Fill the manifesto in now — when the reader scrolls/taps/keys before it finishes. */
+  private revealAll(): void {
+    this.timers.forEach((t) => clearTimeout(t));
+    this.timers = [];
+    clearTimeout(this.punchTimer);
+    this.step.set(HeroSectionComponent.MAX_STEP);
+    this.typed.set(this.m().punch as string);
+    this.typedDone.set(true);
   }
 
   protected readonly musicOn = signal(false);
@@ -404,6 +483,20 @@ export class HeroSectionComponent implements AfterViewInit {
   /** The manifesto's punch types itself in, then the cursor commits to a period. */
   ngAfterViewInit(): void {
     if (typeof window === 'undefined') return;
+
+    // Let an impatient reader fast-forward the intro: first scroll / tap / key fills it in.
+    if (this.animate()) {
+      const skip = () => {
+        this.revealAll();
+        this.removeSkip();
+      };
+      this.skip = skip;
+      window.addEventListener('pointerdown', skip, { passive: true });
+      window.addEventListener('keydown', skip);
+      window.addEventListener('wheel', skip, { passive: true });
+      window.addEventListener('touchmove', skip, { passive: true });
+    }
+
     // Load Łukasz's composition for opt-in playback (the bell — never autoplays).
     fetch('swiatlo.json')
       .then((r) => (r.ok ? r.json() : null))
@@ -422,6 +515,22 @@ export class HeroSectionComponent implements AfterViewInit {
     };
     document.addEventListener('pointerdown', kick, { passive: true });
     document.addEventListener('keydown', kick);
+  }
+
+  ngOnDestroy(): void {
+    this.timers.forEach((t) => clearTimeout(t));
+    clearTimeout(this.punchTimer);
+    this.removeSkip();
+  }
+
+  private removeSkip(): void {
+    const skip = this.skip;
+    if (!skip) return;
+    window.removeEventListener('pointerdown', skip);
+    window.removeEventListener('keydown', skip);
+    window.removeEventListener('wheel', skip);
+    window.removeEventListener('touchmove', skip);
+    this.skip = undefined;
   }
 
   enter(): void {
