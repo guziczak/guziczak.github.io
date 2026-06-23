@@ -133,73 +133,105 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     this.raf = requestAnimationFrame(this.loop);
   };
 
-  private midiToY(midi: number): number {
-    const top = 24;
-    const bottom = this.H - 24;
-    const t = (midi - this.loMidi) / Math.max(1, this.hiMidi - this.loMidi);
-    return bottom - t * (bottom - top);
-  }
-
   private draw(): void {
     const g = this.g;
     if (!g) return;
-    g.clearRect(0, 0, this.W, this.H);
+    const W = this.W;
+    const H = this.H;
+    g.clearRect(0, 0, W, H);
 
-    const A = 'rgba(56,189,248,'; // accent (light blue)
-    const F = 'rgba(125,211,252,'; // faint
+    // soft dark backing (vertical fade) so notes read against the drifting-code backdrop
+    const bg = g.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, 'rgba(9,13,23,0)');
+    bg.addColorStop(0.5, 'rgba(9,13,23,0.5)');
+    bg.addColorStop(1, 'rgba(9,13,23,0)');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W, H);
 
-    // five-line staff across the middle band
-    const top = 28;
-    const gap = (this.H - 56) / 4;
+    const A = '56,189,248'; // accent rgb
+    const top = 30;
+    const gap = (H - 60) / 4;
+    const half = gap / 2;
+    const midY = top + 2 * gap;
+    const headX = W * 0.27;
+    const pps = 90; // pixels per second of scroll
+
+    // five-line staff
     g.lineWidth = 1;
-    g.strokeStyle = F + '0.15)';
+    g.strokeStyle = 'rgba(' + A + ',0.22)';
     for (let i = 0; i < 5; i++) {
       const y = top + i * gap;
       g.beginPath();
       g.moveTo(0, y);
-      g.lineTo(this.W, y);
+      g.lineTo(W, y);
       g.stroke();
     }
 
-    const headX = this.W * 0.26;
-    const pps = 92; // pixels per second of scroll
-
     // playhead
-    g.strokeStyle = A + '0.32)';
-    g.lineWidth = 1.5;
+    g.strokeStyle = 'rgba(' + A + ',0.3)';
+    g.lineWidth = 1.25;
     g.beginPath();
-    g.moveTo(headX, 6);
-    g.lineTo(headX, this.H - 6);
+    g.moveTo(headX, top - half);
+    g.lineTo(headX, top + 4 * gap + half);
     g.stroke();
 
     const pos = this.player ? this.player.position() : -1;
     if (pos < 0) return;
 
+    const refMidi = (this.loMidi + this.hiMidi) / 2;
+    const semi = gap * 0.3; // vertical spacing per semitone (~an octave over ~3.3 gaps)
+
     for (const n of this._notes) {
       const t = n[0] / 1000;
-      const dur = n[1] / 1000;
       const x = headX + (t - pos) * pps;
-      const w = Math.max(dur * pps, 5);
-      if (x > this.W + 24 || x + w < -24) continue;
-      const y = this.midiToY(n[2]);
+      if (x < -18 || x > W + 18) continue;
+      const dur = n[1] / 1000;
       const on = pos >= t && pos <= t + dur;
       const past = pos > t + dur;
-      const a = on ? 0.95 : past ? 0.1 : 0.42;
+      if (past && pos - (t + dur) > 1.6) continue; // drop the old trail
+      const a = on ? 1 : past ? 0.18 : 0.5;
 
-      // held-duration bar
-      g.strokeStyle = A + (a * 0.5).toFixed(3) + ')';
-      g.lineWidth = 2;
+      // snap to lines & spaces so it reads as notation, not a piano roll
+      let y = midY - (n[2] - refMidi) * semi;
+      y = Math.round(y / half) * half;
+
+      // ledger lines above / below the staff
+      g.strokeStyle = 'rgba(' + A + ',' + (a * 0.5).toFixed(3) + ')';
+      g.lineWidth = 1;
+      for (let ly = top - gap; ly >= y - 0.5; ly -= gap) {
+        g.beginPath();
+        g.moveTo(x - 9, ly);
+        g.lineTo(x + 9, ly);
+        g.stroke();
+      }
+      for (let ly = top + 5 * gap; ly <= y + 0.5; ly += gap) {
+        g.beginPath();
+        g.moveTo(x - 9, ly);
+        g.lineTo(x + 9, ly);
+        g.stroke();
+      }
+
+      // stem — up for low notes, down for high (classic notation)
+      const stemUp = y >= midY;
+      const stemLen = gap * 2.6;
+      g.strokeStyle = 'rgba(' + A + ',' + (a * 0.85).toFixed(3) + ')';
+      g.lineWidth = 1.4;
       g.beginPath();
-      g.moveTo(x, y);
-      g.lineTo(x + w, y);
+      if (stemUp) {
+        g.moveTo(x + 5, y);
+        g.lineTo(x + 5, y - stemLen);
+      } else {
+        g.moveTo(x - 5, y);
+        g.lineTo(x - 5, y + stemLen);
+      }
       g.stroke();
 
       // notehead — glows while it sounds
-      g.shadowBlur = on ? 14 : 0;
-      g.shadowColor = 'rgba(56,189,248,0.8)';
-      g.fillStyle = A + a.toFixed(3) + ')';
+      g.shadowBlur = on ? 16 : 0;
+      g.shadowColor = 'rgba(' + A + ',0.9)';
+      g.fillStyle = 'rgba(' + A + ',' + a.toFixed(3) + ')';
       g.beginPath();
-      g.ellipse(x, y, 4.6, 3.4, -0.32, 0, Math.PI * 2);
+      g.ellipse(x, y, 5.6, 4.1, -0.35, 0, Math.PI * 2);
       g.fill();
       g.shadowBlur = 0;
     }
