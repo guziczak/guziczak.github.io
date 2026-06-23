@@ -5,6 +5,7 @@ import { ScrollService } from '../../core/services/scroll.service';
 import { LanguageService } from '../../core/services/language.service';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
 import { createSwiatlo, SwiatloPlayer } from './swiatlo-player';
+import { StaffVisualizerComponent } from './staff-visualizer.component';
 
 const MANIFESTO: Record<string, any> = {
   en: {
@@ -47,7 +48,7 @@ const MANIFESTO: Record<string, any> = {
 @Component({
   selector: 'app-hero-section',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, StaffVisualizerComponent],
   template: `
     <section class="manifesto" id="home" [class.is-seq]="animate()">
       <!-- Signature: a whisper of real code, drifting, near-invisible -->
@@ -97,6 +98,7 @@ const MANIFESTO: Record<string, any> = {
         </span>
       </button>
     </section>
+    <app-staff-visualizer [notes]="notes || []" [player]="player" [active]="musicOn()" />
   `,
   styles: [
     `
@@ -494,8 +496,8 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   }
 
   protected readonly musicOn = signal(false);
-  private notes: number[][] | null = null;
-  private player: SwiatloPlayer | null = null;
+  protected notes: number[][] | null = null;
+  protected player: SwiatloPlayer | null = null;
 
   /** The manifesto's punch types itself in, then the cursor commits to a period. */
   ngAfterViewInit(): void {
@@ -524,15 +526,15 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       const target = e.target as HTMLElement | null;
       if (target && target.closest && target.closest('.manifesto__music')) return;
       if (!this.notes) return;
-      document.removeEventListener('pointerdown', kick);
       document.removeEventListener('touchend', kick);
       document.removeEventListener('click', kick);
       document.removeEventListener('keydown', kick);
       if (!this.player) this.toggleMusic();
       else if (!this.player.isPlaying()) this.toggleMusic();
     };
-    // iOS WebKit unlocks audio most reliably on touchend/click — broaden beyond pointerdown.
-    document.addEventListener('pointerdown', kick, { passive: true });
+    // Start on ANY first interaction. iOS only unlocks audio on the COMPLETED gesture
+    // (touchend/click), never on pointerdown — and pointerdown would pre-empt them — so
+    // bind the "up" events: a tap anywhere on the screen now starts the bell on iPhone too.
     document.addEventListener('touchend', kick, { passive: true });
     document.addEventListener('click', kick);
     document.addEventListener('keydown', kick);

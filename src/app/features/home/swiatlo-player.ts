@@ -6,6 +6,8 @@
 export interface SwiatloPlayer {
   toggle(): void;
   isPlaying(): boolean;
+  /** Live piece-time in seconds while playing, or -1 when stopped. Drives the staff. */
+  position(): number;
 }
 
 // notes: [start_ms, dur_ms, midi, velocity][]
@@ -200,5 +202,6 @@ export function createSwiatlo(
       else start(pieceOffset >= durSec - 0.5 ? 0 : pieceOffset);
     },
     isPlaying: () => playing,
+    position: () => (playing && ctx ? ctx.currentTime - startCtxTime : -1),
   };
 }
