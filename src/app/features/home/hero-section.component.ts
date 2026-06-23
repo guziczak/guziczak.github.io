@@ -484,15 +484,14 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     if (typeof window === 'undefined') return;
 
-    // Let an impatient reader fast-forward the intro: first scroll / tap / key fills it in.
+    // Let an impatient reader fast-forward the intro by scrolling. NOT on click/tap/key —
+    // that gesture starts the music (below) and must not skip the guided read.
     if (this.animate()) {
       const skip = () => {
         this.revealAll();
         this.removeSkip();
       };
       this.skip = skip;
-      window.addEventListener('pointerdown', skip, { passive: true });
-      window.addEventListener('keydown', skip);
       window.addEventListener('wheel', skip, { passive: true });
       window.addEventListener('touchmove', skip, { passive: true });
     }
@@ -526,8 +525,6 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   private removeSkip(): void {
     const skip = this.skip;
     if (!skip) return;
-    window.removeEventListener('pointerdown', skip);
-    window.removeEventListener('keydown', skip);
     window.removeEventListener('wheel', skip);
     window.removeEventListener('touchmove', skip);
     this.skip = undefined;
