@@ -93,7 +93,7 @@ const PROOF: Record<string, any> = {
     `
       .proof {
         padding: clamp(5rem, 12vh, 9rem) clamp(1.5rem, 6vw, 6rem);
-        background: var(--bg-primary);
+        background: transparent;
       }
       .proof__head { max-width: 70rem; margin: 0 auto clamp(2.5rem, 6vw, 4.5rem); }
       .proof__eyebrow {

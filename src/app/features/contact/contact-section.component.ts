@@ -41,7 +41,7 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
     `
       .exit {
         padding: clamp(6rem, 16vh, 11rem) clamp(1.5rem, 6vw, 6rem);
-        background: var(--bg-primary);
+        background: transparent;
         text-align: center;
       }
       .exit__inner { max-width: 50rem; margin: 0 auto; }
