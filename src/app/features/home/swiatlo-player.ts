@@ -143,10 +143,7 @@ export function createSwiatlo(
 
   function start(offsetSec: number) {
     if (!ctx) build();
-    // iOS/WebKit: resume AND prime the output inside the user gesture, or the first
-    // note never reaches the speakers even with the silent switch off. Playing a
-    // 1-sample silent buffer now is the classic unlock; desktop doesn't need it.
-    if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+    // iOS/WebKit: prime the output with a 1-sample silent buffer inside the gesture.
     if (!unlocked) {
       try {
         const s = ctx.createBufferSource();
@@ -156,18 +153,31 @@ export function createSwiatlo(
       } catch {}
       unlocked = true;
     }
-    pieceOffset = offsetSec || 0;
-    startCtxTime = ctx.currentTime + 0.12 - pieceOffset;
-    idx = 0;
-    while (idx < notes.length && (notes[idx][0] + notes[idx][1]) / 1000 <= pieceOffset) idx++;
-    playing = true;
-    bus.gain.cancelScheduledValues(ctx.currentTime);
-    bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), ctx.currentTime);
-    bus.gain.exponentialRampToValueAtTime(1, ctx.currentTime + 0.4);
-    if (timer) clearInterval(timer);
-    timer = setInterval(tick, 35);
-    tick();
-    onState(true);
+
+    // Lay down the timeline only once the context is actually RUNNING. On iOS a fresh
+    // AudioContext is suspended and its currentTime is frozen at 0 — scheduling against
+    // it lands every note in the past, so the first play is silent until you tap again
+    // (the "two taps" bug). Resume first, THEN begin against a live clock.
+    const begin = () => {
+      pieceOffset = offsetSec || 0;
+      startCtxTime = ctx.currentTime + 0.12 - pieceOffset;
+      idx = 0;
+      while (idx < notes.length && (notes[idx][0] + notes[idx][1]) / 1000 <= pieceOffset) idx++;
+      playing = true;
+      bus.gain.cancelScheduledValues(ctx.currentTime);
+      bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), ctx.currentTime);
+      bus.gain.exponentialRampToValueAtTime(1, ctx.currentTime + 0.4);
+      if (timer) clearInterval(timer);
+      timer = setInterval(tick, 35);
+      tick();
+      onState(true);
+    };
+
+    if (ctx.state === 'suspended' && ctx.resume) {
+      ctx.resume().then(begin).catch(begin);
+    } else {
+      begin();
+    }
   }
 
   function pause() {
