@@ -89,9 +89,12 @@ const MANIFESTO: Record<string, any> = {
               [class.is-in]="step() >= 8"
               [class.is-playing]="musicOn()" (click)="toggleMusic()"
               [attr.aria-pressed]="musicOn()"
-              aria-label="Play 'światło w ciemności' — my own composition, synthesised live">
+              aria-label="Play 'Lux in tenebris' (światło w ciemności) — composed by Łukasz Guziczak &amp; Opus 4.6, synthesised live">
         <span class="manifesto__eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span>światło w ciemności</span>
+        <span class="manifesto__music-text">
+          <span class="manifesto__music-title">Lux in tenebris</span>
+          <span class="manifesto__music-credit">Łukasz Guziczak &amp; Opus 4.6</span>
+        </span>
       </button>
     </section>
   `,
@@ -352,6 +355,20 @@ const MANIFESTO: Record<string, any> = {
         color: var(--color-primary);
         border-color: rgba(56, 189, 248, 0.6);
         box-shadow: 0 0 22px rgba(56, 189, 248, 0.25);
+      }
+      .manifesto__music-text {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 1px;
+        text-align: left;
+        line-height: 1.2;
+      }
+      .manifesto__music-credit {
+        text-transform: none;
+        letter-spacing: 0.015em;
+        font-size: 0.92em;
+        font-weight: 500;
+        opacity: 0.6;
       }
       .manifesto__eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
       .manifesto__eq i { width: 2px; height: 3px; background: currentColor; border-radius: 1px; }
