@@ -525,11 +525,16 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       if (target && target.closest && target.closest('.manifesto__music')) return;
       if (!this.notes) return;
       document.removeEventListener('pointerdown', kick);
+      document.removeEventListener('touchend', kick);
+      document.removeEventListener('click', kick);
       document.removeEventListener('keydown', kick);
       if (!this.player) this.toggleMusic();
       else if (!this.player.isPlaying()) this.toggleMusic();
     };
+    // iOS WebKit unlocks audio most reliably on touchend/click — broaden beyond pointerdown.
     document.addEventListener('pointerdown', kick, { passive: true });
+    document.addEventListener('touchend', kick, { passive: true });
+    document.addEventListener('click', kick);
     document.addEventListener('keydown', kick);
   }
 

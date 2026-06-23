@@ -22,6 +22,7 @@ export function createSwiatlo(
   let idx = 0;
   let startCtxTime = 0;
   let pieceOffset = 0;
+  let unlocked = false;
 
   let durSec = 0;
   for (const n of notes) durSec = Math.max(durSec, (n[0] + n[1]) / 1000);
@@ -142,7 +143,19 @@ export function createSwiatlo(
 
   function start(offsetSec: number) {
     if (!ctx) build();
+    // iOS/WebKit: resume AND prime the output inside the user gesture, or the first
+    // note never reaches the speakers even with the silent switch off. Playing a
+    // 1-sample silent buffer now is the classic unlock; desktop doesn't need it.
     if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+    if (!unlocked) {
+      try {
+        const s = ctx.createBufferSource();
+        s.buffer = ctx.createBuffer(1, 1, 22050);
+        s.connect(ctx.destination);
+        s.start(0);
+      } catch {}
+      unlocked = true;
+    }
     pieceOffset = offsetSec || 0;
     startCtxTime = ctx.currentTime + 0.12 - pieceOffset;
     idx = 0;
