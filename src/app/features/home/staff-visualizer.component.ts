@@ -26,6 +26,16 @@ const MID_STEP = 34; // B4
 const PCMAP = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
 const ACC = '56,189,248'; // accent rgb
 
+// Treble clef and time-signature "4" — baked Bravura (SMuFL) outlines, so they sit
+// exactly where real engraving puts them and look identical on every device. No font
+// is shipped — just these vector paths. Coordinates are in font units (em = 1000,
+// 1 staff space = 250 units, y-DOWN, baseline at y = 0): the clef's baseline is the
+// G line (2nd from the bottom); each "4" is centred on its own baseline.
+const GCLEF_PATH =
+  'M376-415C374-427 376-428 382-434C490-535 572-662 572-815C572-902 548-988 507-1048C492-1070 466-1098 455-1098C441-1098 410-1072 390-1050C316-968 292-843 292-739C292-681 299-616 306-575C308-563 309-561 297-551C153-432 0-289 0-87C0 87 119 252 364 252C387 252 413 250 433 246C444 244 446 243 448 255C460 322 475 409 475 456C475 604 375 622 316 622C262 622 236 606 236 593C236 586 245 583 268 576C299 567 335 540 335 482C335 427 300 380 239 380C172 380 132 433 132 495C132 560 171 658 322 658C389 658 519 628 519 458C519 401 501 306 490 244C488 232 489 233 503 227C604 187 671 102 671-11C671-139 577-252 430-252C404-252 404-252 401-270M470-943C503-943 530-916 530-861C530-750 435-660 356-591C349-585 345-586 343-599C339-625 337-659 337-691C337-847 409-943 470-943M361-262C364-243 364-244 346-238C258-208 201-129 201-44C201 46 248 110 316 133C324 136 336 139 343 139C351 139 355 134 355 128C355 121 347 118 340 115C298 97 268 54 268 8C268-49 307-92 368-109C384-113 386-112 388-101L438 197C440 208 439 208 424 211C408 214 388 216 368 216C193 216 80 119 80-20C80-79 90-158 173-252C233-319 279-356 326-394C336-402 338-401 340-390M430-103C428-115 429-118 441-117C522-110 589-42 589 46C589 109 551 160 495 188C483 194 481 194 479 182';
+const TS4_PATH =
+  'M362 74L362-140C362-148 361-157 350-157C341-157 336-155 330-148L235-33C231-28 226-22 226-10L226 74L91 74C171 6 331-221 334-233L335-236C335-245 328-251 320-251C311-251 270-249 252-249C234-249 189-251 181-251C172-251 158-248 158-232C158-108 60 31 30 73L24 81C24 81 24 82 24 82L23 83C21 88 20 92 20 95C20 105 28 112 40 112L226 112L226 175C226 202 204 210 186 210C170 210 163 219 163 229C163 239 167 250 182 250L395 250C405 250 415 243 415 229C415 215 403 209 393 209C383 209 362 203 362 171L362 112L435 112C445 112 450 105 450 93C450 81 446 74 435 74';
+
 interface Glyph {
   fill: boolean;
   stem: boolean;
@@ -95,6 +105,8 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
 
   @ViewChild('cv') private cvRef?: ElementRef<HTMLCanvasElement>;
   private g: CanvasRenderingContext2D | null = null;
+  private gClef?: Path2D; // baked clef / time-sig outlines, built once on first paint
+  private ts4?: Path2D;
   private raf = 0;
   private ready = false;
   private dpr = 1;
@@ -191,8 +203,11 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     const staffTop = midY - 2 * gap; // F5 line
     const staffBot = midY + 2 * gap; // E4 line
     const yOf = (s: number) => midY - (s - MID_STEP) * half;
-    const clefRight = gap * 4.2;
-    const sigRight = clefRight + gap * 1.8;
+    const glyphScale = gap / 250; // SMuFL: 1 staff space = 250 font units
+    const gLineY = staffBot - gap; // 2nd line from the bottom (G4) — the clef's anchor
+    const clefRight = 4 + 671 * glyphScale; // clef advance width
+    const sigCx = clefRight + gap * 1.3; // time-signature centre x
+    const sigRight = sigCx + 235 * glyphScale + 3;
     const headX = Math.max(W * 0.3, sigRight + 70);
     const pps = 90; // scroll: pixels per second
     const fadeStart = sigRight + 2;
@@ -239,19 +254,24 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     g.arc(headX, staffTop - half, 1.8, 0, Math.PI * 2);
     g.fill();
 
-    // treble clef (G-clef), curl on the G4 line; then the 4/4
+    // treble clef + 4/4 — baked Bravura outlines, registered like real engraving:
+    // the clef's baseline rides the G line; each "4" is centred in its half of the staff.
+    if (!this.gClef) this.gClef = new Path2D(GCLEF_PATH);
+    if (!this.ts4) this.ts4 = new Path2D(TS4_PATH);
     g.save();
-    g.fillStyle = 'rgba(' + ACC + ',0.46)';
-    g.textAlign = 'left';
-    g.textBaseline = 'alphabetic';
-    g.font = gap * 7 + 'px "Bravura","Segoe UI Symbol","Apple Symbols","Noto Music",serif';
-    g.fillText('𝄞', 6, staffBot + gap * 1.15);
-    g.fillStyle = 'rgba(' + ACC + ',0.4)';
-    g.textAlign = 'center';
-    g.font = 'bold ' + gap * 1.85 + 'px Georgia,serif';
-    g.fillText('4', clefRight + gap * 0.9, midY - half + 1);
-    g.fillText('4', clefRight + gap * 0.9, staffBot - 1);
+    g.fillStyle = 'rgba(' + ACC + ',0.5)';
+    g.translate(4, gLineY);
+    g.scale(glyphScale, glyphScale);
+    g.fill(this.gClef);
     g.restore();
+    g.fillStyle = 'rgba(' + ACC + ',0.46)';
+    for (const cy of [midY - gap, midY + gap]) {
+      g.save();
+      g.translate(sigCx - 235 * glyphScale, cy);
+      g.scale(glyphScale, glyphScale);
+      g.fill(this.ts4);
+      g.restore();
+    }
 
     if (pos < 0) return;
 
