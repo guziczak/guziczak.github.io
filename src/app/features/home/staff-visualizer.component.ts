@@ -31,6 +31,7 @@ interface Glyph {
   stem: boolean;
   flags: number;
   dot: boolean;
+  whole: boolean;
 }
 
 @Component({
@@ -150,14 +151,21 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
 
   // note value (in beats) → engraved body
   private glyph(b: number): Glyph {
-    if (b >= 3.5) return { fill: false, stem: false, flags: 0, dot: false }; // whole
-    if (b >= 2.5) return { fill: false, stem: true, flags: 0, dot: true }; //  dotted half
-    if (b >= 1.75) return { fill: false, stem: true, flags: 0, dot: false }; // half
-    if (b >= 1.25) return { fill: true, stem: true, flags: 0, dot: true }; //   dotted quarter
-    if (b >= 0.875) return { fill: true, stem: true, flags: 0, dot: false }; // quarter
-    if (b >= 0.625) return { fill: true, stem: true, flags: 1, dot: true }; //  dotted eighth
-    if (b >= 0.375) return { fill: true, stem: true, flags: 1, dot: false }; // eighth
-    return { fill: true, stem: true, flags: 2, dot: false }; //                 sixteenth
+    if (b >= 3.5) return { fill: false, stem: false, flags: 0, dot: false, whole: true }; // whole
+    if (b >= 2.5) return { fill: false, stem: true, flags: 0, dot: true, whole: false }; //  dotted half
+    if (b >= 1.75) return { fill: false, stem: true, flags: 0, dot: false, whole: false }; // half
+    if (b >= 1.25) return { fill: true, stem: true, flags: 0, dot: true, whole: false }; //   dotted quarter
+    if (b >= 0.875) return { fill: true, stem: true, flags: 0, dot: false, whole: false }; // quarter
+    if (b >= 0.625) return { fill: true, stem: true, flags: 1, dot: true, whole: false }; //  dotted eighth
+    if (b >= 0.375) return { fill: true, stem: true, flags: 1, dot: false, whole: false }; // eighth
+    return { fill: true, stem: true, flags: 2, dot: false, whole: false }; //                 sixteenth
+  }
+
+  // small, stable per-note pseudo-random in [-1,1) — the "hand" that keeps
+  // nothing looking machine-stamped (seeded by the note, so it never jitters per frame).
+  private jit(s: number): number {
+    const v = Math.sin(s) * 43758.5453;
+    return (v - Math.floor(v)) * 2 - 1;
   }
 
   private draw(): void {
@@ -167,6 +175,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     const H = this.H;
     const clamp = (v: number, a: number, z: number) => (v < a ? a : v > z ? z : v);
     g.clearRect(0, 0, W, H);
+    g.lineCap = 'round'; // softer, inked stroke ends
 
     // soft dark backing so notes read against the drifting-code backdrop
     const bg = g.createLinearGradient(0, 0, 0, H);
@@ -248,8 +257,8 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
 
     for (const n of this._notes) {
       const t = n[0] / 1000;
-      const x = headX + (t - pos) * pps;
-      if (x < fadeStart - 14 || x > W + 16) continue;
+      const x0 = headX + (t - pos) * pps;
+      if (x0 < fadeStart - 14 || x0 > W + 16) continue;
       const dur = n[1] / 1000;
       const b = n[1] / this.beatMs;
       const on = pos >= t && pos <= t + dur;
@@ -259,12 +268,15 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
       let base = on ? 1 : past ? 0.24 : 0.6;
       if (!gl.fill) base *= 0.85; // sustained pads whisper; the melody sings
       const a =
-        base * clamp((x - fadeStart) / fadeLen, 0, 1) * clamp((W - x) / 46, 0, 1);
+        base * clamp((x0 - fadeStart) / fadeLen, 0, 1) * clamp((W - x0) / 46, 0, 1);
       if (a <= 0.015) continue;
 
+      // a little stable hand-wobble per note, so nothing looks machine-stamped
+      const seed = n[0] * 0.0173 + n[2] * 0.911;
       const s = this.diat(n[2]);
-      const y = clamp(yOf(s), 10, H - 12);
-      this.note(g, x, y, s, gl, s >= MID_STEP, a, gap, half, staffTop, staffBot, on);
+      const x = x0 + this.jit(seed + 1.7) * 0.7;
+      const y = clamp(yOf(s) + this.jit(seed + 3.1) * 0.7, 10, H - 12);
+      this.note(g, x, y, s, gl, s >= MID_STEP, a, gap, half, staffTop, staffBot, on, seed);
     }
   }
 
@@ -281,9 +293,9 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     staffTop: number,
     staffBot: number,
     on: boolean,
+    seed: number,
   ): void {
     const nrx = 4.6;
-    const nry = 3.4;
 
     // ledger lines above / below (capped so extremes never sprawl)
     g.strokeStyle = 'rgba(' + ACC + ',' + (a * 0.5).toFixed(3) + ')';
@@ -340,29 +352,46 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // notehead — glows while it sounds
+    // notehead — broad-nib calligraphy with a soft inked bloom; brighter while sounding
     const col = 'rgba(' + ACC + ',' + a.toFixed(3) + ')';
+    const whole = gl.whole;
+    const js = 1 + this.jit(seed + 5.3) * 0.05; // size wobble
+    const rx = (whole ? 6.2 : 4.7) * js;
+    const ry = (whole ? 3.9 : 3.5) * js;
+    const rot = (whole ? -0.12 : -0.34) + this.jit(seed) * 0.06; // tilt wobble
     g.save();
+    // cheap bloom behind every head — luminous ink, no per-note blur
+    g.fillStyle = 'rgba(' + ACC + ',' + (a * 0.12).toFixed(3) + ')';
+    g.beginPath();
+    g.ellipse(x, y, rx * 1.7, ry * 1.7, rot, 0, Math.PI * 2);
+    g.fill();
     if (on) {
-      g.strokeStyle = 'rgba(' + ACC + ',' + (a * 0.28).toFixed(3) + ')';
+      g.strokeStyle = 'rgba(' + ACC + ',' + (a * 0.25).toFixed(3) + ')';
       g.lineWidth = 1;
       g.beginPath();
-      g.arc(x, y, 9, 0, Math.PI * 2);
+      g.arc(x, y, rx * 2, 0, Math.PI * 2);
       g.stroke();
-      g.shadowBlur = 14;
+      g.shadowBlur = 15;
       g.shadowColor = 'rgba(' + ACC + ',0.9)';
     }
-    g.translate(x, y);
-    g.rotate(-0.34);
-    g.beginPath();
-    g.ellipse(0, 0, nrx, nry, 0, 0, Math.PI * 2);
+    g.fillStyle = col;
     if (gl.fill) {
-      g.fillStyle = col;
+      g.beginPath();
+      g.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
       g.fill();
     } else {
-      g.lineWidth = 1.7;
-      g.strokeStyle = col;
-      g.stroke();
+      // hollow: outer ellipse minus a tilted inner counter (even-odd) — the
+      // broad-nib ring, thick on one diagonal and thin on the other.
+      const p = new Path2D();
+      p.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
+      p.ellipse(
+        x, y,
+        rx * (whole ? 0.62 : 0.73),
+        ry * (whole ? 0.6 : 0.58),
+        rot + (whole ? 1.35 : 0.52),
+        0, Math.PI * 2,
+      );
+      g.fill(p, 'evenodd');
     }
     g.restore();
 
