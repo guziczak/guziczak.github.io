@@ -315,15 +315,27 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
       g.lineTo(sx, tip);
       g.stroke();
       if (gl.flags) {
-        g.lineWidth = 1.5;
+        // Filled flags that curl back toward the head — so they hang down off an
+        // up-stem and rise off a down-stem (the same banner, vertically mirrored,
+        // as real engraving draws it). They stack from the stem's free end inward.
+        const d = stemDown ? -1 : 1;
+        g.fillStyle = 'rgba(' + ACC + ',' + (a * 0.9).toFixed(3) + ')';
         for (let f = 0; f < gl.flags; f++) {
-          // flags stack from the stem's free end toward the head, and always
-          // curl down-and-right — the same hook whether the stem is up or down.
-          const fy = tip + (stemDown ? -1 : 1) * f * gap * 0.85;
+          const fy = tip + d * f * gap * 0.92;
           g.beginPath();
           g.moveTo(sx, fy);
-          g.quadraticCurveTo(sx + gap * 1.05, fy + gap * 0.5, sx + gap * 0.55, fy + gap * 1.5);
-          g.stroke();
+          g.bezierCurveTo(
+            sx + gap * 1.5, fy + d * gap * 0.4,
+            sx + gap * 1.25, fy + d * gap * 1.25,
+            sx + gap * 0.45, fy + d * gap * 1.8,
+          );
+          g.bezierCurveTo(
+            sx + gap * 0.95, fy + d * gap * 1.05,
+            sx + gap * 1.0, fy + d * gap * 0.45,
+            sx, fy,
+          );
+          g.closePath();
+          g.fill();
         }
       }
     }
