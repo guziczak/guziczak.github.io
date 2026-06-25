@@ -98,7 +98,7 @@ const MANIFESTO: Record<string, any> = {
         </span>
       </button>
     </section>
-    <app-staff-visualizer [notes]="notes || []" [player]="player" [active]="musicOn()" />
+    <app-staff-visualizer [notes]="notes || []" [player]="player" [active]="musicOn()" [beatMs]="beatMs" />
   `,
   styles: [
     `
@@ -497,6 +497,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
 
   protected readonly musicOn = signal(false);
   protected notes: number[][] | null = null;
+  protected beatMs = 582.5; // quarter-note length; refined from the score's bpm on load
   protected player: SwiatloPlayer | null = null;
 
   /** The manifesto's punch types itself in, then the cursor commits to a period. */
@@ -518,7 +519,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     // Load Łukasz's composition for opt-in playback (the bell — never autoplays).
     fetch('swiatlo.json')
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d && d.notes) this.notes = d.notes; })
+      .then((d) => { if (d && d.notes) { this.notes = d.notes; if (d.bpm) this.beatMs = 60000 / d.bpm; } })
       .catch(() => {});
 
     // The bell is too small to aim at — start on the first interaction anywhere.
