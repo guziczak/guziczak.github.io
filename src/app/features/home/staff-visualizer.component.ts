@@ -317,14 +317,12 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
       if (gl.flags) {
         g.lineWidth = 1.5;
         for (let f = 0; f < gl.flags; f++) {
+          // flags stack from the stem's free end toward the head, and always
+          // curl down-and-right — the same hook whether the stem is up or down.
           const fy = tip + (stemDown ? -1 : 1) * f * gap * 0.85;
           g.beginPath();
           g.moveTo(sx, fy);
-          if (stemDown) {
-            g.quadraticCurveTo(sx + gap * 1.05, fy + gap * 0.45, sx + gap * 0.5, fy + gap * 1.45);
-          } else {
-            g.quadraticCurveTo(sx + gap * 1.05, fy - gap * 0.45, sx + gap * 0.5, fy - gap * 1.45);
-          }
+          g.quadraticCurveTo(sx + gap * 1.05, fy + gap * 0.5, sx + gap * 0.55, fy + gap * 1.5);
           g.stroke();
         }
       }

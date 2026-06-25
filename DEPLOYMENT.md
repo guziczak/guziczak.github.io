@@ -1,15 +1,15 @@
 # Deployment Summary
 
-**Date:** Thu Jun 25 08:37:30     2026
+**Date:** Thu Jun 25 19:24:28     2026
 **Build Type:** Production (Minified)
 
 ## Files Deployed
 
 ### JavaScript Bundles:
-- chunk-4L3CJZXY.js (40K)
 - chunk-6DASUQPI.js (2.4K)
 - chunk-FDOFSB4H.js (2.7K)
 - chunk-GSF6VVHT.js (234)
+- chunk-H745APFW.js (40K)
 - chunk-JA4M2POF.js (63K)
 - chunk-K4LPQROX.js (3.1K)
 - chunk-KWD343SC.js (10K)
@@ -19,7 +19,7 @@
 - chunk-NVUZKIDE.js (126K)
 - chunk-WKIDZJ3C.js (3.5K)
 - chunk-Y2MPBESF.js (153K)
-- main-WH7X6EJ3.js (26K)
+- main-DWL2S644.js (26K)
 - ngsw-worker.js (83K)
 - polyfills-5CFQRCPP.js (34K)
 - safety-worker.js (785)
