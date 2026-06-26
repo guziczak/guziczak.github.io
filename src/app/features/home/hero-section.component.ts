@@ -13,8 +13,8 @@ const MANIFESTO: Record<string, any> = {
     lead: 'They say AI loses the thread past 1,000 lines of code.',
     punch: 'Cute',
     reframeA: "That's where I start — ", reframeB: ' lines. One file. One person.',
-    proof1: 'A month to a working PoC. Three to production. No team.',
-    proof2: "Their teams maintain it. I'm on the next.",
+    proof1: ['A month to a working PoC.', 'Three to production.', 'No team.'],
+    proof2: ['Their teams maintain it.', "I'm on the next."],
     rest: 'The code says the rest.',
     enter: 'Enter', cvText: 'The full CV', cvNote: "(You won't need it.)",
   },
@@ -23,8 +23,8 @@ const MANIFESTO: Record<string, any> = {
     lead: 'Mówią, że AI gubi wątek po 1000 liniach kodu.',
     punch: 'Urocze',
     reframeA: 'Ja tam zaczynam — ', reframeB: ' linii. Jeden plik. Jeden człowiek.',
-    proof1: 'Miesiąc do działającego PoC. Trzy do produkcji. Bez zespołu.',
-    proof2: 'Ich zespoły to utrzymują. Ja jestem przy następnym.',
+    proof1: ['Miesiąc do działającego PoC.', 'Trzy do produkcji.', 'Bez zespołu.'],
+    proof2: ['Ich zespoły to utrzymują.', 'Ja jestem przy następnym.'],
     rest: 'Resztę mówi kod.',
     enter: 'Wejdź', cvText: 'Pełne CV', cvNote: '(Nie będzie ci potrzebne.)',
   },
@@ -33,8 +33,8 @@ const MANIFESTO: Record<string, any> = {
     lead: 'Sie sagen, KI verliert den Faden nach 1.000 Zeilen Code.',
     punch: 'Niedlich',
     reframeA: 'Da fange ich an — ', reframeB: ' Zeilen. Eine Datei. Eine Person.',
-    proof1: 'Ein Monat bis zum funktionierenden PoC. Drei bis zur Produktion. Kein Team.',
-    proof2: 'Ihre Teams pflegen es. Ich bin schon beim nächsten.',
+    proof1: ['Ein Monat bis zum funktionierenden PoC.', 'Drei bis zur Produktion.', 'Kein Team.'],
+    proof2: ['Ihre Teams pflegen es.', 'Ich bin schon beim nächsten.'],
     rest: 'Den Rest sagt der Code.',
     enter: 'Eintreten', cvText: 'Der vollständige Lebenslauf', cvNote: '(Sie werden ihn nicht brauchen.)',
   },
@@ -66,8 +66,12 @@ const MANIFESTO: Record<string, any> = {
         <p class="manifesto__lead reveal" [class.is-in]="step() >= 2">{{ m().lead }}</p>
         <p class="manifesto__punch reveal" [class.is-in]="step() >= 3"><span class="manifesto__type">{{ typed() }}</span><span class="manifesto__dot" [class.manifesto__dot--period]="typedDone()" aria-hidden="true"></span></p>
         <p class="manifesto__reframe reveal" [class.is-in]="step() >= 4">{{ m().reframeA }}<span class="manifesto__num">20,000</span>{{ m().reframeB }}</p>
-        <p class="manifesto__proof reveal" [class.is-in]="step() >= 5">{{ m().proof1 }}</p>
-        <p class="manifesto__proof reveal" [class.is-in]="step() >= 6">{{ m().proof2 }}</p>
+        <p class="manifesto__proof" [class.is-in]="step() >= 5">
+          <span class="manifesto__proof-line" *ngFor="let s of m().proof1">{{ s }}</span>
+        </p>
+        <p class="manifesto__proof" [class.is-in]="step() >= 6">
+          <span class="manifesto__proof-line" *ngFor="let s of m().proof2">{{ s }}</span>
+        </p>
         <p class="manifesto__rest reveal" [class.is-in]="step() >= 7">{{ m().rest }}</p>
 
         <div class="manifesto__cta reveal" [class.is-in]="step() >= 8">
@@ -248,13 +252,68 @@ const MANIFESTO: Record<string, any> = {
         text-shadow: 0 0 28px rgba(56, 189, 248, 0.45);
       }
       .manifesto__proof {
+        position: relative;
         font-size: clamp(1rem, 2vw, 1.2rem);
         font-style: italic;
         color: var(--text-secondary);
-        padding-left: 1rem;
-        border-left: 2px solid var(--color-primary);
-        margin-bottom: 0.5rem;
+        padding-left: 1.15rem;
+        margin-bottom: 0.7rem;
         max-width: 40rem;
+      }
+      /* the door — a vertical bar the sentences step out of */
+      .manifesto__proof::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.06em;
+        bottom: 0.06em;
+        width: 2px;
+        background: var(--color-primary);
+        transform-origin: top center;
+      }
+      .manifesto__proof-line {
+        display: block;
+      }
+      .manifesto__proof-line + .manifesto__proof-line {
+        margin-top: 0.18rem;
+      }
+      /* Sequence: the bar opens like a door (grows top→bottom), then each sentence
+         emerges from it — blurred→sharp, wiped from the bar rightwards, stepping out. */
+      .manifesto.is-seq .manifesto__proof::before {
+        transform: scaleY(0);
+        opacity: 0;
+        transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+      }
+      .manifesto.is-seq .manifesto__proof.is-in::before {
+        transform: scaleY(1);
+        opacity: 1;
+      }
+      .manifesto.is-seq .manifesto__proof-line {
+        opacity: 0;
+        transform: translateX(-9px);
+        filter: blur(5px);
+        clip-path: inset(-30% 100% -30% 0);
+        transition:
+          opacity 0.7s ease,
+          transform 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+          filter 0.7s ease,
+          clip-path 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .manifesto.is-seq .manifesto__proof.is-in .manifesto__proof-line {
+        opacity: 1;
+        transform: none;
+        filter: blur(0);
+        clip-path: inset(-30% 0 -30% 0);
+      }
+      /* the ghosts step out one after another, just after the door has opened */
+      .manifesto.is-seq .manifesto__proof.is-in .manifesto__proof-line:nth-child(1) { transition-delay: 0.30s; }
+      .manifesto.is-seq .manifesto__proof.is-in .manifesto__proof-line:nth-child(2) { transition-delay: 0.62s; }
+      .manifesto.is-seq .manifesto__proof.is-in .manifesto__proof-line:nth-child(3) { transition-delay: 0.94s; }
+      @media (prefers-reduced-motion: reduce) {
+        .manifesto.is-seq .manifesto__proof::before { transform: scaleY(1); opacity: 1; transition: none; }
+        .manifesto.is-seq .manifesto__proof-line {
+          opacity: 1; transform: none; filter: none; clip-path: none; transition: none;
+        }
       }
       .manifesto__rest {
         font-size: clamp(1rem, 2vw, 1.25rem);
@@ -416,7 +475,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   // The punch starts typing exactly when its line appears (REVEAL_MS.punch).
   private readonly REVEAL_MS = {
     stamp: 250, lead: 1450, punch: 2950, reframe: 4350,
-    proof1: 5850, proof2: 7200, rest: 8400, cta: 9500,
+    proof1: 5850, proof2: 7500, rest: 9100, cta: 10100,
   };
   private static readonly MAX_STEP = 8;
 
