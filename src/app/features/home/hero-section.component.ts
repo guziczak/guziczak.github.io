@@ -111,8 +111,13 @@ const MANIFESTO: Record<string, any> = {
         min-height: 100vh;
         display: flex;
         flex-direction: column;
-        justify-content: center;
-        padding: clamp(2rem, 6vw, 6rem);
+        /* flex-start, not center: the inner block centres itself via margin-block:auto
+           when there's room, but on short viewports it pins to the top (clearing the
+           absolute stamp) and the page scrolls — instead of riding up over the stamp. */
+        justify-content: flex-start;
+        /* Top padding reserves the stamp's zone so centred/pinned content never collides
+           with it; sides/bottom keep the original rhythm. */
+        padding: clamp(7.5rem, 12vh, 9rem) clamp(2rem, 6vw, 6rem) clamp(2rem, 6vw, 6rem);
         overflow: hidden;
         background:
           radial-gradient(1200px 600px at 70% -10%, rgba(56, 189, 248, 0.06), transparent 60%),
@@ -169,6 +174,9 @@ const MANIFESTO: Record<string, any> = {
         position: relative;
         z-index: 2;
         max-width: 56rem;
+        /* Centre vertically when there's free space; collapse to 0 (pin to top) when the
+           content is taller than the viewport, so it never overflows up into the stamp. */
+        margin-block: auto;
       }
       /* Guided reveal — each line settles into focus on its own beat (driven by \`step\`).
          Active only while the JS sequence runs (.is-seq); without it (no-JS / SSR /
@@ -444,6 +452,9 @@ const MANIFESTO: Record<string, any> = {
           justify-content: flex-start;
           padding-top: 3.5rem;
         }
+        /* Stamp is back in flow here; drop the auto-centring so the block stays stacked
+           directly under it instead of floating to the middle. */
+        .manifesto__inner { margin-block: 0; }
         .manifesto__stamp {
           position: static;
           font-size: 0.68rem;
