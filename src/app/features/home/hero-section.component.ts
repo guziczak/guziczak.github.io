@@ -9,33 +9,33 @@ import { StaffVisualizerComponent } from './staff-visualizer.component';
 
 const MANIFESTO: Record<string, any> = {
   en: {
-    stamp: ['In the lab since 2016. In production since 2024. Not since ChatGPT.', 'Currently embedded at a bank — on-prem, regulated.'],
+    stamp: ['In the lab since 2016. In production since 2024. ', 'Currently embedded at a bank — on-prem, regulated.'], stampPunch: 'Not since ChatGPT.',
     lead: 'They say AI loses the thread past 1,000 lines of code.',
     punch: 'Cute',
     num: '20,000',
-    reframeA: "That's where I start — ", reframeB: ' lines. One file. One person.',
+    reframeA: "That's where I start — ", reframeB: ' lines.', reframeTail: ['One file.', 'One person.'],
     proof1: ['A month to a working PoC.', 'Three to production.', 'No team.'],
     proof2: ['Their teams maintain it.', "I'm on the next."],
     rest: 'The code says the rest.',
     enter: 'Enter', cvText: 'The full CV', cvNote: "(You won't need it.)",
   },
   pl: {
-    stamp: ['Eksperymenty od 2016. Produkcja od 2024. Nie od ChatGPT.', 'Teraz w banku — on-prem, zaryglowany regulacjami.'],
+    stamp: ['Eksperymenty od 2016. Produkcja od 2024. ', 'Teraz w banku — on-prem, zaryglowany regulacjami.'], stampPunch: 'Nie od ChatGPT.',
     lead: 'Mówią, że AI gubi wątek po 1000 liniach kodu.',
     punch: 'Urocze',
     num: '20 000',
-    reframeA: 'Dla mnie to rozgrzewka — ', reframeB: ' linii. Jeden plik. Jeden człowiek.',
+    reframeA: 'Dla mnie to rozgrzewka — ', reframeB: ' linii.', reframeTail: ['Jeden plik.', 'Jeden człowiek.'],
     proof1: ['Miesiąc do działającego PoC.', 'Trzy do produkcji.', 'Bez zespołu.'],
     proof2: ['Potem utrzymują to ich zespoły.', 'Ja już robię następny.'],
     rest: 'Resztę mówi kod.',
     enter: 'Wejdź', cvText: 'Pełne CV', cvNote: '(Nie będzie ci potrzebne.)',
   },
   de: {
-    stamp: ['Im Labor seit 2016. In Produktion seit 2024. Nicht seit ChatGPT.', 'Derzeit in einer Bank — On-Prem, reguliert.'],
+    stamp: ['Im Labor seit 2016. In Produktion seit 2024. ', 'Derzeit in einer Bank — On-Prem, reguliert.'], stampPunch: 'Nicht seit ChatGPT.',
     lead: 'Sie sagen, KI verliert den Faden nach 1.000 Zeilen Code.',
     punch: 'Niedlich',
     num: '20.000',
-    reframeA: 'Da fange ich an — ', reframeB: ' Zeilen. Eine Datei. Eine Person.',
+    reframeA: 'Da fange ich an — ', reframeB: ' Zeilen.', reframeTail: ['Eine Datei.', 'Eine Person.'],
     proof1: ['Ein Monat bis zum funktionierenden PoC.', 'Drei bis zur Produktion.', 'Kein Team.'],
     proof2: ['Ihre Teams pflegen es.', 'Ich bin schon beim nächsten.'],
     rest: 'Den Rest sagt der Code.',
@@ -61,14 +61,17 @@ const MANIFESTO: Record<string, any> = {
 
       <div class="manifesto__stamp reveal" [class.is-in]="step() >= 1">
         <span class="manifesto__kicker">Łukasz Guziczak · AI Engineer</span>
-        <span>{{ m().stamp[0] }}</span>
+        <span>{{ m().stamp[0] }}<strong class="manifesto__stamp-punch">{{ m().stampPunch }}</strong></span>
         <span>{{ m().stamp[1] }}</span>
       </div>
 
       <div class="manifesto__inner">
         <p class="manifesto__lead reveal" [class.is-in]="step() >= 2">{{ m().lead }}</p>
         <p class="manifesto__punch reveal" [class.is-in]="step() >= 3"><span class="manifesto__type">{{ typed() }}</span><span class="manifesto__dot" [class.manifesto__dot--period]="typedDone()" aria-hidden="true"></span></p>
-        <p class="manifesto__reframe reveal" [class.is-in]="step() >= 4">{{ m().reframeA }}<span class="manifesto__num">{{ m().num }}</span>{{ m().reframeB }}</p>
+        <p class="manifesto__reframe reveal" [class.is-in]="step() >= 4">
+          <span class="manifesto__reframe-line">{{ m().reframeA }}<span class="manifesto__num">{{ m().num }}</span>{{ m().reframeB }}</span>
+          <span class="manifesto__reframe-line" *ngFor="let l of m().reframeTail">{{ l }}</span>
+        </p>
         <p class="manifesto__proof" [class.is-in]="step() >= 5">
           <span class="manifesto__proof-line" *ngFor="let s of m().proof1">{{ s }}</span>
         </p>
@@ -170,6 +173,11 @@ const MANIFESTO: Record<string, any> = {
         text-transform: uppercase;
         margin-bottom: 0.55rem;
       }
+      /* The punchline of the stamp — emphasised, but measured (the stamp stays quiet). */
+      .manifesto__stamp-punch {
+        font-weight: 700;
+        color: var(--text-secondary);
+      }
 
       .manifesto__inner {
         position: relative;
@@ -251,10 +259,12 @@ const MANIFESTO: Record<string, any> = {
       .manifesto__reframe {
         font-size: clamp(1.5rem, 4vw, 2.6rem);
         font-weight: 600;
+        line-height: 1.12;
         letter-spacing: -0.02em;
         color: var(--text-primary);
         margin-bottom: 1.6rem;
       }
+      .manifesto__reframe-line { display: block; }
       .manifesto__num {
         color: var(--color-primary);
         text-shadow: 0 0 28px rgba(56, 189, 248, 0.45);
