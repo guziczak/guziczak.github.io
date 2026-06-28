@@ -1,4 +1,4 @@
-import { Component, inject, computed, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LanguageService } from '../../core/services/language.service';
 
@@ -71,8 +71,9 @@ const PROOF: Record<string, any> = {
         <a class="slab__link" href="https://guziczak.github.io/opisai" target="_blank" rel="noopener noreferrer">
           guziczak.github.io/opisai <span aria-hidden="true">→</span>
         </a>
-        <!-- OpisAI's mascot — the desktop "bublak": a white medical bag with the cross
-             cut out to the orb's gradient. Bounces like a ball (JS, see component). -->
+        <!-- OpisAI's mascot — the desktop "bublak": a white medical bag (cross cut out to
+             the orb's gradient) above the wordmark. Bounces like a ball in the upper-right
+             of the slab — pure CSS (two linear-alternate tracks = a clean billiard path). -->
         <span class="opisai-bubble" aria-hidden="true">
           <svg class="opisai-bubble__icon" viewBox="0 0 100 100">
             <mask id="opisaiBag">
@@ -84,6 +85,7 @@ const PROOF: Record<string, any> = {
             </mask>
             <rect width="100" height="100" fill="#fff" mask="url(#opisaiBag)" />
           </svg>
+          <span class="opisai-bubble__label">OpisAI</span>
         </span>
       </article>
 
@@ -198,12 +200,15 @@ const PROOF: Record<string, any> = {
       .slab--opisai { position: relative; overflow: hidden; }
       .opisai-bubble {
         position: absolute;
-        left: 55%;
-        top: 1rem;
-        width: 4.4rem;
-        height: 4.4rem;
-        display: grid;
-        place-items: center;
+        left: 50%;
+        top: 0.4rem;
+        width: 5rem;
+        height: 5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1px;
         border-radius: 50%;
         background:
           radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 45%),
@@ -214,11 +219,27 @@ const PROOF: Record<string, any> = {
           0 0 28px rgba(14, 165, 233, 0.32);
         pointer-events: none;
         z-index: 1;
-        will-change: transform;
+        will-change: left, top;
+        animation:
+          opisaiBounceX 5.5s linear infinite alternate,
+          opisaiBounceY 2.3s linear infinite alternate;
       }
-      .opisai-bubble__icon { width: 62%; height: 62%; display: block; }
+      .opisai-bubble__icon { width: 1.9rem; height: 1.9rem; display: block; }
+      .opisai-bubble__label {
+        font-size: 0.5rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        line-height: 1;
+        color: #fff;
+      }
+      /* The ball sweeps the upper-right of the slab (beside the title) and reflects off
+         the walls. X and Y run at matched speed but different periods → a clean billiard
+         path that precesses to cover the box, rather than a fixed loop. */
+      @keyframes opisaiBounceX { from { left: 50%; } to { left: calc(100% - 5.4rem); } }
+      @keyframes opisaiBounceY { from { top: 0.4rem; } to { top: 48%; } }
       @media (max-width: 640px) {
-        .opisai-bubble { width: 3.6rem; height: 3.6rem; }
+        .opisai-bubble { width: 4rem; height: 4rem; }
+        .opisai-bubble__icon { width: 1.5rem; height: 1.5rem; }
       }
 
       .range {
@@ -258,45 +279,7 @@ const PROOF: Record<string, any> = {
     `,
   ],
 })
-export class ProjectsSectionComponent implements AfterViewInit, OnDestroy {
-  private host = inject(ElementRef<HTMLElement>);
+export class ProjectsSectionComponent {
   private languageService = inject(LanguageService);
   protected readonly p = computed(() => PROOF[this.languageService.currentLanguage()] ?? PROOF['en']);
-  private raf = 0;
-
-  /** OpisAI's mascot bounces like a ball in the RIGHT half of its slab: one constant
-      velocity vector, reflected off the walls (the desktop app's idle-bounce). Plain
-      rAF — no reduced-motion gate, no ViewChild — so it reliably runs. */
-  ngAfterViewInit(): void {
-    if (typeof window === 'undefined') return;
-    const el = this.host.nativeElement;
-    const zone = el.querySelector('.slab--opisai') as HTMLElement | null;
-    const bubble = el.querySelector('.opisai-bubble') as HTMLElement | null;
-    if (!zone || !bubble) return;
-    bubble.style.left = '0';
-    bubble.style.top = '0';
-
-    const SPEED = 1.2; // px/frame
-    let x = 0, y = 0, vx = SPEED, vy = -SPEED * 0.78, init = false;
-    const step = () => {
-      const w = zone.clientWidth, h = zone.clientHeight, s = bubble.offsetWidth || 70;
-      const minX = Math.round(w * 0.5);
-      const maxX = Math.max(minX + 1, w - s - 4);
-      const maxY = Math.max(1, h - s - 4);
-      if (!init && w > 0 && h > 0) { x = (minX + maxX) / 2; y = maxY * 0.4; init = true; }
-      if (init) {
-        x += vx;
-        y += vy;
-        if (x <= minX) { x = minX; vx = SPEED; } else if (x >= maxX) { x = maxX; vx = -SPEED; }
-        if (y <= 0) { y = 0; vy = SPEED * 0.78; } else if (y >= maxY) { y = maxY; vy = -(SPEED * 0.78); }
-        bubble.style.transform = `translate(${x}px, ${y}px)`;
-      }
-      this.raf = requestAnimationFrame(step);
-    };
-    this.raf = requestAnimationFrame(step);
-  }
-
-  ngOnDestroy(): void {
-    if (this.raf) cancelAnimationFrame(this.raf);
-  }
 }
