@@ -200,7 +200,8 @@ const PROOF: Record<string, any> = {
       .slab--opisai { position: relative; overflow: hidden; }
       .opisai-bubble {
         position: absolute;
-        left: 72%;
+        /* Sits to the right of the title block (clear of the meta line's "…SPRZEDANY"). */
+        left: 78%;
         /* The floor: the ball rests here, ≈ the "Produkt komercyjny" / "AI-skryba…" line.
            This single value is the floor height — nudge it to move the floor. */
         top: 6.8rem;
@@ -223,7 +224,7 @@ const PROOF: Record<string, any> = {
         pointer-events: none;
         z-index: 1;
         will-change: transform;
-        animation: opisaiDunk 1.05s infinite;
+        animation: opisaiDunk 1.5s infinite;
       }
       .opisai-bubble__icon { width: 1.9rem; height: 1.9rem; display: block; }
       .opisai-bubble__label {
