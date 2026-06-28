@@ -449,6 +449,25 @@ const MANIFESTO: Record<string, any> = {
       .manifesto__music.is-playing .manifesto__eq i:nth-child(4) { animation-duration: 0.82s; }
       @keyframes eqBar { 0%, 100% { height: 3px; } 50% { height: 11px; } }
 
+      /* Short viewports (laptops / windowed desktop): the manifesto is tall, so scale
+         the big type and the rhythm down with the viewport HEIGHT — this keeps the CTA
+         and the footer badge above the fold instead of pushing them off-screen. */
+      @media (max-height: 880px) {
+        .manifesto { gap: clamp(0.75rem, 2vh, 1.5rem); padding-block: clamp(1.1rem, 3vh, 2rem); }
+        .manifesto__lead { font-size: clamp(1rem, 2vh, 1.35rem); margin-bottom: 0.25rem; }
+        .manifesto__punch { font-size: clamp(2.6rem, 11vh, 5rem); margin: 0.1rem 0 0.6rem; }
+        .manifesto__reframe { font-size: clamp(1.3rem, 5vh, 2.1rem); margin-bottom: 0.85rem; }
+        .manifesto__proof { margin-bottom: 0.4rem; }
+        .manifesto__rest { font-size: clamp(0.95rem, 2vh, 1.15rem); margin: 0.75rem 0 1rem; }
+      }
+      @media (max-height: 720px) {
+        .manifesto__stamp { font-size: 0.7rem; }
+        .manifesto__punch { font-size: clamp(2.2rem, 9vh, 3.6rem); }
+        .manifesto__reframe { font-size: clamp(1.15rem, 4.5vh, 1.6rem); }
+        .manifesto__proof { font-size: 0.92rem; margin-bottom: 0.3rem; }
+        .manifesto__rest { margin: 0.5rem 0 0.8rem; }
+      }
+
       @media (max-width: 640px) {
         .manifesto__stamp { font-size: 0.68rem; }
         /* Pin the block under the stamp instead of centring it in the tall middle row. */
