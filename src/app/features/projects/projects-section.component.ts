@@ -1,4 +1,4 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LanguageService } from '../../core/services/language.service';
 
@@ -71,8 +71,20 @@ const PROOF: Record<string, any> = {
         <a class="slab__link" href="https://guziczak.github.io/opisai" target="_blank" rel="noopener noreferrer">
           guziczak.github.io/opisai <span aria-hidden="true">→</span>
         </a>
-        <!-- OpisAI's mascot — the desktop "bublak", idly drifting and bouncing off the walls -->
-        <span class="opisai-bubble" aria-hidden="true">OpisAI</span>
+        <!-- OpisAI's mascot — the desktop "bublak": a white medical bag with the cross
+             cut out to the orb's gradient. Bounces like a ball (JS, see component). -->
+        <span class="opisai-bubble" aria-hidden="true">
+          <svg class="opisai-bubble__icon" viewBox="0 0 100 100">
+            <mask id="opisaiBag">
+              <rect x="38" y="24.5" width="24" height="14" rx="6.3" fill="#fff" />
+              <rect x="20.9" y="33.4" width="58.2" height="43.7" rx="10.4" fill="#fff" />
+              <rect x="43.5" y="28.6" width="13" height="6.5" rx="2.6" fill="#000" />
+              <rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="#000" />
+              <rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="#000" />
+            </mask>
+            <rect width="100" height="100" fill="#fff" mask="url(#opisaiBag)" />
+          </svg>
+        </span>
       </article>
 
       <div class="range animate-on-scroll">
@@ -179,26 +191,22 @@ const PROOF: Record<string, any> = {
       .slab__link span { transition: transform 0.25s ease; display: inline-block; }
       .slab__link:hover span { transform: translateX(4px); }
 
-      /* OpisAI's mascot — the desktop "bublak". It lives in the right half of the slab
-         and drifts + bounces off the walls: two independent linear-alternate tracks (X
-         and Y on different periods) trace a DVD-logo wander. Pure CSS so it ALWAYS runs
-         — no JS, no ViewChild, no "static at the top" failure mode. */
+      /* OpisAI's mascot — the desktop "bublak": a white medical bag (cross cut out to
+         the orb's gradient). It bounces like a ball in the right half of the slab —
+         constant velocity, clean wall reflections — driven by JS (see the component).
+         CSS only sets the look and a no-JS resting spot on the right. */
       .slab--opisai { position: relative; overflow: hidden; }
       .opisai-bubble {
         position: absolute;
-        left: 56%;
-        top: 0.6rem;
+        left: 55%;
+        top: 1rem;
         width: 4.4rem;
         height: 4.4rem;
         display: grid;
         place-items: center;
         border-radius: 50%;
-        font-size: 0.6rem;
-        font-weight: 700;
-        letter-spacing: 0.03em;
-        color: #fff;
         background:
-          radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 45%),
+          radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 45%),
           linear-gradient(150deg, #2563eb, #0ea5e9);
         box-shadow:
           inset 0 0 0 1px rgba(255, 255, 255, 0.18),
@@ -206,15 +214,11 @@ const PROOF: Record<string, any> = {
           0 0 28px rgba(14, 165, 233, 0.32);
         pointer-events: none;
         z-index: 1;
-        will-change: left, top;
-        animation:
-          opisaiDriftX 6.5s linear infinite alternate,
-          opisaiDriftY 4.7s linear infinite alternate;
+        will-change: transform;
       }
-      @keyframes opisaiDriftX { from { left: 56%; } to { left: calc(100% - 5.2rem); } }
-      @keyframes opisaiDriftY { from { top: 0.6rem; } to { top: calc(100% - 5.2rem); } }
+      .opisai-bubble__icon { width: 62%; height: 62%; display: block; }
       @media (max-width: 640px) {
-        .opisai-bubble { width: 3.4rem; height: 3.4rem; font-size: 0.52rem; }
+        .opisai-bubble { width: 3.6rem; height: 3.6rem; }
       }
 
       .range {
@@ -254,7 +258,45 @@ const PROOF: Record<string, any> = {
     `,
   ],
 })
-export class ProjectsSectionComponent {
+export class ProjectsSectionComponent implements AfterViewInit, OnDestroy {
+  private host = inject(ElementRef<HTMLElement>);
   private languageService = inject(LanguageService);
   protected readonly p = computed(() => PROOF[this.languageService.currentLanguage()] ?? PROOF['en']);
+  private raf = 0;
+
+  /** OpisAI's mascot bounces like a ball in the RIGHT half of its slab: one constant
+      velocity vector, reflected off the walls (the desktop app's idle-bounce). Plain
+      rAF — no reduced-motion gate, no ViewChild — so it reliably runs. */
+  ngAfterViewInit(): void {
+    if (typeof window === 'undefined') return;
+    const el = this.host.nativeElement;
+    const zone = el.querySelector('.slab--opisai') as HTMLElement | null;
+    const bubble = el.querySelector('.opisai-bubble') as HTMLElement | null;
+    if (!zone || !bubble) return;
+    bubble.style.left = '0';
+    bubble.style.top = '0';
+
+    const SPEED = 1.2; // px/frame
+    let x = 0, y = 0, vx = SPEED, vy = -SPEED * 0.78, init = false;
+    const step = () => {
+      const w = zone.clientWidth, h = zone.clientHeight, s = bubble.offsetWidth || 70;
+      const minX = Math.round(w * 0.5);
+      const maxX = Math.max(minX + 1, w - s - 4);
+      const maxY = Math.max(1, h - s - 4);
+      if (!init && w > 0 && h > 0) { x = (minX + maxX) / 2; y = maxY * 0.4; init = true; }
+      if (init) {
+        x += vx;
+        y += vy;
+        if (x <= minX) { x = minX; vx = SPEED; } else if (x >= maxX) { x = maxX; vx = -SPEED; }
+        if (y <= 0) { y = 0; vy = SPEED * 0.78; } else if (y >= maxY) { y = maxY; vy = -(SPEED * 0.78); }
+        bubble.style.transform = `translate(${x}px, ${y}px)`;
+      }
+      this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  }
+
+  ngOnDestroy(): void {
+    if (this.raf) cancelAnimationFrame(this.raf);
+  }
 }
