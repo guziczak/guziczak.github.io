@@ -659,7 +659,10 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   toggleMusic(): void {
     if (!this.notes) return;
     if (!this.player) {
-      this.player = createSwiatlo(this.notes, { onState: (on) => this.musicOn.set(on) });
+      this.player = createSwiatlo(this.notes, {
+        onState: (on) => this.musicOn.set(on),
+        leadInSec: (this.beatMs * 4) / 1000, // one-bar count-in: the score rolls in from the right
+      });
     }
     this.player.toggle();
   }

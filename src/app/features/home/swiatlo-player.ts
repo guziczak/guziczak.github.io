@@ -29,9 +29,11 @@ const BELL_PARTIALS: [number, number, number][] = [
 // notes: [start_ms, dur_ms, midi, velocity][]
 export function createSwiatlo(
   notes: number[][],
-  opts: { onState?: (on: boolean) => void },
+  opts: { onState?: (on: boolean) => void; leadInSec?: number },
 ): SwiatloPlayer {
   const onState = opts.onState || (() => {});
+  // Visual count-in: how long the score rolls in from the right before the first note sounds.
+  const leadIn = Math.max(0, opts.leadInSec || 0);
   const W = window as any;
   let ctx: any = null;
   let bus: any = null;
@@ -176,9 +178,11 @@ export function createSwiatlo(
       // Loop: once the last note has rung out (+ a breath), re-lay the timeline from the
       // top. The bell's long reverb tail carries the seam, so the repeat feels continuous.
       const remaining = startCtxTime + durSec - ctx.currentTime;
+      // Fire the repeat one lead-in early so the next pass visibly rolls in DURING the gap —
+      // the seam stays the same length of silence, but you see the score returning.
       loopTimer = setTimeout(() => {
         if (playing) start(0);
-      }, Math.max((remaining + LOOP_GAP) * 1000, 250));
+      }, Math.max((remaining + LOOP_GAP - leadIn) * 1000, 250));
     }
   }
 
@@ -202,7 +206,11 @@ export function createSwiatlo(
     const begin = () => {
       if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
       pieceOffset = offsetSec || 0;
-      startCtxTime = ctx.currentTime + 0.12 - pieceOffset;
+      // From the top, hold a visual count-in (leadIn) so the staff rolls in from the right
+      // and the first note meets the playhead exactly as it rings. On a mid-piece resume,
+      // just the usual audio-scheduling latency.
+      const preroll = (offsetSec || 0) < 0.001 ? Math.max(0.12, leadIn) : 0.12;
+      startCtxTime = ctx.currentTime + preroll - pieceOffset;
       idx = 0;
       while (idx < notes.length && (notes[idx][0] + notes[idx][1]) / 1000 <= pieceOffset) idx++;
       playing = true;

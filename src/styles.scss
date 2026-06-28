@@ -158,6 +158,14 @@ button {
 }
 
 // Scroll animations
+// No-JS fallback: the IntersectionObserver never fires without JS, so reveal everything
+// rather than leaving the below-the-fold sections blank.
+@media (scripting: none) {
+  .animate-on-scroll {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
 .animate-on-scroll {
   opacity: 0;
   transform: translateY(30px);

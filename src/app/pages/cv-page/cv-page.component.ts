@@ -29,7 +29,7 @@ import { LanguageService } from '../../core/services/language.service';
       <div class="container">
         <header class="cv-header">
           <div class="profile-section">
-            <img src="/photo.jpg" alt="Łukasz Guziczak" class="profile-image" />
+            <img src="/photo.png" alt="Łukasz Guziczak" class="profile-image" />
             <div class="profile-info">
               <h1>Łukasz Guziczak</h1>
               <h2>AI Engineer</h2>

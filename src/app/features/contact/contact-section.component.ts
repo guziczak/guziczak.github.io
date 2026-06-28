@@ -19,7 +19,9 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
   imports: [CommonModule],
   template: `
     <section class="exit" id="contact">
+      <div class="exit__halo" aria-hidden="true"></div>
       <div class="exit__inner animate-on-scroll">
+        <span class="exit__shaft" aria-hidden="true"></span>
         <p class="exit__line">{{ e().line }}</p>
         <h2 class="exit__cta">{{ e().cta }}</h2>
 
@@ -39,24 +41,59 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
   `,
   styles: [
     `
+      /* The apse. After the long descent you arrive here — the one place where light wins:
+         a warm bronze bloom behind the call, a thin shaft of light falling into it. Ave Maria
+         before the battle — still, sacred, the loudest quiet on the page. */
       .exit {
-        padding: clamp(6rem, 16vh, 11rem) clamp(1.5rem, 6vw, 6rem);
+        position: relative;
+        overflow: hidden;
+        padding: clamp(8rem, 22vh, 15rem) clamp(1.5rem, 6vw, 6rem);
         background: transparent;
         text-align: center;
       }
-      .exit__inner { max-width: 50rem; margin: 0 auto; }
+      .exit__halo {
+        position: absolute;
+        left: 50%;
+        top: 40%;
+        transform: translate(-50%, -50%);
+        width: min(900px, 125vw);
+        aspect-ratio: 1;
+        pointer-events: none;
+        background: radial-gradient(
+          circle,
+          rgba(245, 206, 140, 0.16),
+          rgba(56, 189, 248, 0.08) 40%,
+          transparent 70%
+        );
+        filter: blur(4px);
+      }
+      .exit__inner {
+        position: relative;
+        max-width: 50rem;
+        margin: 0 auto;
+        transition-duration: 1.15s; /* a slower, more solemn rise than the rest of the page */
+      }
+      /* the shaft — a sliver of light falling into the call */
+      .exit__shaft {
+        display: block;
+        width: 1px;
+        height: clamp(2.5rem, 8vh, 5rem);
+        margin: 0 auto clamp(1.5rem, 4vh, 2.5rem);
+        background: linear-gradient(to bottom, transparent, rgba(245, 206, 140, 0.75));
+      }
       .exit__line {
         color: var(--text-tertiary);
         font-size: 1rem;
         margin: 0 0 0.8rem;
       }
       .exit__cta {
-        font-size: clamp(2.5rem, 7vw, 4.5rem);
+        font-size: clamp(2.8rem, 8vw, 5.5rem);
         font-weight: 800;
         letter-spacing: -0.03em;
         line-height: 1;
         color: var(--text-primary);
-        margin: 0 0 2.2rem;
+        margin: 0 0 2.4rem;
+        text-shadow: 0 0 48px rgba(245, 206, 140, 0.3);
       }
       .exit__contacts {
         display: flex;

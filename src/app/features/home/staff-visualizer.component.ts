@@ -67,7 +67,10 @@ interface Glyph {
         transform: translateX(-50%);
         width: min(820px, 92vw);
         height: 190px;
-        z-index: 40;
+        /* Sits BEHIND the manifesto text (z-index 2) but above the section background — the
+           score shows through the type instead of overprinting the CTA. Over the other
+           (non-positioned) sections it still floats at the foot as before. */
+        z-index: 1;
         pointer-events: none;
         opacity: 0;
         transition: opacity 0.7s ease;
@@ -98,8 +101,14 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
   @Input() player: { position(): number } | null = null;
 
   private _notes: number[][] = [];
+  /** note(ref) -> beam-group info, precomputed from the score (engraved beams, not flags). */
+  private beamOf = new Map<
+    number[],
+    { stemDown: boolean; firstRef: number[]; lastRef: number[]; nextRef: number[] | null; flags: number }
+  >();
   @Input() set notes(v: number[][]) {
     this._notes = v || [];
+    this.computeBeams();
   }
 
   /** Quarter-note length in ms, from the score's tempo. Drives note values & barlines. */
@@ -184,6 +193,59 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     return { fill: true, stem: true, flags: 2, dot: false, whole: false }; //                 sixteenth
   }
 
+  /** Group consecutive single-onset eighths/sixteenths within one beat & staff so they can be
+   *  beamed (as real engraving does) instead of each wearing a flag. Chords (notes sharing an
+   *  onset) and quarter-or-longer values break the run. Precomputed once when the score loads. */
+  private computeBeams(): void {
+    this.beamOf.clear();
+    const ns = this._notes;
+    if (!ns.length) return;
+    const beat = this.beatMs;
+    const order = ns
+      .map((_, i) => i)
+      .sort((a, b) => ns[a][0] - ns[b][0] || ns[a][2] - ns[b][2]);
+    let group: number[] = [];
+    let curKey = '';
+    let prevStart = -1e9;
+    const flush = () => {
+      if (group.length >= 2) {
+        let sum = 0;
+        for (const i of group) sum += this.diat(ns[i][2]);
+        const treble = ns[group[0]][2] >= 60;
+        const staffMid = treble ? TREB_MID : BASS_MID;
+        const stemDown = sum / group.length >= staffMid;
+        const firstRef = ns[group[0]];
+        const lastRef = ns[group[group.length - 1]];
+        for (let k = 0; k < group.length; k++) {
+          const i = group[k];
+          this.beamOf.set(ns[i], {
+            stemDown,
+            firstRef,
+            lastRef,
+            nextRef: k < group.length - 1 ? ns[group[k + 1]] : null,
+            flags: this.glyph(ns[i][1] / beat).flags,
+          });
+        }
+      }
+      group = [];
+    };
+    for (const i of order) {
+      const n = ns[i];
+      const flags = this.glyph(n[1] / beat).flags;
+      const chord = Math.abs(n[0] - prevStart) < 25; // same onset = chord member, never beamed
+      const key = (n[2] >= 60 ? 'T' : 'B') + Math.floor(n[0] / beat);
+      if (flags < 1 || chord || key !== curKey) flush();
+      if (flags >= 1 && !chord) {
+        curKey = key;
+        group.push(i);
+        prevStart = n[0];
+      } else if (!chord) {
+        curKey = '';
+      }
+    }
+    flush();
+  }
+
   // small, stable per-note pseudo-random in [-1,1) — the "hand" that keeps
   // nothing looking machine-stamped (seeded by the note, so it never jitters per frame).
   private jit(s: number): number {
@@ -233,6 +295,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     const fadeStart = sigRight + 2;
     const fadeLen = gap * 3.2;
     const barMs = this.beatMs * this.beatsPerBar;
+    const lead = barMs / 1000; // visual count-in window (one bar): the score rolls in during it
 
     // the grand staff — two five-line staves
     g.lineWidth = 1;
@@ -257,7 +320,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     const pos = this.player ? this.player.position() : -1;
 
     // barlines — ruled per measure, scrolling with the music, spanning both staves
-    if (pos >= 0 && barMs > 0) {
+    if (pos >= -lead && barMs > 0) {
       for (let k = 0; ; k++) {
         const x = headX + (k * (barMs / 1000) - pos) * pps;
         if (x > W + 2) break;
@@ -312,7 +375,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    if (pos < 0) return;
+    if (pos < -lead) return;
 
     for (const n of this._notes) {
       const t = n[0] / 1000;
@@ -339,9 +402,50 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
       // a little stable hand-wobble per note, so nothing looks machine-stamped
       const seed = n[0] * 0.0173 + n[2] * 0.911;
       const s = this.diat(n[2]);
-      const x = x0 + this.jit(seed + 1.7) * 0.7;
-      const y = clamp(yOf(s) + this.jit(seed + 3.1) * 0.7, 10, H - 12);
-      this.note(g, x, y, s, gl, s >= staffMid, a, gap, half, sTop, sBot, on, seed);
+      const bi = this.beamOf.get(n);
+      // Beamed notes are drawn crisp (no hand-wobble) so the beam reads as a straight rule.
+      const x = bi ? x0 : x0 + this.jit(seed + 1.7) * 0.7;
+      const y = clamp(yOf(s) + (bi ? 0 : this.jit(seed + 3.1) * 0.7), 10, H - 12);
+
+      // Beamed run: one shared (possibly sloped) beam through the group's stem ends, the
+      // stem reaching up/down to it, no flag — real engraving. Sixteenths get a 2nd beam.
+      let beamTipY: number | null = null;
+      if (bi) {
+        const nrx = 4.6;
+        const sd = bi.stemDown ? 1 : -1;
+        const stemLen = gap * 3.25;
+        const sxOf = (xx: number) => (bi.stemDown ? xx - nrx + 0.4 : xx + nrx - 0.4);
+        const tipAt = (ref: number[]) => clamp(yOf(this.diat(ref[2])), 10, H - 12) + sd * stemLen;
+        const sxf = sxOf(headX + (bi.firstRef[0] / 1000 - pos) * pps);
+        const sxl = sxOf(headX + (bi.lastRef[0] / 1000 - pos) * pps);
+        const tf = tipAt(bi.firstRef);
+        const slope = sxl === sxf ? 0 : (tipAt(bi.lastRef) - tf) / (sxl - sxf);
+        const beamYat = (xx: number) => tf + slope * (sxOf(xx) - sxf);
+        beamTipY = beamYat(x);
+        if (bi.nextRef) {
+          const xn = headX + (bi.nextRef[0] / 1000 - pos) * pps;
+          const bw = Math.max(2, gap * 0.55);
+          g.lineCap = 'butt';
+          g.strokeStyle = 'rgba(' + ACC + ',' + (a * 0.9).toFixed(3) + ')';
+          g.lineWidth = bw;
+          g.beginPath();
+          g.moveTo(sxOf(x), beamTipY);
+          g.lineTo(sxOf(xn), beamYat(xn));
+          g.stroke();
+          const nb = this.beamOf.get(bi.nextRef);
+          if (bi.flags >= 2 && nb && nb.flags >= 2) {
+            const off = sd * (bw + 1.5);
+            g.lineWidth = Math.max(1.6, gap * 0.42);
+            g.beginPath();
+            g.moveTo(sxOf(x), beamTipY + off);
+            g.lineTo(sxOf(xn), beamYat(xn) + off);
+            g.stroke();
+          }
+          g.lineCap = 'round';
+        }
+      }
+
+      this.note(g, x, y, s, gl, bi ? bi.stemDown : s >= staffMid, a, gap, half, sTop, sBot, on, seed, beamTipY);
     }
   }
 
@@ -359,6 +463,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     staffBot: number,
     on: boolean,
     seed: number,
+    beamStemTipY: number | null = null,
   ): void {
     const nrx = 4.6;
 
@@ -383,15 +488,16 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     // stem (up for low notes, down for high) + flags
     if (gl.stem) {
       const sx = stemDown ? x - nrx + 0.4 : x + nrx - 0.4;
-      const len = gap * 3.25 + (gl.flags ? gap * 0.5 : 0);
-      const tip = stemDown ? y + len : y - len;
+      const beamed = beamStemTipY != null;
+      const len = gap * 3.25 + (gl.flags && !beamed ? gap * 0.5 : 0);
+      const tip = beamed ? beamStemTipY! : stemDown ? y + len : y - len;
       g.strokeStyle = 'rgba(' + ACC + ',' + (a * 0.9).toFixed(3) + ')';
       g.lineWidth = 1.4;
       g.beginPath();
       g.moveTo(sx, y);
       g.lineTo(sx, tip);
       g.stroke();
-      if (gl.flags) {
+      if (gl.flags && !beamed) {
         // Filled flags that curl back toward the head — so they hang down off an
         // up-stem and rise off a down-stem (the same banner, vertically mirrored,
         // as real engraving draws it). They stack from the stem's free end inward.
