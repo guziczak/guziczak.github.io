@@ -72,10 +72,11 @@ const PROOF: Record<string, any> = {
           guziczak.github.io/opisai <span aria-hidden="true">→</span>
         </a>
         <!-- OpisAI's mascot — the desktop "bublak": a white medical bag (cross cut out to
-             the orb's gradient) above the wordmark. Bounces like a ball in the upper-right
-             of the slab — pure CSS (two linear-alternate tracks = a clean billiard path). -->
-        <span class="opisai-bubble" aria-hidden="true">
-          <svg class="opisai-bubble__icon" viewBox="0 0 100 100">
+             the orb's gradient) over the wordmark. Bounces like a basketball, and it's a
+             link to the app — hovering catches the ball (pauses) so it's easy to click. -->
+        <a class="opisai-bubble" href="https://guziczak.github.io/opisai"
+           target="_blank" rel="noopener noreferrer" aria-label="OpisAI">
+          <svg class="opisai-bubble__icon" viewBox="20 21 60 60" aria-hidden="true">
             <mask id="opisaiBag">
               <rect x="38" y="24.5" width="24" height="14" rx="6.3" fill="#fff" />
               <rect x="20.9" y="33.4" width="58.2" height="43.7" rx="10.4" fill="#fff" />
@@ -86,7 +87,7 @@ const PROOF: Record<string, any> = {
             <rect width="100" height="100" fill="#fff" mask="url(#opisaiBag)" />
           </svg>
           <span class="opisai-bubble__label">OpisAI</span>
-        </span>
+        </a>
       </article>
 
       <div class="range animate-on-scroll">
@@ -205,8 +206,8 @@ const PROOF: Record<string, any> = {
         /* The floor: the ball rests here, ≈ the "Produkt komercyjny" / "AI-skryba…" line.
            This single value is the floor height — nudge it to move the floor. */
         top: 6.8rem;
-        width: 5rem;
-        height: 5rem;
+        width: 5.2rem;
+        height: 5.2rem;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -221,12 +222,31 @@ const PROOF: Record<string, any> = {
           inset 0 0 0 1px rgba(255, 255, 255, 0.18),
           0 8px 24px rgba(37, 99, 235, 0.4),
           0 0 28px rgba(14, 165, 233, 0.32);
-        pointer-events: none;
+        pointer-events: auto;
+        cursor: pointer;
+        text-decoration: none;
         z-index: 1;
         will-change: transform;
+        transition: box-shadow 0.25s ease, filter 0.25s ease;
         animation: opisaiDunk 1.5s infinite;
       }
-      .opisai-bubble__icon { width: 1.9rem; height: 1.9rem; display: block; }
+      /* Catch the ball: hover/focus pauses the bounce so the moving target holds still,
+         and the glow swells to signal it's a link. (No transform here — that belongs to
+         the bounce animation; overriding it would snap the ball out of mid-air.) */
+      .opisai-bubble:hover,
+      .opisai-bubble:focus-visible {
+        animation-play-state: paused;
+        filter: brightness(1.12);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+          0 10px 30px rgba(37, 99, 235, 0.55),
+          0 0 40px rgba(14, 165, 233, 0.5);
+      }
+      .opisai-bubble:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 3px;
+      }
+      .opisai-bubble__icon { width: 2.8rem; height: 2.8rem; display: block; }
       .opisai-bubble__label {
         font-size: 0.5rem;
         font-weight: 700;
@@ -245,8 +265,8 @@ const PROOF: Record<string, any> = {
         100% { transform: translateY(-4.2rem) scaleX(1) scaleY(1); }
       }
       @media (max-width: 640px) {
-        .opisai-bubble { width: 4rem; height: 4rem; top: 5.2rem; }
-        .opisai-bubble__icon { width: 1.5rem; height: 1.5rem; }
+        .opisai-bubble { width: 4.4rem; height: 4.4rem; top: 5.2rem; }
+        .opisai-bubble__icon { width: 2.3rem; height: 2.3rem; }
       }
 
       .range {

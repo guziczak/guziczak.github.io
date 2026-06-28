@@ -37,6 +37,7 @@ export function createSwiatlo(
   let bus: any = null;
   let playing = false;
   let timer: any = null;
+  let loopTimer: any = null;
   let idx = 0;
   let startCtxTime = 0;
   let pieceOffset = 0;
@@ -44,6 +45,7 @@ export function createSwiatlo(
 
   let durSec = 0;
   for (const n of notes) durSec = Math.max(durSec, (n[0] + n[1]) / 1000);
+  const LOOP_GAP = 2.5; // seconds of breath between repeats (the last bell rings into it)
 
   const midiToFreq = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -171,14 +173,12 @@ export function createSwiatlo(
         clearInterval(timer);
         timer = null;
       }
-      const remaining = startCtxTime + durSec - ctx.currentTime + 0.7;
-      setTimeout(() => {
-        if (playing) {
-          playing = false;
-          pieceOffset = 0;
-          onState(false);
-        }
-      }, Math.max(remaining * 1000, 250));
+      // Loop: once the last note has rung out (+ a breath), re-lay the timeline from the
+      // top. The bell's long reverb tail carries the seam, so the repeat feels continuous.
+      const remaining = startCtxTime + durSec - ctx.currentTime;
+      loopTimer = setTimeout(() => {
+        if (playing) start(0);
+      }, Math.max((remaining + LOOP_GAP) * 1000, 250));
     }
   }
 
@@ -200,6 +200,7 @@ export function createSwiatlo(
     // it lands every note in the past, so the first play is silent until you tap again
     // (the "two taps" bug). Resume first, THEN begin against a live clock.
     const begin = () => {
+      if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
       pieceOffset = offsetSec || 0;
       startCtxTime = ctx.currentTime + 0.12 - pieceOffset;
       idx = 0;
@@ -228,6 +229,10 @@ export function createSwiatlo(
     if (timer) {
       clearInterval(timer);
       timer = null;
+    }
+    if (loopTimer) {
+      clearTimeout(loopTimer);
+      loopTimer = null;
     }
     bus.gain.cancelScheduledValues(ctx.currentTime);
     bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), ctx.currentTime);
