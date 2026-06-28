@@ -26,7 +26,7 @@ const MANIFESTO: Record<string, any> = {
     num: '20 000',
     reframeA: 'Dla mnie to rozgrzewka — ', reframeB: ' linii. Jeden plik. Jeden człowiek.',
     proof1: ['Miesiąc do działającego PoC.', 'Trzy do produkcji.', 'Bez zespołu.'],
-    proof2: ['Potem utrzymują to ich zespoły.', 'Mnie już tam nie ma.'],
+    proof2: ['Potem utrzymują to ich zespoły.', 'Ja już robię następny.'],
     rest: 'Resztę mówi kod.',
     enter: 'Wejdź', cvText: 'Pełne CV', cvNote: '(Nie będzie ci potrzebne.)',
   },

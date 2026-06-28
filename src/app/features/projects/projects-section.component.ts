@@ -1,4 +1,4 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LanguageService } from '../../core/services/language.service';
 
@@ -59,7 +59,7 @@ const PROOF: Record<string, any> = {
         <p class="slab__tech">Python · PyTorch · Computer Vision (ViT) · Local LLMs (vLLM) · Structured Outputs</p>
       </article>
 
-      <article class="slab animate-on-scroll">
+      <article class="slab slab--opisai animate-on-scroll" #opisaiSlab>
         <div class="slab__meta">
           <span class="slab__index">02</span>
           <span class="slab__flag">{{ p().s2flag }}</span>
@@ -71,6 +71,8 @@ const PROOF: Record<string, any> = {
         <a class="slab__link" href="https://guziczak.github.io/opisai" target="_blank" rel="noopener noreferrer">
           guziczak.github.io/opisai <span aria-hidden="true">→</span>
         </a>
+        <!-- OpisAI's mascot — the desktop "bublak", idly drifting and bouncing off the walls -->
+        <span class="opisai-bubble" #opisaiBubble aria-hidden="true">OpisAI</span>
       </article>
 
       <div class="range animate-on-scroll">
@@ -177,6 +179,38 @@ const PROOF: Record<string, any> = {
       .slab__link span { transition: transform 0.25s ease; display: inline-block; }
       .slab__link:hover span { transform: translateX(4px); }
 
+      /* OpisAI's mascot bubble — the desktop "bublak", here idly drifting and bouncing
+         off the slab's walls (DVD-logo style). JS drives the transform; CSS sets the
+         look and a resting spot for the no-JS / reduced-motion case. */
+      .slab--opisai { position: relative; overflow: hidden; }
+      .opisai-bubble {
+        position: absolute;
+        top: 1.2rem;
+        right: 1.2rem;
+        width: 4.4rem;
+        height: 4.4rem;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        font-size: 0.6rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        color: #fff;
+        background:
+          radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 45%),
+          linear-gradient(150deg, #2563eb, #0ea5e9);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+          0 8px 24px rgba(37, 99, 235, 0.4),
+          0 0 28px rgba(14, 165, 233, 0.32);
+        pointer-events: none;
+        z-index: 1;
+        will-change: transform;
+      }
+      @media (max-width: 640px) {
+        .opisai-bubble { width: 3.4rem; height: 3.4rem; font-size: 0.52rem; }
+      }
+
       .range {
         max-width: 70rem;
         margin: clamp(2.5rem, 5vw, 4rem) auto 0;
@@ -214,7 +248,53 @@ const PROOF: Record<string, any> = {
     `,
   ],
 })
-export class ProjectsSectionComponent {
+export class ProjectsSectionComponent implements AfterViewInit, OnDestroy {
   private languageService = inject(LanguageService);
   protected readonly p = computed(() => PROOF[this.languageService.currentLanguage()] ?? PROOF['en']);
+
+  @ViewChild('opisaiSlab') private slabRef?: ElementRef<HTMLElement>;
+  @ViewChild('opisaiBubble') private bubbleRef?: ElementRef<HTMLElement>;
+  private raf = 0;
+
+  /** The OpisAI bubble drifts inside its slab and bounces off the walls — the
+      desktop app's idle-bounce, on the web. Off for reduced-motion / SSR. */
+  ngAfterViewInit(): void {
+    if (typeof window === 'undefined') return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const host = this.slabRef?.nativeElement;
+    const bubble = this.bubbleRef?.nativeElement;
+    if (reduce || !host || !bubble) return;
+
+    // JS takes over positioning (CSS parked it top-right for the no-JS case).
+    bubble.style.top = '0';
+    bubble.style.left = '0';
+    bubble.style.right = 'auto';
+
+    let x = 0, y = 0, vx = 0, vy = 0, started = false;
+    const rand = (a: number, b: number) => a + Math.random() * (b - a);
+
+    const step = () => {
+      const w = host.clientWidth, h = host.clientHeight, s = bubble.offsetWidth;
+      const maxX = Math.max(0, w - s), maxY = Math.max(0, h - s);
+      if (!started && w > 0 && h > 0) {
+        x = rand(0, maxX);
+        y = rand(0, maxY);
+        const speed = 0.9, angle = rand(0, Math.PI * 2);
+        vx = Math.cos(angle) * speed;
+        vy = Math.sin(angle) * speed;
+        started = true;
+      }
+      x += vx;
+      y += vy;
+      if (x <= 0) { x = 0; vx = Math.abs(vx); } else if (x >= maxX) { x = maxX; vx = -Math.abs(vx); }
+      if (y <= 0) { y = 0; vy = Math.abs(vy); } else if (y >= maxY) { y = maxY; vy = -Math.abs(vy); }
+      bubble.style.transform = `translate(${x}px, ${y}px)`;
+      this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  }
+
+  ngOnDestroy(): void {
+    if (this.raf) cancelAnimationFrame(this.raf);
+  }
 }

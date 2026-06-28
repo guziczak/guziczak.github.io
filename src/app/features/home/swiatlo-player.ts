@@ -10,19 +10,20 @@ export interface SwiatloPlayer {
   position(): number;
 }
 
-// A bronze cathedral bell, by its partials. Real bells are inharmonic: the famous
-// minor-third "tierce" is what gives them their sacred, slightly mournful colour,
-// and every partial decays at its own rate — strike tones fast, the hum long.
-// [ratio relative to the named pitch, gain, decay seconds]
+// Tuned bell — HARMONIC partials only (the octave + integer overtones), so it never
+// fights the music. A real bell's charm is its INHARMONIC partials (minor-third
+// tierce, superquint), but under a melody those beat against the harmony and read as
+// "out of tune" — so they're gone. What's left: a struck attack, a long blooming
+// fundamental, consonant overtones, and a sub-octave hum for weight. Glassy, deep,
+// and always in key.
+// [ratio (octave / harmonic of the played note), gain, decay seconds]
 const BELL_PARTIALS: [number, number, number][] = [
-  [0.5, 0.45, 7.0],   // hum — an octave below the pitch, rings longest
-  [1.0, 1.0, 5.0],    // prime — the note you name
-  [1.2, 0.55, 3.6],   // tierce — the minor third, the bell's soul
-  [1.5, 0.28, 2.6],   // quint — the fifth
-  [2.0, 0.5, 2.4],    // nominal — the octave, anchors the perceived pitch
-  [2.55, 0.22, 1.3],  // superquint — strike shimmer
-  [3.0, 0.14, 0.9],
-  [4.2, 0.09, 0.45],  // top sparkle, gone in a blink
+  [0.5, 0.30, 6.5],   // sub-octave hum — weight, one octave down (same pitch class)
+  [1.0, 1.0, 5.5],    // fundamental — the note, rings longest
+  [2.0, 0.45, 3.2],   // 2nd harmonic — the octave
+  [3.0, 0.20, 2.0],   // 3rd harmonic — octave + fifth, consonant shimmer
+  [4.0, 0.11, 1.1],   // 4th harmonic — two octaves
+  [6.0, 0.05, 0.5],   // 6th harmonic — a breath of sparkle, gone fast
 ];
 
 // notes: [start_ms, dur_ms, midi, velocity][]
