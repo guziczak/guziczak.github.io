@@ -200,8 +200,10 @@ const PROOF: Record<string, any> = {
       .slab--opisai { position: relative; overflow: hidden; }
       .opisai-bubble {
         position: absolute;
-        left: 50%;
-        top: 0.4rem;
+        left: 72%;
+        /* The floor: the ball rests here, ≈ the "Produkt komercyjny" / "AI-skryba…" line.
+           This single value is the floor height — nudge it to move the floor. */
+        top: 6.8rem;
         width: 5rem;
         height: 5rem;
         display: flex;
@@ -210,6 +212,7 @@ const PROOF: Record<string, any> = {
         justify-content: center;
         gap: 1px;
         border-radius: 50%;
+        transform-origin: 50% 100%;
         background:
           radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 45%),
           linear-gradient(150deg, #2563eb, #0ea5e9);
@@ -219,10 +222,8 @@ const PROOF: Record<string, any> = {
           0 0 28px rgba(14, 165, 233, 0.32);
         pointer-events: none;
         z-index: 1;
-        will-change: left, top;
-        animation:
-          opisaiBounceX 5.5s linear infinite alternate,
-          opisaiBounceY 2.3s linear infinite alternate;
+        will-change: transform;
+        animation: opisaiDunk 1.05s infinite;
       }
       .opisai-bubble__icon { width: 1.9rem; height: 1.9rem; display: block; }
       .opisai-bubble__label {
@@ -232,13 +233,18 @@ const PROOF: Record<string, any> = {
         line-height: 1;
         color: #fff;
       }
-      /* The ball sweeps the upper-right of the slab (beside the title) and reflects off
-         the walls. X and Y run at matched speed but different periods → a clean billiard
-         path that precesses to cover the box, rather than a fixed loop. */
-      @keyframes opisaiBounceX { from { left: 50%; } to { left: calc(100% - 5.4rem); } }
-      @keyframes opisaiBounceY { from { top: 0.4rem; } to { top: 48%; } }
+      /* A basketball: falls under "gravity" (accelerating), hits the floor and squashes,
+         then springs back up (decelerating). Purely vertical, in place — beside the title.
+         transform-origin is the bottom, so the squash flattens against the floor. */
+      @keyframes opisaiDunk {
+        0%   { transform: translateY(-4.2rem) scaleX(1) scaleY(1); animation-timing-function: cubic-bezier(0.5, 0, 1, 0.6); }
+        43%  { transform: translateY(0) scaleX(1) scaleY(1); animation-timing-function: ease-out; }
+        48%  { transform: translateY(0) scaleX(1.14) scaleY(0.82); animation-timing-function: ease-in; }
+        54%  { transform: translateY(0) scaleX(1) scaleY(1); animation-timing-function: cubic-bezier(0, 0.4, 0.5, 1); }
+        100% { transform: translateY(-4.2rem) scaleX(1) scaleY(1); }
+      }
       @media (max-width: 640px) {
-        .opisai-bubble { width: 4rem; height: 4rem; }
+        .opisai-bubble { width: 4rem; height: 4rem; top: 5.2rem; }
         .opisai-bubble__icon { width: 1.5rem; height: 1.5rem; }
       }
 
