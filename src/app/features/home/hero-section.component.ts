@@ -12,6 +12,7 @@ const MANIFESTO: Record<string, any> = {
     stamp: ['In the lab since 2016. In production since 2024. Not since ChatGPT.', 'Currently embedded at a bank — on-prem, regulated.'],
     lead: 'They say AI loses the thread past 1,000 lines of code.',
     punch: 'Cute',
+    num: '20,000',
     reframeA: "That's where I start — ", reframeB: ' lines. One file. One person.',
     proof1: ['A month to a working PoC.', 'Three to production.', 'No team.'],
     proof2: ['Their teams maintain it.', "I'm on the next."],
@@ -19,12 +20,13 @@ const MANIFESTO: Record<string, any> = {
     enter: 'Enter', cvText: 'The full CV', cvNote: "(You won't need it.)",
   },
   pl: {
-    stamp: ['W laboratorium od 2016. Na produkcji od 2024. Nie od ChatGPT.', 'Obecnie w banku — on-prem, regulowany.'],
+    stamp: ['Eksperymenty od 2016. Produkcja od 2024. Nie od ChatGPT.', 'Teraz w banku — on-prem, zaryglowany regulacjami.'],
     lead: 'Mówią, że AI gubi wątek po 1000 liniach kodu.',
     punch: 'Urocze',
-    reframeA: 'Ja tam zaczynam — ', reframeB: ' linii. Jeden plik. Jeden człowiek.',
+    num: '20 000',
+    reframeA: 'Dla mnie to rozgrzewka — ', reframeB: ' linii. Jeden plik. Jeden człowiek.',
     proof1: ['Miesiąc do działającego PoC.', 'Trzy do produkcji.', 'Bez zespołu.'],
-    proof2: ['Ich zespoły to utrzymują.', 'Ja jestem przy następnym.'],
+    proof2: ['Potem utrzymują to ich zespoły.', 'Mnie już tam nie ma.'],
     rest: 'Resztę mówi kod.',
     enter: 'Wejdź', cvText: 'Pełne CV', cvNote: '(Nie będzie ci potrzebne.)',
   },
@@ -32,6 +34,7 @@ const MANIFESTO: Record<string, any> = {
     stamp: ['Im Labor seit 2016. In Produktion seit 2024. Nicht seit ChatGPT.', 'Derzeit in einer Bank — On-Prem, reguliert.'],
     lead: 'Sie sagen, KI verliert den Faden nach 1.000 Zeilen Code.',
     punch: 'Niedlich',
+    num: '20.000',
     reframeA: 'Da fange ich an — ', reframeB: ' Zeilen. Eine Datei. Eine Person.',
     proof1: ['Ein Monat bis zum funktionierenden PoC.', 'Drei bis zur Produktion.', 'Kein Team.'],
     proof2: ['Ihre Teams pflegen es.', 'Ich bin schon beim nächsten.'],
@@ -65,7 +68,7 @@ const MANIFESTO: Record<string, any> = {
       <div class="manifesto__inner">
         <p class="manifesto__lead reveal" [class.is-in]="step() >= 2">{{ m().lead }}</p>
         <p class="manifesto__punch reveal" [class.is-in]="step() >= 3"><span class="manifesto__type">{{ typed() }}</span><span class="manifesto__dot" [class.manifesto__dot--period]="typedDone()" aria-hidden="true"></span></p>
-        <p class="manifesto__reframe reveal" [class.is-in]="step() >= 4">{{ m().reframeA }}<span class="manifesto__num">20,000</span>{{ m().reframeB }}</p>
+        <p class="manifesto__reframe reveal" [class.is-in]="step() >= 4">{{ m().reframeA }}<span class="manifesto__num">{{ m().num }}</span>{{ m().reframeB }}</p>
         <p class="manifesto__proof" [class.is-in]="step() >= 5">
           <span class="manifesto__proof-line" *ngFor="let s of m().proof1">{{ s }}</span>
         </p>
@@ -84,23 +87,25 @@ const MANIFESTO: Record<string, any> = {
         </div>
       </div>
 
-      <div class="manifesto__social reveal" [class.is-in]="step() >= 8">
-        <a [href]="contact.github" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><i class="fab fa-github"></i></a>
-        <a [href]="contact.linkedin" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-        <a [href]="'mailto:' + contact.email" aria-label="Email"><i class="fas fa-envelope"></i></a>
-      </div>
+      <footer class="manifesto__footer">
+        <div class="manifesto__social reveal" [class.is-in]="step() >= 8">
+          <a [href]="contact.github" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><i class="fab fa-github"></i></a>
+          <a [href]="contact.linkedin" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+          <a [href]="'mailto:' + contact.email" aria-label="Email"><i class="fas fa-envelope"></i></a>
+        </div>
 
-      <button class="manifesto__music reveal" type="button"
-              [class.is-in]="step() >= 8"
-              [class.is-playing]="musicOn()" (click)="toggleMusic()"
-              [attr.aria-pressed]="musicOn()"
-              aria-label="Play 'Lux in tenebris' (światło w ciemności) — composed by Łukasz Guziczak &amp; Opus 4.6, synthesised live">
-        <span class="manifesto__eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span class="manifesto__music-text">
-          <span class="manifesto__music-title">Lux in tenebris</span>
-          <span class="manifesto__music-credit">Łukasz Guziczak &amp; Opus 4.6</span>
-        </span>
-      </button>
+        <button class="manifesto__music reveal" type="button"
+                [class.is-in]="step() >= 8"
+                [class.is-playing]="musicOn()" (click)="toggleMusic()"
+                [attr.aria-pressed]="musicOn()"
+                aria-label="Play 'Lux in tenebris' (światło w ciemności) — composed by Łukasz Guziczak &amp; Opus 4.6, synthesised live">
+          <span class="manifesto__eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span class="manifesto__music-text">
+            <span class="manifesto__music-title">Lux in tenebris</span>
+            <span class="manifesto__music-credit">Łukasz Guziczak &amp; Opus 4.6</span>
+          </span>
+        </button>
+      </footer>
     </section>
     <app-staff-visualizer [notes]="notes || []" [player]="player" [active]="musicOn()" [beatMs]="beatMs" />
   `,
@@ -108,16 +113,15 @@ const MANIFESTO: Record<string, any> = {
     `
       .manifesto {
         position: relative;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        /* flex-start, not center: the inner block centres itself via margin-block:auto
-           when there's room, but on short viewports it pins to the top (clearing the
-           absolute stamp) and the page scrolls — instead of riding up over the stamp. */
-        justify-content: flex-start;
-        /* Top padding reserves the stamp's zone so centred/pinned content never collides
-           with it; sides/bottom keep the original rhythm. */
-        padding: clamp(7.5rem, 12vh, 9rem) clamp(2rem, 6vw, 6rem) clamp(2rem, 6vw, 6rem);
+        min-height: 100dvh;
+        /* Three rows — stamp / manifesto / footer — all in normal flow, so the badges
+           can never collide with the text. The middle (1fr) row swallows the slack and
+           centres its content; when the manifesto is taller than the screen the whole
+           section simply grows and the page scrolls. */
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: clamp(1.5rem, 4vh, 3rem);
+        padding: clamp(2rem, 5vh, 3.5rem) clamp(2rem, 6vw, 6rem);
         overflow: hidden;
         background:
           radial-gradient(1200px 600px at 70% -10%, rgba(56, 189, 248, 0.06), transparent 60%),
@@ -150,10 +154,7 @@ const MANIFESTO: Record<string, any> = {
       }
 
       .manifesto__stamp {
-        position: absolute;
-        top: clamp(2rem, 5vh, 3.5rem);
-        left: clamp(2rem, 6vw, 6rem);
-        right: clamp(2rem, 6vw, 6rem);
+        align-self: start;
         display: flex;
         flex-direction: column;
         gap: 2px;
@@ -174,9 +175,8 @@ const MANIFESTO: Record<string, any> = {
         position: relative;
         z-index: 2;
         max-width: 56rem;
-        /* Centre vertically when there's free space; collapse to 0 (pin to top) when the
-           content is taller than the viewport, so it never overflows up into the stamp. */
-        margin-block: auto;
+        /* Lives in the middle (1fr) row and centres in whatever slack it's given. */
+        align-self: center;
       }
       /* Guided reveal — each line settles into focus on its own beat (driven by \`step\`).
          Active only while the JS sequence runs (.is-seq); without it (no-JS / SSR /
@@ -374,10 +374,15 @@ const MANIFESTO: Record<string, any> = {
       .manifesto__cv:hover { color: var(--text-primary); }
       .manifesto__cv-note { color: var(--text-tertiary); }
 
+      /* The footer row — social on the left, the bell on the right, in flow. */
+      .manifesto__footer {
+        align-self: end;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+      }
       .manifesto__social {
-        position: absolute;
-        bottom: clamp(1.5rem, 4vw, 3rem);
-        left: clamp(2rem, 6vw, 6rem);
         display: flex;
         gap: 1.4rem;
         z-index: 2;
@@ -394,9 +399,6 @@ const MANIFESTO: Record<string, any> = {
 
       /* The bell — Łukasz's own composition, opt-in, off by default. */
       .manifesto__music {
-        position: absolute;
-        bottom: clamp(1.5rem, 4vw, 3rem);
-        right: clamp(2rem, 6vw, 6rem);
         z-index: 2;
         display: inline-flex;
         align-items: center;
@@ -448,20 +450,15 @@ const MANIFESTO: Record<string, any> = {
       @keyframes eqBar { 0%, 100% { height: 3px; } 50% { height: 11px; } }
 
       @media (max-width: 640px) {
-        .manifesto {
-          justify-content: flex-start;
-          padding-top: 3.5rem;
+        .manifesto__stamp { font-size: 0.68rem; }
+        /* Pin the block under the stamp instead of centring it in the tall middle row. */
+        .manifesto__inner { align-self: start; }
+        /* Stack the footer so the bell isn't squeezed against the icons. */
+        .manifesto__footer {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1.5rem;
         }
-        /* Stamp is back in flow here; drop the auto-centring so the block stays stacked
-           directly under it instead of floating to the middle. */
-        .manifesto__inner { margin-block: 0; }
-        .manifesto__stamp {
-          position: static;
-          font-size: 0.68rem;
-          margin-bottom: 2.25rem;
-        }
-        .manifesto__social { position: static; margin-top: 2.5rem; }
-        .manifesto__music { position: static; align-self: flex-start; margin-top: 1.5rem; }
       }
     `,
   ],

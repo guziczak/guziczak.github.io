@@ -10,6 +10,21 @@ export interface SwiatloPlayer {
   position(): number;
 }
 
+// A bronze cathedral bell, by its partials. Real bells are inharmonic: the famous
+// minor-third "tierce" is what gives them their sacred, slightly mournful colour,
+// and every partial decays at its own rate — strike tones fast, the hum long.
+// [ratio relative to the named pitch, gain, decay seconds]
+const BELL_PARTIALS: [number, number, number][] = [
+  [0.5, 0.45, 7.0],   // hum — an octave below the pitch, rings longest
+  [1.0, 1.0, 5.0],    // prime — the note you name
+  [1.2, 0.55, 3.6],   // tierce — the minor third, the bell's soul
+  [1.5, 0.28, 2.6],   // quint — the fifth
+  [2.0, 0.5, 2.4],    // nominal — the octave, anchors the perceived pitch
+  [2.55, 0.22, 1.3],  // superquint — strike shimmer
+  [3.0, 0.14, 0.9],
+  [4.2, 0.09, 0.45],  // top sparkle, gone in a blink
+];
+
 // notes: [start_ms, dur_ms, midi, velocity][]
 export function createSwiatlo(
   notes: number[][],
@@ -50,71 +65,94 @@ export function createSwiatlo(
     bus = ctx.createGain();
     bus.gain.value = 0.0001;
 
+    // Let the strike shimmer through, but stop short of digital glare.
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 5500;
-    lp.Q.value = 0.6;
+    lp.frequency.value = 6800;
+    lp.Q.value = 0.5;
 
     const dry = ctx.createGain();
-    dry.gain.value = 0.74;
+    dry.gain.value = 0.72;
+
+    // The nave: a long stone reverb. High-pass the SEND so the low hum blooms in
+    // the air instead of turning the tail to mud.
+    const send = ctx.createBiquadFilter();
+    send.type = 'highpass';
+    send.frequency.value = 260;
+    send.Q.value = 0.5;
     const conv = ctx.createConvolver();
-    conv.buffer = makeImpulse(2.8, 3.0);
+    conv.buffer = makeImpulse(3.6, 2.6);
     const wet = ctx.createGain();
-    wet.gain.value = 0.42;
+    wet.gain.value = 0.5;
 
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -20;
     comp.knee.value = 14;
     comp.ratio.value = 3;
     comp.attack.value = 0.008;
-    comp.release.value = 0.22;
+    comp.release.value = 0.25;
 
     const master = ctx.createGain();
-    master.gain.value = 0.85;
+    master.gain.value = 0.8;
+
+    // Brickwall limiter — strikes ringing on top of each other must never clip.
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -2;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.1;
 
     bus.connect(lp);
     lp.connect(dry);
     dry.connect(comp);
-    lp.connect(conv);
+    lp.connect(send);
+    send.connect(conv);
     conv.connect(wet);
     wet.connect(comp);
     comp.connect(master);
-    master.connect(ctx.destination);
+    master.connect(limiter);
+    limiter.connect(ctx.destination);
   }
 
   function voice(when: number, durS: number, midi: number, vel: number) {
     const f = midiToFreq(midi);
-    const amp = Math.pow(vel / 127, 1.3) * 0.16;
-    const a = 0.012,
-      d = 0.16,
-      s = 0.55,
-      r = 0.42;
+    const velN = Math.pow(vel / 127, 1.3);
+    const amp = velN * 0.13;
+    const bright = 0.35 + 0.65 * velN; // a harder strike rings brighter (more upper partials)
     const on = when;
-    const off = when + Math.max(durS, 0.08);
 
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, on);
-    g.gain.exponentialRampToValueAtTime(amp, on + a);
-    g.gain.exponentialRampToValueAtTime(Math.max(amp * s, 0.0001), on + a + d);
-    g.gain.setValueAtTime(Math.max(amp * s, 0.0001), off);
-    g.gain.exponentialRampToValueAtTime(0.0001, off + r);
-    g.connect(bus);
+    // Per-strike head gain + a touch of stereo placement: width without losing the centre.
+    const head = ctx.createGain();
+    head.gain.value = amp;
+    if (ctx.createStereoPanner) {
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = Math.max(-0.6, Math.min(0.6,
+        ((midi % 12) - 5.5) / 14 + (Math.random() - 0.5) * 0.18));
+      head.connect(pan);
+      pan.connect(bus);
+    } else {
+      head.connect(bus);
+    }
 
-    const osc = (type: string, mul: number, detune: number, gain: number) => {
+    // Each partial is its own struck sine: instant attack, then an exponential decay
+    // whose length is set per-partial — high strike tones die fast, the hum rings on.
+    for (const [ratio, g, decay] of BELL_PARTIALS) {
       const o = ctx.createOscillator();
-      o.type = type;
-      o.frequency.value = f * mul;
-      o.detune.value = detune;
-      const og = ctx.createGain();
-      og.gain.value = gain;
-      o.connect(og);
-      og.connect(g);
+      o.type = 'sine';
+      o.frequency.value = f * ratio;
+      o.detune.value = (Math.random() - 0.5) * 4; // micro-detune: cast bronze, not a sine bank
+      const pg = ctx.createGain();
+      const peak = Math.max(g * (ratio >= 2 ? bright : 1), 0.0001);
+      const ring = decay * (0.85 + 0.3 * (Math.min(durS, 2) / 2)); // longer notes ring a touch longer
+      pg.gain.setValueAtTime(0.0001, on);
+      pg.gain.exponentialRampToValueAtTime(peak, on + 0.004);
+      pg.gain.exponentialRampToValueAtTime(0.0001, on + 0.004 + ring);
+      o.connect(pg);
+      pg.connect(head);
       o.start(on);
-      o.stop(off + r + 0.05);
-    };
-    osc('triangle', 1, 0, 0.55);
-    osc('sine', 1, 6, 0.5);
-    if (midi >= 60) osc('sine', 2, 0, 0.07);
+      o.stop(on + 0.004 + ring + 0.05);
+    }
   }
 
   function tick() {
