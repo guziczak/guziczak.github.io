@@ -75,15 +75,17 @@ const MANIFESTO: Record<string, any> = {
         <p class="manifesto__proof" [class.is-in]="step() >= 5">
           <span class="manifesto__proof-line" *ngFor="let s of m().proof1">{{ s }}</span>
         </p>
-        <p class="manifesto__proof" [class.is-in]="step() >= 6">
-          <span class="manifesto__proof-line" *ngFor="let s of m().proof2">{{ s }}</span>
-        </p>
+        <div class="manifesto__coda">
+          <p class="manifesto__proof" [class.is-in]="step() >= 6">
+            <span class="manifesto__proof-line" *ngFor="let s of m().proof2">{{ s }}</span>
+          </p>
+          <button (click)="enter()" class="manifesto__enter reveal" [class.is-in]="step() >= 8">
+            {{ m().enter }} <span class="manifesto__arrow">↓</span>
+          </button>
+        </div>
         <p class="manifesto__rest reveal" [class.is-in]="step() >= 7">{{ m().rest }}</p>
 
         <div class="manifesto__cta reveal" [class.is-in]="step() >= 8">
-          <button (click)="enter()" class="manifesto__enter">
-            {{ m().enter }} <span class="manifesto__arrow">↓</span>
-          </button>
           <a href="/cv" target="_blank" rel="noopener noreferrer" class="manifesto__cv">
             {{ m().cvText }} <span class="manifesto__cv-note">{{ m().cvNote }}</span>
           </a>
@@ -340,6 +342,18 @@ const MANIFESTO: Record<string, any> = {
         color: var(--color-primary-light);
         margin: 1.4rem 0 2.4rem;
       }
+
+      /* The coda — proof2 on the left, the "Wejdź ↓" button lifted up to its right
+         (instead of sitting alone at the bottom). Stacks under the lines on narrow screens. */
+      .manifesto__coda {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.25rem 2.5rem;
+        flex-wrap: wrap;
+      }
+      .manifesto__coda .manifesto__proof { margin-bottom: 0; }
+      .manifesto__coda .manifesto__enter { white-space: nowrap; }
 
       .manifesto__cta {
         display: flex;

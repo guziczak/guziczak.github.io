@@ -29,7 +29,8 @@ const TREB_MID = 34; // B4 — middle line of the treble staff
 const BASS_MID = 22; // D3 — middle line of the bass staff
 // chromatic pitch-class → natural letter step (C D E F G A B = 0..6)
 const PCMAP = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
-const ACC = '56,189,248'; // accent rgb
+const ACC = '56,189,248'; // accent rgb (the notes — cold, warming to gold by velocity)
+const PARCH = '214,184,134'; // warm parchment — the candlelit staff structure
 
 // Clefs and time-signature "4" — baked Bravura (SMuFL) outlines, so they sit exactly
 // where real engraving puts them and look identical on every device. No font is
@@ -66,7 +67,7 @@ interface Glyph {
         bottom: clamp(1rem, 4vh, 2.75rem);
         transform: translateX(-50%);
         width: min(820px, 92vw);
-        height: 190px;
+        height: 150px;
         /* Sits BEHIND the manifesto text (z-index 2) but above the section background — the
            score shows through the type instead of overprinting the CTA. Over the other
            (non-positioned) sections it still floats at the foot as before. */
@@ -74,10 +75,9 @@ interface Glyph {
         pointer-events: none;
         opacity: 0;
         transition: opacity 0.7s ease;
-        /* fade only the right edge so notes drift in gently; the left stays
-           crisp for the clef (notes dissolve into it via canvas alpha). */
-        -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 85%, transparent 100%);
-        mask-image: linear-gradient(90deg, #000 0%, #000 85%, transparent 100%);
+        /* both ends dissolve into the dark of the nave — soft, like a burnt manuscript. */
+        -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 88%, transparent 100%);
+        mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 88%, transparent 100%);
       }
       .staff.on {
         opacity: 1;
@@ -89,7 +89,7 @@ interface Glyph {
       }
       @media (max-width: 640px) {
         .staff {
-          height: 150px;
+          height: 125px;
           bottom: 0.75rem;
           width: 94vw;
         }
@@ -280,7 +280,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     g.fillStyle = bg;
     g.fillRect(0, 0, W, H);
 
-    const gap = clamp(H / 16.5, 7, 11);
+    const gap = clamp(H / 16.5, 6.5, 10);
     const half = gap / 2;
     // One continuous pitch axis carries both staves; middle C (C4) is its centre —
     // the ledger line floating in the gap between the treble and bass staves.
@@ -307,25 +307,29 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     const barMs = this.beatMs * this.beatsPerBar;
     const lead = barMs / 1000; // visual count-in window (one bar): the score rolls in during it
 
-    // the grand staff — two five-line staves
-    g.lineWidth = 1;
-    g.strokeStyle = 'rgba(' + ACC + ',0.2)';
+    // the grand staff — two five-line staves drawn as candlelit parchment: hair-thin lines
+    // that dissolve into the dark at BOTH ends (fade points jittered per line, so the edge
+    // frays softly like a burnt manuscript) and glow brightest through the centre pool.
+    g.lineWidth = 0.75;
     for (const lines of [trebleLines, bassLines]) {
       for (const st of lines) {
         const y = yOf(st);
+        const xIn = Math.max(0.02, 0.055 + this.jit(st * 1.7 + 2.3) * 0.025);
+        const xOut = Math.min(0.985, 0.83 + this.jit(st * 2.9 + 5.1) * 0.05);
+        const grad = g.createLinearGradient(0, 0, W, 0);
+        grad.addColorStop(0, 'rgba(' + PARCH + ',0)');
+        grad.addColorStop(xIn, 'rgba(' + PARCH + ',0.15)');
+        grad.addColorStop(0.5, 'rgba(' + PARCH + ',0.22)'); // candlelight pool
+        grad.addColorStop(xOut, 'rgba(' + PARCH + ',0.12)');
+        grad.addColorStop(1, 'rgba(' + PARCH + ',0)');
+        g.strokeStyle = grad;
         g.beginPath();
         g.moveTo(0, y);
         g.lineTo(W, y);
         g.stroke();
       }
     }
-    // a hairline at the very left binds the two staves into one system
-    g.strokeStyle = 'rgba(' + ACC + ',0.28)';
-    g.lineWidth = 1.25;
-    g.beginPath();
-    g.moveTo(1, sysTop);
-    g.lineTo(1, sysBot);
-    g.stroke();
+    // (no hard binding bar — the dissolve keeps both ends of the system soft)
 
     const pos = this.player ? this.player.position() : -1;
 
@@ -336,7 +340,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
         if (x > W + 2) break;
         if (x < fadeStart - 2) continue;
         const a = clamp((x - fadeStart) / fadeLen, 0, 1) * 0.15;
-        g.strokeStyle = 'rgba(' + ACC + ',' + a.toFixed(3) + ')';
+        g.strokeStyle = 'rgba(' + PARCH + ',' + a.toFixed(3) + ')';
         g.beginPath();
         g.moveTo(x, sysTop);
         g.lineTo(x, sysBot);
@@ -345,13 +349,13 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     }
 
     // playhead — "now"
-    g.strokeStyle = 'rgba(' + ACC + ',0.26)';
+    g.strokeStyle = 'rgba(' + PARCH + ',0.26)';
     g.lineWidth = 1.25;
     g.beginPath();
     g.moveTo(headX, sysTop - half);
     g.lineTo(headX, sysBot + half);
     g.stroke();
-    g.fillStyle = 'rgba(' + ACC + ',0.5)';
+    g.fillStyle = 'rgba(' + PARCH + ',0.5)';
     g.beginPath();
     g.arc(headX, sysTop - half, 1.8, 0, Math.PI * 2);
     g.fill();
@@ -363,7 +367,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     if (!this.gClef) this.gClef = new Path2D(GCLEF_PATH);
     if (!this.fClef) this.fClef = new Path2D(FCLEF_PATH);
     if (!this.ts4) this.ts4 = new Path2D(TS4_PATH);
-    g.fillStyle = 'rgba(' + ACC + ',0.5)';
+    g.fillStyle = 'rgba(' + PARCH + ',0.5)';
     g.save();
     g.translate(4, gLineY);
     g.scale(glyphScale, glyphScale);
@@ -374,7 +378,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     g.scale(glyphScale, -glyphScale); // raw font path is y-up; flip it onto the canvas
     g.fill(this.fClef);
     g.restore();
-    g.fillStyle = 'rgba(' + ACC + ',0.46)';
+    g.fillStyle = 'rgba(' + PARCH + ',0.46)';
     for (const midStep of [TREB_MID, BASS_MID]) {
       for (const cy of [yOf(midStep) - gap, yOf(midStep) + gap]) {
         g.save();
@@ -482,7 +486,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     const nrx = 4.6;
 
     // ledger lines above / below (capped so extremes never sprawl)
-    g.strokeStyle = 'rgba(' + ACC + ',' + (a * 0.5).toFixed(3) + ')';
+    g.strokeStyle = 'rgba(' + PARCH + ',' + (a * 0.5).toFixed(3) + ')';
     g.lineWidth = 1;
     let c = 0;
     for (let ly = staffTop - gap; ly >= y - 0.5 && c < 5; ly -= gap, c++) {
