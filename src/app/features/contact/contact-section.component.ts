@@ -73,13 +73,45 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
         margin: 0 auto;
         transition-duration: 1.15s; /* a slower, more solemn rise than the rest of the page */
       }
-      /* the shaft — a sliver of light falling into the call */
+      /* the candle — lux in tenebris made literal: a single flame in the dark nave,
+         its light trailing down toward the call, its glow the halo on the apse. */
       .exit__shaft {
+        position: relative;
         display: block;
-        width: 1px;
+        width: 2px;
         height: clamp(2.5rem, 8vh, 5rem);
         margin: 0 auto clamp(1.5rem, 4vh, 2.5rem);
-        background: linear-gradient(to bottom, transparent, rgba(245, 206, 140, 0.75));
+        border-radius: 1px;
+        /* brightest just under the flame, fading down into the dark */
+        background: linear-gradient(to bottom, rgba(245, 206, 140, 0.8), rgba(245, 206, 140, 0.04));
+      }
+      .exit__shaft::before {
+        /* the flame */
+        content: '';
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        width: 7px;
+        height: 13px;
+        transform: translateX(-50%);
+        border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+        background: radial-gradient(
+          circle at 50% 66%,
+          #fff6e0,
+          rgba(245, 206, 140, 0.92) 45%,
+          rgba(245, 170, 80, 0) 76%
+        );
+        box-shadow: 0 0 14px 4px rgba(245, 206, 140, 0.5);
+        transform-origin: 50% 100%;
+        animation: candleFlicker 2.6s ease-in-out infinite;
+      }
+      @keyframes candleFlicker {
+        0%, 100% { opacity: 0.85; transform: translateX(-50%) scaleY(1) scaleX(1); }
+        45% { opacity: 1; transform: translateX(-50%) scaleY(1.14) scaleX(0.95); }
+        72% { opacity: 0.9; transform: translateX(-50%) scaleY(0.95) scaleX(1.04); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .exit__shaft::before { animation: none; }
       }
       .exit__line {
         color: var(--text-tertiary);
