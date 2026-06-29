@@ -19,6 +19,7 @@ const MANIFESTO: Record<string, any> = {
     proof2: ['Their teams maintain it.', "I'm on the next."],
     rest: 'The code says the rest.',
     enter: 'Enter', cvText: 'The full CV', cvNote: "(You won't need it.)",
+    cue: 'Tap to begin', cueSub: 'with sound · Lux in tenebris',
   },
   pl: {
     stamp: ['Eksperymenty od 2016. Produkcja od 2024. ', 'Teraz w banku — on-prem, zaryglowany regulacjami.'], stampPunch: 'Nie od ChatGPT.',
@@ -30,6 +31,7 @@ const MANIFESTO: Record<string, any> = {
     proof2: ['Potem utrzymują to ich zespoły.', 'Ja już robię następny.'],
     rest: 'Resztę mówi kod.',
     enter: 'Wejdź', cvText: 'Pełne CV', cvNote: '(Nie będzie ci potrzebne.)',
+    cue: 'Dotknij, żeby zacząć', cueSub: 'z dźwiękiem · Lux in tenebris',
   },
   de: {
     stamp: ['Im Labor seit 2016. In Produktion seit 2024. ', 'Derzeit in einer Bank — On-Prem, reguliert.'], stampPunch: 'Nicht seit ChatGPT.',
@@ -41,6 +43,7 @@ const MANIFESTO: Record<string, any> = {
     proof2: ['Ihre Teams pflegen es.', 'Ich bin schon beim nächsten.'],
     rest: 'Den Rest sagt der Code.',
     enter: 'Eintreten', cvText: 'Der vollständige Lebenslauf', cvNote: '(Sie werden ihn nicht brauchen.)',
+    cue: 'Zum Starten tippen', cueSub: 'mit Ton · Lux in tenebris',
   },
 };
 
@@ -60,6 +63,15 @@ const MANIFESTO: Record<string, any> = {
         <pre>{{ codeLoop }}</pre>
       </div>
 
+      <!-- The gate: the manifesto stays dark until the first touch, which also lifts the music.
+           pointer-events:none → the tap falls through to the document 'kick' (ngAfterViewInit)
+           that starts everything; this is purely the invitation. Absent without JS / reduced motion. -->
+      <div class="manifesto__gate" [class.is-dismissed]="started()" *ngIf="animate()">
+        <span class="manifesto__gate-pulse" aria-hidden="true"></span>
+        <span class="manifesto__gate-cue">{{ m().cue }}</span>
+        <span class="manifesto__gate-sub">{{ m().cueSub }}</span>
+      </div>
+
       <div class="manifesto__stamp reveal" [class.is-in]="step() >= 1">
         <span class="manifesto__kicker">Łukasz Guziczak · AI Engineer</span>
         <span>{{ m().stamp[0] }}<strong class="manifesto__stamp-punch">{{ m().stampPunch }}</strong></span>
@@ -69,7 +81,7 @@ const MANIFESTO: Record<string, any> = {
       <div class="manifesto__inner">
         <p class="manifesto__lead reveal" [class.is-in]="step() >= 2">{{ m().lead }}</p>
         <p class="manifesto__punch reveal" [class.is-in]="step() >= 3"><span class="manifesto__type">{{ typed() }}</span><span class="manifesto__dot" [class.manifesto__dot--period]="typedDone()" aria-hidden="true"></span></p>
-        <p class="manifesto__reframe reveal" [class.is-in]="step() >= 4">
+        <p class="manifesto__reframe" [class.is-in]="step() >= 4">
           <span class="manifesto__reframe-line">{{ m().reframeA }}<span class="manifesto__num">{{ m().num }}</span>{{ m().reframeB }}</span>
           <span class="manifesto__reframe-line" *ngFor="let l of m().reframeTail">{{ l }}</span>
         </p>
@@ -217,6 +229,69 @@ const MANIFESTO: Record<string, any> = {
         }
       }
 
+      /* The gate — a dark invitation centred over the (still-hidden) manifesto. The first touch
+         anywhere lifts it (and the music); pointer-events:none lets that tap fall through to the
+         document 'kick'. Only present while the JS sequence is armed (*ngIf animate). */
+      .manifesto__gate {
+        position: absolute;
+        inset: 0;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.95rem;
+        padding: 2rem;
+        text-align: center;
+        pointer-events: none;
+        opacity: 1;
+        transition: opacity 0.55s ease;
+        animation: gateIn 1.1s ease;
+      }
+      .manifesto__gate.is-dismissed { opacity: 0; }
+      .manifesto__gate-pulse {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: var(--color-primary);
+        box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.5);
+        animation: gatePulse 2.1s ease-out infinite;
+      }
+      .manifesto__gate-cue {
+        font-size: clamp(1.6rem, 4.5vw, 2.6rem);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--text-primary);
+      }
+      .manifesto__gate-sub {
+        font-size: clamp(0.78rem, 2vw, 0.92rem);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-tertiary);
+      }
+      @keyframes gateIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes gatePulse {
+        0%   { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.5); transform: scale(1); }
+        70%  { box-shadow: 0 0 0 22px rgba(56, 189, 248, 0); transform: scale(1.06); }
+        100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); transform: scale(1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .manifesto__gate-pulse { animation: none; }
+        .manifesto__gate { animation: none; }
+      }
+
+      /* styles.scss blankets every p/span/a/button on the page with
+         \`animation: fadeInUp … forwards\`, which pins them to opacity:1 and (being an animation)
+         overrides the step reveal — text leaked through the gate. Cancel it on the manifesto's
+         sequenced elements so \`step\` owns visibility here, through transitions, not a global fade. */
+      .manifesto.is-seq .reveal,
+      .manifesto.is-seq .manifesto__reframe,
+      .manifesto.is-seq .manifesto__reframe-line,
+      .manifesto.is-seq .manifesto__num,
+      .manifesto.is-seq .manifesto__proof,
+      .manifesto.is-seq .manifesto__proof-line {
+        animation: none;
+      }
       .manifesto__lead {
         font-size: clamp(1.1rem, 2.4vw, 1.6rem);
         font-weight: 400;
@@ -267,6 +342,36 @@ const MANIFESTO: Record<string, any> = {
         margin-bottom: 1.6rem;
       }
       .manifesto__reframe-line { display: block; text-wrap: balance; }
+      /* The three reframe lines cascade one after another (mirrors the proof lines), so
+         "20 000 linii — to dopiero rozgrzewka." / "Jeden plik." / "Jeden człowiek." step in
+         on their own beats instead of popping as a block. */
+      .manifesto.is-seq .manifesto__reframe-line {
+        opacity: 0;
+        transform: translateY(10px);
+        filter: blur(5px);
+        /* Hidden via clip-path, not opacity alone: at rest these spans compute to opacity:1
+           despite the rule above (a JS/animation effect overrides it), so clipping to zero
+           width is what actually keeps them dark until their beat — same trick as proof-line. */
+        clip-path: inset(-35% 100% -35% 0);
+        transition:
+          opacity 0.7s ease,
+          transform 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+          filter 0.7s ease,
+          clip-path 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .manifesto.is-seq .manifesto__reframe.is-in .manifesto__reframe-line {
+        opacity: 1;
+        transform: none;
+        filter: blur(0);
+        clip-path: inset(-35% 0 -35% 0);
+      }
+      .manifesto.is-seq .manifesto__reframe.is-in .manifesto__reframe-line:nth-child(2) { transition-delay: 0.34s; }
+      .manifesto.is-seq .manifesto__reframe.is-in .manifesto__reframe-line:nth-child(3) { transition-delay: 0.68s; }
+      @media (prefers-reduced-motion: reduce) {
+        .manifesto.is-seq .manifesto__reframe-line {
+          opacity: 1; transform: none; filter: none; transition: none;
+        }
+      }
       .manifesto__num {
         color: var(--color-primary);
         text-shadow: 0 0 28px rgba(56, 189, 248, 0.45);
@@ -534,15 +639,21 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   // `animate` is false for no-JS / SSR / reduced motion (whole manifesto shown at once).
   protected readonly step = signal(0);
   protected readonly animate = signal(false);
+  // Gated until the first touch: while false nothing reveals and the dark invitation shows.
+  protected readonly started = signal(false);
   protected readonly typed = signal('');
   protected readonly typedDone = signal(false);
+  private firstTypeAfterStart = true;
 
-  // Absolute ms from load when each line settles in — tune freely, lower = brisker.
-  // The punch starts typing exactly when its line appears (REVEAL_MS.punch).
-  private readonly REVEAL_MS = {
-    stamp: 250, lead: 1450, punch: 2950, reframe: 4350,
-    proof1: 5850, proof2: 7500, rest: 9100, cta: 10100,
+  // Reveal cadence in BEATS from the gate lift, so the guided read locks to the score's tempo
+  // (beatMs is refined from the score on load). Each line settles on its own beat.
+  private readonly REVEAL_BEATS = {
+    stamp: 0.5, lead: 2.5, punch: 5, reframe: 7.5,
+    proof1: 10, proof2: 13, rest: 15.5, cta: 17.5,
   };
+  private beatsToMs(beats: number): number {
+    return Math.round(beats * this.beatMs);
+  }
   private static readonly MAX_STEP = 8;
 
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -558,7 +669,6 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       hasWin && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
     // The punch types itself in — on load when its line appears, and on every language change.
-    let firstType = true;
     effect((onCleanup) => {
       const word = this.m().punch as string;
       if (!hasWin || reduce) {
@@ -566,22 +676,27 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
         this.typedDone.set(true);
         return;
       }
-      const delay = firstType ? this.REVEAL_MS.punch : 250;
-      firstType = false;
+      if (!this.started()) {
+        this.typed.set('');
+        this.typedDone.set(false);
+        return;
+      }
+      const delay = this.firstTypeAfterStart ? this.beatsToMs(this.REVEAL_BEATS.punch) : 250;
+      this.firstTypeAfterStart = false;
       onCleanup(this.typeWord(word, delay));
     });
 
     if (!hasWin || reduce) {
-      // No guided sequence: show the whole manifesto immediately.
+      // No guided sequence: show the whole manifesto immediately (also covers SSR / no-JS).
       this.animate.set(false);
       this.step.set(HeroSectionComponent.MAX_STEP);
       this.typed.set(this.m().punch as string);
       this.typedDone.set(true);
     } else {
-      // Hidden initial state is set before first paint; then walk the beats.
+      // Armed but dark: nothing reveals until the first touch (the 'kick' in ngAfterViewInit),
+      // which lifts the music and walks the beats together.
       this.animate.set(true);
       this.step.set(0);
-      this.startReveal();
     }
   }
 
@@ -604,13 +719,13 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     return () => clearTimeout(this.punchTimer);
   }
 
-  /** Reveal one line per beat, in reading order. */
+  /** Reveal one line per beat, in reading order — called when the gate lifts. */
   private startReveal(): void {
-    const at = (ms: number, s: number) =>
-      this.timers.push(setTimeout(() => this.step.set(s), ms));
-    const R = this.REVEAL_MS;
-    at(R.stamp, 1); at(R.lead, 2); at(R.punch, 3); at(R.reframe, 4);
-    at(R.proof1, 5); at(R.proof2, 6); at(R.rest, 7); at(R.cta, 8);
+    const at = (beats: number, s: number) =>
+      this.timers.push(setTimeout(() => this.step.set(s), this.beatsToMs(beats)));
+    const B = this.REVEAL_BEATS;
+    at(B.stamp, 1); at(B.lead, 2); at(B.punch, 3); at(B.reframe, 4);
+    at(B.proof1, 5); at(B.proof2, 6); at(B.rest, 7); at(B.cta, 8);
   }
 
   /** Fill the manifesto in now — when the reader scrolls/taps/keys before it finishes. */
@@ -638,17 +753,8 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       if (this.player?.isPlaying()) this.player.toggle();
     });
 
-    // Let an impatient reader fast-forward the intro by scrolling. NOT on click/tap/key —
-    // that gesture starts the music (below) and must not skip the guided read.
-    if (this.animate()) {
-      const skip = () => {
-        this.revealAll();
-        this.removeSkip();
-      };
-      this.skip = skip;
-      window.addEventListener('wheel', skip, { passive: true });
-      window.addEventListener('touchmove', skip, { passive: true });
-    }
+    // Scroll-to-skip is wired only after the gate lifts (attachSkip), so a pre-tap scroll never
+    // reveals the manifesto without the music it is choreographed to.
 
     // Load Łukasz's composition for opt-in playback (the bell — never autoplays).
     fetch('swiatlo.json')
@@ -666,6 +772,13 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       const target = e.target as HTMLElement | null;
       if (target && target.closest && target.closest('.manifesto__music')) return; // the bell handles itself
       if (this.player && this.player.isPlaying()) { this.removeKick?.(); return; }
+      // The first gesture lifts the gate: the guided read + music begin together. The read
+      // starts even if the score has not loaded yet; the music catches up on a later gesture.
+      if (this.animate() && !this.started()) {
+        this.started.set(true);
+        this.startReveal();
+        this.attachSkip();
+      }
       if (!this.notes || starting) return; // score not loaded yet → a later gesture retries
       starting = true;
       setTimeout(() => (starting = false), 500); // iOS may not unlock on the 1st gesture — allow a retry
@@ -697,6 +810,18 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       clearInterval(this.musicSaveTimer);
       this.musicSaveTimer = undefined;
     }
+  }
+
+  /** After the gate lifts, let an impatient reader fast-forward the guided read by scrolling. */
+  private attachSkip(): void {
+    if (this.skip) return;
+    const skip = () => {
+      this.revealAll();
+      this.removeSkip();
+    };
+    this.skip = skip;
+    window.addEventListener('wheel', skip, { passive: true });
+    window.addEventListener('touchmove', skip, { passive: true });
   }
 
   private removeSkip(): void {
