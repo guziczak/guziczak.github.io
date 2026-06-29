@@ -1,4 +1,4 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
 import { LanguageService } from '../../core/services/language.service';
@@ -50,6 +50,21 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
         padding: clamp(8rem, 22vh, 15rem) clamp(1.5rem, 6vw, 6rem);
         background: transparent;
         text-align: center;
+      }
+      /* At the altar the machinery falls silent: a soft pool of dark lets the drifting code
+         recede to black around the call (it still whispers at the apse's edges). Sits over the
+         page's code-backdrop, under the halo and the text — so only the candle's light remains. */
+      .exit::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(
+          ellipse 78% 68% at 50% 42%,
+          var(--bg-primary) 0%,
+          var(--bg-primary) 32%,
+          transparent 74%
+        );
       }
       .exit__halo {
         position: absolute;
@@ -111,19 +126,21 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
         45% { opacity: 1; transform: translateX(-50%) scaleY(1.14) scaleX(0.95); }
         72% { opacity: 0.9; transform: translateX(-50%) scaleY(0.95) scaleX(1.04); }
       }
-      /* The candle fires only AFTER the whole exit is read in — text fully visible first,
-         then (a beat later) the flame thrusts up the shaft and BLOOMS at the apex while the
-         apse-halo catches the light. Lux ascending — "światełko do nieba". Plays once. */
-      .exit__inner.active .exit__shaft {
-        animation: shaftRise 0.95s cubic-bezier(0.16, 0.84, 0.3, 1) 1.35s both;
+      /* The candle holds DARK (.armed, set by JS) until the whole apse is read in, then a
+         dedicated observer adds .lit and it fires: the flame thrusts up the shaft and BLOOMS
+         at the apex while the apse-halo catches the light. "Światełko do nieba". Plays once. */
+      .exit__inner.armed .exit__shaft { transform: scaleY(0); }
+      .exit__inner.armed .exit__shaft::before { opacity: 0; }
+      .exit__inner.lit .exit__shaft {
+        animation: shaftRise 0.95s cubic-bezier(0.16, 0.84, 0.3, 1) 0.1s both;
       }
-      .exit__inner.active .exit__shaft::before {
+      .exit__inner.lit .exit__shaft::before {
         animation:
-          flameLaunch 0.95s cubic-bezier(0.16, 0.84, 0.3, 1) 1.35s both,
-          candleFlicker 2.6s ease-in-out 2.3s infinite;
+          flameLaunch 0.95s cubic-bezier(0.16, 0.84, 0.3, 1) 0.1s both,
+          candleFlicker 2.6s ease-in-out 1.05s infinite;
       }
-      .exit:has(.exit__inner.active) .exit__halo {
-        animation: haloBloom 1.7s ease-out 1.5s both;
+      .exit:has(.exit__inner.lit) .exit__halo {
+        animation: haloBloom 1.7s ease-out 0.25s both;
       }
       @keyframes shaftRise {
         0% { transform: scaleY(0); }
@@ -143,9 +160,11 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
       }
       @media (prefers-reduced-motion: reduce) {
         .exit__shaft::before { animation: none; }
-        .exit__inner.active .exit__shaft,
-        .exit__inner.active .exit__shaft::before { animation: none; }
-        .exit:has(.exit__inner.active) .exit__halo { animation: none; }
+        .exit__inner.armed .exit__shaft { transform: none; }
+        .exit__inner.armed .exit__shaft::before { opacity: 1; }
+        .exit__inner.lit .exit__shaft,
+        .exit__inner.lit .exit__shaft::before { animation: none; }
+        .exit:has(.exit__inner.lit) .exit__halo { animation: none; }
       }
       .exit__line {
         color: var(--text-tertiary);
@@ -189,8 +208,40 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
     `,
   ],
 })
-export class ContactSectionComponent {
+export class ContactSectionComponent implements AfterViewInit, OnDestroy {
   private languageService = inject(LanguageService);
+  private host = inject(ElementRef<HTMLElement>);
   protected readonly contact = CONTACT_CONFIG;
   protected readonly e = computed(() => EXIT[this.languageService.currentLanguage()] ?? EXIT['en']);
+
+  private apseObserver?: IntersectionObserver;
+
+  // The candle holds dark until the WHOLE apse is actually read in. A fixed timer fires
+  // mid-scroll (text half-shown); instead, light it only once the LAST line is comfortably
+  // in view — then everything above it is on screen.
+  ngAfterViewInit(): void {
+    if (typeof window === 'undefined') return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const root = this.host.nativeElement as HTMLElement;
+    const inner = root.querySelector('.exit__inner');
+    const last = root.querySelector('.exit__cv');
+    if (!inner || !last || reduce) return; // reduced motion: candle simply shows, no flare
+    inner.classList.add('armed');
+    this.apseObserver = new IntersectionObserver(
+      (entries, obs) => {
+        for (const en of entries) {
+          if (en.isIntersecting) {
+            inner.classList.add('lit'); // light it — the flame ascends
+            obs.disconnect();
+          }
+        }
+      },
+      { threshold: 1, rootMargin: '0px 0px -8% 0px' },
+    );
+    this.apseObserver.observe(last);
+  }
+
+  ngOnDestroy(): void {
+    this.apseObserver?.disconnect();
+  }
 }

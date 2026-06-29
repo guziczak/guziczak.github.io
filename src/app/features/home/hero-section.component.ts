@@ -533,6 +533,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   private timers: ReturnType<typeof setTimeout>[] = [];
   private punchTimer?: ReturnType<typeof setTimeout>;
   private skip?: () => void;
+  private removeKick?: () => void;
 
   constructor() {
     const hasWin = typeof window !== 'undefined';
@@ -632,29 +633,30 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       .then((d) => { if (d && d.notes) { this.notes = d.notes; if (d.bpm) this.beatMs = 60000 / d.bpm; } })
       .catch(() => {});
 
-    // The bell is too small to aim at — start on the first interaction anywhere.
+    // The bell is too small to aim at — start on the first interaction anywhere. Hardened for
+    // iOS: a tap fires several events (pointerup/touchend/click) — dedupe them; KEEP listening
+    // and retry until audio is *actually* playing (iOS often needs a 2nd gesture, and the first
+    // tap may land before the score has loaded); and never toggle OFF from here.
+    let starting = false;
+    const evs = ['pointerup', 'touchend', 'click', 'keydown'];
     const kick = (e: Event) => {
       const target = e.target as HTMLElement | null;
-      if (target && target.closest && target.closest('.manifesto__music')) return;
-      if (!this.notes) return;
-      document.removeEventListener('touchend', kick);
-      document.removeEventListener('click', kick);
-      document.removeEventListener('keydown', kick);
-      if (!this.player) this.toggleMusic();
-      else if (!this.player.isPlaying()) this.toggleMusic();
+      if (target && target.closest && target.closest('.manifesto__music')) return; // the bell handles itself
+      if (this.player && this.player.isPlaying()) { this.removeKick?.(); return; }
+      if (!this.notes || starting) return; // score not loaded yet → a later gesture retries
+      starting = true;
+      setTimeout(() => (starting = false), 500); // iOS may not unlock on the 1st gesture — allow a retry
+      this.toggleMusic(); // creates + resumes the AudioContext INSIDE this gesture (the iOS unlock)
     };
-    // Start on ANY first interaction. iOS only unlocks audio on the COMPLETED gesture
-    // (touchend/click), never on pointerdown — and pointerdown would pre-empt them — so
-    // bind the "up" events: a tap anywhere on the screen now starts the bell on iPhone too.
-    document.addEventListener('touchend', kick, { passive: true });
-    document.addEventListener('click', kick);
-    document.addEventListener('keydown', kick);
+    this.removeKick = () => evs.forEach((ev) => document.removeEventListener(ev, kick));
+    evs.forEach((ev) => document.addEventListener(ev, kick, { passive: true }));
   }
 
   ngOnDestroy(): void {
     this.timers.forEach((t) => clearTimeout(t));
     clearTimeout(this.punchTimer);
     this.removeSkip();
+    this.removeKick?.();
   }
 
   private removeSkip(): void {
@@ -674,7 +676,10 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     if (!this.notes) return;
     if (!this.player) {
       this.player = createSwiatlo(this.notes, {
-        onState: (on) => this.musicOn.set(on),
+        onState: (on) => {
+          this.musicOn.set(on);
+          if (on) this.removeKick?.(); // truly playing now — stop the global tap-to-start
+        },
         leadInSec: (this.beatMs * 4) / 1000, // one-bar count-in: the score rolls in from the right
       });
     }
