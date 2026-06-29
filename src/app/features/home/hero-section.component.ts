@@ -80,17 +80,16 @@ const MANIFESTO: Record<string, any> = {
           <p class="manifesto__proof" [class.is-in]="step() >= 6">
             <span class="manifesto__proof-line" *ngFor="let s of m().proof2">{{ s }}</span>
           </p>
-          <button (click)="enter()" class="manifesto__enter reveal" [class.is-in]="step() >= 8">
-            {{ m().enter }} <span class="manifesto__arrow">↓</span>
-          </button>
+          <div class="manifesto__act reveal" [class.is-in]="step() >= 8">
+            <button (click)="enter()" class="manifesto__enter">
+              {{ m().enter }} <span class="manifesto__arrow">↓</span>
+            </button>
+            <a href="/cv" target="_blank" rel="noopener noreferrer" class="manifesto__cv">
+              {{ m().cvText }} <span class="manifesto__cv-note">{{ m().cvNote }}</span>
+            </a>
+          </div>
         </div>
         <p class="manifesto__rest reveal" [class.is-in]="step() >= 7">{{ m().rest }}</p>
-
-        <div class="manifesto__cta reveal" [class.is-in]="step() >= 8">
-          <a href="/cv" target="_blank" rel="noopener noreferrer" class="manifesto__cv">
-            {{ m().cvText }} <span class="manifesto__cv-note">{{ m().cvNote }}</span>
-          </a>
-        </div>
       </div>
 
       <footer class="manifesto__footer">
@@ -355,6 +354,13 @@ const MANIFESTO: Record<string, any> = {
       }
       .manifesto__coda .manifesto__proof { margin-bottom: 0; }
       .manifesto__coda .manifesto__enter { white-space: nowrap; }
+      /* "Wejdź ↓" with "Pełne CV (…)" stacked right beneath it. */
+      .manifesto__act {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.7rem;
+      }
 
       .manifesto__cta {
         display: flex;
