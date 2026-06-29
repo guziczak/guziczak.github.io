@@ -5,6 +5,7 @@ import { ScrollService } from '../../core/services/scroll.service';
 import { LanguageService } from '../../core/services/language.service';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
 import { createSwiatlo, SwiatloPlayer } from './swiatlo-player';
+import { saveHandoff, swiatloBus } from './swiatlo-sync';
 import { StaffVisualizerComponent } from './staff-visualizer.component';
 
 const MANIFESTO: Record<string, any> = {
@@ -534,6 +535,8 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   private punchTimer?: ReturnType<typeof setTimeout>;
   private skip?: () => void;
   private removeKick?: () => void;
+  private bus?: { claim: () => void; close: () => void };
+  private musicSaveTimer?: ReturnType<typeof setInterval>;
 
   constructor() {
     const hasWin = typeof window !== 'undefined';
@@ -616,6 +619,11 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     if (typeof window === 'undefined') return;
 
+    // If another tab (the full CV) takes over the bell, yield it here so they never double.
+    this.bus = swiatloBus(() => {
+      if (this.player?.isPlaying()) this.player.toggle();
+    });
+
     // Let an impatient reader fast-forward the intro by scrolling. NOT on click/tap/key —
     // that gesture starts the music (below) and must not skip the guided read.
     if (this.animate()) {
@@ -658,6 +666,23 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     clearTimeout(this.punchTimer);
     this.removeSkip();
     this.removeKick?.();
+    this.stopMusicSave();
+    this.bus?.close();
+    this.player?.dispose(); // stop & release audio so navigating away+back doesn't double it
+    this.player = null;
+  }
+
+  private startMusicSave(): void {
+    this.stopMusicSave();
+    this.musicSaveTimer = setInterval(() => {
+      if (this.player) saveHandoff(this.player.position(), true);
+    }, 700);
+  }
+  private stopMusicSave(): void {
+    if (this.musicSaveTimer) {
+      clearInterval(this.musicSaveTimer);
+      this.musicSaveTimer = undefined;
+    }
   }
 
   private removeSkip(): void {
@@ -679,7 +704,14 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       this.player = createSwiatlo(this.notes, {
         onState: (on) => {
           this.musicOn.set(on);
-          if (on) this.removeKick?.(); // truly playing now — stop the global tap-to-start
+          if (on) {
+            this.removeKick?.(); // truly playing now — stop the global tap-to-start
+            this.bus?.claim(); // ask other tabs (e.g. the CV tab) to yield the bell
+            this.startMusicSave(); // keep persisting the position for a possible handoff
+          } else {
+            this.stopMusicSave();
+            saveHandoff(this.player ? this.player.position() : 0, false);
+          }
         },
         leadInSec: this.leadInSec, // loop restarts roll the score in from the right edge
       });

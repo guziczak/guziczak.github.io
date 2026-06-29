@@ -8,6 +8,12 @@ export interface SwiatloPlayer {
   isPlaying(): boolean;
   /** Live piece-time in seconds while playing, or -1 when stopped. Drives the staff. */
   position(): number;
+  /** Start playing — optionally from a given piece-offset (seconds). Used to CONTINUE a
+   *  handed-off playback on another tab. No-op if already playing. */
+  play(offset?: number): void;
+  /** Stop everything and release the AudioContext — call on component destroy so navigating
+   *  away and back doesn't leave the old playback running (which would double up). */
+  dispose(): void;
 }
 
 // Tuned bell — HARMONIC partials only (the octave + integer overtones), so it never
@@ -260,5 +266,19 @@ export function createSwiatlo(
     },
     isPlaying: () => playing,
     position: () => (playing && ctx ? ctx.currentTime - startCtxTime : -1),
+    play(offset?: number) {
+      if (playing) return;
+      let o = offset != null ? offset : pieceOffset >= durSec - 0.5 ? 0 : pieceOffset;
+      if (durSec > 0 && o >= durSec) o = o % durSec; // wrap a handed-off offset into the piece
+      start(o);
+    },
+    dispose() {
+      playing = false;
+      if (timer) { clearInterval(timer); timer = null; }
+      if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
+      onState(false);
+      try { if (ctx && ctx.state !== 'closed') ctx.close(); } catch {}
+      ctx = null;
+    },
   };
 }

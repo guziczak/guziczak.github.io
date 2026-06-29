@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, ViewChild, ElementRef, HostListener } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -12,6 +12,8 @@ import {
 import { ScrollProgressComponent } from '../../shared/ui/scroll-progress/scroll-progress.component';
 import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.component';
 import { LanguageService } from '../../core/services/language.service';
+import { createSwiatlo, SwiatloPlayer } from '../../features/home/swiatlo-player';
+import { loadHandoff, saveHandoff, swiatloBus } from '../../features/home/swiatlo-sync';
 
 @Component({
   selector: 'app-cv-page',
@@ -477,10 +479,17 @@ import { LanguageService } from '../../core/services/language.service';
     `,
   ],
 })
-export class CvPageComponent implements OnInit {
+export class CvPageComponent implements OnInit, OnDestroy {
   private dataService = inject(DataService);
   private languageService = inject(LanguageService);
   private sanitizer = inject(DomSanitizer);
+
+  // The bell, handed off from the portfolio tab — continues here from the same position.
+  private player: SwiatloPlayer | null = null;
+  private notes: number[][] | null = null;
+  private bus?: { claim: () => void; close: () => void };
+  private removeKick?: () => void;
+  private musicSaveTimer?: ReturnType<typeof setInterval>;
 
   @ViewChild('cvFrame') private cvFrame?: ElementRef<HTMLIFrameElement>;
   @ViewChild('cvWrapper') private cvWrapper?: ElementRef<HTMLElement>;
@@ -514,6 +523,66 @@ export class CvPageComponent implements OnInit {
 
   ngOnInit() {
     this.loadData();
+    this.initBellHandoff();
+  }
+
+  ngOnDestroy(): void {
+    this.removeKick?.();
+    this.stopMusicSave();
+    this.bus?.close();
+    this.player?.dispose();
+    this.player = null;
+  }
+
+  // Continue "Lux in tenebris" here, from where the portfolio tab left it. A new tab can't
+  // auto-play audio, so resume on the first gesture; only resume if the bell was actually playing.
+  private initBellHandoff(): void {
+    if (typeof window === 'undefined') return;
+    this.bus = swiatloBus(() => {
+      if (this.player?.isPlaying()) this.player.toggle(); // another tab took over → yield
+    });
+    fetch('swiatlo.json')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.notes) this.notes = d.notes;
+      })
+      .catch(() => {});
+    let started = false;
+    const evs = ['pointerup', 'touchend', 'click', 'keydown'];
+    const kick = () => {
+      if (started || !this.notes) return;
+      const h = loadHandoff();
+      if (!h || !h.playing) return; // nothing was playing → leave the CV silent
+      started = true;
+      this.player = createSwiatlo(this.notes, {
+        onState: (on) => {
+          if (on) {
+            this.bus?.claim();
+            this.startMusicSave();
+          } else {
+            this.stopMusicSave();
+            saveHandoff(this.player ? this.player.position() : 0, false);
+          }
+        },
+      });
+      this.player.play(h.offset); // continue from the handed-off position
+      this.removeKick?.();
+    };
+    this.removeKick = () => evs.forEach((ev) => document.removeEventListener(ev, kick));
+    evs.forEach((ev) => document.addEventListener(ev, kick, { passive: true }));
+  }
+
+  private startMusicSave(): void {
+    this.stopMusicSave();
+    this.musicSaveTimer = setInterval(() => {
+      if (this.player) saveHandoff(this.player.position(), true);
+    }, 700);
+  }
+  private stopMusicSave(): void {
+    if (this.musicSaveTimer) {
+      clearInterval(this.musicSaveTimer);
+      this.musicSaveTimer = undefined;
+    }
   }
 
   private loadData() {
