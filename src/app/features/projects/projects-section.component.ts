@@ -208,7 +208,7 @@ const PROOF: Record<string, any> = {
         left: 78%;
         /* The floor: the ball rests here, ≈ the "Produkt komercyjny" / "AI-skryba…" line.
            This single value is the floor height — nudge it to move the floor. */
-        top: 6.8rem;
+        top: 6rem;
         width: 5.2rem;
         height: 5.2rem;
         display: flex;

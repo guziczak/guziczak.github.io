@@ -30,7 +30,7 @@ const BASS_MID = 22; // D3 — middle line of the bass staff
 // chromatic pitch-class → natural letter step (C D E F G A B = 0..6)
 const PCMAP = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
 const ACC = '56,189,248'; // accent rgb (the notes — cold, warming to gold by velocity)
-const PARCH = '214,184,134'; // warm parchment — the candlelit staff structure
+const PARCH = ACC; // structure stays cold & quiet — the cathedral doesn't shout; only the notes warm to gold
 
 // Clefs and time-signature "4" — baked Bravura (SMuFL) outlines, so they sit exactly
 // where real engraving puts them and look identical on every device. No font is
@@ -415,8 +415,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
 
       // a little stable hand-wobble per note, so nothing looks machine-stamped
       const seed = n[0] * 0.0173 + n[2] * 0.911;
-      const vel = n[3]; // velocity → warmth: soft notes stay cyan, struck notes glow bronze
-      const strikeAge = on ? pos - t : -1; // seconds since struck — drives the strike ripple
+      const vel = n[3]; // velocity → warmth: soft notes stay cyan, struck notes glow gold
       const s = this.diat(n[2]);
       const bi = this.beamOf.get(n);
       // Beamed notes are drawn crisp (no hand-wobble) so the beam reads as a straight rule.
@@ -461,7 +460,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
         }
       }
 
-      this.note(g, x, y, s, gl, bi ? bi.stemDown : s >= staffMid, a, gap, half, sTop, sBot, on, seed, vel, strikeAge, beamTipY);
+      this.note(g, x, y, s, gl, bi ? bi.stemDown : s >= staffMid, a, gap, half, sTop, sBot, on, seed, vel, beamTipY);
     }
   }
 
@@ -480,7 +479,6 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     on: boolean,
     seed: number,
     vel: number,
-    strikeAge: number,
     beamStemTipY: number | null = null,
   ): void {
     const nrx = 4.6;
@@ -555,13 +553,9 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     g.ellipse(x, y, rx * 1.7, ry * 1.7, rot, 0, Math.PI * 2);
     g.fill();
     if (on) {
-      g.strokeStyle = this.ink(vel, a * 0.25);
-      g.lineWidth = 1;
-      g.beginPath();
-      g.arc(x, y, rx * 2, 0, Math.PI * 2);
-      g.stroke();
-      g.shadowBlur = 15;
-      g.shadowColor = this.ink(vel, 0.9);
+      // the sounding note simply breathes — a whisper of glow, no ring. Flat and quiet.
+      g.shadowBlur = 7;
+      g.shadowColor = this.ink(vel, 0.7);
     }
     g.fillStyle = col;
     if (gl.fill) {
@@ -583,16 +577,6 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
       g.fill(p, 'evenodd');
     }
     g.restore();
-
-    // strike ripple — a quick expanding ring the instant the note crosses the playhead
-    if (strikeAge >= 0 && strikeAge < 0.45) {
-      const k = strikeAge / 0.45;
-      g.strokeStyle = this.ink(vel, a * 0.45 * (1 - k));
-      g.lineWidth = 1.2;
-      g.beginPath();
-      g.arc(x, y, rx * (1.7 + k * 5.5), 0, Math.PI * 2);
-      g.stroke();
-    }
 
     // augmentation dot — raised into the space when the head sits on a line
     if (gl.dot) {
