@@ -229,16 +229,17 @@ const PROOF: Record<string, any> = {
         cursor: pointer;
         text-decoration: none;
         z-index: 1;
-        will-change: transform;
-        transition: box-shadow 0.25s ease, filter 0.25s ease;
+        will-change: transform, translate, scale;
+        transition: box-shadow 0.25s ease, filter 0.25s ease, transform 0.2s ease;
         animation: opisaiDunk 1.5s infinite;
       }
       /* Catch the ball: hover/focus pauses the bounce so the moving target holds still,
-         and the glow swells to signal it's a link. (No transform here — that belongs to
-         the bounce animation; overriding it would snap the ball out of mid-air.) */
+         then it bulges — a uniform scale that COMPOSES with the paused bounce's individual
+         translate/scale (so the ball grows without snapping out of mid-air), glow swelling. */
       .opisai-bubble:hover,
       .opisai-bubble:focus-visible {
         animation-play-state: paused;
+        transform: scale(1.14);
         filter: brightness(1.12);
         box-shadow:
           inset 0 0 0 1px rgba(255, 255, 255, 0.28),
@@ -260,12 +261,14 @@ const PROOF: Record<string, any> = {
       /* A basketball: falls under "gravity" (accelerating), hits the floor and squashes,
          then springs back up (decelerating). Purely vertical, in place — beside the title.
          transform-origin is the bottom, so the squash flattens against the floor. */
+      /* Bounce uses the INDIVIDUAL transform properties (translate/scale), leaving the
+         \`transform\` shorthand free for the hover bulge to compose on top. */
       @keyframes opisaiDunk {
-        0%   { transform: translateY(-4.2rem) scaleX(1) scaleY(1); animation-timing-function: cubic-bezier(0.5, 0, 1, 0.6); }
-        43%  { transform: translateY(0) scaleX(1) scaleY(1); animation-timing-function: ease-out; }
-        48%  { transform: translateY(0) scaleX(1.14) scaleY(0.82); animation-timing-function: ease-in; }
-        54%  { transform: translateY(0) scaleX(1) scaleY(1); animation-timing-function: cubic-bezier(0, 0.4, 0.5, 1); }
-        100% { transform: translateY(-4.2rem) scaleX(1) scaleY(1); }
+        0%   { translate: 0 -4.2rem; scale: 1 1; animation-timing-function: cubic-bezier(0.5, 0, 1, 0.6); }
+        43%  { translate: 0 0; scale: 1 1; animation-timing-function: ease-out; }
+        48%  { translate: 0 0; scale: 1.14 0.82; animation-timing-function: ease-in; }
+        54%  { translate: 0 0; scale: 1 1; animation-timing-function: cubic-bezier(0, 0.4, 0.5, 1); }
+        100% { translate: 0 -4.2rem; scale: 1 1; }
       }
       @media (max-width: 640px) {
         .opisai-bubble { width: 4.4rem; height: 4.4rem; top: 5.2rem; }
