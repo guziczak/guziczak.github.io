@@ -121,6 +121,32 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
         transform-origin: 50% 100%;
         animation: candleFlicker 2.6s ease-in-out infinite;
       }
+      /* A breath of spectrum in the flash — the faint rainbow ring you catch around a bright
+         light through glasses (chromatic aberration / a diffraction corona). Only at the flare. */
+      .exit__shaft::after {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: 50%;
+        width: 104px;
+        height: 104px;
+        transform: translate(-50%, -50%) scale(0.5);
+        border-radius: 50%;
+        opacity: 0;
+        pointer-events: none;
+        /* a soft chromatic-aberration / diffraction halo: cool (blue) fringe on the inner
+           edge, warm (red/amber) fringe on the outer — the rainbow rim you catch through glasses */
+        background: radial-gradient(
+          circle,
+          transparent 26%,
+          rgba(120, 170, 255, 0.55) 37%,
+          rgba(150, 255, 210, 0.3) 45%,
+          rgba(255, 200, 120, 0.5) 53%,
+          rgba(255, 110, 120, 0.42) 60%,
+          transparent 72%
+        );
+        filter: blur(2px);
+      }
       @keyframes candleFlicker {
         0%, 100% { opacity: 0.85; transform: translateX(-50%) scaleY(1) scaleX(1); }
         45% { opacity: 1; transform: translateX(-50%) scaleY(1.14) scaleX(0.95); }
@@ -141,6 +167,14 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
       }
       .exit:has(.exit__inner.lit) .exit__halo {
         animation: haloBloom 1.7s ease-out 0.25s both;
+      }
+      .exit__inner.lit .exit__shaft::after {
+        animation: spectralFlare 1.1s ease-out 0.35s both;
+      }
+      @keyframes spectralFlare {
+        0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+        38% { opacity: 0.85; transform: translate(-50%, -50%) scale(1.05); }
+        100% { opacity: 0; transform: translate(-50%, -50%) scale(1.8); }
       }
       @keyframes shaftRise {
         0% { transform: scaleY(0); }
@@ -164,6 +198,7 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
         .exit__inner.armed .exit__shaft::before { opacity: 1; }
         .exit__inner.lit .exit__shaft,
         .exit__inner.lit .exit__shaft::before { animation: none; }
+        .exit__inner.lit .exit__shaft::after { animation: none; }
         .exit:has(.exit__inner.lit) .exit__halo { animation: none; }
       }
       .exit__line {
