@@ -135,6 +135,16 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
   private W = 0;
   private H = 0;
   private readonly onResize = () => this.resize();
+  private staffDiv?: HTMLElement;
+  private baseBottom = 36; // the resting CSS bottom offset (px), measured at init
+  private placeRaf = 0;
+  private readonly onScroll = () => {
+    if (this.placeRaf) return;
+    this.placeRaf = requestAnimationFrame(() => {
+      this.placeRaf = 0;
+      this.placeAboveFooter();
+    });
+  };
 
   ngAfterViewInit(): void {
     if (typeof window === 'undefined' || !this.cvRef) return;
@@ -142,12 +152,32 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     this.ready = true;
     this.resize();
     window.addEventListener('resize', this.onResize, { passive: true });
+    this.staffDiv = this.cvRef.nativeElement.parentElement as HTMLElement;
+    this.baseBottom = parseFloat(getComputedStyle(this.staffDiv).bottom) || 36;
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+    this.placeAboveFooter();
     this.sync();
   }
 
   ngOnDestroy(): void {
     if (this.raf) cancelAnimationFrame(this.raf);
-    if (typeof window !== 'undefined') window.removeEventListener('resize', this.onResize);
+    if (this.placeRaf) cancelAnimationFrame(this.placeRaf);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.onResize);
+      window.removeEventListener('scroll', this.onScroll);
+    }
+  }
+
+  /** Keep the staff resting ABOVE the footer: once the footer scrolls into view, lift the staff
+   *  by exactly enough so the score never overprints the name/links at the foot of the page. */
+  private placeAboveFooter(): void {
+    const staff = this.staffDiv;
+    if (!staff || typeof window === 'undefined') return;
+    const footer = document.querySelector('.footer');
+    if (!footer) return;
+    const footerTop = footer.getBoundingClientRect().top;
+    const desired = window.innerHeight - footerTop + 14; // bottom offset that clears the footer + gap
+    staff.style.bottom = desired > this.baseBottom ? desired + 'px' : '';
   }
 
   private resize(): void {
@@ -159,6 +189,11 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     c.width = Math.round(this.W * this.dpr);
     c.height = Math.round(this.H * this.dpr);
     this.g?.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    if (this.staffDiv) {
+      this.staffDiv.style.bottom = '';
+      this.baseBottom = parseFloat(getComputedStyle(this.staffDiv).bottom) || 36;
+      this.placeAboveFooter();
+    }
   }
 
   private sync(): void {
