@@ -82,6 +82,7 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
         height: clamp(2.5rem, 8vh, 5rem);
         margin: 0 auto clamp(1.5rem, 4vh, 2.5rem);
         border-radius: 1px;
+        transform-origin: bottom center;
         /* brightest just under the flame, fading down into the dark */
         background: linear-gradient(to bottom, rgba(245, 206, 140, 0.8), rgba(245, 206, 140, 0.04));
       }
@@ -110,8 +111,30 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
         45% { opacity: 1; transform: translateX(-50%) scaleY(1.14) scaleX(0.95); }
         72% { opacity: 0.9; transform: translateX(-50%) scaleY(0.95) scaleX(1.04); }
       }
+      /* On reveal the candle LIGHTS with an upward flare — the flame thrusts up the shaft
+         (rocket-quick, then settles into its flicker), the light trailing behind it. Once. */
+      .exit__inner.active .exit__shaft {
+        animation: shaftRise 0.9s cubic-bezier(0.2, 0.75, 0.2, 1) 0.25s both;
+      }
+      .exit__inner.active .exit__shaft::before {
+        animation:
+          flameLaunch 0.9s cubic-bezier(0.2, 0.75, 0.2, 1) 0.25s both,
+          candleFlicker 2.6s ease-in-out 1.15s infinite;
+      }
+      @keyframes shaftRise {
+        0% { transform: scaleY(0); }
+        72% { transform: scaleY(1.06); }
+        100% { transform: scaleY(1); }
+      }
+      @keyframes flameLaunch {
+        0% { transform: translateX(-50%) translateY(clamp(2.5rem, 8vh, 5rem)); opacity: 0; }
+        16% { opacity: 1; }
+        100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+      }
       @media (prefers-reduced-motion: reduce) {
         .exit__shaft::before { animation: none; }
+        .exit__inner.active .exit__shaft,
+        .exit__inner.active .exit__shaft::before { animation: none; }
       }
       .exit__line {
         color: var(--text-tertiary);
