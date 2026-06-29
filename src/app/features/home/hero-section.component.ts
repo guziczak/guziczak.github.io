@@ -347,19 +347,21 @@ const MANIFESTO: Record<string, any> = {
          (instead of sitting alone at the bottom). Stacks under the lines on narrow screens. */
       .manifesto__coda {
         display: flex;
-        align-items: center;
+        align-items: flex-start; /* the button starts level with "Potem utrzymują…", not above it */
         justify-content: space-between;
-        gap: 1.25rem 2.5rem;
-        flex-wrap: wrap;
+        gap: 1rem 1.75rem;
+        flex-wrap: nowrap; /* keep "Wejdź ↓" to the RIGHT of the two lines, never wrapped below */
       }
-      .manifesto__coda .manifesto__proof { margin-bottom: 0; }
+      .manifesto__coda .manifesto__proof { margin-bottom: 0; flex: 1 1 auto; min-width: 0; }
       .manifesto__coda .manifesto__enter { white-space: nowrap; }
       /* "Wejdź ↓" with "Pełne CV (…)" stacked right beneath it. */
       .manifesto__act {
+        flex: 0 0 auto;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 0.7rem;
+        text-align: center;
       }
 
       .manifesto__cta {
@@ -503,6 +505,11 @@ const MANIFESTO: Record<string, any> = {
         .manifesto__stamp { font-size: 0.68rem; }
         /* Pin the block under the stamp instead of centring it in the tall middle row. */
         .manifesto__inner { align-self: start; }
+        /* Keep "Wejdź ↓" + CV beside the two lines, but cap their column so the proof text
+           isn't shredded into one-word lines. */
+        .manifesto__coda { gap: 0.75rem 1rem; }
+        .manifesto__act { max-width: 8.5rem; }
+        .manifesto__act .manifesto__cv { font-size: 0.78rem; }
         /* Stack the footer so the bell isn't squeezed against the icons. */
         .manifesto__footer {
           flex-direction: column;
