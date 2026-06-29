@@ -24,8 +24,8 @@ const MANIFESTO: Record<string, any> = {
     stamp: ['Eksperymenty od 2016. Produkcja od 2024. ', 'Teraz w banku — on-prem, zaryglowany regulacjami.'], stampPunch: 'Nie od ChatGPT.',
     lead: 'Mówią, że AI gubi wątek po 1000 liniach kodu.',
     punch: 'Urocze',
-    num: '20 000',
-    reframeA: 'Dla mnie to dopiero rozgrzewka — ', reframeB: ' linii.', reframeTail: ['Jeden plik.', 'Jeden człowiek.'],
+    num: '20 000',
+    reframeA: '', reframeB: ' linii — to dopiero rozgrzewka.', reframeTail: ['Jeden plik.', 'Jeden człowiek.'],
     proof1: ['Miesiąc do działającego PoC.', 'Trzy do produkcji.', 'Bez zespołu.'],
     proof2: ['Potem utrzymują to ich zespoły.', 'Ja już robię następny.'],
     rest: 'Resztę mówi kod.',
@@ -266,10 +266,11 @@ const MANIFESTO: Record<string, any> = {
         color: var(--text-primary);
         margin-bottom: 1.6rem;
       }
-      .manifesto__reframe-line { display: block; }
+      .manifesto__reframe-line { display: block; text-wrap: balance; }
       .manifesto__num {
         color: var(--color-primary);
         text-shadow: 0 0 28px rgba(56, 189, 248, 0.45);
+        white-space: nowrap;
       }
       .manifesto__proof {
         position: relative;
