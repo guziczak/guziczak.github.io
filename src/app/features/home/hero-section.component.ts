@@ -25,7 +25,7 @@ const MANIFESTO: Record<string, any> = {
     lead: 'Mówią, że AI gubi wątek po 1000 liniach kodu.',
     punch: 'Urocze',
     num: '20 000',
-    reframeA: 'Dla mnie to rozgrzewka — ', reframeB: ' linii.', reframeTail: ['Jeden plik.', 'Jeden człowiek.'],
+    reframeA: 'Dla mnie to dopiero rozgrzewka — ', reframeB: ' linii.', reframeTail: ['Jeden plik.', 'Jeden człowiek.'],
     proof1: ['Miesiąc do działającego PoC.', 'Trzy do produkcji.', 'Bez zespołu.'],
     proof2: ['Potem utrzymują to ich zespoły.', 'Ja już robię następny.'],
     rest: 'Resztę mówi kod.',
