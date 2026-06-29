@@ -34,6 +34,7 @@ export function createSwiatlo(
   const onState = opts.onState || (() => {});
   // Visual count-in: how long the score rolls in from the right before the first note sounds.
   const leadIn = Math.max(0, opts.leadInSec || 0);
+  let firstPlay = true; // first start = brisk count-in; loop restarts roll in fully from the edge
   const W = window as any;
   let ctx: any = null;
   let bus: any = null;
@@ -206,10 +207,14 @@ export function createSwiatlo(
     const begin = () => {
       if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
       pieceOffset = offsetSec || 0;
-      // From the top, hold a visual count-in (leadIn) so the staff rolls in from the right
-      // and the first note meets the playhead exactly as it rings. On a mid-piece resume,
-      // just the usual audio-scheduling latency.
-      const preroll = (offsetSec || 0) < 0.001 ? Math.max(0.12, leadIn) : 0.12;
+      // From the top, hold a visual count-in so the staff rolls in from the RIGHT EDGE and the
+      // first note meets the playhead as it rings. First play gets a brisk lead (responsive on a
+      // tap); loop restarts get the full lead so the score visibly rolls in from the edge during
+      // the gap. Mid-piece resume: just the audio-scheduling latency.
+      const fromTop = (offsetSec || 0) < 0.001;
+      const lead = fromTop ? (firstPlay ? Math.min(leadIn, 2.6) : leadIn) : 0.12;
+      firstPlay = false;
+      const preroll = Math.max(0.12, lead);
       startCtxTime = ctx.currentTime + preroll - pieceOffset;
       idx = 0;
       while (idx < notes.length && (notes[idx][0] + notes[idx][1]) / 1000 <= pieceOffset) idx++;

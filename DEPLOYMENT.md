@@ -1,6 +1,6 @@
 # Deployment Summary
 
-**Date:** Mon Jun 29 09:36:46     2026
+**Date:** Mon Jun 29 10:09:26     2026
 **Build Type:** Production (Minified)
 
 ## Files Deployed
@@ -10,16 +10,16 @@
 - chunk-4YGWE7YG.js (160K)
 - chunk-55KXCFMU.js (63K)
 - chunk-5ZQ2IF4P.js (1.2K)
-- chunk-EWVYCU2H.js (57K)
 - chunk-FDZUKIXQ.js (2.4K)
 - chunk-GSF6VVHT.js (234)
 - chunk-I4EXQMJQ.js (2.7K)
 - chunk-JHPBYF6F.js (3.1K)
 - chunk-K32I7LSC.js (3.5K)
 - chunk-MLMGL4QO.js (3.9K)
+- chunk-MYFCMWRN.js (57K)
 - chunk-QK2S4726.js (7.3K)
 - chunk-Z72YTS4Y.js (10K)
-- main-IIBFGMBU.js (26K)
+- main-ACRAZY4X.js (26K)
 - ngsw-worker.js (83K)
 - polyfills-5CFQRCPP.js (34K)
 - safety-worker.js (785)

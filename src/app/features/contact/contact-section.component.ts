@@ -69,7 +69,7 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
       .exit__halo {
         position: absolute;
         left: 50%;
-        top: 40%;
+        top: 28%;
         transform: translate(-50%, -50%);
         width: min(900px, 125vw);
         aspect-ratio: 1;
@@ -138,25 +138,24 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
            edge, warm (red/amber) fringe on the outer — the rainbow rim you catch through glasses */
         background: radial-gradient(
           circle,
-          transparent 26%,
-          rgba(120, 170, 255, 0.55) 37%,
-          rgba(150, 255, 210, 0.3) 45%,
-          rgba(255, 200, 120, 0.5) 53%,
-          rgba(255, 110, 120, 0.42) 60%,
-          transparent 72%
+          transparent 45%,
+          rgba(120, 170, 255, 0.8) 49%,
+          rgba(150, 255, 210, 0.5) 52%,
+          rgba(255, 200, 120, 0.8) 55%,
+          rgba(255, 110, 120, 0.65) 58%,
+          transparent 63%
         );
-        filter: blur(2px);
+        filter: blur(1.4px);
       }
       @keyframes candleFlicker {
         0%, 100% { opacity: 0.85; transform: translateX(-50%) scaleY(1) scaleX(1); }
         45% { opacity: 1; transform: translateX(-50%) scaleY(1.14) scaleX(0.95); }
         72% { opacity: 0.9; transform: translateX(-50%) scaleY(0.95) scaleX(1.04); }
       }
-      /* The candle holds DARK (.armed, set by JS) until the whole apse is read in, then a
-         dedicated observer adds .lit and it fires: the flame thrusts up the shaft and BLOOMS
-         at the apex while the apse-halo catches the light. "Światełko do nieba". Plays once. */
-      .exit__inner.armed .exit__shaft { transform: scaleY(0); }
-      .exit__inner.armed .exit__shaft::before { opacity: 0; }
+      /* The candle is held dark by the component (inline opacity on the shaft) until the whole
+         apse is read in; then a dedicated observer releases it and adds .lit, and it fires: the
+         flame thrusts up the shaft and BLOOMS at the apex while the apse-halo catches the light.
+         "Światełko do nieba". Plays once. */
       .exit__inner.lit .exit__shaft {
         animation: shaftRise 0.95s cubic-bezier(0.16, 0.84, 0.3, 1) 0.1s both;
       }
@@ -194,8 +193,6 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
       }
       @media (prefers-reduced-motion: reduce) {
         .exit__shaft::before { animation: none; }
-        .exit__inner.armed .exit__shaft { transform: none; }
-        .exit__inner.armed .exit__shaft::before { opacity: 1; }
         .exit__inner.lit .exit__shaft,
         .exit__inner.lit .exit__shaft::before { animation: none; }
         .exit__inner.lit .exit__shaft::after { animation: none; }
@@ -260,12 +257,17 @@ export class ContactSectionComponent implements AfterViewInit, OnDestroy {
     const root = this.host.nativeElement as HTMLElement;
     const inner = root.querySelector('.exit__inner');
     const last = root.querySelector('.exit__cv');
-    if (!inner || !last || reduce) return; // reduced motion: candle simply shows, no flare
-    inner.classList.add('armed');
+    const shaft = inner?.querySelector('.exit__shaft') as HTMLElement | null;
+    if (!inner || !last || !shaft || reduce) return; // reduced motion: candle simply shows, no flare
+    // Hold the candle dark with inline visibility:hidden — bulletproof (class-based opacity:0,
+    // and even inline opacity, lose to the flame's looping animation). Release it the instant we
+    // light it; the launch's backwards fill keeps it hidden at frame 0, so there is no flash.
+    shaft.style.visibility = 'hidden';
     this.apseObserver = new IntersectionObserver(
       (entries, obs) => {
         for (const en of entries) {
           if (en.isIntersecting) {
+            shaft.style.visibility = '';
             inner.classList.add('lit'); // light it — the flame ascends
             obs.disconnect();
           }

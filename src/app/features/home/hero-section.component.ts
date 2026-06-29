@@ -112,7 +112,7 @@ const MANIFESTO: Record<string, any> = {
         </button>
       </footer>
     </section>
-    <app-staff-visualizer [notes]="notes || []" [player]="player" [active]="musicOn()" [beatMs]="beatMs" />
+    <app-staff-visualizer [notes]="notes || []" [player]="player" [active]="musicOn()" [beatMs]="beatMs" [leadInSec]="leadInSec" />
   `,
   styles: [
     `
@@ -609,6 +609,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   protected readonly musicOn = signal(false);
   protected notes: number[][] | null = null;
   protected beatMs = 582.5; // quarter-note length; refined from the score's bpm on load
+  protected readonly leadInSec = 6; // count-in length — notes roll in from the right edge of the staff
   protected player: SwiatloPlayer | null = null;
 
   /** The manifesto's punch types itself in, then the cursor commits to a period. */
@@ -680,7 +681,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
           this.musicOn.set(on);
           if (on) this.removeKick?.(); // truly playing now — stop the global tap-to-start
         },
-        leadInSec: (this.beatMs * 4) / 1000, // one-bar count-in: the score rolls in from the right
+        leadInSec: this.leadInSec, // loop restarts roll the score in from the right edge
       });
     }
     this.player.toggle();

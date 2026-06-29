@@ -115,6 +115,8 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
   @Input() beatMs = 582.5;
   /** Beats per measure (4/4). */
   @Input() beatsPerBar = 4;
+  /** Visual count-in length (s) — how long notes roll in from the right edge before sounding. */
+  @Input() leadInSec = 2.33;
 
   _active = false;
   @Input() set active(v: boolean) {
@@ -305,7 +307,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     const fadeStart = sigRight + 2;
     const fadeLen = gap * 3.2;
     const barMs = this.beatMs * this.beatsPerBar;
-    const lead = barMs / 1000; // visual count-in window (one bar): the score rolls in during it
+    const lead = this.leadInSec + 0.3; // count-in window: notes roll in from the right edge during it
 
     // the grand staff — two five-line staves drawn as candlelit parchment: hair-thin lines
     // that dissolve into the dark at BOTH ends (fade points jittered per line, so the edge
