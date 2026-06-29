@@ -253,6 +253,16 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     return (v - Math.floor(v)) * 2 - 1;
   }
 
+  // Note ink: cyan when soft, warming toward bronze the harder it's struck — so the loud
+  // finale glows gold, echoing the apse light. (Velocity 40→120 maps cyan→bronze.)
+  private ink(vel: number, alpha: number): string {
+    const t = Math.max(0, Math.min(1, (vel - 40) / 80));
+    const r = Math.round(56 + (245 - 56) * t);
+    const g = Math.round(189 + (206 - 189) * t);
+    const b = Math.round(248 + (140 - 248) * t);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha.toFixed(3) + ')';
+  }
+
   private draw(): void {
     const g = this.g;
     if (!g) return;
@@ -401,6 +411,8 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
 
       // a little stable hand-wobble per note, so nothing looks machine-stamped
       const seed = n[0] * 0.0173 + n[2] * 0.911;
+      const vel = n[3]; // velocity → warmth: soft notes stay cyan, struck notes glow bronze
+      const strikeAge = on ? pos - t : -1; // seconds since struck — drives the strike ripple
       const s = this.diat(n[2]);
       const bi = this.beamOf.get(n);
       // Beamed notes are drawn crisp (no hand-wobble) so the beam reads as a straight rule.
@@ -426,7 +438,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
           const xn = headX + (bi.nextRef[0] / 1000 - pos) * pps;
           const bw = Math.max(2, gap * 0.55);
           g.lineCap = 'butt';
-          g.strokeStyle = 'rgba(' + ACC + ',' + (a * 0.9).toFixed(3) + ')';
+          g.strokeStyle = this.ink(vel, a * 0.9);
           g.lineWidth = bw;
           g.beginPath();
           g.moveTo(sxOf(x), beamTipY);
@@ -445,7 +457,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
         }
       }
 
-      this.note(g, x, y, s, gl, bi ? bi.stemDown : s >= staffMid, a, gap, half, sTop, sBot, on, seed, beamTipY);
+      this.note(g, x, y, s, gl, bi ? bi.stemDown : s >= staffMid, a, gap, half, sTop, sBot, on, seed, vel, strikeAge, beamTipY);
     }
   }
 
@@ -463,6 +475,8 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     staffBot: number,
     on: boolean,
     seed: number,
+    vel: number,
+    strikeAge: number,
     beamStemTipY: number | null = null,
   ): void {
     const nrx = 4.6;
@@ -491,7 +505,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
       const beamed = beamStemTipY != null;
       const len = gap * 3.25 + (gl.flags && !beamed ? gap * 0.5 : 0);
       const tip = beamed ? beamStemTipY! : stemDown ? y + len : y - len;
-      g.strokeStyle = 'rgba(' + ACC + ',' + (a * 0.9).toFixed(3) + ')';
+      g.strokeStyle = this.ink(vel, a * 0.9);
       g.lineWidth = 1.4;
       g.beginPath();
       g.moveTo(sx, y);
@@ -502,7 +516,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
         // up-stem and rise off a down-stem (the same banner, vertically mirrored,
         // as real engraving draws it). They stack from the stem's free end inward.
         const d = stemDown ? -1 : 1;
-        g.fillStyle = 'rgba(' + ACC + ',' + (a * 0.9).toFixed(3) + ')';
+        g.fillStyle = this.ink(vel, a * 0.9);
         for (let f = 0; f < gl.flags; f++) {
           const fy = tip + d * f * gap * 0.92;
           g.beginPath();
@@ -524,7 +538,7 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     }
 
     // notehead — broad-nib calligraphy with a soft inked bloom; brighter while sounding
-    const col = 'rgba(' + ACC + ',' + a.toFixed(3) + ')';
+    const col = this.ink(vel, a);
     const whole = gl.whole;
     const js = 1 + this.jit(seed + 5.3) * 0.05; // size wobble
     const rx = (whole ? 6.2 : 4.7) * js;
@@ -532,18 +546,18 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     const rot = (whole ? -0.12 : -0.34) + this.jit(seed) * 0.06; // tilt wobble
     g.save();
     // cheap bloom behind every head — luminous ink, no per-note blur
-    g.fillStyle = 'rgba(' + ACC + ',' + (a * 0.12).toFixed(3) + ')';
+    g.fillStyle = this.ink(vel, a * 0.12);
     g.beginPath();
     g.ellipse(x, y, rx * 1.7, ry * 1.7, rot, 0, Math.PI * 2);
     g.fill();
     if (on) {
-      g.strokeStyle = 'rgba(' + ACC + ',' + (a * 0.25).toFixed(3) + ')';
+      g.strokeStyle = this.ink(vel, a * 0.25);
       g.lineWidth = 1;
       g.beginPath();
       g.arc(x, y, rx * 2, 0, Math.PI * 2);
       g.stroke();
       g.shadowBlur = 15;
-      g.shadowColor = 'rgba(' + ACC + ',0.9)';
+      g.shadowColor = this.ink(vel, 0.9);
     }
     g.fillStyle = col;
     if (gl.fill) {
@@ -565,6 +579,16 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
       g.fill(p, 'evenodd');
     }
     g.restore();
+
+    // strike ripple — a quick expanding ring the instant the note crosses the playhead
+    if (strikeAge >= 0 && strikeAge < 0.45) {
+      const k = strikeAge / 0.45;
+      g.strokeStyle = this.ink(vel, a * 0.45 * (1 - k));
+      g.lineWidth = 1.2;
+      g.beginPath();
+      g.arc(x, y, rx * (1.7 + k * 5.5), 0, Math.PI * 2);
+      g.stroke();
+    }
 
     // augmentation dot — raised into the space when the head sits on a line
     if (gl.dot) {

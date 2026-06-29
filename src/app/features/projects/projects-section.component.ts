@@ -10,7 +10,7 @@ const PROOF: Record<string, any> = {
     s2flag: 'Built solo · Sold', s2where: 'A commercial product',
     s2desc: 'An AI scribe for veterinary clinics — it turns the conversation in the room into clinical documentation. Architected, built and shipped alone, end to end. Then sold.',
     rangeLabel: 'And the range —',
-    r1: 'Single-file IDE · Git/GitHub client', r2: 'Art-studio site · shipped for a client', r3: 'Sheet-music player',
+    r1: 'Single-file IDE · Git/GitHub client', r2: 'Art-studio site · shipped for a client', r3: 'Sheet-music player', r4: 'Claude Code / Codex session browser · single file',
   },
   pl: {
     eyebrow: 'Dowód', title: 'Nie obietnice — systemy.',
@@ -19,7 +19,7 @@ const PROOF: Record<string, any> = {
     s2flag: 'Zbudowany solo · Sprzedany', s2where: 'Produkt komercyjny',
     s2desc: 'AI-skryba dla klinik weterynaryjnych — zamienia rozmowę w gabinecie w dokumentację kliniczną. Zaprojektowany, zbudowany i wdrożony w pojedynkę, end to end. Potem sprzedany.',
     rangeLabel: 'A do tego zasięg —',
-    r1: 'Jednoplikowe IDE · klient Git/GitHub', r2: 'Strona studia artystycznego · dla klienta', r3: 'Odtwarzacz nut',
+    r1: 'Jednoplikowe IDE · klient Git/GitHub', r2: 'Strona studia artystycznego · dla klienta', r3: 'Odtwarzacz nut', r4: 'Przeglądarka sesji Claude Code / Codex · jeden plik',
   },
   de: {
     eyebrow: 'Der Beweis', title: 'Keine Versprechen — Systeme.',
@@ -28,7 +28,7 @@ const PROOF: Record<string, any> = {
     s2flag: 'Allein gebaut · Verkauft', s2where: 'Ein kommerzielles Produkt',
     s2desc: 'Ein KI-Schreiber für Tierkliniken — verwandelt das Gespräch im Raum in klinische Dokumentation. Allein konzipiert, gebaut und ausgeliefert, end to end. Dann verkauft.',
     rangeLabel: 'Und die Bandbreite —',
-    r1: 'Single-File-IDE · Git/GitHub-Client', r2: 'Kunststudio-Website · für einen Kunden', r3: 'Notenplayer',
+    r1: 'Single-File-IDE · Git/GitHub-Client', r2: 'Kunststudio-Website · für einen Kunden', r3: 'Notenplayer', r4: 'Claude-Code-/Codex-Sitzungsbrowser · eine Datei',
   },
 };
 
@@ -101,6 +101,9 @@ const PROOF: Record<string, any> = {
           </a>
           <a class="range__item" href="https://github.com/guziczak/noteplayer" target="_blank" rel="noopener noreferrer">
             <b>noteplayer</b><span>{{ p().r3 }}</span>
+          </a>
+          <a class="range__item" href="https://github.com/guziczak/przegladaczka" target="_blank" rel="noopener noreferrer">
+            <b>przeglądaczka</b><span>{{ p().r4 }}</span>
           </a>
         </div>
       </div>
