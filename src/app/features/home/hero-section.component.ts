@@ -693,12 +693,13 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       .then((d) => { if (d && d.notes) { this.notes = d.notes; if (d.bpm) this.beatMs = 60000 / d.bpm; } })
       .catch(() => {});
 
-    // The bell is too small to aim at — start on the first interaction anywhere. Hardened for
-    // iOS: a tap fires several events (pointerup/touchend/click) — dedupe them; KEEP listening
-    // and retry until audio is *actually* playing (iOS often needs a 2nd gesture, and the first
-    // tap may land before the score has loaded); and never toggle OFF from here.
+    // The bell is too small to aim at — start on the FIRST interaction anywhere, scroll included.
+    // Crucial for iOS: listen on the gesture START (touchstart/pointerdown), not only its end —
+    // a scroll's touchend doesn't unlock audio (and its pointerup turns into pointercancel), but
+    // the finger-down that BEGINS the scroll does. Dedupe the event burst; keep listening and
+    // retry until audio is *actually* playing; never toggle OFF from here.
     let starting = false;
-    const evs = ['pointerup', 'touchend', 'click', 'keydown'];
+    const evs = ['pointerdown', 'touchstart', 'pointerup', 'touchend', 'click', 'keydown', 'wheel'];
     const kick = (e: Event) => {
       const target = e.target as HTMLElement | null;
       if (target && target.closest && target.closest('.manifesto__music')) return; // the bell handles itself
