@@ -30,6 +30,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'score',
+    loadComponent: () =>
+      import('./pages/score-page/score-page.component').then(
+        (m) => m.ScorePageComponent,
+      ),
+  },
+  {
     path: '**',
     redirectTo: '',
   },
