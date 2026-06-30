@@ -9,6 +9,8 @@ const PROOF: Record<string, any> = {
     s1desc: "Sole engineer, end to end. Local vision + language models on the bank's own GPUs — extracting structured data from scanned financial statements. No document ever leaves the network. Built for EU AI Act readiness and GDPR.",
     s2flag: 'Built solo · Sold', s2where: 'A commercial product',
     s2desc: 'An AI scribe for veterinary clinics — it turns the conversation in the room into clinical documentation. Architected, built and shipped alone, end to end. Then sold.',
+    s3flag: 'Built solo · 17 specialties', s3where: 'A multi-specialty scribe + NFZ billing',
+    s3desc: 'The human-medicine sibling — one AI scribe across 17 specialties. Records the visit, transcribes offline (Whisper) with Doctor/Patient diarization, then drafts the documentation with ICD-10 diagnoses, ICD-9 procedures and ready NFZ point-scoring. Nothing leaves the machine.',
     rangeLabel: 'And the range —',
     r1: 'Single-file IDE · Git/GitHub client', r2: 'Art-studio site · shipped for a client', r3: 'Sheet-music player', r4: 'Claude Code / Codex session browser · single file',
   },
@@ -18,6 +20,8 @@ const PROOF: Record<string, any> = {
     s1desc: 'Jedyny inżynier, end to end. Lokalne modele wizyjne i językowe na GPU banku — ekstrakcja danych ustrukturyzowanych ze skanów sprawozdań finansowych. Żaden dokument nie opuszcza sieci. Pod kątem EU AI Act i RODO.',
     s2flag: 'Zbudowany solo · Sprzedany', s2where: 'Produkt komercyjny',
     s2desc: 'AI-skryba dla klinik weterynaryjnych — zamienia rozmowę w gabinecie w dokumentację kliniczną. Zaprojektowany, zbudowany i wdrożony w pojedynkę, end to end. Potem sprzedany.',
+    s3flag: 'Zbudowany solo · 17 specjalizacji', s3where: 'Skryba wielospecjalizacyjny + rozliczenia NFZ',
+    s3desc: 'Brat bliźniak dla medycyny człowieka — jeden AI-skryba w 17 specjalizacjach. Nagrywa wizytę, transkrybuje offline (Whisper) z rozróżnianiem Lekarz/Pacjent, i układa dokumentację z rozpoznaniami ICD-10, procedurami ICD-9 i gotową punktacją NFZ. Dane nie opuszczają komputera.',
     rangeLabel: 'A do tego zasięg —',
     r1: 'Jednoplikowe IDE · klient Git/GitHub', r2: 'Strona studia artystycznego · dla klienta', r3: 'Odtwarzacz nut', r4: 'Przeglądarka sesji Claude Code / Codex · jeden plik',
   },
@@ -27,6 +31,8 @@ const PROOF: Record<string, any> = {
     s1desc: 'Alleiniger Entwickler, end to end. Lokale Vision- und Sprachmodelle auf den GPUs der Bank — Extraktion strukturierter Daten aus gescannten Finanzberichten. Kein Dokument verlässt das Netzwerk. Für EU AI Act und DSGVO ausgelegt.',
     s2flag: 'Allein gebaut · Verkauft', s2where: 'Ein kommerzielles Produkt',
     s2desc: 'Ein KI-Schreiber für Tierkliniken — verwandelt das Gespräch im Raum in klinische Dokumentation. Allein konzipiert, gebaut und ausgeliefert, end to end. Dann verkauft.',
+    s3flag: 'Allein gebaut · 17 Fachgebiete', s3where: 'Multidisziplinärer Schreiber + NFZ-Abrechnung',
+    s3desc: 'Das Pendant für die Humanmedizin — ein KI-Schreiber über 17 Fachgebiete. Nimmt den Besuch auf, transkribiert offline (Whisper) mit Arzt/Patient-Trennung und erstellt die Dokumentation mit ICD-10-Diagnosen, ICD-9-Prozeduren und fertiger NFZ-Punktebewertung. Nichts verlässt den Rechner.',
     rangeLabel: 'Und die Bandbreite —',
     r1: 'Single-File-IDE · Git/GitHub-Client', r2: 'Kunststudio-Website · für einen Kunden', r3: 'Notenplayer', r4: 'Claude-Code-/Codex-Sitzungsbrowser · eine Datei',
   },
@@ -34,7 +40,7 @@ const PROOF: Record<string, any> = {
 
 /**
  * The Proof — system slabs, not a card grid.
- * Two monoliths (the bank Document AI, OpisAI) you scroll into one at a time,
+ * Three systems (the bank Document AI, OpisAI, Wizyta) you scroll into one at a time,
  * then the range. Real systems, real links. Depth over breadth.
  */
 @Component({
@@ -87,6 +93,42 @@ const PROOF: Record<string, any> = {
             <rect width="100" height="100" fill="#fff" mask="url(#opisaiBag)" />
           </svg>
           <span class="opisai-bubble__label">OpisAI</span>
+        </a>
+      </article>
+
+      <article class="slab slab--wizyta animate-on-scroll">
+        <div class="slab__meta">
+          <span class="slab__index">03</span>
+          <span class="slab__flag">{{ p().s3flag }}</span>
+        </div>
+        <h3 class="slab__name">Wizyta</h3>
+        <p class="slab__where">{{ p().s3where }}</p>
+        <p class="slab__desc">{{ p().s3desc }}</p>
+        <p class="slab__tech">Offline STT (Whisper) · Diarization · RAG (OpenVINO) · ICD-10/ICD-9/NFZ · LLMs · Python</p>
+        <a class="slab__link" href="https://guziczak.github.io/wizyta" target="_blank" rel="noopener noreferrer">
+          guziczak.github.io/wizyta <span aria-hidden="true">→</span>
+        </a>
+        <!-- Wizyta's mascot — a SOLID medical bag (the brand mark), parked to the side.
+             Unlike OpisAI's bouncing bubble, this one just sits there: static, upright. -->
+        <a class="wizyta-bag" href="https://guziczak.github.io/wizyta"
+           target="_blank" rel="noopener noreferrer" aria-label="Wizyta">
+          <svg class="wizyta-bag__icon" viewBox="20 21 60 60" aria-hidden="true">
+            <defs>
+              <linearGradient id="wizGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#3b82f6" />
+                <stop offset="1" stop-color="#1d4ed8" />
+              </linearGradient>
+              <mask id="wizBag">
+                <rect x="38" y="24.5" width="24" height="14" rx="6.3" fill="#fff" />
+                <rect x="20.9" y="33.4" width="58.2" height="43.7" rx="10.4" fill="#fff" />
+                <rect x="43.5" y="28.6" width="13" height="6.5" rx="2.6" fill="#000" />
+              </mask>
+            </defs>
+            <rect width="100" height="100" fill="url(#wizGrad)" mask="url(#wizBag)" />
+            <rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="#fff" />
+            <rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="#fff" />
+          </svg>
+          <span class="wizyta-bag__label">Wizyta</span>
         </a>
       </article>
 
@@ -218,13 +260,16 @@ const PROOF: Record<string, any> = {
         gap: 1px;
         border-radius: 50%;
         transform-origin: 50% 100%;
+        /* FLAT (1:1 z opisai/index.html): radial pojedynczego błękitu #2563eb
+           (lighter116 -> bg -> darker110) + subtelny górny linear sheen.
+           Bez szklanego połysku i niebiesko-cyanowej poświaty. */
         background:
-          radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 45%),
-          linear-gradient(150deg, #2563eb, #0ea5e9);
+          linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 70%),
+          radial-gradient(circle at 39% 36%, #286cff, #2563eb 55%, #225bd6);
         box-shadow:
-          inset 0 0 0 1px rgba(255, 255, 255, 0.18),
-          0 8px 24px rgba(37, 99, 235, 0.4),
-          0 0 28px rgba(14, 165, 233, 0.32);
+          inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+          0 16px 28px rgba(15, 23, 42, 0.12),
+          0 6px 12px rgba(15, 23, 42, 0.14);
         pointer-events: auto;
         cursor: pointer;
         text-decoration: none;
@@ -242,9 +287,9 @@ const PROOF: Record<string, any> = {
         transform: scale(1.14);
         filter: brightness(1.12);
         box-shadow:
-          inset 0 0 0 1px rgba(255, 255, 255, 0.28),
-          0 10px 30px rgba(37, 99, 235, 0.55),
-          0 0 40px rgba(14, 165, 233, 0.5);
+          inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+          0 18px 34px rgba(15, 23, 42, 0.18),
+          0 8px 16px rgba(15, 23, 42, 0.16);
       }
       .opisai-bubble:focus-visible {
         outline: 2px solid var(--color-primary);
@@ -257,6 +302,44 @@ const PROOF: Record<string, any> = {
         letter-spacing: 0.04em;
         line-height: 1;
         color: #fff;
+      }
+      /* Wizyta — a SOLID medical bag (the brand mark) parked to the side of the slab.
+         No bounce: static, upright, soft drop-shadow so it reads as a real object. */
+      .slab--wizyta { position: relative; overflow: hidden; }
+      .wizyta-bag {
+        position: absolute;
+        left: 78%;
+        top: 5.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.4rem;
+        text-decoration: none;
+        filter: drop-shadow(0 12px 20px rgba(15, 23, 42, 0.4));
+        transition: transform 0.25s ease, filter 0.25s ease;
+        z-index: 1;
+      }
+      .wizyta-bag:hover,
+      .wizyta-bag:focus-visible {
+        transform: scale(1.07) translateY(-2px);
+        filter: drop-shadow(0 18px 30px rgba(15, 23, 42, 0.5));
+      }
+      .wizyta-bag:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 4px;
+        border-radius: 12px;
+      }
+      .wizyta-bag__icon { width: 5rem; height: 5rem; display: block; }
+      .wizyta-bag__label {
+        font-size: 0.5rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        line-height: 1;
+        color: var(--text-secondary);
+      }
+      @media (max-width: 640px) {
+        .wizyta-bag { top: 5rem; }
+        .wizyta-bag__icon { width: 4.2rem; height: 4.2rem; }
       }
       /* A basketball: falls under "gravity" (accelerating), hits the floor and squashes,
          then springs back up (decelerating). Purely vertical, in place — beside the title.
