@@ -629,6 +629,21 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       this.step.set(0);
       this.startReveal();
     }
+
+    // Load the composition as early as possible — from the constructor, not afterViewInit — so the
+    // score is in hand before a quick first scroll. If a start gesture lands before it arrives,
+    // 'wantsPlay' replays it the instant the notes do.
+    if (hasWin) {
+      fetch('swiatlo.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (!d || !d.notes) return;
+          this.notes = d.notes;
+          if (d.bpm) this.beatMs = 60000 / d.bpm;
+          if (this.wantsPlay && !this.player?.isPlaying()) this.toggleMusic();
+        })
+        .catch(() => {});
+    }
   }
 
   /** Type `word` one glyph at a time after `delay` ms; returns a cleanup fn. */
@@ -674,6 +689,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   protected beatMs = 582.5; // quarter-note length; refined from the score's bpm on load
   protected readonly leadInSec = 6; // count-in length — notes roll in from the right edge of the staff
   protected player: SwiatloPlayer | null = null;
+  private wantsPlay = false; // a start gesture that landed before the score finished loading
 
   /** The manifesto's punch types itself in, then the cursor commits to a period. */
   ngAfterViewInit(): void {
@@ -687,12 +703,6 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     // Let an impatient reader fast-forward the guided read by scrolling.
     if (this.animate()) this.attachSkip();
 
-    // Load Łukasz's composition for opt-in playback (the bell — never autoplays).
-    fetch('swiatlo.json')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d && d.notes) { this.notes = d.notes; if (d.bpm) this.beatMs = 60000 / d.bpm; } })
-      .catch(() => {});
-
     // The bell is too small to aim at — start on the FIRST interaction anywhere, scroll included.
     // Crucial for iOS: listen on the gesture START (touchstart/pointerdown), not only its end —
     // a scroll's touchend doesn't unlock audio (and its pointerup turns into pointercancel), but
@@ -704,7 +714,8 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       const target = e.target as HTMLElement | null;
       if (target && target.closest && target.closest('.manifesto__music')) return; // the bell handles itself
       if (this.player && this.player.isPlaying()) { this.removeKick?.(); return; }
-      if (!this.notes || starting) return; // score not loaded yet → a later gesture retries
+      if (starting) return;
+      if (!this.notes) { this.wantsPlay = true; return; } // gesture before the score loaded — play it the moment it arrives
       starting = true;
       setTimeout(() => (starting = false), 500); // iOS may not unlock on the 1st gesture — allow a retry
       this.toggleMusic(); // creates + resumes the AudioContext INSIDE this gesture (the iOS unlock)
