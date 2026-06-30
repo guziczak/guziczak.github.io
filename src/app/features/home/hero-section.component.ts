@@ -640,7 +640,6 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
           if (!d || !d.notes) return;
           this.notes = d.notes;
           if (d.bpm) this.beatMs = 60000 / d.bpm;
-          if (this.wantsPlay && !this.player?.isPlaying()) this.toggleMusic();
         })
         .catch(() => {});
     }
@@ -689,7 +688,6 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   protected beatMs = 582.5; // quarter-note length; refined from the score's bpm on load
   protected readonly leadInSec = 6; // count-in length — notes roll in from the right edge of the staff
   protected player: SwiatloPlayer | null = null;
-  private wantsPlay = false; // a start gesture that landed before the score finished loading
 
   /** The manifesto's punch types itself in, then the cursor commits to a period. */
   ngAfterViewInit(): void {
@@ -714,8 +712,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       const target = e.target as HTMLElement | null;
       if (target && target.closest && target.closest('.manifesto__music')) return; // the bell handles itself
       if (this.player && this.player.isPlaying()) { this.removeKick?.(); return; }
-      if (starting) return;
-      if (!this.notes) { this.wantsPlay = true; return; } // gesture before the score loaded — play it the moment it arrives
+      if (!this.notes || starting) return; // score not loaded yet — a later gesture retries
       starting = true;
       setTimeout(() => (starting = false), 500); // iOS may not unlock on the 1st gesture — allow a retry
       this.toggleMusic(); // creates + resumes the AudioContext INSIDE this gesture (the iOS unlock)

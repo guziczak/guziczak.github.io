@@ -211,6 +211,9 @@ export function createSwiatlo(
     // it lands every note in the past, so the first play is silent until you tap again
     // (the "two taps" bug). Resume first, THEN begin against a live clock.
     const begin = () => {
+      // If the unlock didn't take (iOS won't start audio outside a tap-like gesture), don't fake a
+      // playing state — a frozen, soundless staff is worse than nothing. Bail; the next tap retries.
+      if (ctx.state !== 'running') { playing = false; onState(false); return; }
       if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
       pieceOffset = offsetSec || 0;
       // From the top, hold a visual count-in so the staff rolls in from the RIGHT EDGE and the
