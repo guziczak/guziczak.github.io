@@ -725,6 +725,10 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   private punchTimer?: ReturnType<typeof setTimeout>;
   private skip?: () => void;
   private removeKick?: () => void;
+  // Tap-to-start guard: dedupes the pointerdown/up/click burst of one gesture, but is released the
+  // moment an attempt resolves (plays OR bails) so a tap right after a non-activation scroll isn't lost.
+  private starting = false;
+  private startingTimer?: ReturnType<typeof setTimeout>;
   private bus?: { claim: () => void; close: () => void };
   private musicSaveTimer?: ReturnType<typeof setInterval>;
 
@@ -835,16 +839,18 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     // a scroll's touchend doesn't unlock audio (and its pointerup turns into pointercancel), but
     // the finger-down that BEGINS the scroll does. Dedupe the event burst; keep listening and
     // retry until audio is *actually* playing; never toggle OFF from here.
-    let starting = false;
     const evs = ['pointerdown', 'touchstart', 'pointerup', 'touchend', 'click', 'keydown', 'wheel'];
     const kick = (e: Event) => {
       const target = e.target as HTMLElement | null;
       if (target && target.closest && target.closest('.manifesto__music, .manifesto__score, .score-modal')) return; // bell handles itself; the score button/modal must not auto-start audio
       if (this.player && this.player.isPlaying()) { this.removeKick?.(); return; }
-      if (!this.notes || starting) return; // score not loaded yet — a later gesture retries
-      starting = true;
-      setTimeout(() => (starting = false), 500); // iOS may not unlock on the 1st gesture — allow a retry
-      this.toggleMusic(); // creates + resumes the AudioContext INSIDE this gesture (the iOS unlock)
+      if (!this.notes || this.starting) return; // notes not loaded / attempt in flight — a later gesture retries
+      this.starting = true;
+      // Fallback release only — normally cleared the instant the attempt resolves (toggleMusic's onState),
+      // so a tap that follows a non-activation scroll (which bails) is NOT swallowed for half a second.
+      clearTimeout(this.startingTimer);
+      this.startingTimer = setTimeout(() => (this.starting = false), 700);
+      this.toggleMusic(); // creates + resumes the AudioContext INSIDE this gesture (the unlock)
     };
     this.removeKick = () => evs.forEach((ev) => document.removeEventListener(ev, kick));
     evs.forEach((ev) => document.addEventListener(ev, kick, { passive: true }));
@@ -922,6 +928,8 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       this.player = createSwiatlo(this.notes, {
         onState: (on) => {
           this.musicOn.set(on);
+          this.starting = false; // attempt resolved (playing OR bailed) — free the tap-to-start guard now
+          clearTimeout(this.startingTimer);
           if (on) {
             this.removeKick?.(); // truly playing now — stop the global tap-to-start
             this.bus?.claim(); // ask other tabs (e.g. the CV tab) to yield the bell

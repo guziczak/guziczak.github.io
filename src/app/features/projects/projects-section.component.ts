@@ -101,37 +101,39 @@ const PROOF: Record<string, any> = {
           <span class="slab__index">03</span>
           <span class="slab__flag">{{ p().s3flag }}</span>
         </div>
-        <h3 class="slab__name">Wizyta</h3>
+        <div class="wizyta-brand">
+          <h3 class="slab__name">Wizyta</h3>
+          <span class="wizyta-rail">
+            <a class="wizyta-bag" href="https://guziczak.github.io/wizyta"
+               target="_blank" rel="noopener noreferrer" aria-label="Wizyta">
+              <svg class="wizyta-bag__icon" viewBox="20 21 60 60" aria-hidden="true">
+                <defs>
+                  <linearGradient id="wizGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#3b82f6" />
+                    <stop offset="1" stop-color="#1d4ed8" />
+                  </linearGradient>
+                  <linearGradient id="wizBagFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#ffffff" />
+                    <stop offset="1" stop-color="#dbe6f5" />
+                  </linearGradient>
+                  <mask id="wizBag">
+                    <rect x="38" y="24.5" width="24" height="14" rx="6.3" fill="#fff" />
+                    <rect x="20.9" y="33.4" width="58.2" height="43.7" rx="10.4" fill="#fff" />
+                    <rect x="43.5" y="28.6" width="13" height="6.5" rx="2.6" fill="#000" />
+                  </mask>
+                </defs>
+                <rect width="100" height="100" fill="url(#wizBagFill)" mask="url(#wizBag)" />
+                <rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="url(#wizGrad)" />
+                <rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="url(#wizGrad)" />
+              </svg>
+            </a>
+          </span>
+        </div>
         <p class="slab__where">{{ p().s3where }}</p>
         <p class="slab__desc">{{ p().s3desc }}</p>
         <p class="slab__tech">Offline STT (Whisper) · Diarization · RAG (OpenVINO) · ICD-10/ICD-9/NFZ · LLMs · Python</p>
         <a class="slab__link" href="https://guziczak.github.io/wizyta" target="_blank" rel="noopener noreferrer">
           guziczak.github.io/wizyta <span aria-hidden="true">→</span>
-        </a>
-        <!-- Wizyta's mascot — a SOLID medical bag (the brand mark), parked to the side.
-             Unlike OpisAI's bouncing bubble, this one just sits there: static, upright. -->
-        <a class="wizyta-bag" href="https://guziczak.github.io/wizyta"
-           target="_blank" rel="noopener noreferrer" aria-label="Wizyta">
-          <svg class="wizyta-bag__icon" viewBox="20 21 60 60" aria-hidden="true">
-            <defs>
-              <linearGradient id="wizGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#3b82f6" />
-                <stop offset="1" stop-color="#1d4ed8" />
-              </linearGradient>
-              <linearGradient id="wizBagFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#ffffff" />
-                <stop offset="1" stop-color="#dbe6f5" />
-              </linearGradient>
-              <mask id="wizBag">
-                <rect x="38" y="24.5" width="24" height="14" rx="6.3" fill="#fff" />
-                <rect x="20.9" y="33.4" width="58.2" height="43.7" rx="10.4" fill="#fff" />
-                <rect x="43.5" y="28.6" width="13" height="6.5" rx="2.6" fill="#000" />
-              </mask>
-            </defs>
-            <rect width="100" height="100" fill="url(#wizBagFill)" mask="url(#wizBag)" />
-            <rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="url(#wizGrad)" />
-            <rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="url(#wizGrad)" />
-          </svg>
         </a>
       </article>
 
@@ -306,36 +308,46 @@ const PROOF: Record<string, any> = {
         line-height: 1;
         color: #fff;
       }
-      /* Wizyta — a SOLID medical bag (the brand mark) parked to the side of the slab.
-         No bounce: static, upright, soft drop-shadow so it reads as a real object. */
-      .slab--wizyta { position: relative; overflow: hidden; }
+      /* Wizyta — a blue brand rail running from the title to the medical bag docked at its right end.
+         The bag (white, blue cross) shrinks to sit inside the bar. */
+      .slab--wizyta { position: relative; }
+      .wizyta-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+        margin-bottom: 0.75rem;
+      }
+      .wizyta-brand .slab__name { margin: 0; flex: 0 0 auto; }
+      .wizyta-rail {
+        position: relative;
+        flex: 1 1 auto;
+        min-width: 4rem;
+        height: 2.5rem;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #286cff, #1d4ed8);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20), 0 8px 20px rgba(37, 99, 235, 0.30);
+      }
       .wizyta-bag {
         position: absolute;
-        /* Same spot as OpisAI's bouncing bubble sits on its slab (just static here). */
-        left: 78%;
-        top: 6rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+        right: 0.28rem;
+        top: 50%;
+        transform: translateY(-50%);
+        display: block;
+        line-height: 0;
         text-decoration: none;
-        filter: drop-shadow(0 12px 20px rgba(15, 23, 42, 0.4));
-        transition: transform 0.25s ease, filter 0.25s ease;
-        z-index: 1;
+        filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.35));
+        transition: transform 0.2s ease;
       }
-      .wizyta-bag:hover,
+      .wizyta-bag:hover { transform: translateY(-50%) scale(1.08); }
       .wizyta-bag:focus-visible {
-        transform: scale(1.07) translateY(-2px);
-        filter: drop-shadow(0 18px 30px rgba(15, 23, 42, 0.5));
+        outline: 2px solid #fff;
+        outline-offset: 2px;
+        border-radius: 8px;
       }
-      .wizyta-bag:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 4px;
-        border-radius: 12px;
-      }
-      .wizyta-bag__icon { width: 5rem; height: 5rem; display: block; }
+      .wizyta-bag__icon { width: 2rem; height: 2rem; display: block; }
       @media (max-width: 640px) {
-        .wizyta-bag { top: 6rem; }
-        .wizyta-bag__icon { width: 4.2rem; height: 4.2rem; }
+        .wizyta-rail { height: 2.2rem; }
+        .wizyta-bag__icon { width: 1.75rem; height: 1.75rem; }
       }
       /* A basketball: falls under "gravity" (accelerating), hits the floor and squashes,
          then springs back up (decelerating). Purely vertical, in place — beside the title.
