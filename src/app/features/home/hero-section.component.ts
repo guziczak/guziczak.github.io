@@ -916,15 +916,14 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     if (typeof document !== 'undefined') document.body.style.overflow = 'hidden';
   }
 
-  /** iOS / iPadOS / Safari render PDFs in iframes unreliably (clipped right edge). */
+  /** iOS / iPadOS only clip a PDF-in-iframe. Desktop (incl. Safari) keeps the modal. */
   private prefersNativePdf(): boolean {
     if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
     const ua = navigator.userAgent;
-    const iOS =
+    return (
       /iPad|iPhone|iPod/.test(ua) ||
-      ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1);
-    const isSafari = /safari/i.test(ua) && !/chrome|crios|chromium|android|fxios|edg|opr/i.test(ua);
-    return iOS || isSafari;
+      ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1)
+    );
   }
 
   closeScore(): void {

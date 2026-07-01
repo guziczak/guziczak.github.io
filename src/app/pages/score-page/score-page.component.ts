@@ -177,13 +177,13 @@ export class ScorePageComponent {
   }
 }
 
-/** True for browsers whose inline PDF-in-iframe viewer is unreliable (iOS, iPadOS, Safari). */
+/** True only on iOS / iPadOS, whose inline PDF-in-iframe viewer clips the right edge.
+ *  Desktop Safari renders PDF-in-iframe fine, so it keeps the inline viewer / modal. */
 export function prefersNativePdf(): boolean {
   if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
   const ua = navigator.userAgent;
-  const iOS =
+  return (
     /iPad|iPhone|iPod/.test(ua) ||
-    ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1);
-  const isSafari = /safari/i.test(ua) && !/chrome|crios|chromium|android|fxios|edg|opr/i.test(ua);
-  return iOS || isSafari;
+    ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1) // iPadOS 13+ poses as Mac
+  );
 }
