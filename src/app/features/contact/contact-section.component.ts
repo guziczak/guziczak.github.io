@@ -5,7 +5,7 @@ import { LanguageService } from '../../core/services/language.service';
 
 const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: string }> = {
   en: { line: 'You read this far.', cta: "Let's build something.", cvText: 'The full CV follows.', cvNote: "(You won't need it.)" },
-  pl: { line: 'Doczytałeś tak daleko.', cta: 'Zróbmy coś razem.', cvText: 'Pełne CV poniżej.', cvNote: '(Nie będzie ci potrzebne.)' },
+  pl: { line: 'Doczytałeś tak daleko.', cta: 'Zróbmy coś razem.', cvText: 'Pełne CV poniżej.', cvNote: '(Nie będzie Ci potrzebne)' },
   de: { line: 'Sie haben bis hierher gelesen.', cta: 'Lassen Sie uns etwas bauen.', cvText: 'Vollständiger Lebenslauf folgt.', cvNote: '(Sie werden ihn nicht brauchen.)' },
 };
 
