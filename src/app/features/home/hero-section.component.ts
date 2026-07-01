@@ -834,12 +834,13 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     // Let an impatient reader fast-forward the guided read by scrolling.
     if (this.animate()) this.attachSkip();
 
-    // The bell is too small to aim at — start on the FIRST interaction anywhere, scroll included.
-    // Crucial for iOS: listen on the gesture START (touchstart/pointerdown), not only its end —
-    // a scroll's touchend doesn't unlock audio (and its pointerup turns into pointercancel), but
-    // the finger-down that BEGINS the scroll does. Dedupe the event burst; keep listening and
-    // retry until audio is *actually* playing; never toggle OFF from here.
-    const evs = ['pointerdown', 'touchstart', 'pointerup', 'touchend', 'click', 'keydown', 'wheel'];
+    // The bell is too small to aim at — start on the FIRST *deliberate* gesture: a tap / click anywhere,
+    // or the finger-down that begins a touch-scroll. Deliberately NOT keypresses (typing / Tab / arrows)
+    // and NOT a desktop mouse-wheel (which can't unlock audio anyway) — those felt like "a mosquito lands
+    // and it plays". Crucial for iOS: listen on the gesture START (touchstart/pointerdown), not only its
+    // end — a scroll's touchend doesn't unlock audio, but the finger-down that BEGINS it does. Dedupe the
+    // event burst; keep listening and retry until audio is *actually* playing; never toggle OFF from here.
+    const evs = ['pointerdown', 'touchstart', 'pointerup', 'touchend', 'click'];
     const kick = (e: Event) => {
       const target = e.target as HTMLElement | null;
       if (target && target.closest && target.closest('.manifesto__music, .manifesto__score, .score-modal')) return; // bell handles itself; the score button/modal must not auto-start audio

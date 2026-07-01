@@ -103,10 +103,9 @@ const PROOF: Record<string, any> = {
         </div>
         <div class="wizyta-brand">
           <h3 class="slab__name">Wizyta</h3>
-          <span class="wizyta-rail">
-            <a class="wizyta-bag" href="https://guziczak.github.io/wizyta"
-               target="_blank" rel="noopener noreferrer" aria-label="Wizyta">
-              <svg class="wizyta-bag__icon" viewBox="20 21 60 60" aria-hidden="true">
+          <a class="wizyta-bag" href="https://guziczak.github.io/wizyta"
+             target="_blank" rel="noopener noreferrer" aria-label="Wizyta">
+            <svg class="wizyta-bag__icon" viewBox="20 21 60 60" aria-hidden="true">
                 <defs>
                   <linearGradient id="wizGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0" stop-color="#3b82f6" />
@@ -126,8 +125,7 @@ const PROOF: Record<string, any> = {
                 <rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="url(#wizGrad)" />
                 <rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="url(#wizGrad)" />
               </svg>
-            </a>
-          </span>
+          </a>
         </div>
         <p class="slab__where">{{ p().s3where }}</p>
         <p class="slab__desc">{{ p().s3desc }}</p>
@@ -308,46 +306,39 @@ const PROOF: Record<string, any> = {
         line-height: 1;
         color: #fff;
       }
-      /* Wizyta — a blue brand rail running from the title to the medical bag docked at its right end.
-         The bag (white, blue cross) shrinks to sit inside the bar. */
+      /* Wizyta — the whole title row IS the blue bar (a pill). "Wizyta" (white) sits ON it at the
+         left, the medical bag ON it at the right end. */
       .slab--wizyta { position: relative; }
       .wizyta-brand {
         display: flex;
         align-items: center;
-        gap: 0.9rem;
-        margin-bottom: 0.75rem;
-      }
-      .wizyta-brand .slab__name { margin: 0; flex: 0 0 auto; }
-      .wizyta-rail {
-        position: relative;
-        flex: 1 1 auto;
-        min-width: 4rem;
-        height: 2.5rem;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.4rem 0.6rem 0.4rem 1.2rem;
         border-radius: 999px;
         background: linear-gradient(90deg, #286cff, #1d4ed8);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20), 0 8px 20px rgba(37, 99, 235, 0.30);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 26px rgba(37, 99, 235, 0.30);
+        margin-bottom: 0.9rem;
       }
+      .wizyta-brand .slab__name { margin: 0; color: #fff; line-height: 1.05; }
       .wizyta-bag {
-        position: absolute;
-        right: 0.28rem;
-        top: 50%;
-        transform: translateY(-50%);
+        flex: 0 0 auto;
         display: block;
         line-height: 0;
         text-decoration: none;
-        filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.35));
+        filter: drop-shadow(0 2px 5px rgba(15, 23, 42, 0.30));
         transition: transform 0.2s ease;
       }
-      .wizyta-bag:hover { transform: translateY(-50%) scale(1.08); }
+      .wizyta-bag:hover { transform: scale(1.08); }
       .wizyta-bag:focus-visible {
         outline: 2px solid #fff;
         outline-offset: 2px;
         border-radius: 8px;
       }
-      .wizyta-bag__icon { width: 2rem; height: 2rem; display: block; }
+      .wizyta-bag__icon { width: 2.4rem; height: 2.4rem; display: block; }
       @media (max-width: 640px) {
-        .wizyta-rail { height: 2.2rem; }
-        .wizyta-bag__icon { width: 1.75rem; height: 1.75rem; }
+        .wizyta-brand { padding: 0.35rem 0.5rem 0.35rem 0.95rem; }
+        .wizyta-bag__icon { width: 2rem; height: 2rem; }
       }
       /* A basketball: falls under "gravity" (accelerating), hits the floor and squashes,
          then springs back up (decelerating). Purely vertical, in place — beside the title.
