@@ -118,15 +118,19 @@ const PROOF: Record<string, any> = {
                 <stop offset="0" stop-color="#3b82f6" />
                 <stop offset="1" stop-color="#1d4ed8" />
               </linearGradient>
+              <linearGradient id="wizBagFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffffff" />
+                <stop offset="1" stop-color="#dbe6f5" />
+              </linearGradient>
               <mask id="wizBag">
                 <rect x="38" y="24.5" width="24" height="14" rx="6.3" fill="#fff" />
                 <rect x="20.9" y="33.4" width="58.2" height="43.7" rx="10.4" fill="#fff" />
                 <rect x="43.5" y="28.6" width="13" height="6.5" rx="2.6" fill="#000" />
               </mask>
             </defs>
-            <rect width="100" height="100" fill="url(#wizGrad)" mask="url(#wizBag)" />
-            <rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="#fff" />
-            <rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="#fff" />
+            <rect width="100" height="100" fill="url(#wizBagFill)" mask="url(#wizBag)" />
+            <rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="url(#wizGrad)" />
+            <rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="url(#wizGrad)" />
           </svg>
           <span class="wizyta-bag__label">Wizyta</span>
         </a>
@@ -308,8 +312,8 @@ const PROOF: Record<string, any> = {
       .slab--wizyta { position: relative; overflow: hidden; }
       .wizyta-bag {
         position: absolute;
-        left: 78%;
-        top: 5.5rem;
+        right: 1rem;
+        top: 2rem;
         display: flex;
         flex-direction: column;
         align-items: center;

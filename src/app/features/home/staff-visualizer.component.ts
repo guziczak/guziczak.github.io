@@ -6,6 +6,7 @@ import {
   AfterViewInit,
   OnDestroy,
 } from '@angular/core';
+import { isBlack, drawSharp, drawNatural } from './engraving';
 
 /**
  * The score, alive — a faint grand staff at the foot of the page where the
@@ -106,9 +107,12 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     number[],
     { stemDown: boolean; firstRef: number[]; lastRef: number[]; nextRef: number[] | null; flags: number }
   >();
+  /** note(ref) -> accidental engraved before it (per-measure memory): sharp, natural, or none. */
+  private accOf = new Map<number[], 'sharp' | 'natural' | null>();
   @Input() set notes(v: number[][]) {
     this._notes = v || [];
     this.computeBeams();
+    this.computeAccidentals();
   }
 
   /** Quarter-note length in ms, from the score's tempo. Drives note values & barlines. */
@@ -281,6 +285,32 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
       }
     }
     flush();
+  }
+
+  /** Per-measure accidental memory (real engraving): a black key gets a sharp the first time it
+   *  appears on its line in a measure; a later natural on that same line cancels it; reset each bar.
+   *  Reuses engraving.ts's isBlack/drawSharp/drawNatural so it matches the read score exactly. */
+  private computeAccidentals(): void {
+    this.accOf.clear();
+    const ns = this._notes;
+    if (!ns.length) return;
+    const barMs = this.beatMs * this.beatsPerBar;
+    const order = ns.map((_, i) => i).sort((a, b) => ns[a][0] - ns[b][0]);
+    let curBar = -1;
+    const active = new Set<number>(); // diatonic lines carrying an active sharp this measure
+    for (const i of order) {
+      const n = ns[i];
+      const bar = barMs > 0 ? Math.floor(n[0] / barMs) : 0;
+      if (bar !== curBar) { active.clear(); curBar = bar; }
+      const line = this.diat(n[2]);
+      if (isBlack(n[2])) {
+        if (active.has(line)) this.accOf.set(n, null);
+        else { this.accOf.set(n, 'sharp'); active.add(line); }
+      } else {
+        if (active.has(line)) { this.accOf.set(n, 'natural'); active.delete(line); }
+        else this.accOf.set(n, null);
+      }
+    }
   }
 
   // small, stable per-note pseudo-random in [-1,1) — the "hand" that keeps
@@ -495,6 +525,15 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
           }
           g.lineCap = 'round';
         }
+      }
+
+      // accidental engraved just left of the head (sharp on a black key, natural to cancel one)
+      const acc = this.accOf.get(n);
+      if (acc) {
+        const accCol = this.ink(vel, a * 0.95);
+        const ax = x - 4.6 - gap * 0.8;
+        if (acc === 'sharp') drawSharp(g, ax, y, gap, accCol);
+        else drawNatural(g, ax, y, gap, accCol);
       }
 
       this.note(g, x, y, s, gl, bi ? bi.stemDown : s >= staffMid, a, gap, half, sTop, sBot, on, seed, vel, beamTipY);
