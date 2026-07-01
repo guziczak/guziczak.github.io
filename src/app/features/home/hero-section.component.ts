@@ -1,6 +1,7 @@
-import { Component, inject, signal, computed, effect, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, effect, AfterViewInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ScrollService } from '../../core/services/scroll.service';
 import { LanguageService } from '../../core/services/language.service';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
@@ -99,6 +100,7 @@ const MANIFESTO: Record<string, any> = {
           <a [href]="'mailto:' + contact.email" aria-label="Email"><i class="fas fa-envelope"></i></a>
         </div>
 
+        <div class="manifesto__music-group">
         <button class="manifesto__music reveal" type="button"
                 [class.is-in]="step() >= 8"
                 [class.is-playing]="musicOn()" (click)="toggleMusic()"
@@ -110,9 +112,33 @@ const MANIFESTO: Record<string, any> = {
             <span class="manifesto__music-credit">Łukasz Guziczak &amp; Opus 4.6</span>
           </span>
         </button>
+
+        <button class="manifesto__score reveal" type="button"
+                [class.is-in]="step() >= 8"
+                (click)="openScore()"
+                aria-label="Zobacz pełną partyturę „Lux in tenebris” (PDF)">
+          <span class="manifesto__score-clef" aria-hidden="true">𝄞</span>
+          <span class="manifesto__score-text">Partytura</span>
+        </button>
+        </div>
       </footer>
     </section>
     <app-staff-visualizer [notes]="notes || []" [player]="player" [active]="musicOn()" [beatMs]="beatMs" [leadInSec]="leadInSec" />
+
+    @if (scoreOpen()) {
+      <div class="score-modal" role="dialog" aria-modal="true" aria-label="Partytura — Lux in tenebris" (click)="closeScore()">
+        <div class="score-modal__panel" (click)="$event.stopPropagation()">
+          <div class="score-modal__bar">
+            <span class="score-modal__title">Lux in tenebris <em>— partytura</em></span>
+            <span class="score-modal__actions">
+              <a class="score-modal__download" [href]="scorePdf" download="Swiatlo-w-Ciemnosci.pdf" target="_blank" rel="noopener noreferrer">⭳ Pobierz</a>
+              <button class="score-modal__close" type="button" (click)="closeScore()" aria-label="Zamknij partyturę">✕</button>
+            </span>
+          </div>
+          <iframe class="score-modal__doc" [src]="safeScorePdf" title="Partytura — Lux in tenebris"></iframe>
+        </div>
+      </div>
+    }
   `,
   styles: [
     `
@@ -526,6 +552,102 @@ const MANIFESTO: Record<string, any> = {
       .manifesto__music.is-playing .manifesto__eq i:nth-child(4) { animation-duration: 0.82s; }
       @keyframes eqBar { 0%, 100% { height: 3px; } 50% { height: 11px; } }
 
+      .manifesto__music-group { display: inline-flex; align-items: stretch; gap: 0.5rem; z-index: 2; }
+      /* Companion to the bell — opens the full engraved score in a modal PDF viewer. */
+      .manifesto__score {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 15px;
+        background: rgba(56, 189, 248, 0.04);
+        border: 1px solid rgba(56, 189, 248, 0.18);
+        border-radius: var(--radius-full);
+        color: var(--text-tertiary);
+        font-family: inherit;
+        font-size: 0.62rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: color 0.3s ease, border-color 0.3s ease, background-color 0.3s ease, transform 0.2s ease;
+      }
+      .manifesto__score:hover {
+        color: var(--color-primary);
+        border-color: rgba(56, 189, 248, 0.5);
+        background: rgba(56, 189, 248, 0.08);
+        transform: translateY(-1px);
+      }
+      .manifesto__score-clef { font-size: 1.15rem; line-height: 1; }
+
+      /* Big modal PDF viewer for the full score. */
+      .score-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: clamp(0.5rem, 3vw, 2.5rem);
+        background: rgba(6, 11, 22, 0.72);
+        backdrop-filter: blur(4px);
+        animation: scoreFade 0.2s ease;
+      }
+      @keyframes scoreFade { from { opacity: 0; } to { opacity: 1; } }
+      .score-modal__panel {
+        width: min(1000px, 100%);
+        height: min(92vh, 100%);
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-secondary, #0f172a);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+      }
+      .score-modal__bar {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.7rem 0.9rem 0.7rem 1.1rem;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+      }
+      .score-modal__title { color: var(--text-primary); font-weight: 700; font-size: 1rem; }
+      .score-modal__title em { color: var(--text-tertiary); font-style: normal; font-weight: 500; }
+      .score-modal__actions { display: inline-flex; align-items: center; gap: 0.6rem; }
+      .score-modal__download {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.85rem;
+        border-radius: 8px;
+        background: var(--color-primary);
+        color: #fff;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .score-modal__download:hover { filter: brightness(1.06); }
+      .score-modal__close {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+      .score-modal__close:hover { background: rgba(148, 163, 184, 0.12); color: var(--text-primary); }
+      .score-modal__doc { flex: 1 1 auto; width: 100%; border: 0; background: #525659; }
+      @media (max-width: 640px) {
+        .score-modal__panel { height: 100%; border-radius: 10px; }
+        .score-modal__title { font-size: 0.9rem; }
+      }
+
       /* Short viewports (laptops / windowed desktop): the manifesto is tall, so scale
          the big type and the rhythm down with the viewport HEIGHT — this keeps the CTA
          and the footer badge above the fold instead of pushing them off-screen. */
@@ -567,7 +689,14 @@ const MANIFESTO: Record<string, any> = {
 export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   private scrollService = inject(ScrollService);
   private languageService = inject(LanguageService);
+  private sanitizer = inject(DomSanitizer);
   protected readonly contact = CONTACT_CONFIG;
+
+  // Full engraved score ("Lux in tenebris") opened in a big modal PDF viewer.
+  protected readonly scoreOpen = signal(false);
+  protected readonly scorePdf = '/swiatlo.pdf';
+  protected readonly safeScorePdf: SafeResourceUrl =
+    this.sanitizer.bypassSecurityTrustResourceUrl(this.scorePdf + '#view=FitH');
 
   protected readonly m = computed(
     () => MANIFESTO[this.languageService.currentLanguage()] ?? MANIFESTO['en'],
@@ -710,7 +839,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     const evs = ['pointerdown', 'touchstart', 'pointerup', 'touchend', 'click', 'keydown', 'wheel'];
     const kick = (e: Event) => {
       const target = e.target as HTMLElement | null;
-      if (target && target.closest && target.closest('.manifesto__music')) return; // the bell handles itself
+      if (target && target.closest && target.closest('.manifesto__music, .manifesto__score, .score-modal')) return; // bell handles itself; the score button/modal must not auto-start audio
       if (this.player && this.player.isPlaying()) { this.removeKick?.(); return; }
       if (!this.notes || starting) return; // score not loaded yet — a later gesture retries
       starting = true;
@@ -730,6 +859,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     this.bus?.close();
     this.player?.dispose(); // stop & release audio so navigating away+back doesn't double it
     this.player = null;
+    if (typeof document !== 'undefined') document.body.style.overflow = ''; // release scroll lock if modal was open
   }
 
   private startMusicSave(): void {
@@ -767,6 +897,22 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
 
   enter(): void {
     this.scrollService.scrollToSection('projects');
+  }
+
+  openScore(): void {
+    this.scoreOpen.set(true);
+    if (typeof document !== 'undefined') document.body.style.overflow = 'hidden';
+  }
+
+  closeScore(): void {
+    if (!this.scoreOpen()) return;
+    this.scoreOpen.set(false);
+    if (typeof document !== 'undefined') document.body.style.overflow = '';
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeScore();
   }
 
   /** The bell — opt-in. The click is the gesture browsers need to start audio. */

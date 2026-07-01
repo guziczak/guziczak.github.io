@@ -132,7 +132,6 @@ const PROOF: Record<string, any> = {
             <rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="url(#wizGrad)" />
             <rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="url(#wizGrad)" />
           </svg>
-          <span class="wizyta-bag__label">Wizyta</span>
         </a>
       </article>
 
@@ -312,12 +311,12 @@ const PROOF: Record<string, any> = {
       .slab--wizyta { position: relative; overflow: hidden; }
       .wizyta-bag {
         position: absolute;
-        right: 1rem;
-        top: 2rem;
+        /* Same spot as OpisAI's bouncing bubble sits on its slab (just static here). */
+        left: 78%;
+        top: 6rem;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.4rem;
         text-decoration: none;
         filter: drop-shadow(0 12px 20px rgba(15, 23, 42, 0.4));
         transition: transform 0.25s ease, filter 0.25s ease;
@@ -334,15 +333,8 @@ const PROOF: Record<string, any> = {
         border-radius: 12px;
       }
       .wizyta-bag__icon { width: 5rem; height: 5rem; display: block; }
-      .wizyta-bag__label {
-        font-size: 0.5rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        line-height: 1;
-        color: var(--text-secondary);
-      }
       @media (max-width: 640px) {
-        .wizyta-bag { top: 5rem; }
+        .wizyta-bag { top: 6rem; }
         .wizyta-bag__icon { width: 4.2rem; height: 4.2rem; }
       }
       /* A basketball: falls under "gravity" (accelerating), hits the floor and squashes,
