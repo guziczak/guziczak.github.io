@@ -141,7 +141,7 @@ const PROOF: Record<string, any> = {
           <a class="range__item" href="https://github.com/guziczak/ide" target="_blank" rel="noopener noreferrer">
             <b>ForgeIDE</b><span>{{ p().r1 }}</span>
           </a>
-          <a class="range__item" href="https://guziczak.github.io/siekart" target="_blank" rel="noopener noreferrer">
+          <a class="range__item" href="https://zofiasiek.pl" target="_blank" rel="noopener noreferrer">
             <b>Siek-Art</b><span>{{ p().r2 }}</span>
           </a>
           <a class="range__item" href="https://github.com/guziczak/noteplayer" target="_blank" rel="noopener noreferrer">
@@ -315,7 +315,7 @@ const PROOF: Record<string, any> = {
         justify-content: space-between;
         gap: 1rem;
         padding: 0.4rem 0.6rem 0.4rem 1.2rem;
-        border-radius: 999px;
+        border-radius: 0;
         background: linear-gradient(90deg, #286cff, #1d4ed8);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 26px rgba(37, 99, 235, 0.30);
         margin-bottom: 0.9rem;

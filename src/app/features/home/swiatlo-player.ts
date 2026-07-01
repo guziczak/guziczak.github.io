@@ -196,6 +196,10 @@ export function createSwiatlo(
   function start(offsetSec: number) {
     if (!ctx) build();
     // iOS/WebKit: prime the output with a 1-sample silent buffer inside the gesture.
+    // Do NOT mark `unlocked` here — only once the context is confirmed RUNNING (in begin()).
+    // Otherwise a first attempt that can't grant activation (a scroll, or a tap the browser
+    // didn't accept) would prime once, set unlocked, and every later tap would SKIP priming —
+    // so on Safari/iOS the audio could never unlock ("fails once, then tapping won't play").
     if (!unlocked) {
       try {
         const s = ctx.createBufferSource();
@@ -203,7 +207,6 @@ export function createSwiatlo(
         s.connect(ctx.destination);
         s.start(0);
       } catch {}
-      unlocked = true;
     }
 
     // Lay down the timeline only once the context is actually RUNNING. On iOS a fresh
@@ -214,6 +217,7 @@ export function createSwiatlo(
       // If the unlock didn't take (iOS won't start audio outside a tap-like gesture), don't fake a
       // playing state — a frozen, soundless staff is worse than nothing. Bail; the next tap retries.
       if (ctx.state !== 'running') { playing = false; onState(false); return; }
+      unlocked = true; // confirmed running — the priming buffer took; safe not to re-prime next time
       if (loopTimer) { clearTimeout(loopTimer); loopTimer = null; }
       pieceOffset = offsetSec || 0;
       // From the top, hold a visual count-in so the staff rolls in from the RIGHT EDGE and the
