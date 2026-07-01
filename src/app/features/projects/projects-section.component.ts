@@ -70,29 +70,27 @@ const PROOF: Record<string, any> = {
           <span class="slab__index">02</span>
           <span class="slab__flag">{{ p().s2flag }}</span>
         </div>
-        <h3 class="slab__name">OpisAI</h3>
+        <div class="opisai-brand">
+          <h3 class="slab__name">OpisAI</h3>
+          <a class="opisai-bubble" href="https://guziczak.github.io/opisai"
+             target="_blank" rel="noopener noreferrer" aria-label="OpisAI">
+            <svg class="opisai-bubble__icon" viewBox="20 21 60 60" aria-hidden="true">
+              <mask id="opisaiBag">
+                <rect x="38" y="24.5" width="24" height="14" rx="6.3" fill="#fff" />
+                <rect x="20.9" y="33.4" width="58.2" height="43.7" rx="10.4" fill="#fff" />
+                <rect x="43.5" y="28.6" width="13" height="6.5" rx="2.6" fill="#000" />
+                <rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="#000" />
+                <rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="#000" />
+              </mask>
+              <rect width="100" height="100" fill="#fff" mask="url(#opisaiBag)" />
+            </svg>
+          </a>
+        </div>
         <p class="slab__where">{{ p().s2where }}</p>
         <p class="slab__desc">{{ p().s2desc }}</p>
         <p class="slab__tech">LLMs · Structured Outputs · Python · Full-stack</p>
         <a class="slab__link" href="https://guziczak.github.io/opisai" target="_blank" rel="noopener noreferrer">
           guziczak.github.io/opisai <span aria-hidden="true">→</span>
-        </a>
-        <!-- OpisAI's mascot — the desktop "bublak": a white medical bag (cross cut out to
-             the orb's gradient) over the wordmark. Bounces like a basketball, and it's a
-             link to the app — hovering catches the ball (pauses) so it's easy to click. -->
-        <a class="opisai-bubble" href="https://guziczak.github.io/opisai"
-           target="_blank" rel="noopener noreferrer" aria-label="OpisAI">
-          <svg class="opisai-bubble__icon" viewBox="20 21 60 60" aria-hidden="true">
-            <mask id="opisaiBag">
-              <rect x="38" y="24.5" width="24" height="14" rx="6.3" fill="#fff" />
-              <rect x="20.9" y="33.4" width="58.2" height="43.7" rx="10.4" fill="#fff" />
-              <rect x="43.5" y="28.6" width="13" height="6.5" rx="2.6" fill="#000" />
-              <rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="#000" />
-              <rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="#000" />
-            </mask>
-            <rect width="100" height="100" fill="#fff" mask="url(#opisaiBag)" />
-          </svg>
-          <span class="opisai-bubble__label">OpisAI</span>
         </a>
       </article>
 
@@ -246,66 +244,54 @@ const PROOF: Record<string, any> = {
          the orb's gradient). It bounces like a ball in the right half of the slab —
          constant velocity, clean wall reflections — driven by JS (see the component).
          CSS only sets the look and a no-JS resting spot on the right. */
-      .slab--opisai { position: relative; overflow: hidden; }
+      /* OpisAI — the title row is the same blue bar as Wizyta. The mascot is a ball that BOUNCES
+         off the bar's top edge (the bar is the floor). Headroom above the bar is its court. */
+      .slab--opisai { position: relative; overflow: visible; }
+      .opisai-brand {
+        position: relative;
+        display: flex;
+        align-items: center;
+        padding: 0.4rem 0.6rem 0.4rem 1.2rem;
+        background: linear-gradient(90deg, #286cff, #1d4ed8);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 26px rgba(37, 99, 235, 0.30);
+        margin: 5.5rem 0 0.9rem;
+      }
+      .opisai-brand .slab__name { margin: 0; color: #fff; line-height: 1.05; }
       .opisai-bubble {
         position: absolute;
-        /* Sits to the right of the title block (clear of the meta line's "…SPRZEDANY"). */
-        left: 78%;
-        /* The floor: the ball rests here, ≈ the "Produkt komercyjny" / "AI-skryba…" line.
-           This single value is the floor height — nudge it to move the floor. */
-        top: 6rem;
-        width: 5.2rem;
-        height: 5.2rem;
+        right: 1.6rem;
+        bottom: calc(100% - 0.5rem); /* rests on the bar's top edge — the floor it bounces off */
+        width: 3.6rem;
+        height: 3.6rem;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 1px;
         border-radius: 50%;
         transform-origin: 50% 100%;
-        /* FLAT (1:1 z opisai/index.html): radial pojedynczego błękitu #2563eb
-           (lighter116 -> bg -> darker110) + subtelny górny linear sheen.
-           Bez szklanego połysku i niebiesko-cyanowej poświaty. */
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 70%),
-          radial-gradient(circle at 39% 36%, #286cff, #2563eb 55%, #225bd6);
+          linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 70%),
+          radial-gradient(circle at 39% 36%, #6ba0ff, #2f6bf0 55%, #1d4ed8);
         box-shadow:
-          inset 0 0 0 1px rgba(255, 255, 255, 0.10),
-          0 16px 28px rgba(15, 23, 42, 0.12),
-          0 6px 12px rgba(15, 23, 42, 0.14);
+          inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+          0 10px 18px rgba(15, 23, 42, 0.32);
         pointer-events: auto;
         cursor: pointer;
         text-decoration: none;
-        z-index: 1;
-        will-change: transform, translate, scale;
+        z-index: 2;
+        will-change: translate, scale;
         transition: box-shadow 0.25s ease, filter 0.25s ease, transform 0.2s ease;
-        animation: opisaiDunk 1.5s infinite;
+        animation: opisaiDunk 1.4s infinite;
       }
-      /* Catch the ball: hover/focus pauses the bounce so the moving target holds still,
-         then it bulges — a uniform scale that COMPOSES with the paused bounce's individual
-         translate/scale (so the ball grows without snapping out of mid-air), glow swelling. */
+      /* Catch the ball: hover/focus pauses the bounce so the moving target holds still, then bulges. */
       .opisai-bubble:hover,
       .opisai-bubble:focus-visible {
         animation-play-state: paused;
-        transform: scale(1.14);
-        filter: brightness(1.12);
-        box-shadow:
-          inset 0 0 0 1px rgba(255, 255, 255, 0.22),
-          0 18px 34px rgba(15, 23, 42, 0.18),
-          0 8px 16px rgba(15, 23, 42, 0.16);
+        transform: scale(1.12);
+        filter: brightness(1.1);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.26), 0 14px 24px rgba(15, 23, 42, 0.36);
       }
-      .opisai-bubble:focus-visible {
-        outline: 2px solid var(--color-primary);
-        outline-offset: 3px;
-      }
-      .opisai-bubble__icon { width: 2.8rem; height: 2.8rem; display: block; }
-      .opisai-bubble__label {
-        font-size: 0.5rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        line-height: 1;
-        color: #fff;
-      }
+      .opisai-bubble:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+      .opisai-bubble__icon { width: 2.1rem; height: 2.1rem; display: block; }
       /* Wizyta — the whole title row IS the blue bar (a pill). "Wizyta" (white) sits ON it at the
          left, the medical bag ON it at the right end. */
       .slab--wizyta { position: relative; }
@@ -346,15 +332,15 @@ const PROOF: Record<string, any> = {
       /* Bounce uses the INDIVIDUAL transform properties (translate/scale), leaving the
          \`transform\` shorthand free for the hover bulge to compose on top. */
       @keyframes opisaiDunk {
-        0%   { translate: 0 -4.2rem; scale: 1 1; animation-timing-function: cubic-bezier(0.5, 0, 1, 0.6); }
+        0%   { translate: 0 -2.2rem; scale: 1 1; animation-timing-function: cubic-bezier(0.5, 0, 1, 0.6); }
         43%  { translate: 0 0; scale: 1 1; animation-timing-function: ease-out; }
         48%  { translate: 0 0; scale: 1.14 0.82; animation-timing-function: ease-in; }
         54%  { translate: 0 0; scale: 1 1; animation-timing-function: cubic-bezier(0, 0.4, 0.5, 1); }
-        100% { translate: 0 -4.2rem; scale: 1 1; }
+        100% { translate: 0 -2.2rem; scale: 1 1; }
       }
       @media (max-width: 640px) {
-        .opisai-bubble { width: 4.4rem; height: 4.4rem; top: 5.2rem; }
-        .opisai-bubble__icon { width: 2.3rem; height: 2.3rem; }
+        .opisai-bubble { width: 3.1rem; height: 3.1rem; right: 1.1rem; }
+        .opisai-bubble__icon { width: 1.85rem; height: 1.85rem; }
       }
 
       .range {
