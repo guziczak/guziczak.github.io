@@ -269,11 +269,12 @@ const PROOF: Record<string, any> = {
         border-radius: 50%;
         transform-origin: 50% 100%;
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 70%),
-          radial-gradient(circle at 39% 36%, #6ba0ff, #2f6bf0 55%, #1d4ed8);
+          linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 70%),
+          radial-gradient(circle at 39% 36%, #286cff, #2563eb 55%, #225bd6);
         box-shadow:
-          inset 0 0 0 1px rgba(255, 255, 255, 0.18),
-          0 10px 18px rgba(15, 23, 42, 0.32);
+          inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+          0 16px 28px rgba(15, 23, 42, 0.12),
+          0 6px 12px rgba(15, 23, 42, 0.14);
         pointer-events: auto;
         cursor: pointer;
         text-decoration: none;
@@ -286,9 +287,12 @@ const PROOF: Record<string, any> = {
       .opisai-bubble:hover,
       .opisai-bubble:focus-visible {
         animation-play-state: paused;
-        transform: scale(1.12);
-        filter: brightness(1.1);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.26), 0 14px 24px rgba(15, 23, 42, 0.36);
+        transform: scale(1.14);
+        filter: brightness(1.12);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+          0 18px 34px rgba(15, 23, 42, 0.18),
+          0 8px 16px rgba(15, 23, 42, 0.16);
       }
       .opisai-bubble:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
       .opisai-bubble__icon { width: 2.1rem; height: 2.1rem; display: block; }
