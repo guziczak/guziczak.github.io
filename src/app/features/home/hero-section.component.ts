@@ -117,7 +117,7 @@ const MANIFESTO: Record<string, any> = {
                 [class.is-in]="step() >= 8"
                 (click)="openScore()"
                 aria-label="Zobacz pełną partyturę „Lux in tenebris” (PDF)">
-          <span class="manifesto__score-clef" aria-hidden="true">𝄞</span>
+          <span class="manifesto__score-clef" aria-hidden="true"><i class="fas fa-file-lines"></i></span>
           <span class="manifesto__score-text">Partytura</span>
         </button>
         </div>
@@ -135,7 +135,18 @@ const MANIFESTO: Record<string, any> = {
               <button class="score-modal__close" type="button" (click)="closeScore()" aria-label="Zamknij partyturę">✕</button>
             </span>
           </div>
-          <iframe class="score-modal__doc" [src]="safeScorePdf" title="Partytura — Lux in tenebris"></iframe>
+          @if (scoreNative) {
+            <div class="score-modal__nativewrap">
+              <a class="score-modal__scroll" [href]="scorePdf" target="_blank" rel="noopener noreferrer">
+                <img class="score-modal__preview" [src]="scorePreview" alt="Partytura — pierwsza strona" />
+              </a>
+              <a class="score-modal__openbtn" [href]="scorePdf" target="_blank" rel="noopener noreferrer">
+                <span aria-hidden="true">⛶</span> Otwórz pełną partyturę
+              </a>
+            </div>
+          } @else {
+            <iframe class="score-modal__doc" [src]="safeScorePdf" title="Partytura — Lux in tenebris"></iframe>
+          }
         </div>
       </div>
     }
@@ -643,6 +654,32 @@ const MANIFESTO: Record<string, any> = {
       }
       .score-modal__close:hover { background: rgba(148, 163, 184, 0.12); color: var(--text-primary); }
       .score-modal__doc { flex: 1 1 auto; width: 100%; border: 0; background: #525659; }
+      /* iOS/iPadOS modal body: scrollable first-page preview + a solid "open full PDF" bar. */
+      .score-modal__nativewrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+      .score-modal__scroll {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        display: block;
+        background: #525659;
+        text-decoration: none;
+      }
+      .score-modal__preview { display: block; width: 100%; height: auto; }
+      .score-modal__openbtn {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.9rem 1rem;
+        background: var(--color-primary);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.95rem;
+        text-decoration: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.16);
+      }
       @media (max-width: 640px) {
         .score-modal__panel { height: 100%; border-radius: 10px; }
         .score-modal__title { font-size: 0.9rem; }
@@ -695,6 +732,9 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   // Full engraved score ("Lux in tenebris") opened in a big modal PDF viewer.
   protected readonly scoreOpen = signal(false);
   protected readonly scorePdf = '/swiatlo.pdf';
+  protected readonly scorePreview = '/swiatlo-preview.png';
+  // iOS/iPadOS clip a PDF-in-iframe, so the modal shows a preview + "open" there instead.
+  protected readonly scoreNative = this.prefersNativePdf();
   protected readonly safeScorePdf: SafeResourceUrl =
     this.sanitizer.bypassSecurityTrustResourceUrl(this.scorePdf + '#view=FitH');
 
@@ -907,11 +947,6 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   }
 
   openScore(): void {
-    // iOS/Safari clip a PDF-in-iframe (native A4 width) — open it in the OS viewer instead of the modal.
-    if (this.prefersNativePdf()) {
-      window.open(this.scorePdf, '_blank', 'noopener');
-      return;
-    }
     this.scoreOpen.set(true);
     if (typeof document !== 'undefined') document.body.style.overflow = 'hidden';
   }
