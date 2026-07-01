@@ -254,15 +254,18 @@ const PROOF: Record<string, any> = {
         padding: 0.4rem 0.6rem 0.4rem 1.2rem;
         background: linear-gradient(90deg, #286cff, #1d4ed8);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 26px rgba(37, 99, 235, 0.30);
-        margin: 5.5rem 0 0.9rem;
+        margin: 6rem 0 0.9rem;
       }
       .opisai-brand .slab__name { margin: 0; color: #fff; line-height: 1.05; }
       .opisai-bubble {
         position: absolute;
-        right: 1.6rem;
-        bottom: calc(100% - 0.5rem); /* rests on the bar's top edge — the floor it bounces off */
-        width: 3.6rem;
-        height: 3.6rem;
+        /* Centred at 46% of the bar (via negative margin, so the bounce's translate stays free),
+           lined up with Wizyta's bag which uses the same 46%. */
+        left: 46%;
+        margin-left: -2.2rem; /* half of width */
+        bottom: calc(100% - 0.6rem); /* rests on the bar's top edge — the floor it bounces off */
+        width: 4.4rem;
+        height: 4.4rem;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -295,14 +298,14 @@ const PROOF: Record<string, any> = {
           0 8px 16px rgba(15, 23, 42, 0.16);
       }
       .opisai-bubble:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-      .opisai-bubble__icon { width: 2.1rem; height: 2.1rem; display: block; }
+      .opisai-bubble__icon { width: 2.6rem; height: 2.6rem; display: block; }
       /* Wizyta — the whole title row IS the blue bar (a pill). "Wizyta" (white) sits ON it at the
          left, the medical bag ON it at the right end. */
       .slab--wizyta { position: relative; }
       .wizyta-brand {
+        position: relative;
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 1rem;
         padding: 0.4rem 0.6rem 0.4rem 1.2rem;
         border-radius: 0;
@@ -312,7 +315,12 @@ const PROOF: Record<string, any> = {
       }
       .wizyta-brand .slab__name { margin: 0; color: #fff; line-height: 1.05; }
       .wizyta-bag {
-        flex: 0 0 auto;
+        position: absolute;
+        /* Same 46% centre as OpisAI's ball, so the two mascots line up in a vertical column. */
+        left: 46%;
+        margin-left: -1.2rem; /* half of the 2.4rem icon */
+        top: 50%;
+        margin-top: -1.2rem;
         display: block;
         line-height: 0;
         text-decoration: none;
@@ -328,6 +336,7 @@ const PROOF: Record<string, any> = {
       .wizyta-bag__icon { width: 2.4rem; height: 2.4rem; display: block; }
       @media (max-width: 640px) {
         .wizyta-brand { padding: 0.35rem 0.5rem 0.35rem 0.95rem; }
+        .wizyta-bag { margin-left: -1rem; margin-top: -1rem; }
         .wizyta-bag__icon { width: 2rem; height: 2rem; }
       }
       /* A basketball: falls under "gravity" (accelerating), hits the floor and squashes,
@@ -336,15 +345,15 @@ const PROOF: Record<string, any> = {
       /* Bounce uses the INDIVIDUAL transform properties (translate/scale), leaving the
          \`transform\` shorthand free for the hover bulge to compose on top. */
       @keyframes opisaiDunk {
-        0%   { translate: 0 -2.2rem; scale: 1 1; animation-timing-function: cubic-bezier(0.5, 0, 1, 0.6); }
+        0%   { translate: 0 -2rem; scale: 1 1; animation-timing-function: cubic-bezier(0.5, 0, 1, 0.6); }
         43%  { translate: 0 0; scale: 1 1; animation-timing-function: ease-out; }
         48%  { translate: 0 0; scale: 1.14 0.82; animation-timing-function: ease-in; }
         54%  { translate: 0 0; scale: 1 1; animation-timing-function: cubic-bezier(0, 0.4, 0.5, 1); }
-        100% { translate: 0 -2.2rem; scale: 1 1; }
+        100% { translate: 0 -2rem; scale: 1 1; }
       }
       @media (max-width: 640px) {
-        .opisai-bubble { width: 3.1rem; height: 3.1rem; right: 1.1rem; }
-        .opisai-bubble__icon { width: 1.85rem; height: 1.85rem; }
+        .opisai-bubble { width: 3.2rem; height: 3.2rem; margin-left: -1.6rem; }
+        .opisai-bubble__icon { width: 1.95rem; height: 1.95rem; }
       }
 
       .range {
