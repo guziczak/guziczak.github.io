@@ -54,7 +54,7 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
       .footer__links a:hover { color: var(--color-primary); text-decoration: none; }
       .footer__base {
         flex-basis: 100%;
-        margin-top: 2.5rem;
+        margin-top: 0.5rem;
         color: var(--text-tertiary);
         font-size: 0.8rem;
         letter-spacing: 0.02em;

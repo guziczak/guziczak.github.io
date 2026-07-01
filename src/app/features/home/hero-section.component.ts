@@ -30,7 +30,7 @@ const MANIFESTO: Record<string, any> = {
     proof1: ['Miesiąc do działającego PoC.', 'Trzy do produkcji.', 'Bez zespołu.'],
     proof2: ['Potem utrzymują to ich zespoły.', 'Ja już robię następny.'],
     rest: 'Resztę mówi kod.',
-    enter: 'Wejdź', cvText: 'Pełne CV', cvNote: '(Nie będzie ci potrzebne.)',
+    enter: 'Wejdź', cvText: 'Pełne CV', cvNote: '(Nie będzie Ci potrzebne)',
   },
   de: {
     stamp: ['Im Labor seit 2016. In Produktion seit 2024. ', 'Derzeit in einer Bank — On-Prem, reguliert.'], stampPunch: 'Nicht seit ChatGPT.',
