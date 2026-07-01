@@ -29,15 +29,24 @@ const PDF = '/swiatlo.pdf';
         </a>
       </header>
 
-      <div class="doc-wrap">
-        <iframe class="doc" [src]="safePdf" title="Światło w Ciemności — partytura"></iframe>
-      </div>
+      @if (nativePdf) {
+        <a class="doc-native" [href]="pdf" target="_blank" rel="noopener noreferrer">
+          <img class="doc-native__img" [src]="preview"
+               alt="Partytura „Światło w Ciemności” — pierwsza strona" />
+          <span class="doc-native__cta"><span aria-hidden="true">⛶</span> Otwórz partyturę</span>
+        </a>
+      } @else {
+        <div class="doc-wrap">
+          <iframe class="doc" [src]="safePdf" title="Światło w Ciemności — partytura"></iframe>
+        </div>
+      }
     </div>
   `,
   styles: [
     `
       .score-page {
         min-height: 100vh;
+        overflow-x: hidden;
         padding: clamp(5.5rem, 9vh, 7rem) clamp(1rem, 4vw, 3rem) 4rem;
         background:
           radial-gradient(1100px 500px at 70% -10%, rgba(56, 189, 248, 0.06), transparent 60%),
@@ -114,6 +123,37 @@ const PDF = '/swiatlo.pdf';
         height: min(84vh, 1180px);
         border: 0;
       }
+      /* iOS/Safari fallback: a first-page preview that opens the real PDF in the native viewer. */
+      .doc-native {
+        display: block;
+        max-width: 780px;
+        margin: 0 auto;
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 12px 40px rgba(15, 23, 42, 0.28);
+        text-decoration: none;
+      }
+      .doc-native__img { display: block; width: 100%; height: auto; }
+      .doc-native__cta {
+        position: absolute;
+        left: 50%;
+        bottom: 1rem;
+        transform: translateX(-50%);
+        max-width: calc(100% - 1.5rem);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.7rem 1.1rem;
+        border-radius: 999px;
+        background: var(--color-primary);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.4);
+      }
       @media (max-width: 700px) {
         .score-head { flex-wrap: wrap; }
         .download { order: 3; margin-top: 0.4rem; }
@@ -125,10 +165,25 @@ const PDF = '/swiatlo.pdf';
 export class ScorePageComponent {
   protected readonly credit = CREDIT;
   protected readonly pdf = PDF;
+  protected readonly preview = '/swiatlo-preview.png';
   protected readonly safePdf: SafeResourceUrl;
+  // iOS/Safari render a PDF-in-iframe at native A4 width (ignoring #view=FitH) and clip the right
+  // edge. On those, skip the iframe: a first-page preview opens the PDF in the OS-native viewer.
+  protected readonly nativePdf = prefersNativePdf();
 
   constructor(sanitizer: DomSanitizer) {
-    // #view=FitH -> the embedded viewer fits the page width on load
+    // #view=FitH -> the embedded viewer fits the page width on load (desktop Chrome/FF/Edge)
     this.safePdf = sanitizer.bypassSecurityTrustResourceUrl(PDF + '#view=FitH');
   }
+}
+
+/** True for browsers whose inline PDF-in-iframe viewer is unreliable (iOS, iPadOS, Safari). */
+export function prefersNativePdf(): boolean {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const iOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1);
+  const isSafari = /safari/i.test(ua) && !/chrome|crios|chromium|android|fxios|edg|opr/i.test(ua);
+  return iOS || isSafari;
 }

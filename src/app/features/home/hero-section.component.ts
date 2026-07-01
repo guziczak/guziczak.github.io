@@ -907,8 +907,24 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   }
 
   openScore(): void {
+    // iOS/Safari clip a PDF-in-iframe (native A4 width) — open it in the OS viewer instead of the modal.
+    if (this.prefersNativePdf()) {
+      window.open(this.scorePdf, '_blank', 'noopener');
+      return;
+    }
     this.scoreOpen.set(true);
     if (typeof document !== 'undefined') document.body.style.overflow = 'hidden';
+  }
+
+  /** iOS / iPadOS / Safari render PDFs in iframes unreliably (clipped right edge). */
+  private prefersNativePdf(): boolean {
+    if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+    const ua = navigator.userAgent;
+    const iOS =
+      /iPad|iPhone|iPod/.test(ua) ||
+      ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1);
+    const isSafari = /safari/i.test(ua) && !/chrome|crios|chromium|android|fxios|edg|opr/i.test(ua);
+    return iOS || isSafari;
   }
 
   closeScore(): void {
