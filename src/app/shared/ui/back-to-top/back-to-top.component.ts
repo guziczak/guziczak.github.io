@@ -64,7 +64,17 @@ import { ScrollService } from '../../../core/services/scroll.service';
 export class BackToTopComponent {
   private scrollService = inject(ScrollService);
 
-  isVisible = computed(() => this.scrollService.currentScrollPosition() > 500);
+  // Shown once the reader is past the first fold — but NOT at the very bottom.
+  // The quiet exit ends in the footer (which already holds the way back up), and
+  // down there the floating button would sit right on top of the © line.
+  isVisible = computed(() => {
+    const y = this.scrollService.currentScrollPosition();
+    if (y <= 500) return false;
+    if (typeof window === 'undefined' || typeof document === 'undefined') return true;
+    const remaining =
+      document.documentElement.scrollHeight - (y + window.innerHeight);
+    return remaining > 160;
+  });
 
   scrollToTop(): void {
     this.scrollService.scrollToTop();
