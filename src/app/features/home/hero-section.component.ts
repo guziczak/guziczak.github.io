@@ -743,10 +743,8 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   private punchTimer?: ReturnType<typeof setTimeout>;
   private skip?: () => void;
   private removeKick?: () => void;
-  // Tap-to-start guard: dedupes the pointerdown/up/click burst of one gesture, but is released the
-  // moment an attempt resolves (plays OR bails) so a tap right after a non-activation scroll isn't lost.
-  private starting = false;
-  private startingTimer?: ReturnType<typeof setTimeout>;
+  // A start gesture that landed before the score finished loading — honoured the moment it arrives.
+  private wantsPlay = false;
   private bus?: { claim: () => void; close: () => void };
   private musicSaveTimer?: ReturnType<typeof setInterval>;
 
@@ -790,6 +788,12 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
           if (!score) return;
           this.notes = score.notes;
           this.beatMs = 60000 / score.bpm;
+          if (this.wantsPlay && !this.player?.isPlaying()) {
+            this.wantsPlay = false;
+            // The reader already gestured — start now. Desktop obliges; iOS may still
+            // hold the audio until the next tap, which the kick listeners will catch.
+            try { this.ensurePlayer().play(); } catch { /* next gesture retries */ }
+          }
         })
         .catch(() => {});
     }
@@ -852,23 +856,20 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     if (this.animate()) this.attachSkip();
 
     // The bell is too small to aim at — start on the FIRST *deliberate* gesture: a tap / click anywhere,
-    // or the finger-down that begins a touch-scroll. Deliberately NOT keypresses (typing / Tab / arrows)
-    // and NOT a desktop mouse-wheel (which can't unlock audio anyway) — those felt like "a mosquito lands
-    // and it plays". Crucial for iOS: listen on the gesture START (touchstart/pointerdown), not only its
-    // end — a scroll's touchend doesn't unlock audio, but the finger-down that BEGINS it does. Dedupe the
-    // event burst; keep listening and retry until audio is *actually* playing; never toggle OFF from here.
+    // or the finger that begins a touch-scroll. Deliberately NOT keypresses (typing / Tab / arrows)
+    // and NOT a desktop mouse-wheel (which can't unlock audio anyway) — those felt like "a mosquito
+    // lands and it plays". iOS grants user activation at the END of a tap (pointerup/touchend/click) —
+    // a resume() fired on pointerdown alone can hang as a forever-pending promise, and any "attempt in
+    // flight" guard would then SWALLOW the very events of the same tap that carry the activation. So:
+    // attempt on EVERY event of the gesture burst, through play() — a no-op once playing — so the burst
+    // can't double-start and can never toggle OFF. Whichever event carries the activation wins.
     const evs = ['pointerdown', 'touchstart', 'pointerup', 'touchend', 'click'];
     const kick = (e: Event) => {
       const target = e.target as HTMLElement | null;
       if (target && target.closest && target.closest('.manifesto__music, .manifesto__score, .score-modal')) return; // bell handles itself; the score button/modal must not auto-start audio
       if (this.player && this.player.isPlaying()) { this.removeKick?.(); return; }
-      if (!this.notes || this.starting) return; // notes not loaded / attempt in flight — a later gesture retries
-      this.starting = true;
-      // Fallback release only — normally cleared the instant the attempt resolves (toggleMusic's onState),
-      // so a tap that follows a non-activation scroll (which bails) is NOT swallowed for half a second.
-      clearTimeout(this.startingTimer);
-      this.startingTimer = setTimeout(() => (this.starting = false), 700);
-      this.toggleMusic(); // creates + resumes the AudioContext INSIDE this gesture (the unlock)
+      if (!this.notes) { this.wantsPlay = true; return; } // gesture beat the score — honour it on arrival
+      this.ensurePlayer().play(); // creates + resumes the AudioContext INSIDE this gesture (the unlock)
     };
     this.removeKick = () => evs.forEach((ev) => document.removeEventListener(ev, kick));
     evs.forEach((ev) => document.addEventListener(ev, kick, { passive: true }));
@@ -949,15 +950,12 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     this.closeScore();
   }
 
-  /** The bell — opt-in. The click is the gesture browsers need to start audio. */
-  toggleMusic(): void {
-    if (!this.notes) return;
+  /** Create the player once, with the shared state wiring. Callers ensure notes exist. */
+  private ensurePlayer(): SwiatloPlayer {
     if (!this.player) {
-      this.player = createSwiatlo(this.notes, {
+      this.player = createSwiatlo(this.notes!, {
         onState: (on) => {
           this.musicOn.set(on);
-          this.starting = false; // attempt resolved (playing OR bailed) — free the tap-to-start guard now
-          clearTimeout(this.startingTimer);
           if (on) {
             this.removeKick?.(); // truly playing now — stop the global tap-to-start
             this.bus?.claim(); // ask other tabs (e.g. the CV tab) to yield the bell
@@ -970,7 +968,13 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
         leadInSec: this.leadInSec, // loop restarts roll the score in from the right edge
       });
     }
-    this.player.toggle();
+    return this.player;
+  }
+
+  /** The bell — opt-in. The click is the gesture browsers need to start audio. */
+  toggleMusic(): void {
+    if (!this.notes) return;
+    this.ensurePlayer().toggle();
   }
 
   /** Doubled so the vertical drift loops seamlessly. */

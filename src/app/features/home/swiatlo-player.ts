@@ -45,15 +45,19 @@ export interface SwiatloScore {
 
 export async function loadSwiatloScore(): Promise<SwiatloScore | null> {
   try {
-    const r = await fetch('swiatlo.json');
+    // Both fetches in parallel — on a phone every round-trip delays the first
+    // possible strike, and the kick can only start what has already arrived.
+    const [r, rv] = await Promise.all([
+      fetch('swiatlo.json'),
+      fetch('swiatlo-wariacja.json').catch(() => null as Response | null),
+    ]);
     if (!r.ok) return null;
     const d = await r.json();
     if (!d || !d.notes) return null;
     let notes: number[][] = d.notes;
     const bpm = d.bpm || 103;
     try {
-      const rv = await fetch('swiatlo-wariacja.json');
-      if (rv.ok) {
+      if (rv && rv.ok) {
         const v = await rv.json();
         if (v && v.notes && v.notes.length) {
           let end = 0;
