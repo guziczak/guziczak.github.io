@@ -136,13 +136,8 @@ const MANIFESTO: Record<string, any> = {
             </span>
           </div>
           @if (scoreNative) {
-            <div class="score-modal__nativewrap">
-              <a class="score-modal__scroll" [href]="scorePdf" target="_blank" rel="noopener noreferrer">
-                <img class="score-modal__preview" [src]="scorePreview" alt="Partytura — pierwsza strona" />
-              </a>
-              <a class="score-modal__openbtn" [href]="scorePdf" target="_blank" rel="noopener noreferrer">
-                <span aria-hidden="true">⛶</span> Otwórz pełną partyturę
-              </a>
+            <div class="score-modal__scroll">
+              <img class="score-modal__page" [src]="scoreFull" alt="Partytura — Lux in tenebris" />
             </div>
           } @else {
             <iframe class="score-modal__doc" [src]="safeScorePdf" title="Partytura — Lux in tenebris"></iframe>
@@ -654,32 +649,15 @@ const MANIFESTO: Record<string, any> = {
       }
       .score-modal__close:hover { background: rgba(148, 163, 184, 0.12); color: var(--text-primary); }
       .score-modal__doc { flex: 1 1 auto; width: 100%; border: 0; background: #525659; }
-      /* iOS/iPadOS modal body: scrollable first-page preview + a solid "open full PDF" bar. */
-      .score-modal__nativewrap { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+      /* iOS/iPadOS modal body: the whole score as one finger-scrollable image (no button, no open-file). */
       .score-modal__scroll {
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        display: block;
         background: #525659;
-        text-decoration: none;
       }
-      .score-modal__preview { display: block; width: 100%; height: auto; }
-      .score-modal__openbtn {
-        flex: 0 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        padding: 0.9rem 1rem;
-        background: var(--color-primary);
-        color: #fff;
-        font-weight: 700;
-        font-size: 0.95rem;
-        text-decoration: none;
-        border-top: 1px solid rgba(255, 255, 255, 0.16);
-      }
+      .score-modal__page { display: block; width: 100%; height: auto; }
       @media (max-width: 640px) {
         .score-modal__panel { height: 100%; border-radius: 10px; }
         .score-modal__title { font-size: 0.9rem; }
@@ -732,7 +710,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   // Full engraved score ("Lux in tenebris") opened in a big modal PDF viewer.
   protected readonly scoreOpen = signal(false);
   protected readonly scorePdf = '/swiatlo.pdf';
-  protected readonly scorePreview = '/swiatlo-preview.png';
+  protected readonly scoreFull = '/swiatlo-full.png';
   // iOS/iPadOS clip a PDF-in-iframe, so the modal shows a preview + "open" there instead.
   protected readonly scoreNative = this.prefersNativePdf();
   protected readonly safeScorePdf: SafeResourceUrl =

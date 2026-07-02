@@ -30,11 +30,9 @@ const PDF = '/swiatlo.pdf';
       </header>
 
       @if (nativePdf) {
-        <a class="doc-native" [href]="pdf" target="_blank" rel="noopener noreferrer">
-          <img class="doc-native__img" [src]="preview"
-               alt="Partytura „Światło w Ciemności” — pierwsza strona" />
-          <span class="doc-native__cta"><span aria-hidden="true">⛶</span> Otwórz partyturę</span>
-        </a>
+        <div class="doc-scroll">
+          <img class="doc-page" [src]="fullScore" alt="Partytura — Światło w Ciemności" />
+        </div>
       } @else {
         <div class="doc-wrap">
           <iframe class="doc" [src]="safePdf" title="Światło w Ciemności — partytura"></iframe>
@@ -123,37 +121,18 @@ const PDF = '/swiatlo.pdf';
         height: min(84vh, 1180px);
         border: 0;
       }
-      /* iOS/Safari fallback: a first-page preview that opens the real PDF in the native viewer. */
-      .doc-native {
-        display: block;
-        max-width: 780px;
+      /* iOS/Safari: the whole score as one finger-scrollable image (no button, no open-file). */
+      .doc-scroll {
+        max-width: 900px;
         margin: 0 auto;
-        position: relative;
+        max-height: 82vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
         border-radius: 12px;
-        overflow: hidden;
         box-shadow: 0 12px 40px rgba(15, 23, 42, 0.28);
-        text-decoration: none;
+        background: #525659;
       }
-      .doc-native__img { display: block; width: 100%; height: auto; }
-      .doc-native__cta {
-        position: absolute;
-        left: 50%;
-        bottom: 1rem;
-        transform: translateX(-50%);
-        max-width: calc(100% - 1.5rem);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        padding: 0.7rem 1.1rem;
-        border-radius: 999px;
-        background: var(--color-primary);
-        color: #fff;
-        font-weight: 700;
-        font-size: 0.9rem;
-        white-space: nowrap;
-        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.4);
-      }
+      .doc-page { display: block; width: 100%; height: auto; }
       @media (max-width: 700px) {
         .score-head { flex-wrap: wrap; }
         .download { order: 3; margin-top: 0.4rem; }
@@ -165,7 +144,7 @@ const PDF = '/swiatlo.pdf';
 export class ScorePageComponent {
   protected readonly credit = CREDIT;
   protected readonly pdf = PDF;
-  protected readonly preview = '/swiatlo-preview.png';
+  protected readonly fullScore = '/swiatlo-full.png';
   protected readonly safePdf: SafeResourceUrl;
   // iOS/Safari render a PDF-in-iframe at native A4 width (ignoring #view=FitH) and clip the right
   // edge. On those, skip the iframe: a first-page preview opens the PDF in the OS-native viewer.
