@@ -12,7 +12,7 @@ import {
 import { ScrollProgressComponent } from '../../shared/ui/scroll-progress/scroll-progress.component';
 import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.component';
 import { LanguageService } from '../../core/services/language.service';
-import { createSwiatlo, SwiatloPlayer } from '../../features/home/swiatlo-player';
+import { createSwiatlo, loadSwiatloScore, SwiatloPlayer } from '../../features/home/swiatlo-player';
 import { loadHandoff, saveHandoff, swiatloBus } from '../../features/home/swiatlo-sync';
 
 @Component({
@@ -541,10 +541,9 @@ export class CvPageComponent implements OnInit, OnDestroy {
     this.bus = swiatloBus(() => {
       if (this.player?.isPlaying()) this.player.toggle(); // another tab took over → yield
     });
-    fetch('swiatlo.json')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.notes) this.notes = d.notes;
+    loadSwiatloScore()
+      .then((score) => {
+        if (score) this.notes = score.notes;
       })
       .catch(() => {});
     let started = false;

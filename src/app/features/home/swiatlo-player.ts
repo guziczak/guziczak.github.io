@@ -32,6 +32,47 @@ const BELL_PARTIALS: [number, number, number][] = [
   [6.0, 0.05, 0.5],   // 6th harmonic — a breath of sparkle, gone fast
 ];
 
+/** The evening's programme: the original score, a breath, then the variation
+ *  ("Lux in tenebris — wariacja", composed by Fable 5 — the original is
+ *  Guziczak & Opus 4.6, the variation is the next model taking up the bell).
+ *  Concatenated into ONE timeline so the player's loop, the staff and the
+ *  cross-tab handoff all keep working untouched: original → breath → variation
+ *  → loop gap → original again. The light has to be won again every cycle. */
+export interface SwiatloScore {
+  notes: number[][];
+  bpm: number;
+}
+
+export async function loadSwiatloScore(): Promise<SwiatloScore | null> {
+  try {
+    const r = await fetch('swiatlo.json');
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || !d.notes) return null;
+    let notes: number[][] = d.notes;
+    const bpm = d.bpm || 103;
+    try {
+      const rv = await fetch('swiatlo-wariacja.json');
+      if (rv.ok) {
+        const v = await rv.json();
+        if (v && v.notes && v.notes.length) {
+          let end = 0;
+          for (const q of notes) end = Math.max(end, q[0] + q[1]);
+          const off = end + (v.gap_ms || 4500); // let the last bell ring out first
+          notes = notes.concat(
+            v.notes.map((q: number[]) => [q[0] + off, q[1], q[2], q[3]]),
+          );
+        }
+      }
+    } catch {
+      /* variation unavailable — the original alone still plays */
+    }
+    return { notes, bpm };
+  } catch {
+    return null;
+  }
+}
+
 // notes: [start_ms, dur_ms, midi, velocity][]
 export function createSwiatlo(
   notes: number[][],

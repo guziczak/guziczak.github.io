@@ -5,7 +5,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ScrollService } from '../../core/services/scroll.service';
 import { LanguageService } from '../../core/services/language.service';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
-import { createSwiatlo, SwiatloPlayer } from './swiatlo-player';
+import { createSwiatlo, loadSwiatloScore, SwiatloPlayer } from './swiatlo-player';
 import { saveHandoff, swiatloBus } from './swiatlo-sync';
 import { StaffVisualizerComponent } from './staff-visualizer.component';
 
@@ -105,11 +105,11 @@ const MANIFESTO: Record<string, any> = {
                 [class.is-in]="step() >= 8"
                 [class.is-playing]="musicOn()" (click)="toggleMusic()"
                 [attr.aria-pressed]="musicOn()"
-                aria-label="Play 'Lux in tenebris' (światło w ciemności) — composed by Łukasz Guziczak &amp; Opus 4.6, synthesised live">
+                aria-label="Play 'Lux in tenebris' (światło w ciemności) — composed by Łukasz Guziczak &amp; Opus 4.6, with a variation by Fable 5, synthesised live">
           <span class="manifesto__eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
           <span class="manifesto__music-text">
             <span class="manifesto__music-title">Lux in tenebris</span>
-            <span class="manifesto__music-credit">Łukasz Guziczak &amp; Opus 4.6</span>
+            <span class="manifesto__music-credit">Łukasz Guziczak &amp; Opus 4.6 · war. Fable 5</span>
           </span>
         </button>
 
@@ -785,12 +785,11 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     // score is in hand before a quick first scroll. If a start gesture lands before it arrives,
     // 'wantsPlay' replays it the instant the notes do.
     if (hasWin) {
-      fetch('swiatlo.json')
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => {
-          if (!d || !d.notes) return;
-          this.notes = d.notes;
-          if (d.bpm) this.beatMs = 60000 / d.bpm;
+      loadSwiatloScore()
+        .then((score) => {
+          if (!score) return;
+          this.notes = score.notes;
+          this.beatMs = 60000 / score.bpm;
         })
         .catch(() => {});
     }
