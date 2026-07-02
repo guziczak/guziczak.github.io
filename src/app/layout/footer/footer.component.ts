@@ -61,19 +61,20 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
         font-size: 0.8rem;
         letter-spacing: 0.02em;
       }
-      /* Mobile: a clean left-aligned stack — name/meta, then links, then ©. */
+      /* Mobile: the same two columns, tighter — links + © stay to the RIGHT of the
+         name, never stacked beneath it. The name column holds its width; the links
+         row wraps (right-aligned) on very narrow screens instead. */
       @media (max-width: 640px) {
         .footer {
           padding: 2rem 1.5rem 1.75rem;
         }
         .footer__inner {
-          flex-direction: column;
-          align-items: flex-start;
+          flex-wrap: nowrap;
           gap: 1rem;
         }
-        .footer__right { align-items: flex-start; gap: 0.75rem; }
-        .footer__links { justify-content: flex-start; gap: 1.1rem; }
-        .footer__base { text-align: left; }
+        .footer__left { flex-shrink: 0; }
+        .footer__right { gap: 0.55rem; }
+        .footer__links { gap: 0.8rem 1rem; }
       }
     `,
   ],
