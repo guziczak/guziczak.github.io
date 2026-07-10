@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -195,18 +195,28 @@ ol[role="list"] {
     page-break-after: always;
 }
 
+@media screen {
+    body {
+        background: #e8edf3;
+    }
+
+    .page + .page {
+        margin-block-start: 20px;
+    }
+}
+
 .page--break {
-    margin-block-start: 20px;
     page-break-before: always;
 }
 
 .page__number {
     position: absolute;
-    inset-block-end: 15px;
+    inset-block-end: 7px;
     inset-inline-end: 25px;
     font-size: var(--font-size-sm);
     font-weight: 500;
     color: #9ca3af;
+    z-index: 20;
 }
 
 /* ==========================================================================
@@ -1498,6 +1508,39 @@ ol[role="list"] {
     filter: brightness(0);  /* Force black */
 }
 
+/* Text fallbacks inserted when a third-party icon CDN is unavailable. */
+.icon-fallback {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-family);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+}
+
+.tech-logo__fallback {
+    width: 100%;
+    height: 100%;
+    padding: 1px;
+    border: 1px solid #94a3b8;
+    border-radius: var(--radius-sm);
+    background: #f8fafc;
+    color: #0f172a;
+    font-size: 0.47rem;
+}
+
+.skill-bar__icon-fallback {
+    width: 18px;
+    height: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 0.45rem;
+}
+
 /* Screen reader only - hidden visually but accessible to ATS/parsers */
 .sr-only {
     position: absolute;
@@ -1563,22 +1606,260 @@ ol[role="list"] {
     color: #9ca3af;
 }
 
+/* German copy is longer than EN. Recover safe space on both fixed A4 pages
+   through spacing alone, preserving the same font sizes and hierarchy. */
+@media screen and (min-width: 794px), print {
+    html[lang="de"] #cv-start .main {
+        padding: 12px 30px;
+    }
+
+    html[lang="de"] #cv-start .header {
+        margin-block-end: 6px;
+    }
+
+    html[lang="de"] #cv-start .current-card {
+        padding-block: 6px;
+    }
+
+    html[lang="de"] #cv-start .job,
+    html[lang="de"] #cv-start .education {
+        padding-block: 3px;
+        margin-block-end: 2px;
+    }
+
+    html[lang="de"] #cv-start .section {
+        margin-block-end: 3px;
+    }
+
+    html[lang="de"] .page--break .sidebar__section {
+        margin-block-start: 10px;
+    }
+
+    html[lang="de"] .page--break .projects {
+        gap: 6px;
+    }
+
+    html[lang="de"] .page--break .project {
+        padding: 6px 10px;
+    }
+
+    html[lang="de"] .page--break .project__link {
+        margin-top: 4px;
+    }
+}
+
 /* ==========================================================================
-   19. Print Styles
+   19. Responsive screen layout
+   Keep the A4 composition on desktop/print, but reflow it into a readable
+   single column when the document is opened in a narrow iframe or phone.
    ========================================================================== */
 
-@media print {
+@media screen and (max-width: 793px) {
+    :root {
+        --sidebar-width: 100%;
+        --main-width: 100%;
+        --photo-size: 132px;
+        --pie-chart-size: min(230px, calc(100vw - 64px));
+        --font-size-xs: 0.72rem;
+        --font-size-sm: 0.78rem;
+        --font-size-base: 0.84rem;
+        --font-size-md: 0.9rem;
+        --font-size-lg: 1rem;
+        --font-size-xl: 1.08rem;
+    }
+
+    html,
     body {
+        width: 100%;
+        min-width: 0;
+        overflow-x: hidden;
+        background: var(--color-bg-white);
+    }
+
+    .page {
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+        page-break-after: auto;
+    }
+
+    .page + .page,
+    .page--break {
+        margin-block-start: 12px;
+        page-break-before: auto;
+    }
+
+    .page--cover {
+        min-height: min(100svh, 760px);
+        padding: 32px 20px 24px;
+    }
+
+    .cover__kicker {
+        letter-spacing: 0.14em;
+    }
+
+    .cover__lead {
+        font-size: 1.25rem;
+    }
+
+    .cover__punch {
+        margin-block: 10px 16px;
+        font-size: clamp(3rem, 16vw, 4rem);
+    }
+
+    .cover__reframe,
+    .cover__proof {
+        max-width: none;
+        font-size: 1.18rem;
+    }
+
+    .cover__proof {
+        margin-block-start: 9px;
+    }
+
+    .cover__rest {
+        margin-block-start: 12px;
+    }
+
+    .cover__stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .cover__stat-big {
+        font-size: 1.35rem;
+        overflow-wrap: anywhere;
+    }
+
+    .cover__stat-small {
+        font-size: 0.58rem;
+    }
+
+    .cover__rule {
+        margin-block-start: 14px;
+    }
+
+    .cover__footer {
+        flex-direction: column;
+        align-items: flex-start;
+        font-size: 0.72rem;
+    }
+
+    .cover__contact,
+    .cover__cta {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    .cover__music {
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    .sidebar {
+        position: relative;
+        inset: auto;
+        width: 100%;
+        padding: 24px 20px;
+    }
+
+    .main {
+        width: 100%;
+        min-height: 0;
+        margin-inline-start: 0;
+        padding: 24px 20px 30px;
+    }
+
+    .header__name {
+        font-size: 1.55rem;
+        overflow-wrap: anywhere;
+    }
+
+    .section {
+        margin-block-end: 12px;
+    }
+
+    .section__text,
+    .job__list {
+        line-height: 1.45;
+    }
+
+    .current-card {
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    .job,
+    .education {
+        gap: 7px;
+        margin-block-end: 8px;
+        padding: 8px;
+    }
+
+    .job__header,
+    .education__header {
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .job__date,
+    .education__date {
+        white-space: normal;
+    }
+
+    .tech-stack {
+        gap: 8px;
+    }
+
+    .page__number {
+        display: none;
+    }
+
+    .gdpr {
+        margin-top: 18px;
+    }
+}
+
+/* ==========================================================================
+   20. Print Styles
+   ========================================================================== */
+
+@page {
+    size: A4;
+    margin: 0;
+}
+
+@media print {
+    html,
+    body {
+        width: var(--page-width);
+        margin: 0 !important;
+        padding: 0 !important;
+        background: var(--color-bg-white);
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
     .page {
+        width: var(--page-width);
+        height: var(--page-height);
+        margin: 0 !important;
+        overflow: hidden;
+        break-after: page;
         page-break-after: always;
     }
 
+    .page:last-of-type {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
     .page--break {
-        page-break-before: always;
+        margin-block-start: 0 !important;
+        break-before: auto;
+        page-break-before: auto;
     }
 
     .job,
@@ -1602,6 +1883,10 @@ ol[role="list"] {
     a:focus-visible,
     button:focus-visible {
         outline: none;
+    }
+
+    .cover__music {
+        display: none !important;
     }
 }
 
@@ -1665,6 +1950,39 @@ ol[role="list"] {
 </style>
 </head>
 <body>
+    <script>
+      // Keep technology stacks legible when an external icon CDN is blocked.
+      (function () {
+        var shortLabels = {
+          'AI / ML': 'AI', 'Azure': 'AZ', 'ChatGPT': 'GPT', 'Claude': 'CL',
+          'Docker': 'D', 'Hibernate': 'HB', 'Java': 'J', 'Java 17': 'J17',
+          'Kubernetes': 'K8s', 'Liquibase': 'LQ', 'PostgreSQL': 'PG',
+          'Python': 'PY', 'PyTorch': 'PT', 'React.js': 'R',
+          'Spring': 'S', 'Spring Boot': 'SB', 'TensorFlow': 'TF'
+        };
+        function abbreviation(label) {
+          if (shortLabels[label]) return shortLabels[label];
+          var words = label.replace(/[^A-Za-z0-9 ]/g, ' ').trim().split(/\s+/);
+          if (words.length > 1) return words.map(function (word) { return word[0]; }).join('').slice(0, 3).toUpperCase();
+          return (words[0] || '?').slice(0, 2).toUpperCase();
+        }
+        document.addEventListener('error', function (event) {
+          var img = event.target;
+          if (!img || img.tagName !== 'IMG') return;
+          var isTech = img.classList.contains('tech-logo__img');
+          var isSkill = img.classList.contains('skill-bar__icon');
+          if (!isTech && !isSkill) return;
+          var hiddenLabel = img.parentElement && img.parentElement.querySelector('.sr-only');
+          var label = img.getAttribute('title') || (hiddenLabel && hiddenLabel.textContent) || 'Technology';
+          var fallback = document.createElement('span');
+          fallback.className = 'icon-fallback ' + (isSkill ? 'skill-bar__icon-fallback' : 'tech-logo__fallback');
+          fallback.textContent = abbreviation(label);
+          fallback.title = label;
+          fallback.setAttribute('aria-hidden', 'true');
+          img.replaceWith(fallback);
+        }, true);
+      })();
+    </script>
 
     <!-- COVER -->
     <article class="page page--cover" aria-label="Cover statement">
@@ -1736,7 +2054,7 @@ class OnPremExtractor:
         </div>
         <div class="cover__hook">
             <p class="cover__lead">Sie sagen, KI verliert den Faden nach<br>1.000 Zeilen Code.</p>
-            <p class="cover__punch"><span class="cover__type" data-text="Niedlich"></span><span class="cover__dot" aria-hidden="true"></span></p>
+            <p class="cover__punch"><span class="cover__type" data-text="Niedlich">Niedlich</span><span class="cover__dot cover__dot--period" aria-hidden="true"></span></p>
             <p class="cover__reframe">Da fange ich an — <span class="cover__num">20,000</span> Zeilen.<br>Eine Datei.<br>Eine Person.</p>
             <p class="cover__proof">Ein Monat bis zum funktionierenden PoC. Drei bis zur Produktion. Kein Team.</p><p class="cover__proof">Ihre Teams pflegen es. Ich bin schon beim nächsten.</p>
             <p class="cover__rest">Den Rest sagt der Code.</p>
@@ -2432,7 +2750,14 @@ class OnPremExtractor:
         var dot = document.querySelector('.cover__dot');
         if (!el) return;
         var text = el.getAttribute('data-text') || '';
-        if (reduce) { el.textContent = text; if (dot) { dot.classList.add('cover__dot--period'); } return; }
+        function completeType() {
+          el.textContent = text;
+          if (dot) dot.classList.add('cover__dot--period');
+        }
+        window.addEventListener('beforeprint', completeType);
+        if (reduce) { completeType(); return; }
+        el.textContent = '';
+        if (dot) dot.classList.remove('cover__dot--period');
         var i = 1;
         setTimeout(function tick() {
           el.textContent = text.slice(0, i);
@@ -2600,15 +2925,6 @@ class OnPremExtractor:
         });
         btn.addEventListener('click', function () { player.toggle(); });
 
-        // Nobody aims at a small button — start on the first interaction anywhere.
-        function kick(e) {
-          if (e && e.target && e.target.closest && e.target.closest('.cover__music')) return;
-          document.removeEventListener('pointerdown', kick);
-          document.removeEventListener('keydown', kick);
-          if (!player.isPlaying()) player.toggle();
-        }
-        document.addEventListener('pointerdown', kick, { passive: true });
-        document.addEventListener('keydown', kick);
       })();
     </script>
 

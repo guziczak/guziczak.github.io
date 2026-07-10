@@ -1,10 +1,12 @@
 import {
   Component,
   computed,
+  OnDestroy,
   OnInit,
   ViewChild,
   ElementRef,
   inject,
+  HostListener,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -29,12 +31,13 @@ import { LanguageService } from '../../core/services/language.service';
       </div>
 
       <div class="cv-print-content">
-        <div class="cv-iframe-wrapper">
+        <div class="cv-iframe-wrapper" #cvWrapper>
           <iframe
             #cvFrame
             [src]="cvIframeUrl()"
             class="cv-iframe"
             title="CV"
+            (load)="fitCv()"
           ></iframe>
         </div>
       </div>
@@ -123,19 +126,22 @@ import { LanguageService } from '../../core/services/language.service';
       }
 
       .cv-iframe-wrapper {
+        position: relative;
         width: 100%;
         max-width: 794px;
+        min-height: 200px;
         margin: 0 auto;
-        aspect-ratio: 794 / 2246;
+        overflow: hidden;
         background: white;
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
       }
 
       .cv-iframe {
-        width: 100%;
-        height: 100%;
+        width: 794px;
+        height: 1123px;
         border: 0;
         display: block;
+        transform-origin: top left;
       }
 
       @media print {
@@ -153,7 +159,6 @@ import { LanguageService } from '../../core/services/language.service';
         }
 
         .cv-iframe-wrapper {
-          aspect-ratio: auto;
           height: 100vh;
           box-shadow: none;
           max-width: none;
@@ -166,18 +171,40 @@ import { LanguageService } from '../../core/services/language.service';
       }
 
       @media (max-width: 768px) {
+        .print-page {
+          padding-top: 60px;
+        }
+
+        .print-header {
+          padding: 12px;
+        }
+
         .print-actions {
           flex-direction: column;
           align-items: stretch;
+        }
+
+        .btn-action {
+          justify-content: center;
+        }
+
+        .cv-print-content {
+          padding: 16px 12px;
         }
       }
     `,
   ],
 })
-export class CvPrintPageComponent implements OnInit {
+export class CvPrintPageComponent implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
   private languageService = inject(LanguageService);
   @ViewChild('cvFrame') cvFrame?: ElementRef<HTMLIFrameElement>;
+  @ViewChild('cvWrapper') cvWrapper?: ElementRef<HTMLElement>;
+
+  private static readonly CV_DOC_WIDTH = 794;
+  private static readonly CV_RESPONSIVE_BREAKPOINT = 793;
+  private fitFrameId?: number;
+  private fitGeneration = 0;
 
   // Reactive: follows the global language (en/pl/de) from LanguageService
   currentLang = this.languageService.currentLanguage;
@@ -196,6 +223,74 @@ export class CvPrintPageComponent implements OnInit {
   });
 
   ngOnInit() {}
+
+  ngOnDestroy(): void {
+    if (this.fitFrameId !== undefined) {
+      cancelAnimationFrame(this.fitFrameId);
+      this.fitFrameId = undefined;
+    }
+  }
+
+  fitCv(): void {
+    const frame = this.cvFrame?.nativeElement;
+    const wrapper = this.cvWrapper?.nativeElement;
+    if (!frame || !wrapper) return;
+
+    const availableWidth = Math.max(1, wrapper.clientWidth);
+    const responsive =
+      availableWidth <= CvPrintPageComponent.CV_RESPONSIVE_BREAKPOINT;
+    const layoutWidth = responsive
+      ? Math.floor(availableWidth)
+      : CvPrintPageComponent.CV_DOC_WIDTH;
+
+    frame.style.width = layoutWidth + 'px';
+    frame.style.height = (responsive ? 760 : 1123) + 'px';
+    frame.style.transform = 'none';
+    wrapper.style.height = (responsive ? 760 : 1123) + 'px';
+
+    if (this.fitFrameId !== undefined) {
+      cancelAnimationFrame(this.fitFrameId);
+    }
+    const generation = ++this.fitGeneration;
+
+    const measure = () => {
+      if (generation !== this.fitGeneration) return;
+
+      let docHeight = 1123;
+      try {
+        const doc = frame.contentDocument ?? frame.contentWindow?.document;
+        if (doc) {
+          doc.documentElement.style.overflow = 'hidden';
+          doc.body.style.overflow = 'hidden';
+          docHeight = Math.max(
+            doc.documentElement.scrollHeight,
+            doc.body.scrollHeight,
+            docHeight,
+          );
+        }
+      } catch {
+        // The bundled CV is same-origin; retain the safe fallback if unavailable.
+      }
+
+      const h = docHeight + 2;
+      const scale = responsive
+        ? 1
+        : Math.min(1, availableWidth / CvPrintPageComponent.CV_DOC_WIDTH);
+      frame.style.height = h + 'px';
+      frame.style.transform = `scale(${scale})`;
+      wrapper.style.height = Math.ceil(h * scale) + 'px';
+      this.fitFrameId = undefined;
+    };
+
+    this.fitFrameId = requestAnimationFrame(() => {
+      this.fitFrameId = requestAnimationFrame(measure);
+    });
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.fitCv();
+  }
 
   printPage() {
     const frame = this.cvFrame?.nativeElement;

@@ -1,4 +1,14 @@
-import { Component, inject, signal, computed, OnInit, OnDestroy, ViewChild, ElementRef, HostListener } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  OnInit,
+  OnDestroy,
+  ViewChild,
+  ElementRef,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -12,8 +22,16 @@ import {
 import { ScrollProgressComponent } from '../../shared/ui/scroll-progress/scroll-progress.component';
 import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.component';
 import { LanguageService } from '../../core/services/language.service';
-import { createSwiatlo, loadSwiatloScore, SwiatloPlayer } from '../../features/home/swiatlo-player';
-import { loadHandoff, saveHandoff, swiatloBus } from '../../features/home/swiatlo-sync';
+import {
+  createSwiatlo,
+  loadSwiatloScore,
+  SwiatloPlayer,
+} from '../../features/home/swiatlo-player';
+import {
+  loadHandoff,
+  saveHandoff,
+  swiatloBus,
+} from '../../features/home/swiatlo-sync';
 
 @Component({
   selector: 'app-cv-page',
@@ -31,7 +49,11 @@ import { loadHandoff, saveHandoff, swiatloBus } from '../../features/home/swiatl
       <div class="container">
         <header class="cv-header">
           <div class="profile-section">
-            <img src="/photo.png" alt="Łukasz Guziczak" class="profile-image" />
+            <img
+              src="/cv-html/assets/photo_optimized.jpg"
+              alt="Łukasz Guziczak"
+              class="profile-image"
+            />
             <div class="profile-info">
               <h1>Łukasz Guziczak</h1>
               <h2>AI Engineer</h2>
@@ -99,6 +121,8 @@ import { loadHandoff, saveHandoff, swiatloBus } from '../../features/home/swiatl
       }
 
       .container {
+        box-sizing: border-box;
+        width: 100%;
         max-width: 1200px;
         margin: 0 auto;
         padding: 0 20px;
@@ -131,6 +155,10 @@ import { loadHandoff, saveHandoff, swiatloBus } from '../../features/home/swiatl
         margin-bottom: 10px;
         color: var(--color-primary);
         font-weight: 700;
+      }
+
+      .profile-info {
+        min-width: 0;
       }
 
       .profile-info h2 {
@@ -451,17 +479,81 @@ import { loadHandoff, saveHandoff, swiatloBus } from '../../features/home/swiatl
       }
 
       @media (max-width: 768px) {
+        .cv-page {
+          padding: 76px 0 24px;
+        }
+
+        .container {
+          padding: 0 12px;
+        }
+
+        .cv-header {
+          padding: 24px 18px;
+          margin-bottom: 20px;
+          overflow: hidden;
+        }
+
         .profile-section {
           flex-direction: column;
+          gap: 20px;
+          margin-bottom: 24px;
           text-align: center;
         }
 
+        .profile-image {
+          width: 116px;
+          height: 116px;
+        }
+
+        .profile-info {
+          width: 100%;
+        }
+
         .profile-info h1 {
-          font-size: 2rem;
+          font-size: clamp(1.7rem, 9vw, 2rem);
+          overflow-wrap: anywhere;
+        }
+
+        .profile-info h2 {
+          font-size: 1.25rem;
+        }
+
+        .contact-info {
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
         }
 
         .cv-actions {
+          display: grid;
+          grid-template-columns: 1fr;
+          width: 100%;
+          gap: 10px;
+        }
+
+        .btn-action {
+          box-sizing: border-box;
           justify-content: center;
+          width: 100%;
+          padding: 11px 14px;
+        }
+
+        .cv-preview-section {
+          padding: 0;
+          background: transparent;
+        }
+
+        .cv-preview-section--top {
+          margin-bottom: 20px;
+        }
+
+        .cv-preview-container {
+          padding: 0;
+          overflow: hidden;
+        }
+
+        .cv-iframe-wrapper {
+          border-radius: 6px;
         }
 
         .timeline {
@@ -494,6 +586,9 @@ export class CvPageComponent implements OnInit, OnDestroy {
   @ViewChild('cvFrame') private cvFrame?: ElementRef<HTMLIFrameElement>;
   @ViewChild('cvWrapper') private cvWrapper?: ElementRef<HTMLElement>;
   private static readonly CV_DOC_WIDTH = 794;
+  private static readonly CV_RESPONSIVE_BREAKPOINT = 793;
+  private fitFrameId?: number;
+  private fitGeneration = 0;
 
   experience = signal<Experience[]>([]);
   education = signal<Education[]>([]);
@@ -527,6 +622,10 @@ export class CvPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.fitFrameId !== undefined) {
+      cancelAnimationFrame(this.fitFrameId);
+      this.fitFrameId = undefined;
+    }
     this.removeKick?.();
     this.stopMusicSave();
     this.bus?.close();
@@ -567,7 +666,8 @@ export class CvPageComponent implements OnInit, OnDestroy {
       this.player.play(h.offset); // continue from the handed-off position
       this.removeKick?.();
     };
-    this.removeKick = () => evs.forEach((ev) => document.removeEventListener(ev, kick));
+    this.removeKick = () =>
+      evs.forEach((ev) => document.removeEventListener(ev, kick));
     evs.forEach((ev) => document.addEventListener(ev, kick, { passive: true }));
   }
 
@@ -615,24 +715,60 @@ export class CvPageComponent implements OnInit, OnDestroy {
     const wrapper = this.cvWrapper?.nativeElement;
     if (!frame || !wrapper) return;
 
-    let docHeight = 1123;
-    try {
-      const doc = frame.contentDocument ?? frame.contentWindow?.document;
-      if (doc) {
-        doc.documentElement.style.overflow = 'hidden';
-        docHeight =
-          doc.documentElement.scrollHeight || doc.body.scrollHeight || docHeight;
-      }
-    } catch {
-      // same-origin iframe; ignore
-    }
+    const availableWidth = Math.max(1, wrapper.clientWidth);
+    const responsive =
+      availableWidth <= CvPageComponent.CV_RESPONSIVE_BREAKPOINT;
+    const layoutWidth = responsive
+      ? Math.floor(availableWidth)
+      : CvPageComponent.CV_DOC_WIDTH;
 
-    const h = docHeight + 2;
-    const scale = Math.min(1, wrapper.clientWidth / CvPageComponent.CV_DOC_WIDTH);
-    frame.style.width = CvPageComponent.CV_DOC_WIDTH + 'px';
-    frame.style.height = h + 'px';
-    frame.style.transform = `scale(${scale})`;
-    wrapper.style.height = Math.ceil(h * scale) + 'px';
+    // Set the iframe viewport before measuring. Below the 794px A4 width this activates
+    // the document's responsive CSS instead of shrinking an A4 page to a
+    // thumbnail; wider viewports retain the exact A4 composition.
+    frame.style.width = layoutWidth + 'px';
+    frame.style.height = (responsive ? 760 : 1123) + 'px';
+    frame.style.transform = 'none';
+    wrapper.style.height = (responsive ? 760 : 1123) + 'px';
+
+    if (this.fitFrameId !== undefined) {
+      cancelAnimationFrame(this.fitFrameId);
+    }
+    const generation = ++this.fitGeneration;
+
+    const measure = () => {
+      if (generation !== this.fitGeneration) return;
+
+      let docHeight = 1123;
+      try {
+        const doc = frame.contentDocument ?? frame.contentWindow?.document;
+        if (doc) {
+          doc.documentElement.style.overflow = 'hidden';
+          doc.body.style.overflow = 'hidden';
+          docHeight = Math.max(
+            doc.documentElement.scrollHeight,
+            doc.body.scrollHeight,
+            docHeight,
+          );
+        }
+      } catch {
+        // same-origin iframe; retain the safe fallback if unavailable
+      }
+
+      const h = docHeight + 2;
+      const scale = responsive
+        ? 1
+        : Math.min(1, availableWidth / CvPageComponent.CV_DOC_WIDTH);
+      frame.style.height = h + 'px';
+      frame.style.transform = `scale(${scale})`;
+      wrapper.style.height = Math.ceil(h * scale) + 'px';
+      this.fitFrameId = undefined;
+    };
+
+    // Chromium updates iframe media queries asynchronously after a width
+    // change. Measure after two frames so the mobile reflow is complete.
+    this.fitFrameId = requestAnimationFrame(() => {
+      this.fitFrameId = requestAnimationFrame(measure);
+    });
   }
 
   @HostListener('window:resize')
