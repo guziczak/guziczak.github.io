@@ -32,7 +32,7 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
       .footer {
         background: var(--bg-primary);
         border-top: 1px solid var(--border-color);
-        padding: clamp(2.5rem, 5vw, 3.5rem) clamp(1.5rem, 6vw, 6rem) 2rem;
+        padding: clamp(2rem, 3.5vw, 2.5rem) clamp(1.5rem, 6vw, 6rem) 1.5rem;
       }
       .footer__inner {
         max-width: 70rem;

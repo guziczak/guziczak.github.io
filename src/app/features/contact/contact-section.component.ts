@@ -18,7 +18,7 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
   standalone: true,
   imports: [CommonModule],
   template: `
-    <section class="exit" id="contact">
+    <section class="exit" id="contact" [attr.data-lang]="lang()">
       <div class="exit__halo" aria-hidden="true"></div>
       <div class="exit__inner animate-on-scroll">
         <span class="exit__shaft" aria-hidden="true"></span>
@@ -84,7 +84,7 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
       }
       .exit__inner {
         position: relative;
-        max-width: 50rem;
+        max-width: 90rem;
         margin: 0 auto;
         transition-duration: 1.15s; /* a slower, more solemn rise than the rest of the page */
       }
@@ -212,6 +212,27 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
         margin: 0 0 2.4rem;
         text-shadow: 0 0 48px rgba(245, 206, 140, 0.3);
       }
+      /* The exit is a display headline on desktop. Give longer translations the width
+         that is already available instead of letting an extra line push the candle
+         above the viewport at the bottom of the page. German needs a slightly more
+         fluid size to stay on one line on ordinary laptop widths. */
+      @media (min-width: 64rem) {
+        .exit__cta {
+          white-space: nowrap;
+        }
+        .exit[data-lang='de'] .exit__cta {
+          font-size: clamp(3rem, 5vw, 5rem);
+        }
+      }
+      @media (max-width: 63.999rem) {
+        .exit__inner {
+          max-width: 50rem;
+        }
+        .exit__cta {
+          text-wrap: balance;
+          white-space: normal;
+        }
+      }
       .exit__contacts {
         display: flex;
         flex-wrap: wrap;
@@ -244,6 +265,7 @@ export class ContactSectionComponent implements AfterViewInit, OnDestroy {
   private languageService = inject(LanguageService);
   private host = inject(ElementRef<HTMLElement>);
   protected readonly contact = CONTACT_CONFIG;
+  protected readonly lang = this.languageService.currentLanguage;
   protected readonly e = computed(() => EXIT[this.languageService.currentLanguage()] ?? EXIT['en']);
 
   private apseObserver?: IntersectionObserver;
