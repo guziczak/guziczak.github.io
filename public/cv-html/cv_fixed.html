@@ -1248,26 +1248,9 @@ ol[role="list"] {
     overflow: hidden;
 }
 
-.opisai-bubble::before {
-    content: '';
-    position: absolute;
-    top: 7%;
-    left: 13%;
-    width: 54%;
-    height: 36%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
-}
-
+.opisai-bubble::before,
 .opisai-bubble::after {
-    content: '';
-    position: absolute;
-    top: 14%;
-    left: 19%;
-    width: 22%;
-    height: 15%;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.92);
+    content: none;
 }
 
 .opisai-bubble__label {
