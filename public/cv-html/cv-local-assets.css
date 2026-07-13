@@ -1,0 +1,106 @@
+/* Offline, print-safe font and icon assets used by all CV language variants. */
+@font-face {
+    font-family: "Inter";
+    src: url("assets/fonts/Inter-Regular.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 300;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "Inter";
+    src: url("assets/fonts/Inter-Regular.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "Inter";
+    src: url("assets/fonts/Inter-Medium.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 500;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "Inter";
+    src: url("assets/fonts/Inter-SemiBold.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 600;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "Inter";
+    src: url("assets/fonts/Inter-Bold.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "Inter";
+    src: url("assets/fonts/Inter-ExtraBold.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 800;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "Inter";
+    src: url("assets/fonts/Inter-Italic.ttf") format("truetype");
+    font-style: italic;
+    font-weight: 400;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "Inter";
+    src: url("assets/fonts/Inter-BoldItalic.ttf") format("truetype");
+    font-style: italic;
+    font-weight: 700;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "CV Solid Icons";
+    src: url("assets/fonts/fa-solid-900.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 900;
+    font-display: block;
+}
+
+.fas {
+    font-family: "CV Solid Icons";
+    font-style: normal;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.fa-phone::before { content: "\f095"; }
+.fa-envelope::before { content: "\f0e0"; }
+.fa-map-marker-alt::before { content: "\f3c5"; }
+.fa-graduation-cap::before { content: "\f19d"; }
+.fa-industry::before { content: "\f275"; }
+.fa-building-columns::before { content: "\f19c"; }
+.fa-chart-line::before { content: "\f201"; }
+.fa-stethoscope::before { content: "\f0f1"; }
+
+.fab {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    filter: brightness(0) invert(1);
+}
+
+.fa-linkedin {
+    background-image: url("assets/contact_icons/linkedin.svg");
+}
+
+.fa-github {
+    background-image: url("assets/contact_icons/github.svg");
+}

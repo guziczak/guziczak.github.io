@@ -101,7 +101,7 @@ import {
                 [src]="cvIframeUrl()"
                 class="cv-iframe"
                 title="CV"
-                (load)="fitCv()"
+                (load)="onCvFrameLoad()"
                 #cvFrame
               ></iframe>
             </div>
@@ -581,11 +581,26 @@ export class CvPageComponent implements OnInit, OnDestroy {
   private notes: number[][] | null = null;
   private bus?: { claim: () => void; close: () => void };
   private removeKick?: () => void;
+  private removeIframeKick?: () => void;
   private musicSaveTimer?: ReturnType<typeof setInterval>;
+  private iframeMusicButton: HTMLButtonElement | null = null;
+  private readonly iframeMusicClick = (event: Event) => {
+    event.preventDefault();
+    this.toggleMusicFromIframe();
+  };
+  private readonly handoffKick = (event?: Event) => {
+    const target = event?.target as HTMLElement | null;
+    if (target?.closest?.('.cover__music')) return;
+    if (!this.notes || this.player?.isPlaying()) return;
+    const handoff = loadHandoff();
+    if (!handoff?.playing) return;
+    this.ensurePlayer()?.play(handoff.offset);
+  };
 
   @ViewChild('cvFrame') private cvFrame?: ElementRef<HTMLIFrameElement>;
   @ViewChild('cvWrapper') private cvWrapper?: ElementRef<HTMLElement>;
   private static readonly CV_DOC_WIDTH = 794;
+  private static readonly MUSIC_LEAD_IN_SEC = 6;
   private fitFrameId?: number;
   private fitGeneration = 0;
 
@@ -597,9 +612,9 @@ export class CvPageComponent implements OnInit, OnDestroy {
   currentLang = this.languageService.currentLanguage;
 
   private static readonly CV_HTML_BY_LANG: Record<string, string> = {
-    en: '/cv-html/cv_fixed.html',
-    pl: '/cv-html/cv_fixed_pl.html',
-    de: '/cv-html/cv_fixed_de.html',
+    en: '/cv-html/cv_fixed.html?portfolio-embed=1',
+    pl: '/cv-html/cv_fixed_pl.html?portfolio-embed=1',
+    de: '/cv-html/cv_fixed_de.html?portfolio-embed=1',
   };
 
   private static readonly CV_PDF_BY_LANG: Record<string, string> = {
@@ -626,6 +641,7 @@ export class CvPageComponent implements OnInit, OnDestroy {
       this.fitFrameId = undefined;
     }
     this.removeKick?.();
+    this.unbindIframeMusicButton();
     this.stopMusicSave();
     this.bus?.close();
     this.player?.dispose();
@@ -641,19 +657,34 @@ export class CvPageComponent implements OnInit, OnDestroy {
     });
     loadSwiatloScore()
       .then((score) => {
-        if (score) this.notes = score.notes;
+        if (score) {
+          this.notes = score.notes;
+          this.updateIframeMusicAvailability();
+        }
       })
       .catch(() => {});
-    let started = false;
     const evs = ['pointerup', 'touchend', 'click', 'keydown'];
-    const kick = () => {
-      if (started || !this.notes) return;
-      const h = loadHandoff();
-      if (!h || !h.playing) return; // nothing was playing → leave the CV silent
-      started = true;
+    this.removeKick = () =>
+      evs.forEach((ev) => document.removeEventListener(ev, this.handoffKick));
+    evs.forEach((ev) =>
+      document.addEventListener(ev, this.handoffKick, { passive: true }),
+    );
+  }
+
+  /**
+   * Both the cross-tab handoff and the button embedded in the CV iframe use this one canonical
+   * player. Keeping the AudioContext in the Angular page also lets the existing cross-tab handoff
+   * prevent two tabs from playing at once.
+   */
+  private ensurePlayer(): SwiatloPlayer | null {
+    if (!this.notes) return null;
+    if (!this.player) {
       this.player = createSwiatlo(this.notes, {
         onState: (on) => {
+          this.updateIframeMusicState(on);
           if (on) {
+            this.removeKick?.();
+            this.removeIframeKick?.();
             this.bus?.claim();
             this.startMusicSave();
           } else {
@@ -661,13 +692,85 @@ export class CvPageComponent implements OnInit, OnDestroy {
             saveHandoff(this.player ? this.player.position() : 0, false);
           }
         },
+        leadInSec: CvPageComponent.MUSIC_LEAD_IN_SEC,
       });
-      this.player.play(h.offset); // continue from the handed-off position
-      this.removeKick?.();
-    };
-    this.removeKick = () =>
-      evs.forEach((ev) => document.removeEventListener(ev, kick));
-    evs.forEach((ev) => document.addEventListener(ev, kick, { passive: true }));
+    }
+    return this.player;
+  }
+
+  /** Runs synchronously in the iframe click gesture so WebKit can unlock the parent AudioContext. */
+  private toggleMusicFromIframe(): void {
+    const player = this.ensurePlayer();
+    if (!player) return;
+    if (player.isPlaying()) {
+      player.toggle();
+      return;
+    }
+
+    // Opening /cv from the playing portfolio should continue the same timeline. A normal,
+    // standalone visit starts at the beginning, exactly like the portfolio's bell button.
+    const handoff = loadHandoff();
+    if (handoff?.playing) player.play(handoff.offset);
+    else player.toggle();
+  }
+
+  private updateIframeMusicState(on: boolean): void {
+    const button = this.iframeMusicButton;
+    if (!button) return;
+    button.classList.toggle('is-playing', on);
+    button.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+
+  private updateIframeMusicAvailability(): void {
+    const button = this.iframeMusicButton;
+    if (!button) return;
+    button.disabled = !this.notes;
+    button.setAttribute('aria-disabled', this.notes ? 'false' : 'true');
+  }
+
+  /**
+   * The static CV still contains an anonymous legacy audio listener. Replacing the same-origin
+   * button with a deep clone removes that listener before a reader can invoke it, while preserving
+   * the complete visual and accessibility markup. The replacement calls the shared player above.
+   */
+  private bindIframeMusicButton(): void {
+    this.unbindIframeMusicButton();
+    const frame = this.cvFrame?.nativeElement;
+    if (!frame) return;
+
+    try {
+      const doc = frame.contentDocument ?? frame.contentWindow?.document;
+      if (!doc) return;
+      this.bindIframeHandoff(doc);
+      const legacyButton =
+        doc?.querySelector<HTMLButtonElement>('.cover__music');
+      if (!legacyButton) return;
+
+      const button = legacyButton.cloneNode(true) as HTMLButtonElement;
+      legacyButton.replaceWith(button);
+      button.addEventListener('click', this.iframeMusicClick);
+      this.iframeMusicButton = button;
+      this.updateIframeMusicAvailability();
+      this.updateIframeMusicState(!!this.player?.isPlaying());
+    } catch {
+      // The deployed iframe is same-origin. If that ever changes, leave its standalone fallback.
+    }
+  }
+
+  private unbindIframeMusicButton(): void {
+    this.iframeMusicButton?.removeEventListener('click', this.iframeMusicClick);
+    this.iframeMusicButton = null;
+    this.removeIframeKick?.();
+    this.removeIframeKick = undefined;
+  }
+
+  private bindIframeHandoff(doc: Document): void {
+    const evs = ['pointerup', 'touchend', 'click', 'keydown'];
+    this.removeIframeKick = () =>
+      evs.forEach((ev) => doc.removeEventListener(ev, this.handoffKick));
+    evs.forEach((ev) =>
+      doc.addEventListener(ev, this.handoffKick, { passive: true }),
+    );
   }
 
   private startMusicSave(): void {
@@ -702,6 +805,11 @@ export class CvPageComponent implements OnInit, OnDestroy {
       CvPageComponent.CV_PDF_BY_LANG[this.currentLang()] ??
       CvPageComponent.CV_PDF_BY_LANG['en'];
     window.open(url, '_blank');
+  }
+
+  onCvFrameLoad(): void {
+    this.bindIframeMusicButton();
+    this.fitCv();
   }
 
   /**

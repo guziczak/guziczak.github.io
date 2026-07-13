@@ -11,6 +11,7 @@
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\"",
+    "cv:pdf": "node scripts/generate-cv-pdfs.mjs",
     "clean": "rm -rf dist .angular/cache node_modules/.cache",
     "build:prod": "npm run clean && ng build --configuration production",
     "deploy": "./scripts/deploy-github-pages.sh",
