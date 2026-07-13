@@ -202,7 +202,6 @@ export class CvPrintPageComponent implements OnInit, OnDestroy {
   @ViewChild('cvWrapper') cvWrapper?: ElementRef<HTMLElement>;
 
   private static readonly CV_DOC_WIDTH = 794;
-  private static readonly CV_RESPONSIVE_BREAKPOINT = 793;
   private fitFrameId?: number;
   private fitGeneration = 0;
 
@@ -237,16 +236,17 @@ export class CvPrintPageComponent implements OnInit, OnDestroy {
     if (!frame || !wrapper) return;
 
     const availableWidth = Math.max(1, wrapper.clientWidth);
-    const responsive =
-      availableWidth <= CvPrintPageComponent.CV_RESPONSIVE_BREAKPOINT;
-    const layoutWidth = responsive
-      ? Math.floor(availableWidth)
-      : CvPrintPageComponent.CV_DOC_WIDTH;
+    const scale = Math.min(
+      1,
+      availableWidth / CvPrintPageComponent.CV_DOC_WIDTH,
+    );
 
-    frame.style.width = layoutWidth + 'px';
-    frame.style.height = (responsive ? 760 : 1123) + 'px';
-    frame.style.transform = 'none';
-    wrapper.style.height = (responsive ? 760 : 1123) + 'px';
+    // Keep the embedded document in its desktop A4 layout on narrow screens
+    // and scale that finished composition instead of activating mobile reflow.
+    frame.style.width = CvPrintPageComponent.CV_DOC_WIDTH + 'px';
+    frame.style.height = '1123px';
+    frame.style.transform = `scale(${scale})`;
+    wrapper.style.height = Math.ceil(1123 * scale) + 'px';
 
     if (this.fitFrameId !== undefined) {
       cancelAnimationFrame(this.fitFrameId);
@@ -273,9 +273,6 @@ export class CvPrintPageComponent implements OnInit, OnDestroy {
       }
 
       const h = docHeight + 2;
-      const scale = responsive
-        ? 1
-        : Math.min(1, availableWidth / CvPrintPageComponent.CV_DOC_WIDTH);
       frame.style.height = h + 'px';
       frame.style.transform = `scale(${scale})`;
       wrapper.style.height = Math.ceil(h * scale) + 'px';

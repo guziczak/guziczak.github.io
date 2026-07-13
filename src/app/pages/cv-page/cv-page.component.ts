@@ -586,7 +586,6 @@ export class CvPageComponent implements OnInit, OnDestroy {
   @ViewChild('cvFrame') private cvFrame?: ElementRef<HTMLIFrameElement>;
   @ViewChild('cvWrapper') private cvWrapper?: ElementRef<HTMLElement>;
   private static readonly CV_DOC_WIDTH = 794;
-  private static readonly CV_RESPONSIVE_BREAKPOINT = 793;
   private fitFrameId?: number;
   private fitGeneration = 0;
 
@@ -707,8 +706,8 @@ export class CvPageComponent implements OnInit, OnDestroy {
 
   /**
    * Fit the fixed-width (A4 / 794px) CV document to the frame:
-   * scale to the wrapper width, set height to the content, kill inner scrollbars.
-   * The outer page scrolls — the preview never does.
+   * always keep the desktop composition and scale the whole document down on
+   * narrow screens. The outer page scrolls; the preview never does.
    */
   fitCv(): void {
     const frame = this.cvFrame?.nativeElement;
@@ -716,19 +715,15 @@ export class CvPageComponent implements OnInit, OnDestroy {
     if (!frame || !wrapper) return;
 
     const availableWidth = Math.max(1, wrapper.clientWidth);
-    const responsive =
-      availableWidth <= CvPageComponent.CV_RESPONSIVE_BREAKPOINT;
-    const layoutWidth = responsive
-      ? Math.floor(availableWidth)
-      : CvPageComponent.CV_DOC_WIDTH;
+    const scale = Math.min(1, availableWidth / CvPageComponent.CV_DOC_WIDTH);
 
-    // Set the iframe viewport before measuring. Below the 794px A4 width this activates
-    // the document's responsive CSS instead of shrinking an A4 page to a
-    // thumbnail; wider viewports retain the exact A4 composition.
-    frame.style.width = layoutWidth + 'px';
-    frame.style.height = (responsive ? 760 : 1123) + 'px';
-    frame.style.transform = 'none';
-    wrapper.style.height = (responsive ? 760 : 1123) + 'px';
+    // Keep the iframe viewport at the A4 desktop width even on phones. This
+    // prevents the embedded document's mobile media query from reflowing and
+    // deforming the CV; the finished desktop layout is scaled as one unit.
+    frame.style.width = CvPageComponent.CV_DOC_WIDTH + 'px';
+    frame.style.height = '1123px';
+    frame.style.transform = `scale(${scale})`;
+    wrapper.style.height = Math.ceil(1123 * scale) + 'px';
 
     if (this.fitFrameId !== undefined) {
       cancelAnimationFrame(this.fitFrameId);
@@ -755,17 +750,14 @@ export class CvPageComponent implements OnInit, OnDestroy {
       }
 
       const h = docHeight + 2;
-      const scale = responsive
-        ? 1
-        : Math.min(1, availableWidth / CvPageComponent.CV_DOC_WIDTH);
       frame.style.height = h + 'px';
       frame.style.transform = `scale(${scale})`;
       wrapper.style.height = Math.ceil(h * scale) + 'px';
       this.fitFrameId = undefined;
     };
 
-    // Chromium updates iframe media queries asynchronously after a width
-    // change. Measure after two frames so the mobile reflow is complete.
+    // Chromium updates the iframe layout asynchronously after a width change.
+    // Measure after two frames so the fixed-width composition is complete.
     this.fitFrameId = requestAnimationFrame(() => {
       this.fitFrameId = requestAnimationFrame(measure);
     });
