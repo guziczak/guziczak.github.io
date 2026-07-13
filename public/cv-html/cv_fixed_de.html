@@ -1169,6 +1169,7 @@ ol[role="list"] {
     height: 32px;
     border-radius: var(--radius-md);
     overflow: hidden;
+    text-decoration: none;
     transition: transform var(--transition-normal);
 }
 
@@ -1237,10 +1238,13 @@ ol[role="list"] {
     height: 100%;
     border-radius: 50%;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: radial-gradient(circle at 34% 31%, #c8ecfc 0%, #5cc6f5 38%, #0ea5e9 72%, #0a6b96 100%);
-    box-shadow: inset 0 0 0 0.5px #06506f, 0 1px 2px rgba(0, 0, 0, 0.25);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05) 50%, transparent 70%),
+        radial-gradient(circle at 39% 36%, #286cff, #2563eb 55%, #225bd6);
+    box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.3), 0 1px 2px rgba(0, 0, 0, 0.25);
     overflow: hidden;
 }
 
@@ -1269,11 +1273,20 @@ ol[role="list"] {
 .opisai-bubble__label {
     position: relative;
     z-index: 1;
-    font-size: 0.4rem;
+    font-size: 0.28rem;
     font-weight: 700;
     letter-spacing: 0.01em;
-    color: #06334a;
-    line-height: 1;
+    color: #fff;
+    line-height: 0.9;
+    text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.35);
+}
+
+.opisai-bubble__icon {
+    position: relative;
+    z-index: 1;
+    width: 18px;
+    height: 17px;
+    display: block;
 }
 
 /* Sidebar Projects — side projects / client work */
@@ -2291,7 +2304,7 @@ class OnPremExtractor:
                     <article class="current-card current-card--product" aria-label="Product: OpisAI — eigenes KI-Produkt (gebaut &amp; verkauft), 2026">
                         <div class="current-card__lead">
                             <time class="current-card__year" datetime="2026" aria-hidden="true">2026</time>
-                            <span class="current-card__logo-link current-card__logo-link--static"><span class="opisai-bubble" aria-hidden="true"><span class="opisai-bubble__label">OpisAI</span></span></span>
+                            <a class="current-card__logo-link" href="https://guziczak.github.io/opisai" target="_blank" rel="noopener noreferrer" aria-label="OpisAI-Projekt öffnen"><span class="opisai-bubble" aria-hidden="true"><svg class="opisai-bubble__icon" viewBox="20 21 60 60"><mask id="opisaiCurrentBag"><rect x="38" y="24.5" width="24" height="14" rx="6.3" fill="#fff"/><rect x="20.9" y="33.4" width="58.2" height="43.7" rx="10.4" fill="#fff"/><rect x="43.5" y="28.6" width="13" height="6.5" rx="2.6" fill="#000"/><rect x="45.9" y="42.5" width="8.1" height="25.3" rx="2.4" fill="#000"/><rect x="37.3" y="51.1" width="25.3" height="8.1" rx="2.4" fill="#000"/></mask><rect width="100" height="100" fill="#fff" mask="url(#opisaiCurrentBag)"/></svg><span class="opisai-bubble__label">OpisAI</span></span></a>
                         </div>
                         <div class="current-card__body">
                             <h3 class="current-card__title">OpisAI — eigenes KI-Produkt (gebaut &amp; verkauft)</h3>
