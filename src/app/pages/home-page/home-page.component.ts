@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { AnimationService } from '../../core/services/animation.service';
 import { HeroSectionComponent } from '../../features/home/hero-section.component';
 import { ProjectsSectionComponent } from '../../features/projects/projects-section.component';
+import { IpIntegritySectionComponent } from '../../features/ip-integrity/ip-integrity-section.component';
 import { NumbersSectionComponent } from '../../features/numbers/numbers-section.component';
 import { ContactSectionComponent } from '../../features/contact/contact-section.component';
 import { ScrollProgressComponent } from '../../shared/ui/scroll-progress/scroll-progress.component';
@@ -20,6 +21,7 @@ import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.comp
     CommonModule,
     HeroSectionComponent,
     ProjectsSectionComponent,
+    IpIntegritySectionComponent,
     NumbersSectionComponent,
     ContactSectionComponent,
     ScrollProgressComponent,
@@ -29,11 +31,14 @@ import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.comp
     <app-scroll-progress />
 
     <!-- Breathing code behind the whole descent — drifts forever, near-invisible. -->
-    <div class="code-backdrop" aria-hidden="true"><pre>{{ codeLoop }}</pre></div>
+    <div class="code-backdrop" aria-hidden="true">
+      <pre>{{ codeLoop }}</pre>
+    </div>
 
     <main class="main-content">
       <app-hero-section id="home" />
       <app-projects-section id="projects" />
+      <app-ip-integrity-section />
       <app-numbers-section id="numbers" />
       <app-contact-section id="contact" />
     </main>
@@ -53,8 +58,20 @@ import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.comp
         pointer-events: none;
         user-select: none;
         opacity: 0.05;
-        -webkit-mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
-        mask-image: linear-gradient(180deg, transparent, #000 12%, #000 88%, transparent);
+        -webkit-mask-image: linear-gradient(
+          180deg,
+          transparent,
+          #000 12%,
+          #000 88%,
+          transparent
+        );
+        mask-image: linear-gradient(
+          180deg,
+          transparent,
+          #000 12%,
+          #000 88%,
+          transparent
+        );
       }
       .code-backdrop pre {
         margin: 0;
@@ -66,11 +83,17 @@ import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.comp
         animation: backdrop-drift 120s linear infinite;
       }
       @keyframes backdrop-drift {
-        from { transform: translateY(0); }
-        to { transform: translateY(-50%); }
+        from {
+          transform: translateY(0);
+        }
+        to {
+          transform: translateY(-50%);
+        }
       }
       @media (prefers-reduced-motion: reduce) {
-        .code-backdrop pre { animation: none; }
+        .code-backdrop pre {
+          animation: none;
+        }
       }
 
       .main-content {
