@@ -10,7 +10,7 @@ import { ScrollProgressComponent } from '../../shared/ui/scroll-progress/scroll-
 import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.component';
 
 /**
- * The cathedral — one descent: manifesto → proof → numbers → quiet exit.
+ * The cathedral — one descent: manifesto → proof → numbers → delivery integrity → quiet exit.
  * The performer sections (about, skills, games, certificates, achievements,
  * testimonials) are gone. Mniej rzeczy, każda cięższa.
  */
@@ -38,8 +38,8 @@ import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.comp
     <main class="main-content">
       <app-hero-section id="home" />
       <app-projects-section id="projects" />
-      <app-ip-integrity-section />
       <app-numbers-section id="numbers" />
+      <app-ip-integrity-section />
       <app-contact-section id="contact" />
     </main>
 

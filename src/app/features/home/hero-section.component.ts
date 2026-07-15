@@ -1,47 +1,88 @@
-import { Component, inject, signal, computed, effect, AfterViewInit, OnDestroy, HostListener } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  effect,
+  AfterViewInit,
+  OnDestroy,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ScrollService } from '../../core/services/scroll.service';
 import { LanguageService } from '../../core/services/language.service';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
-import { createSwiatlo, loadSwiatloScore, SwiatloPlayer } from './swiatlo-player';
+import {
+  createSwiatlo,
+  loadSwiatloScore,
+  SwiatloPlayer,
+} from './swiatlo-player';
 import { saveHandoff, swiatloBus } from './swiatlo-sync';
 import { StaffVisualizerComponent } from './staff-visualizer.component';
 
 const MANIFESTO: Record<string, any> = {
   en: {
-    stamp: ['In the lab since 2016. In production since 2024. ', 'Currently embedded at a bank — on-prem, regulated.'], stampPunch: 'Not since ChatGPT.',
+    stamp: [
+      'In the lab since 2016. In production since 2024. ',
+      'Currently embedded at a bank — on-prem, regulated.',
+    ],
+    stampPunch: 'Not since ChatGPT.',
     lead: 'They say AI loses the thread past 1,000 lines of code.',
     punch: 'Cute',
     num: '20,000',
-    reframeA: "That's where I start — ", reframeB: ' lines.', reframeTail: ['One file.', 'One person.'],
+    reframeA: "That's where I start — ",
+    reframeB: ' lines.',
+    reframeTail: ['One file.', 'One person.'],
     proof1: ['A month to a working PoC.', 'Three to production.', 'No team.'],
     proof2: ['Their teams maintain it.', "I'm on the next."],
     rest: 'The code says the rest.',
-    enter: 'Enter', cvText: 'The full CV', cvNote: "(You won't need it.)",
+    enter: 'Enter',
+    cvText: 'The full CV',
+    cvNote: "(You won't need it.)",
   },
   pl: {
-    stamp: ['W labie od 2016. Na produkcji od 2024. ', 'Teraz w banku — on-prem, za ryglami regulacji.'], stampPunch: 'Nie od ChatGPT.',
+    stamp: [
+      'W labie od 2016. Na produkcji od 2024. ',
+      'Teraz w banku — on-prem, za ryglami regulacji.',
+    ],
+    stampPunch: 'Nie od ChatGPT.',
     lead: 'Mówią, że AI gubi wątek po 1000 liniach kodu.',
     punch: 'Urocze',
     num: '20 000',
-    reframeA: '', reframeB: ' linii? Rozgrzewka.', reframeTail: ['Jeden plik.', 'Jeden człowiek.'],
+    reframeA: '',
+    reframeB: ' linii? Rozgrzewka.',
+    reframeTail: ['Jeden plik.', 'Jeden człowiek.'],
     proof1: ['Działający PoC w miesiąc.', 'Produkcja w trzy.', 'Bez zespołu.'],
     proof2: ['Utrzymanie przejmują całe zespoły.', 'Ja już buduję następny.'],
     rest: 'Resztę mówi kod.',
-    enter: 'Wejdź', cvText: 'Pełne CV', cvNote: '(Nie będzie Ci potrzebne)',
+    enter: 'Wejdź',
+    cvText: 'Pełne CV',
+    cvNote: '(Nie będzie Ci potrzebne)',
   },
   de: {
-    stamp: ['Im Labor seit 2016. In Produktion seit 2024. ', 'Derzeit in einer Bank — On-Prem, reguliert.'], stampPunch: 'Nicht seit ChatGPT.',
+    stamp: [
+      'Im Labor seit 2016. In Produktion seit 2024. ',
+      'Derzeit in einer Bank — On-Prem, reguliert.',
+    ],
+    stampPunch: 'Nicht seit ChatGPT.',
     lead: 'Sie sagen, KI verliert den Faden nach 1.000 Zeilen Code.',
     punch: 'Niedlich',
     num: '20.000',
-    reframeA: 'Da fange ich an — ', reframeB: ' Zeilen.', reframeTail: ['Eine Datei.', 'Eine Person.'],
-    proof1: ['Ein Monat bis zum funktionierenden PoC.', 'Drei bis zur Produktion.', 'Kein Team.'],
+    reframeA: 'Da fange ich an — ',
+    reframeB: ' Zeilen.',
+    reframeTail: ['Eine Datei.', 'Eine Person.'],
+    proof1: [
+      'Ein Monat bis zum funktionierenden PoC.',
+      'Drei bis zur Produktion.',
+      'Kein Team.',
+    ],
     proof2: ['Ihre Teams pflegen es.', 'Ich bin schon beim nächsten.'],
     rest: 'Den Rest sagt der Code.',
-    enter: 'Eintreten', cvText: 'Der vollständige Lebenslauf', cvNote: '(Sie werden ihn nicht brauchen.)',
+    enter: 'Eintreten',
+    cvText: 'Der vollständige Lebenslauf',
+    cvNote: '(Sie werden ihn nicht brauchen.)',
   },
 };
 
@@ -63,84 +104,188 @@ const MANIFESTO: Record<string, any> = {
 
       <div class="manifesto__stamp reveal" [class.is-in]="step() >= 1">
         <span class="manifesto__kicker">Łukasz Guziczak · AI Engineer</span>
-        <span>{{ m().stamp[0] }}<strong class="manifesto__stamp-punch">{{ m().stampPunch }}</strong></span>
+        <span
+          >{{ m().stamp[0]
+          }}<strong class="manifesto__stamp-punch">{{
+            m().stampPunch
+          }}</strong></span
+        >
         <span>{{ m().stamp[1] }}</span>
       </div>
 
       <div class="manifesto__inner">
-        <p class="manifesto__lead reveal" [class.is-in]="step() >= 2">{{ m().lead }}</p>
-        <p class="manifesto__punch reveal" [class.is-in]="step() >= 3"><span class="manifesto__type">{{ typed() }}</span><span class="manifesto__dot" [class.manifesto__dot--period]="typedDone()" aria-hidden="true"></span></p>
+        <p class="manifesto__lead reveal" [class.is-in]="step() >= 2">
+          {{ m().lead }}
+        </p>
+        <p class="manifesto__punch reveal" [class.is-in]="step() >= 3">
+          <span class="manifesto__type">{{ typed() }}</span
+          ><span
+            class="manifesto__dot"
+            [class.manifesto__dot--period]="typedDone()"
+            aria-hidden="true"
+          ></span>
+        </p>
         <p class="manifesto__reframe" [class.is-in]="step() >= 4">
-          <span class="manifesto__reframe-line">{{ m().reframeA }}<span class="manifesto__num">{{ m().num }}</span>{{ m().reframeB }}</span>
-          <span class="manifesto__reframe-line" *ngFor="let l of m().reframeTail">{{ l }}</span>
+          <span class="manifesto__reframe-line"
+            >{{ m().reframeA }}<span class="manifesto__num">{{ m().num }}</span
+            >{{ m().reframeB }}</span
+          >
+          <span
+            class="manifesto__reframe-line"
+            *ngFor="let l of m().reframeTail"
+            >{{ l }}</span
+          >
         </p>
         <p class="manifesto__proof" [class.is-in]="step() >= 5">
-          <span class="manifesto__proof-line" *ngFor="let s of m().proof1">{{ s }}</span>
+          <span class="manifesto__proof-line" *ngFor="let s of m().proof1">{{
+            s
+          }}</span>
         </p>
         <div class="manifesto__coda">
           <p class="manifesto__proof" [class.is-in]="step() >= 6">
-            <span class="manifesto__proof-line" *ngFor="let s of m().proof2">{{ s }}</span>
+            <span class="manifesto__proof-line" *ngFor="let s of m().proof2">{{
+              s
+            }}</span>
           </p>
           <div class="manifesto__act reveal" [class.is-in]="step() >= 8">
-            <button (click)="enter()" class="manifesto__enter">
+            <button type="button" (click)="enter()" class="manifesto__enter">
               {{ m().enter }} <span class="manifesto__arrow">↓</span>
             </button>
-            <a href="/cv" target="_blank" rel="noopener noreferrer" class="manifesto__cv">
-              {{ m().cvText }} <span class="manifesto__cv-note">{{ m().cvNote }}</span>
-            </a>
           </div>
         </div>
-        <p class="manifesto__rest reveal" [class.is-in]="step() >= 7">{{ m().rest }}</p>
+        <p class="manifesto__rest reveal" [class.is-in]="step() >= 7">
+          {{ m().rest }}
+        </p>
       </div>
 
       <footer class="manifesto__footer">
-        <div class="manifesto__social reveal" [class.is-in]="step() >= 8">
-          <a [href]="contact.github" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><i class="fab fa-github"></i></a>
-          <a [href]="contact.linkedin" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
-          <a [href]="'mailto:' + contact.email" aria-label="Email"><i class="fas fa-envelope"></i></a>
+        <div
+          class="manifesto__footer-left manifesto__utility-group reveal"
+          [class.is-in]="step() >= 8"
+        >
+          <div class="manifesto__social">
+            <a
+              [href]="contact.github"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="GitHub"
+              ><i class="fab fa-github"></i
+            ></a>
+            <a
+              [href]="contact.linkedin"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="LinkedIn"
+              ><i class="fab fa-linkedin-in"></i
+            ></a>
+            <a [href]="'mailto:' + contact.email" aria-label="Email"
+              ><i class="fas fa-envelope"></i
+            ></a>
+          </div>
+          <span class="manifesto__footer-divider" aria-hidden="true"></span>
+          <a
+            href="/cv"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="manifesto__cv"
+          >
+            {{ m().cvText }}
+            <span class="manifesto__cv-note">{{ m().cvNote }}</span>
+          </a>
         </div>
 
-        <div class="manifesto__music-group">
-        <button class="manifesto__music reveal" type="button"
-                [class.is-in]="step() >= 8"
-                [class.is-playing]="musicOn()" (click)="toggleMusic()"
-                [attr.aria-pressed]="musicOn()"
-                aria-label="Play 'Lux in tenebris' (światło w ciemności) — composed by Łukasz Guziczak &amp; Opus 4.6, with a variation by Fable 5, synthesised live">
-          <span class="manifesto__eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-          <span class="manifesto__music-text">
-            <span class="manifesto__music-title">Lux in tenebris</span>
-            <span class="manifesto__music-credit">Łukasz Guziczak &amp; Opus 4.6 · war. Fable 5</span>
-          </span>
-        </button>
+        <div
+          class="manifesto__music-group manifesto__utility-group reveal"
+          [class.is-in]="step() >= 8"
+          [class.is-playing]="musicOn()"
+        >
+          <button
+            class="manifesto__music"
+            type="button"
+            [class.is-playing]="musicOn()"
+            (click)="toggleMusic()"
+            [attr.aria-pressed]="musicOn()"
+            aria-label="Play 'Lux in tenebris' (światło w ciemności) — composed by Łukasz Guziczak &amp; Opus 4.6, with a variation by Fable 5, synthesised live"
+          >
+            <span class="manifesto__eq" aria-hidden="true"
+              ><i></i><i></i><i></i><i></i
+            ></span>
+            <span class="manifesto__music-text">
+              <span class="manifesto__music-title">Lux in tenebris</span>
+              <span class="manifesto__music-credit"
+                >Łukasz Guziczak &amp; Opus 4.6 · war. Fable 5</span
+              >
+            </span>
+          </button>
 
-        <button class="manifesto__score reveal" type="button"
-                [class.is-in]="step() >= 8"
-                (click)="openScore()"
-                aria-label="Zobacz pełną partyturę „Lux in tenebris” (PDF)">
-          <span class="manifesto__score-clef" aria-hidden="true"><i class="fas fa-file-lines"></i></span>
-          <span class="manifesto__score-text">Partytura</span>
-        </button>
+          <button
+            class="manifesto__score"
+            type="button"
+            (click)="openScore()"
+            aria-label="Zobacz pełną partyturę „Lux in tenebris” (PDF)"
+          >
+            <span class="manifesto__score-clef" aria-hidden="true"
+              ><i class="fas fa-file-lines"></i
+            ></span>
+            <span class="manifesto__score-text">Partytura</span>
+          </button>
         </div>
       </footer>
     </section>
-    <app-staff-visualizer [notes]="notes || []" [player]="player" [active]="musicOn()" [beatMs]="beatMs" [leadInSec]="leadInSec" />
+    <app-staff-visualizer
+      [notes]="notes || []"
+      [player]="player"
+      [active]="musicOn()"
+      [beatMs]="beatMs"
+      [leadInSec]="leadInSec"
+    />
 
     @if (scoreOpen()) {
-      <div class="score-modal" role="dialog" aria-modal="true" aria-label="Partytura — Lux in tenebris" (click)="closeScore()">
+      <div
+        class="score-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Partytura — Lux in tenebris"
+        (click)="closeScore()"
+      >
         <div class="score-modal__panel" (click)="$event.stopPropagation()">
           <div class="score-modal__bar">
-            <span class="score-modal__title">Lux in tenebris <em>— partytura</em></span>
+            <span class="score-modal__title"
+              >Lux in tenebris <em>— partytura</em></span
+            >
             <span class="score-modal__actions">
-              <a class="score-modal__download" [href]="scorePdf" download="Swiatlo-w-Ciemnosci.pdf" target="_blank" rel="noopener noreferrer">⭳ Pobierz</a>
-              <button class="score-modal__close" type="button" (click)="closeScore()" aria-label="Zamknij partyturę">✕</button>
+              <a
+                class="score-modal__download"
+                [href]="scorePdf"
+                download="Swiatlo-w-Ciemnosci.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                >⭳ Pobierz</a
+              >
+              <button
+                class="score-modal__close"
+                type="button"
+                (click)="closeScore()"
+                aria-label="Zamknij partyturę"
+              >
+                ✕
+              </button>
             </span>
           </div>
           @if (scoreNative) {
             <div class="score-modal__scroll">
-              <img class="score-modal__page" [src]="scoreFull" alt="Partytura — Lux in tenebris" />
+              <img
+                class="score-modal__page"
+                [src]="scoreFull"
+                alt="Partytura — Lux in tenebris"
+              />
             </div>
           } @else {
-            <iframe class="score-modal__doc" [src]="safeScorePdf" title="Partytura — Lux in tenebris"></iframe>
+            <iframe
+              class="score-modal__doc"
+              [src]="safeScorePdf"
+              title="Partytura — Lux in tenebris"
+            ></iframe>
           }
         </div>
       </div>
@@ -161,7 +306,11 @@ const MANIFESTO: Record<string, any> = {
         padding: clamp(2rem, 5vh, 3.5rem) clamp(2rem, 6vw, 6rem);
         overflow: hidden;
         background:
-          radial-gradient(1200px 600px at 70% -10%, rgba(56, 189, 248, 0.06), transparent 60%),
+          radial-gradient(
+            1200px 600px at 70% -10%,
+            rgba(56, 189, 248, 0.06),
+            transparent 60%
+          ),
           var(--bg-primary);
       }
 
@@ -173,8 +322,20 @@ const MANIFESTO: Record<string, any> = {
         pointer-events: none;
         user-select: none;
         opacity: 0.05;
-        -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
-        mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+        -webkit-mask-image: linear-gradient(
+          180deg,
+          transparent,
+          #000 18%,
+          #000 82%,
+          transparent
+        );
+        mask-image: linear-gradient(
+          180deg,
+          transparent,
+          #000 18%,
+          #000 82%,
+          transparent
+        );
       }
       .manifesto__code pre {
         margin: 0;
@@ -186,8 +347,12 @@ const MANIFESTO: Record<string, any> = {
         animation: drift 90s linear infinite;
       }
       @keyframes drift {
-        from { transform: translateY(0); }
-        to { transform: translateY(-50%); }
+        from {
+          transform: translateY(0);
+        }
+        to {
+          transform: translateY(-50%);
+        }
       }
 
       .manifesto__stamp {
@@ -249,7 +414,6 @@ const MANIFESTO: Record<string, any> = {
         }
       }
 
-
       /* styles.scss blankets every p/span/a/button on the page with
          \`animation: fadeInUp … forwards\`, which pins them to opacity:1 and (being an animation)
          overrides the step reveal — text leaked through the gate. Cancel it on the manifesto's
@@ -279,7 +443,9 @@ const MANIFESTO: Record<string, any> = {
 
       /* "Cute" types itself in (ngAfterViewInit); the cursor blinks like a prompt,
          then commits into a solid accent full-stop. A coder's period — returns 0. */
-      .manifesto__type { white-space: pre; }
+      .manifesto__type {
+        white-space: pre;
+      }
       .manifesto__dot {
         display: inline-block;
         width: 0.07em;
@@ -288,8 +454,11 @@ const MANIFESTO: Record<string, any> = {
         background: var(--color-primary);
         vertical-align: baseline;
         margin-left: 0.04em;
-        transition: width 0.25s ease, height 0.25s ease, border-radius 0.25s ease,
-                    margin-left 0.25s ease;
+        transition:
+          width 0.25s ease,
+          height 0.25s ease,
+          border-radius 0.25s ease,
+          margin-left 0.25s ease;
         animation: caretBlink 1s step-end infinite;
       }
       .manifesto__dot--period {
@@ -300,8 +469,14 @@ const MANIFESTO: Record<string, any> = {
         animation: none;
       }
       @keyframes caretBlink {
-        0%, 49% { opacity: 1; }
-        50%, 100% { opacity: 0; }
+        0%,
+        49% {
+          opacity: 1;
+        }
+        50%,
+        100% {
+          opacity: 0;
+        }
       }
       .manifesto__reframe {
         font-size: clamp(1.5rem, 4vw, 2.6rem);
@@ -311,7 +486,10 @@ const MANIFESTO: Record<string, any> = {
         color: var(--text-primary);
         margin-bottom: 1.6rem;
       }
-      .manifesto__reframe-line { display: block; text-wrap: balance; }
+      .manifesto__reframe-line {
+        display: block;
+        text-wrap: balance;
+      }
       /* The three reframe lines cascade one after another (mirrors the proof lines), so
          "20 000 linii — to dopiero rozgrzewka." / "Jeden plik." / "Jeden człowiek." step in
          on their own beats instead of popping as a block. */
@@ -335,11 +513,22 @@ const MANIFESTO: Record<string, any> = {
         filter: blur(0);
         clip-path: inset(-35% 0 -35% 0);
       }
-      .manifesto.is-seq .manifesto__reframe.is-in .manifesto__reframe-line:nth-child(2) { transition-delay: 0.34s; }
-      .manifesto.is-seq .manifesto__reframe.is-in .manifesto__reframe-line:nth-child(3) { transition-delay: 0.68s; }
+      .manifesto.is-seq
+        .manifesto__reframe.is-in
+        .manifesto__reframe-line:nth-child(2) {
+        transition-delay: 0.34s;
+      }
+      .manifesto.is-seq
+        .manifesto__reframe.is-in
+        .manifesto__reframe-line:nth-child(3) {
+        transition-delay: 0.68s;
+      }
       @media (prefers-reduced-motion: reduce) {
         .manifesto.is-seq .manifesto__reframe-line {
-          opacity: 1; transform: none; filter: none; transition: none;
+          opacity: 1;
+          transform: none;
+          filter: none;
+          transition: none;
         }
       }
       .manifesto__num {
@@ -378,7 +567,9 @@ const MANIFESTO: Record<string, any> = {
       .manifesto.is-seq .manifesto__proof::before {
         transform: scaleY(0);
         opacity: 0;
-        transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+        transition:
+          transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+          opacity 0.4s ease;
       }
       .manifesto.is-seq .manifesto__proof.is-in::before {
         transform: scaleY(1);
@@ -402,13 +593,33 @@ const MANIFESTO: Record<string, any> = {
         clip-path: inset(-30% 0 -30% 0);
       }
       /* the ghosts step out one after another, just after the door has opened */
-      .manifesto.is-seq .manifesto__proof.is-in .manifesto__proof-line:nth-child(1) { transition-delay: 0.30s; }
-      .manifesto.is-seq .manifesto__proof.is-in .manifesto__proof-line:nth-child(2) { transition-delay: 0.62s; }
-      .manifesto.is-seq .manifesto__proof.is-in .manifesto__proof-line:nth-child(3) { transition-delay: 0.94s; }
+      .manifesto.is-seq
+        .manifesto__proof.is-in
+        .manifesto__proof-line:nth-child(1) {
+        transition-delay: 0.3s;
+      }
+      .manifesto.is-seq
+        .manifesto__proof.is-in
+        .manifesto__proof-line:nth-child(2) {
+        transition-delay: 0.62s;
+      }
+      .manifesto.is-seq
+        .manifesto__proof.is-in
+        .manifesto__proof-line:nth-child(3) {
+        transition-delay: 0.94s;
+      }
       @media (prefers-reduced-motion: reduce) {
-        .manifesto.is-seq .manifesto__proof::before { transform: scaleY(1); opacity: 1; transition: none; }
+        .manifesto.is-seq .manifesto__proof::before {
+          transform: scaleY(1);
+          opacity: 1;
+          transition: none;
+        }
         .manifesto.is-seq .manifesto__proof-line {
-          opacity: 1; transform: none; filter: none; clip-path: none; transition: none;
+          opacity: 1;
+          transform: none;
+          filter: none;
+          clip-path: none;
+          transition: none;
         }
       }
       .manifesto__rest {
@@ -419,7 +630,7 @@ const MANIFESTO: Record<string, any> = {
         margin: 1.4rem 0 2.4rem;
       }
 
-      /* The coda — proof2 on the left, the "Wejdź ↓" button lifted up to its right
+      /* The coda — proof2 on the left, the single "Wejdź ↓" action lifted up to its right
          (instead of sitting alone at the bottom). Stacks under the lines on narrow screens. */
       .manifesto__coda {
         display: flex;
@@ -428,15 +639,19 @@ const MANIFESTO: Record<string, any> = {
         gap: 1rem 1.75rem;
         flex-wrap: nowrap; /* keep "Wejdź ↓" to the RIGHT of the two lines, never wrapped below */
       }
-      .manifesto__coda .manifesto__proof { margin-bottom: 0; flex: 1 1 auto; min-width: 0; }
-      .manifesto__coda .manifesto__enter { white-space: nowrap; }
-      /* "Wejdź ↓" with "Pełne CV (…)" stacked right beneath it. */
+      .manifesto__coda .manifesto__proof {
+        margin-bottom: 0;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .manifesto__coda .manifesto__enter {
+        white-space: nowrap;
+      }
+      /* The sole primary action in the manifesto body. Supporting utilities live in the footer. */
       .manifesto__act {
         flex: 0 0 auto;
         display: flex;
-        flex-direction: column;
         align-items: center;
-        gap: 0.7rem;
         text-align: center;
       }
 
@@ -457,9 +672,10 @@ const MANIFESTO: Record<string, any> = {
         padding: 0.85rem 1.8rem;
         border-radius: var(--radius-full);
         cursor: pointer;
-        transition: border-color var(--transition-base) ease,
-                    background-color var(--transition-base) ease,
-                    transform var(--transition-base) ease;
+        transition:
+          border-color var(--transition-base) ease,
+          background-color var(--transition-base) ease,
+          transform var(--transition-base) ease;
       }
       .manifesto__enter:hover {
         border-color: var(--color-primary);
@@ -471,19 +687,15 @@ const MANIFESTO: Record<string, any> = {
         animation: nudge 2.4s ease-in-out infinite;
       }
       @keyframes nudge {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(4px); }
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(4px);
+        }
       }
-      .manifesto__cv {
-        color: var(--text-secondary);
-        font-size: 0.95rem;
-        text-decoration: none;
-        transition: color var(--transition-base) ease;
-      }
-      .manifesto__cv:hover { color: var(--text-primary); }
-      .manifesto__cv-note { color: var(--text-tertiary); }
-
-      /* The footer row — social on the left, the bell on the right, in flow. */
+      /* The footer row — social + CV on the left, Lux + score on the right, in flow. */
       .manifesto__footer {
         align-self: end;
         display: flex;
@@ -491,19 +703,92 @@ const MANIFESTO: Record<string, any> = {
         justify-content: space-between;
         gap: 1rem;
       }
+      .manifesto__footer-left {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem 1.2rem;
+        min-width: 0;
+        z-index: 2;
+      }
       .manifesto__social {
         display: flex;
-        gap: 1.4rem;
-        z-index: 2;
+        align-items: center;
+        gap: 1.2rem;
       }
       .manifesto__social a {
         color: var(--text-tertiary);
         font-size: 1.15rem;
-        transition: color var(--transition-base) ease, transform var(--transition-base) ease;
+        transition:
+          color var(--transition-base) ease,
+          transform var(--transition-base) ease;
       }
       .manifesto__social a:hover {
         color: var(--color-primary);
         transform: translateY(-2px);
+      }
+      .manifesto__footer-divider {
+        width: 1px;
+        height: 1.5rem;
+        flex: 0 0 auto;
+        background: var(--border-color-dark);
+      }
+      .manifesto__cv {
+        display: inline-flex;
+        align-items: baseline;
+        flex-wrap: wrap;
+        gap: 0.2rem 0.35rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.35;
+        text-decoration: none;
+        transition: color var(--transition-base) ease;
+      }
+      .manifesto__cv:hover {
+        color: var(--text-primary);
+      }
+      .manifesto__cv-note {
+        color: var(--text-tertiary);
+        font-size: 0.88em;
+      }
+
+      /* Utilities arrive just after the primary CTA, without adding another sequence step.
+         Once present they stay quiet until the reader points, focuses, or starts the music. */
+      .manifesto__utility-group {
+        opacity: 0.62;
+        transition: opacity 0.35s ease;
+      }
+      .manifesto.is-seq .manifesto__utility-group.reveal {
+        transition:
+          opacity 0.7s ease,
+          transform 0.7s cubic-bezier(0.33, 1, 0.68, 1),
+          filter 0.7s ease;
+      }
+      .manifesto.is-seq .manifesto__utility-group.reveal.is-in {
+        opacity: 0.62;
+      }
+      .manifesto.is-seq .manifesto__footer-left.reveal.is-in {
+        transition-delay: 0.14s;
+      }
+      .manifesto.is-seq .manifesto__music-group.reveal.is-in {
+        transition-delay: 0.22s;
+      }
+      .manifesto__utility-group:hover,
+      .manifesto__utility-group:focus-within,
+      .manifesto__utility-group.is-playing,
+      .manifesto.is-seq .manifesto__utility-group.reveal.is-in:hover,
+      .manifesto.is-seq .manifesto__utility-group.reveal.is-in:focus-within,
+      .manifesto.is-seq .manifesto__utility-group.reveal.is-in.is-playing {
+        opacity: 1;
+      }
+
+      .manifesto__enter:focus-visible,
+      .manifesto__social a:focus-visible,
+      .manifesto__cv:focus-visible,
+      .manifesto__music:focus-visible,
+      .manifesto__score:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 4px;
       }
 
       /* The bell — Łukasz's own composition, opt-in, off by default. */
@@ -523,8 +808,11 @@ const MANIFESTO: Record<string, any> = {
         letter-spacing: 0.14em;
         text-transform: uppercase;
         cursor: pointer;
-        transition: color 0.3s ease, border-color 0.3s ease,
-                    background-color 0.3s ease, box-shadow 0.3s ease;
+        transition:
+          color 0.3s ease,
+          border-color 0.3s ease,
+          background-color 0.3s ease,
+          box-shadow 0.3s ease;
       }
       .manifesto__music:hover {
         color: var(--color-primary);
@@ -550,15 +838,46 @@ const MANIFESTO: Record<string, any> = {
         font-weight: 500;
         opacity: 0.6;
       }
-      .manifesto__eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
-      .manifesto__eq i { width: 2px; height: 3px; background: currentColor; border-radius: 1px; }
-      .manifesto__music.is-playing .manifesto__eq i { animation: eqBar 0.9s ease-in-out infinite; }
-      .manifesto__music.is-playing .manifesto__eq i:nth-child(2) { animation-duration: 0.7s; }
-      .manifesto__music.is-playing .manifesto__eq i:nth-child(3) { animation-duration: 1.15s; }
-      .manifesto__music.is-playing .manifesto__eq i:nth-child(4) { animation-duration: 0.82s; }
-      @keyframes eqBar { 0%, 100% { height: 3px; } 50% { height: 11px; } }
+      .manifesto__eq {
+        display: inline-flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 11px;
+      }
+      .manifesto__eq i {
+        width: 2px;
+        height: 3px;
+        background: currentColor;
+        border-radius: 1px;
+      }
+      .manifesto__music.is-playing .manifesto__eq i {
+        animation: eqBar 0.9s ease-in-out infinite;
+      }
+      .manifesto__music.is-playing .manifesto__eq i:nth-child(2) {
+        animation-duration: 0.7s;
+      }
+      .manifesto__music.is-playing .manifesto__eq i:nth-child(3) {
+        animation-duration: 1.15s;
+      }
+      .manifesto__music.is-playing .manifesto__eq i:nth-child(4) {
+        animation-duration: 0.82s;
+      }
+      @keyframes eqBar {
+        0%,
+        100% {
+          height: 3px;
+        }
+        50% {
+          height: 11px;
+        }
+      }
 
-      .manifesto__music-group { display: inline-flex; align-items: stretch; gap: 0.5rem; z-index: 2; }
+      .manifesto__music-group {
+        display: inline-flex;
+        align-items: stretch;
+        gap: 0.5rem;
+        z-index: 2;
+      }
       /* Companion to the bell — opens the full engraved score in a modal PDF viewer. */
       .manifesto__score {
         display: inline-flex;
@@ -575,7 +894,11 @@ const MANIFESTO: Record<string, any> = {
         letter-spacing: 0.14em;
         text-transform: uppercase;
         cursor: pointer;
-        transition: color 0.3s ease, border-color 0.3s ease, background-color 0.3s ease, transform 0.2s ease;
+        transition:
+          color 0.3s ease,
+          border-color 0.3s ease,
+          background-color 0.3s ease,
+          transform 0.2s ease;
       }
       .manifesto__score:hover {
         color: var(--color-primary);
@@ -583,7 +906,10 @@ const MANIFESTO: Record<string, any> = {
         background: rgba(56, 189, 248, 0.08);
         transform: translateY(-1px);
       }
-      .manifesto__score-clef { font-size: 1.15rem; line-height: 1; }
+      .manifesto__score-clef {
+        font-size: 1.15rem;
+        line-height: 1;
+      }
 
       /* Big modal PDF viewer for the full score. */
       .score-modal {
@@ -598,7 +924,14 @@ const MANIFESTO: Record<string, any> = {
         backdrop-filter: blur(4px);
         animation: scoreFade 0.2s ease;
       }
-      @keyframes scoreFade { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes scoreFade {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
       .score-modal__panel {
         width: min(1000px, 100%);
         height: min(92vh, 100%);
@@ -619,9 +952,21 @@ const MANIFESTO: Record<string, any> = {
         padding: 0.7rem 0.9rem 0.7rem 1.1rem;
         border-bottom: 1px solid rgba(148, 163, 184, 0.14);
       }
-      .score-modal__title { color: var(--text-primary); font-weight: 700; font-size: 1rem; }
-      .score-modal__title em { color: var(--text-tertiary); font-style: normal; font-weight: 500; }
-      .score-modal__actions { display: inline-flex; align-items: center; gap: 0.6rem; }
+      .score-modal__title {
+        color: var(--text-primary);
+        font-weight: 700;
+        font-size: 1rem;
+      }
+      .score-modal__title em {
+        color: var(--text-tertiary);
+        font-style: normal;
+        font-weight: 500;
+      }
+      .score-modal__actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
       .score-modal__download {
         display: inline-flex;
         align-items: center;
@@ -635,7 +980,9 @@ const MANIFESTO: Record<string, any> = {
         font-weight: 600;
         white-space: nowrap;
       }
-      .score-modal__download:hover { filter: brightness(1.06); }
+      .score-modal__download:hover {
+        filter: brightness(1.06);
+      }
       .score-modal__close {
         width: 34px;
         height: 34px;
@@ -645,10 +992,20 @@ const MANIFESTO: Record<string, any> = {
         color: var(--text-secondary);
         font-size: 1rem;
         cursor: pointer;
-        transition: background 0.2s ease, color 0.2s ease;
+        transition:
+          background 0.2s ease,
+          color 0.2s ease;
       }
-      .score-modal__close:hover { background: rgba(148, 163, 184, 0.12); color: var(--text-primary); }
-      .score-modal__doc { flex: 1 1 auto; width: 100%; border: 0; background: #525659; }
+      .score-modal__close:hover {
+        background: rgba(148, 163, 184, 0.12);
+        color: var(--text-primary);
+      }
+      .score-modal__doc {
+        flex: 1 1 auto;
+        width: 100%;
+        border: 0;
+        background: #525659;
+      }
       /* iOS/iPadOS modal body: the whole score as one finger-scrollable image (no button, no open-file). */
       .score-modal__scroll {
         flex: 1 1 auto;
@@ -657,45 +1014,121 @@ const MANIFESTO: Record<string, any> = {
         -webkit-overflow-scrolling: touch;
         background: #525659;
       }
-      .score-modal__page { display: block; width: 100%; height: auto; }
+      .score-modal__page {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
       @media (max-width: 640px) {
-        .score-modal__panel { height: 100%; border-radius: 10px; }
-        .score-modal__title { font-size: 0.9rem; }
+        .score-modal__panel {
+          height: 100%;
+          border-radius: 10px;
+        }
+        .score-modal__title {
+          font-size: 0.9rem;
+        }
       }
 
       /* Short viewports (laptops / windowed desktop): the manifesto is tall, so scale
          the big type and the rhythm down with the viewport HEIGHT — this keeps the CTA
          and the footer badge above the fold instead of pushing them off-screen. */
       @media (max-height: 880px) {
-        .manifesto { gap: clamp(0.75rem, 2vh, 1.5rem); padding-block: clamp(1.1rem, 3vh, 2rem); }
-        .manifesto__lead { font-size: clamp(1rem, 2vh, 1.35rem); margin-bottom: 0.25rem; }
-        .manifesto__punch { font-size: clamp(2.6rem, 11vh, 5rem); margin: 0.1rem 0 0.6rem; }
-        .manifesto__reframe { font-size: clamp(1.3rem, 5vh, 2.1rem); margin-bottom: 0.85rem; }
-        .manifesto__proof { margin-bottom: 0.4rem; }
-        .manifesto__rest { font-size: clamp(0.95rem, 2vh, 1.15rem); margin: 0.75rem 0 1rem; }
+        .manifesto {
+          gap: clamp(0.75rem, 2vh, 1.5rem);
+          padding-block: clamp(1.1rem, 3vh, 2rem);
+        }
+        .manifesto__lead {
+          font-size: clamp(1rem, 2vh, 1.35rem);
+          margin-bottom: 0.25rem;
+        }
+        .manifesto__punch {
+          font-size: clamp(2.6rem, 11vh, 5rem);
+          margin: 0.1rem 0 0.6rem;
+        }
+        .manifesto__reframe {
+          font-size: clamp(1.3rem, 5vh, 2.1rem);
+          margin-bottom: 0.85rem;
+        }
+        .manifesto__proof {
+          margin-bottom: 0.4rem;
+        }
+        .manifesto__rest {
+          font-size: clamp(0.95rem, 2vh, 1.15rem);
+          margin: 0.75rem 0 1rem;
+        }
       }
       @media (max-height: 720px) {
-        .manifesto__stamp { font-size: 0.7rem; }
-        .manifesto__punch { font-size: clamp(2.2rem, 9vh, 3.6rem); }
-        .manifesto__reframe { font-size: clamp(1.15rem, 4.5vh, 1.6rem); }
-        .manifesto__proof { font-size: 0.92rem; margin-bottom: 0.3rem; }
-        .manifesto__rest { margin: 0.5rem 0 0.8rem; }
+        .manifesto__stamp {
+          font-size: 0.7rem;
+        }
+        .manifesto__punch {
+          font-size: clamp(2.2rem, 9vh, 3.6rem);
+        }
+        .manifesto__reframe {
+          font-size: clamp(1.15rem, 4.5vh, 1.6rem);
+        }
+        .manifesto__proof {
+          font-size: 0.92rem;
+          margin-bottom: 0.3rem;
+        }
+        .manifesto__rest {
+          margin: 0.5rem 0 0.8rem;
+        }
       }
 
       @media (max-width: 640px) {
-        .manifesto__stamp { font-size: 0.68rem; }
+        .manifesto__stamp {
+          font-size: 0.68rem;
+        }
         /* Pin the block under the stamp instead of centring it in the tall middle row. */
-        .manifesto__inner { align-self: start; }
-        /* Keep "Wejdź ↓" + CV beside the two lines, but cap their column so the proof text
-           isn't shredded into one-word lines. */
-        .manifesto__coda { gap: 0.75rem 1rem; }
-        .manifesto__act { max-width: 8.5rem; }
-        .manifesto__act .manifesto__cv { font-size: 0.78rem; }
-        /* Stack the footer so the bell isn't squeezed against the icons. */
+        .manifesto__inner {
+          align-self: start;
+        }
+        /* Keep the single "Wejdź ↓" action beside the two lines without shredding the proof. */
+        .manifesto__coda {
+          gap: 0.75rem 1rem;
+        }
+        /* Stack the two footer groups; each can wrap internally on the narrowest screens. */
         .manifesto__footer {
           flex-direction: column;
           align-items: flex-start;
           gap: 1.5rem;
+        }
+        .manifesto__footer-left {
+          width: 100%;
+          gap: 0.75rem 1rem;
+        }
+        .manifesto__footer-divider {
+          display: none;
+        }
+        .manifesto__cv {
+          flex-basis: 100%;
+          font-size: 0.82rem;
+        }
+        .manifesto__music-group {
+          max-width: 100%;
+          flex-wrap: wrap;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .manifesto.is-seq .manifesto__utility-group.reveal,
+        .manifesto__utility-group,
+        .manifesto__social a,
+        .manifesto__cv,
+        .manifesto__music,
+        .manifesto__score,
+        .manifesto__enter {
+          transition: none;
+          transition-delay: 0s;
+        }
+        .manifesto__social a:hover,
+        .manifesto__score:hover {
+          transform: none;
+        }
+        .manifesto__arrow,
+        .manifesto__music.is-playing .manifesto__eq i {
+          animation: none;
         }
       }
     `,
@@ -731,8 +1164,14 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   // Reveal cadence in BEATS from the gate lift, so the guided read locks to the score's tempo
   // (beatMs is refined from the score on load). Each line settles on its own beat.
   private readonly REVEAL_BEATS = {
-    stamp: 0.5, lead: 2.5, punch: 5, reframe: 7.5,
-    proof1: 10, proof2: 13, rest: 15.5, cta: 17.5,
+    stamp: 0.5,
+    lead: 2.5,
+    punch: 5,
+    reframe: 7.5,
+    proof1: 10,
+    proof2: 13,
+    rest: 15.5,
+    cta: 17.5,
   };
   private beatsToMs(beats: number): number {
     return Math.round(beats * this.beatMs);
@@ -751,7 +1190,8 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   constructor() {
     const hasWin = typeof window !== 'undefined';
     const reduce =
-      hasWin && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      hasWin &&
+      !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
     // The punch types itself in — on load when its line appears, and on every language change.
     effect((onCleanup) => {
@@ -761,7 +1201,9 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
         this.typedDone.set(true);
         return;
       }
-      const delay = this.firstTypeAfterStart ? this.beatsToMs(this.REVEAL_BEATS.punch) : 250;
+      const delay = this.firstTypeAfterStart
+        ? this.beatsToMs(this.REVEAL_BEATS.punch)
+        : 250;
       this.firstTypeAfterStart = false;
       onCleanup(this.typeWord(word, delay));
     });
@@ -792,7 +1234,11 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
             this.wantsPlay = false;
             // The reader already gestured — start now. Desktop obliges; iOS may still
             // hold the audio until the next tap, which the kick listeners will catch.
-            try { this.ensurePlayer().play(); } catch { /* next gesture retries */ }
+            try {
+              this.ensurePlayer().play();
+            } catch {
+              /* next gesture retries */
+            }
           }
         })
         .catch(() => {});
@@ -821,10 +1267,18 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   /** Reveal one line per beat, in reading order — called when the gate lifts. */
   private startReveal(): void {
     const at = (beats: number, s: number) =>
-      this.timers.push(setTimeout(() => this.step.set(s), this.beatsToMs(beats)));
+      this.timers.push(
+        setTimeout(() => this.step.set(s), this.beatsToMs(beats)),
+      );
     const B = this.REVEAL_BEATS;
-    at(B.stamp, 1); at(B.lead, 2); at(B.punch, 3); at(B.reframe, 4);
-    at(B.proof1, 5); at(B.proof2, 6); at(B.rest, 7); at(B.cta, 8);
+    at(B.stamp, 1);
+    at(B.lead, 2);
+    at(B.punch, 3);
+    at(B.reframe, 4);
+    at(B.proof1, 5);
+    at(B.proof2, 6);
+    at(B.rest, 7);
+    at(B.cta, 8);
   }
 
   /** Fill the manifesto in now — when the reader scrolls/taps/keys before it finishes. */
@@ -866,12 +1320,24 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     const evs = ['pointerdown', 'touchstart', 'pointerup', 'touchend', 'click'];
     const kick = (e: Event) => {
       const target = e.target as HTMLElement | null;
-      if (target && target.closest && target.closest('.manifesto__music, .manifesto__score, .score-modal')) return; // bell handles itself; the score button/modal must not auto-start audio
-      if (this.player && this.player.isPlaying()) { this.removeKick?.(); return; }
-      if (!this.notes) { this.wantsPlay = true; return; } // gesture beat the score — honour it on arrival
+      if (
+        target &&
+        target.closest &&
+        target.closest('.manifesto__music, .manifesto__score, .score-modal')
+      )
+        return; // bell handles itself; the score button/modal must not auto-start audio
+      if (this.player && this.player.isPlaying()) {
+        this.removeKick?.();
+        return;
+      }
+      if (!this.notes) {
+        this.wantsPlay = true;
+        return;
+      } // gesture beat the score — honour it on arrival
       this.ensurePlayer().play(); // creates + resumes the AudioContext INSIDE this gesture (the unlock)
     };
-    this.removeKick = () => evs.forEach((ev) => document.removeEventListener(ev, kick));
+    this.removeKick = () =>
+      evs.forEach((ev) => document.removeEventListener(ev, kick));
     evs.forEach((ev) => document.addEventListener(ev, kick, { passive: true }));
   }
 
@@ -926,16 +1392,19 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
 
   openScore(): void {
     this.scoreOpen.set(true);
-    if (typeof document !== 'undefined') document.body.style.overflow = 'hidden';
+    if (typeof document !== 'undefined')
+      document.body.style.overflow = 'hidden';
   }
 
   /** iOS / iPadOS only clip a PDF-in-iframe. Desktop (incl. Safari) keeps the modal. */
   private prefersNativePdf(): boolean {
-    if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+    if (typeof navigator === 'undefined' || typeof window === 'undefined')
+      return false;
     const ua = navigator.userAgent;
     return (
       /iPad|iPhone|iPod/.test(ua) ||
-      ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1)
+      ((navigator as any).platform === 'MacIntel' &&
+        (navigator as any).maxTouchPoints > 1)
     );
   }
 

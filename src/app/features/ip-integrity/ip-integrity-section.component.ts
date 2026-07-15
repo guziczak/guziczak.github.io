@@ -161,7 +161,10 @@ const INTEGRITY: Record<string, IntegrityCopy> = {
 
       <div class="integrity__inner">
         <header class="integrity__head animate-on-scroll">
-          <span class="integrity__eyebrow">{{ copy().eyebrow }}</span>
+          <div class="integrity__kicker">
+            <span class="integrity__chapter" aria-hidden="true">04 /</span>
+            <span class="integrity__eyebrow">{{ copy().eyebrow }}</span>
+          </div>
           <div class="integrity__intro-grid">
             <h2 class="integrity__title" id="handover-title">
               <span>{{ copy().titleLead }}</span>
@@ -171,26 +174,31 @@ const INTEGRITY: Record<string, IntegrityCopy> = {
           </div>
         </header>
 
+        <div
+          class="integrity__axis animate-on-scroll"
+          role="group"
+          [attr.aria-label]="copy().titleLead + ' — ' + copy().titlePunch"
+        >
+          <div class="integrity__axis-side">
+            <span class="integrity__axis-term">REPOSITORY</span>
+            <span class="integrity__axis-description">{{
+              copy().repository
+            }}</span>
+          </div>
+          <span class="integrity__axis-symbol" aria-hidden="true">≠</span>
+          <div class="integrity__axis-side integrity__axis-side--agreement">
+            <span class="integrity__axis-term">AGREEMENT</span>
+            <span class="integrity__axis-description">{{
+              copy().agreement
+            }}</span>
+          </div>
+        </div>
+
         <div class="handover animate-on-scroll">
           <div class="handover__manifesto">
             <span class="handover__label">{{ copy().handoverLabel }}</span>
             <h3>{{ copy().handoverTitle }}</h3>
             <p>{{ copy().handoverBody }}</p>
-
-            <dl
-              class="handover__equation"
-              [attr.aria-label]="copy().titleLead + ' — ' + copy().titlePunch"
-            >
-              <div>
-                <dt>REPOSITORY</dt>
-                <dd>{{ copy().repository }}</dd>
-              </div>
-              <span class="handover__not-equal" aria-hidden="true">≠</span>
-              <div>
-                <dt>AGREEMENT</dt>
-                <dd>{{ copy().agreement }}</dd>
-              </div>
-            </dl>
           </div>
 
           <ol class="handover__steps">
@@ -210,7 +218,7 @@ const INTEGRITY: Record<string, IntegrityCopy> = {
         </div>
 
         <footer class="integrity__close animate-on-scroll">
-          <div>
+          <div class="integrity__close-copy">
             <p class="integrity__close-title">
               <span>{{ copy().closeLead }}</span>
               <strong>{{ copy().closePunch }}</strong>
@@ -218,7 +226,8 @@ const INTEGRITY: Record<string, IntegrityCopy> = {
             <p class="integrity__close-note">{{ copy().closeNote }}</p>
           </div>
           <a class="integrity__cta" href="#contact">
-            {{ copy().cta }} <span aria-hidden="true">→</span>
+            <span>{{ copy().cta }}</span>
+            <span class="integrity__cta-arrow" aria-hidden="true">→</span>
           </a>
         </footer>
       </div>

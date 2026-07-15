@@ -57,6 +57,13 @@ import { ScrollService } from '../../../core/services/scroll.service';
           width: 45px;
           height: 45px;
         }
+
+        /* A fixed circle inevitably covers the full-width evidence ledgers on phones.
+           Mobile browsers already expose a native jump-to-top gesture, so preserve the
+           content and keep this desktop convenience out of the narrow reading column. */
+        @media (max-width: 640px) {
+          display: none;
+        }
       }
     `,
   ],
@@ -70,7 +77,8 @@ export class BackToTopComponent {
   isVisible = computed(() => {
     const y = this.scrollService.currentScrollPosition();
     if (y <= 500) return false;
-    if (typeof window === 'undefined' || typeof document === 'undefined') return true;
+    if (typeof window === 'undefined' || typeof document === 'undefined')
+      return true;
     const remaining =
       document.documentElement.scrollHeight - (y + window.innerHeight);
     return remaining > 160;
