@@ -13,6 +13,10 @@ import { RouterModule } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ScrollService } from '../../core/services/scroll.service';
 import { LanguageService } from '../../core/services/language.service';
+import {
+  MusicHandoffService,
+  MusicHandoffState,
+} from '../../core/services/music-handoff.service';
 import { CONTACT_CONFIG } from '../../core/config/contact.config';
 import {
   createSwiatlo,
@@ -1138,6 +1142,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   private scrollService = inject(ScrollService);
   private languageService = inject(LanguageService);
   private sanitizer = inject(DomSanitizer);
+  private musicHandoffService = inject(MusicHandoffService);
   protected readonly contact = CONTACT_CONFIG;
 
   // Full engraved score ("Lux in tenebris") opened in a big modal PDF viewer.
@@ -1184,11 +1189,17 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   private removeKick?: () => void;
   // A start gesture that landed before the score finished loading — honoured the moment it arrives.
   private wantsPlay = false;
+  private wantsPlayOffset?: number;
+  private returnMusicState: MusicHandoffState | null = null;
+  private unregisterMusicProvider?: () => void;
   private bus?: { claim: () => void; close: () => void };
   private musicSaveTimer?: ReturnType<typeof setInterval>;
 
   constructor() {
     const hasWin = typeof window !== 'undefined';
+    this.returnMusicState = hasWin
+      ? this.musicHandoffService.read(window.location.search)
+      : null;
     const reduce =
       hasWin &&
       !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -1231,11 +1242,14 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
           this.notes = score.notes;
           this.beatMs = 60000 / score.bpm;
           if (this.wantsPlay && !this.player?.isPlaying()) {
+            const offset = this.wantsPlayOffset;
             this.wantsPlay = false;
+            this.wantsPlayOffset = undefined;
+            this.returnMusicState = null;
             // The reader already gestured — start now. Desktop obliges; iOS may still
             // hold the audio until the next tap, which the kick listeners will catch.
             try {
-              this.ensurePlayer().play();
+              this.ensurePlayer().play(offset);
             } catch {
               /* next gesture retries */
             }
@@ -1301,6 +1315,10 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     if (typeof window === 'undefined') return;
 
+    this.unregisterMusicProvider = this.musicHandoffService.registerProvider(
+      () => this.captureMusicForHandoff(),
+    );
+
     // If another tab (the full CV) takes over the bell, yield it here so they never double.
     this.bus = swiatloBus(() => {
       if (this.player?.isPlaying()) this.player.toggle();
@@ -1323,18 +1341,26 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       if (
         target &&
         target.closest &&
-        target.closest('.manifesto__music, .manifesto__score, .score-modal')
+        target.closest(
+          '.manifesto__music, .manifesto__score, .score-modal, [data-music-handoff]',
+        )
       )
         return; // bell handles itself; the score button/modal must not auto-start audio
       if (this.player && this.player.isPlaying()) {
         this.removeKick?.();
         return;
       }
+      // A return link carrying a paused score must remain paused. The explicit bell still resumes
+      // it from the handed-off position.
+      if (this.returnMusicState && !this.returnMusicState.playing) return;
       if (!this.notes) {
         this.wantsPlay = true;
+        this.wantsPlayOffset = this.returnMusicState?.time;
         return;
       } // gesture beat the score — honour it on arrival
-      this.ensurePlayer().play(); // creates + resumes the AudioContext INSIDE this gesture (the unlock)
+      const offset = this.returnMusicState?.time;
+      this.returnMusicState = null;
+      this.ensurePlayer().play(offset); // creates + resumes the AudioContext INSIDE this gesture (the unlock)
     };
     this.removeKick = () =>
       evs.forEach((ev) => document.removeEventListener(ev, kick));
@@ -1346,6 +1372,8 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     clearTimeout(this.punchTimer);
     this.removeSkip();
     this.removeKick?.();
+    this.unregisterMusicProvider?.();
+    this.unregisterMusicProvider = undefined;
     this.stopMusicSave();
     this.bus?.close();
     this.player?.dispose(); // stop & release audio so navigating away+back doesn't double it
@@ -1359,6 +1387,26 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
       if (this.player) saveHandoff(this.player.position(), true);
     }, 700);
   }
+
+  /** Snapshot first, then pause — the outgoing URL must remember whether the score was sounding. */
+  private captureMusicForHandoff(): MusicHandoffState {
+    const player = this.player;
+    const playing = !!player?.isPlaying();
+    const time = Math.max(
+      0,
+      player?.position() ?? this.returnMusicState?.time ?? 0,
+    );
+
+    this.wantsPlay = false;
+    this.wantsPlayOffset = undefined;
+    this.returnMusicState = null;
+
+    if (playing) player?.toggle();
+    else saveHandoff(time, false);
+
+    return { time, playing };
+  }
+
   private stopMusicSave(): void {
     if (this.musicSaveTimer) {
       clearInterval(this.musicSaveTimer);
@@ -1442,8 +1490,21 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
 
   /** The bell — opt-in. The click is the gesture browsers need to start audio. */
   toggleMusic(): void {
-    if (!this.notes) return;
-    this.ensurePlayer().toggle();
+    const returnState = this.returnMusicState;
+    if (!this.notes) {
+      this.wantsPlay = true;
+      this.wantsPlayOffset = returnState?.time;
+      this.returnMusicState = null;
+      return;
+    }
+
+    const player = this.ensurePlayer();
+    if (!player.isPlaying() && returnState) {
+      this.returnMusicState = null;
+      player.play(returnState.time);
+      return;
+    }
+    player.toggle();
   }
 
   /** Doubled so the vertical drift loops seamlessly. */

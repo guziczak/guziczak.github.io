@@ -317,7 +317,9 @@ export function createSwiatlo(
       else start(pieceOffset >= durSec - 0.5 ? 0 : pieceOffset);
     },
     isPlaying: () => playing,
-    position: () => (playing && ctx ? ctx.currentTime - startCtxTime : -1),
+    // Keep the last paused offset observable. Handoffs need the exact place even when the reader
+    // paused the score before opening another page.
+    position: () => (playing && ctx ? ctx.currentTime - startCtxTime : pieceOffset),
     play(offset?: number) {
       if (playing) return;
       let o = offset != null ? offset : pieceOffset >= durSec - 0.5 ? 0 : pieceOffset;

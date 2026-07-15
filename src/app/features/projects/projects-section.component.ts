@@ -1,6 +1,7 @@
 import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LanguageService } from '../../core/services/language.service';
+import { MusicHandoffService } from '../../core/services/music-handoff.service';
 
 const PROOF: Record<string, any> = {
   en: {
@@ -194,11 +195,13 @@ const PROOF: Record<string, any> = {
             href="https://guziczak.github.io/opisai"
             target="_blank"
             rel="noopener noreferrer"
+            data-music-handoff
+            (click)="prepareDemoNavigation($event)"
           >
             guziczak.github.io/opisai <span aria-hidden="true">→</span>
           </a>
         </div>
-        <figure class="exhibit exhibit--opisai">
+        <figure class="exhibit exhibit--opisai animate-on-scroll">
           <div class="exhibit__lintel">
             <span>OPISAI / SCRIBE_02</span><span>VOICE → RECORD</span>
           </div>
@@ -213,6 +216,7 @@ const PROOF: Record<string, any> = {
                 <path class="waveform__base" d="M0 48H320" />
                 <path
                   class="waveform__trace"
+                  pathLength="1"
                   d="M0 48 L8 46 14 52 21 26 28 70 34 40 42 48 50 47 58 34 66 62 73 43 80 49 88 48 96 19 103 78 111 39 120 55 128 46 137 48 145 31 152 66 160 42 168 51 176 48 184 10 192 86 200 32 208 62 216 43 224 50 232 47 240 27 248 72 256 38 264 56 272 46 280 49 288 35 296 61 304 44 312 50 320 48"
                 />
               </svg>
@@ -248,6 +252,8 @@ const PROOF: Record<string, any> = {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="OpisAI"
+            data-music-handoff
+            (click)="prepareDemoNavigation($event)"
           >
             <svg
               class="opisai-stamp__icon"
@@ -330,11 +336,13 @@ const PROOF: Record<string, any> = {
             href="https://guziczak.github.io/wizyta"
             target="_blank"
             rel="noopener noreferrer"
+            data-music-handoff
+            (click)="prepareDemoNavigation($event)"
           >
             guziczak.github.io/wizyta <span aria-hidden="true">→</span>
           </a>
         </div>
-        <figure class="exhibit exhibit--wizyta">
+        <figure class="exhibit exhibit--wizyta animate-on-scroll">
           <div class="exhibit__lintel">
             <span>WIZYTA / VISIT_03</span><span>OFFLINE → NFZ</span>
           </div>
@@ -366,13 +374,13 @@ const PROOF: Record<string, any> = {
                 <span>CLASS</span><span>CODE</span><span>STATE</span>
               </div>
               <div class="ledger-row">
-                <strong>ICD-10</strong><code>E11.9</code><i>OK</i>
+                <strong>ICD-10</strong><code>F32.1</code><i>OK</i>
               </div>
               <div class="ledger-row">
-                <strong>ICD-9</strong><code>89.04</code><i>OK</i>
+                <strong>ICD-9</strong><code>94.111</code><i>OK</i>
               </div>
               <div class="ledger-row">
-                <strong>NFZ</strong><code>12.0</code><i>READY</i>
+                <strong>NFZ</strong><code>75.00 pkt</code><i>READY</i>
               </div>
             </div>
           </div>
@@ -914,8 +922,14 @@ const PROOF: Record<string, any> = {
         width: 2.05rem;
         height: 2.05rem;
       }
-      .slab--opisai.active .opisai-stamp {
-        animation: opisaiStamp 0.92s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+      .exhibit--opisai.active .waveform__trace {
+        animation: opisaiTrace 720ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+      }
+      .exhibit--opisai.active .clinical-note {
+        animation: opisaiRecord 580ms cubic-bezier(0.16, 1, 0.3, 1) 520ms both;
+      }
+      .exhibit--opisai.active .opisai-stamp {
+        animation: opisaiSeal 460ms cubic-bezier(0.2, 0.8, 0.2, 1) 920ms both;
       }
       .opisai-stamp:hover {
         transform: scale(1.05);
@@ -926,28 +940,41 @@ const PROOF: Record<string, any> = {
         outline: 2px solid white;
         outline-offset: 4px;
       }
-      @keyframes opisaiStamp {
-        0% {
+      @keyframes opisaiTrace {
+        from {
+          opacity: 0.25;
+          stroke-dasharray: 1;
+          stroke-dashoffset: 1;
+        }
+        to {
+          opacity: 1;
+          stroke-dasharray: 1;
+          stroke-dashoffset: 0;
+        }
+      }
+      @keyframes opisaiRecord {
+        from {
+          opacity: 0.2;
+          clip-path: inset(0 100% 0 0);
+          translate: -0.4rem 0;
+        }
+        to {
+          opacity: 1;
+          clip-path: inset(0);
+          translate: 0;
+        }
+      }
+      @keyframes opisaiSeal {
+        from {
           opacity: 0;
-          translate: 0 -5rem;
-          scale: 1.3 1.3;
-          rotate: -18deg;
+          translate: 0 -0.55rem;
+          scale: 1.05;
+          rotate: -9deg;
         }
-        58% {
+        to {
           opacity: 1;
-          translate: 0 0.28rem;
-          scale: 1.12 0.78;
-          rotate: -5deg;
-        }
-        76% {
-          translate: 0 -0.35rem;
-          scale: 0.94 1.08;
-          rotate: -8deg;
-        }
-        100% {
-          opacity: 1;
-          translate: 0 0;
-          scale: 1 1;
+          translate: 0;
+          scale: 1;
           rotate: -7deg;
         }
       }
@@ -1048,6 +1075,55 @@ const PROOF: Record<string, any> = {
         font-style: normal;
         text-align: right;
       }
+      .exhibit--wizyta.active .visit-stage__dialogue {
+        animation: visitSource 500ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+      }
+      .exhibit--wizyta.active .pipeline-arrow i {
+        transform-origin: left center;
+        animation: visitFlow 360ms ease-out 420ms both;
+      }
+      .exhibit--wizyta.active .visit-stage__ledger {
+        animation: ledgerCommit 620ms cubic-bezier(0.16, 1, 0.3, 1) 580ms both;
+      }
+      .exhibit--wizyta.active .ledger-row:last-child i {
+        animation: readyCommit 220ms ease-out 1060ms both;
+      }
+      @keyframes visitSource {
+        from {
+          opacity: 0;
+          translate: 0 0.5rem;
+        }
+        to {
+          opacity: 1;
+          translate: 0;
+        }
+      }
+      @keyframes visitFlow {
+        from {
+          scale: 0 1;
+        }
+        to {
+          scale: 1 1;
+        }
+      }
+      @keyframes ledgerCommit {
+        from {
+          opacity: 0.25;
+          clip-path: inset(0 0 100% 0);
+        }
+        to {
+          opacity: 1;
+          clip-path: inset(0);
+        }
+      }
+      @keyframes readyCommit {
+        from {
+          opacity: 0.25;
+        }
+        to {
+          opacity: 1;
+        }
+      }
 
       @media (max-width: 900px) {
         .slab {
@@ -1098,8 +1174,25 @@ const PROOF: Record<string, any> = {
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        .slab--opisai.active .opisai-stamp {
+        .exhibit--opisai.active .waveform__trace,
+        .exhibit--opisai.active .clinical-note,
+        .exhibit--opisai.active .opisai-stamp,
+        .exhibit--wizyta.active .visit-stage__dialogue,
+        .exhibit--wizyta.active .pipeline-arrow i,
+        .exhibit--wizyta.active .visit-stage__ledger,
+        .exhibit--wizyta.active .ledger-row:last-child i {
           animation: none;
+        }
+        .waveform__trace {
+          stroke-dasharray: none;
+          stroke-dashoffset: 0;
+        }
+        .clinical-note,
+        .visit-stage__dialogue,
+        .visit-stage__ledger {
+          opacity: 1;
+          clip-path: none;
+          translate: 0;
         }
         .opisai-stamp {
           opacity: 1;
@@ -1107,28 +1200,13 @@ const PROOF: Record<string, any> = {
           scale: 1;
           rotate: -7deg;
         }
+        .pipeline-arrow i {
+          scale: 1 1;
+        }
+        .ledger-row:last-child i {
+          opacity: 1;
+        }
       }
-
-      /* OpisAI's mascot — the desktop "bublak": a white medical bag (cross cut out to
-         the orb's gradient). It bounces like a ball in the right half of the slab —
-         constant velocity, clean wall reflections — driven by JS (see the component).
-         CSS only sets the look and a no-JS resting spot on the right. */
-      /* OpisAI — the title row is the same blue bar as Wizyta. The mascot is a ball that BOUNCES
-         off the bar's top edge (the bar is the floor). Headroom above the bar is its court. */
-      .slab--opisai {
-        position: relative;
-        overflow: visible;
-      }
-      /* Wizyta — the whole title row IS the blue bar (a pill). "Wizyta" (white) sits ON it at the
-         left, the medical bag ON it at the right end. */
-      .slab--wizyta {
-        position: relative;
-      }
-      /* A basketball: falls under "gravity" (accelerating), hits the floor and squashes,
-         then springs back up (decelerating). Purely vertical, in place — beside the title.
-         transform-origin is the bottom, so the squash flattens against the floor. */
-      /* Bounce uses the INDIVIDUAL transform properties (translate/scale), leaving the
-         \`transform\` shorthand free for the hover bulge to compose on top. */
 
       .range {
         max-width: 70rem;
@@ -1178,7 +1256,18 @@ const PROOF: Record<string, any> = {
 })
 export class ProjectsSectionComponent {
   private languageService = inject(LanguageService);
+  private musicHandoff = inject(MusicHandoffService);
   protected readonly p = computed(
     () => PROOF[this.languageService.currentLanguage()] ?? PROOF['en'],
   );
+
+  protected prepareDemoNavigation(event: MouseEvent): void {
+    event.stopPropagation();
+
+    const anchor = event.currentTarget as HTMLAnchorElement | null;
+    if (!anchor) return;
+
+    const state = this.musicHandoff.captureAndPause();
+    anchor.href = this.musicHandoff.withState(anchor.href, state);
+  }
 }
