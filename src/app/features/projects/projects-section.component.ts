@@ -1158,7 +1158,8 @@ const PROOF: Record<string, any> = {
           width: min(72%, 12.5rem);
         }
         .json-output {
-          font-size: clamp(0.52rem, 2.6vw, 0.67rem);
+          font-size: 0.6875rem;
+          line-height: 1.75;
         }
         .opisai-stamp {
           top: 3.15rem;
@@ -1168,9 +1169,30 @@ const PROOF: Record<string, any> = {
         .exhibit figcaption {
           align-items: flex-start;
           flex-direction: column;
+          font-size: 0.625rem;
+          line-height: 1.45;
         }
         .exhibit__lintel {
-          font-size: 0.52rem;
+          font-size: 0.625rem;
+          line-height: 1.35;
+          letter-spacing: 0.1em;
+        }
+        .artifact-label,
+        .clinical-note strong,
+        .clinical-note b,
+        .speaker b,
+        .ledger-row,
+        .ledger-row i {
+          font-size: 0.6875rem;
+          line-height: 1.4;
+        }
+        .pipeline-arrow,
+        .audio-axis,
+        .ledger-row--head {
+          font-size: 0.625rem;
+        }
+        .opisai-stamp {
+          font-size: 0.5625rem;
         }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -1250,6 +1272,56 @@ const PROOF: Record<string, any> = {
       .range__item span {
         color: var(--text-tertiary);
         font-size: 0.85rem;
+      }
+      @media (max-width: 640px) {
+        .range__label {
+          margin-bottom: 0.9rem;
+          font-family: var(--font-mono);
+          font-size: 0.6875rem;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+        .range__items {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 0;
+          border-top: 1px solid var(--border-color);
+          counter-reset: range-entry;
+        }
+        .range__item {
+          display: grid;
+          grid-template-columns: 2rem minmax(5.25rem, 0.55fr) minmax(0, 1fr);
+          align-items: center;
+          gap: 0.65rem;
+          min-height: 3.5rem;
+          padding: 0.7rem 0;
+          border: 0;
+          border-bottom: 1px solid var(--border-color);
+          border-radius: 0;
+          counter-increment: range-entry;
+        }
+        .range__item::before {
+          content: counter(range-entry, decimal-leading-zero);
+          align-self: start;
+          padding-top: 0.15rem;
+          color: color-mix(in srgb, var(--color-primary) 72%, var(--text-tertiary));
+          font-family: var(--font-mono);
+          font-size: 0.625rem;
+          font-weight: 600;
+          letter-spacing: 0.12em;
+          line-height: 1.4;
+        }
+        .range__item:hover {
+          border-color: var(--border-color-dark);
+          transform: none;
+        }
+        .range__item b {
+          font-size: 0.9375rem;
+          line-height: 1.25;
+        }
+        .range__item span {
+          font-size: 0.78125rem;
+          line-height: 1.45;
+        }
       }
     `,
   ],

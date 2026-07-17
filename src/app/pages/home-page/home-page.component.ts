@@ -35,13 +35,13 @@ import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.comp
       <pre>{{ codeLoop }}</pre>
     </div>
 
-    <main class="main-content">
-      <app-hero-section id="home" />
-      <app-projects-section id="projects" />
-      <app-numbers-section id="numbers" />
+    <div class="home-content">
+      <app-hero-section />
+      <app-projects-section />
+      <app-numbers-section />
       <app-ip-integrity-section />
-      <app-contact-section id="contact" />
-    </main>
+      <app-contact-section />
+    </div>
 
     <app-back-to-top />
   `,
@@ -96,11 +96,11 @@ import { BackToTopComponent } from '../../shared/ui/back-to-top/back-to-top.comp
         }
       }
 
-      .main-content {
+      .home-content {
         position: relative;
         z-index: 1;
         width: 100%;
-        overflow-x: hidden;
+        overflow-x: clip;
       }
     `,
   ],

@@ -65,7 +65,9 @@ interface Glyph {
       .staff {
         position: fixed;
         left: 50%;
-        bottom: clamp(1rem, 4vh, 2.75rem);
+        bottom: calc(
+          clamp(1rem, 4vh, 2.75rem) + env(safe-area-inset-bottom, 0px)
+        );
         transform: translateX(-50%);
         width: min(820px, 92vw);
         height: 150px;
@@ -83,6 +85,16 @@ interface Glyph {
       .staff.on {
         opacity: 1;
       }
+      /* Beyond the manifesto the score keeps playing, but recedes into the page instead
+         of occupying the full reading lane. The mobile variants below do the stronger
+         compaction; desktop only steps down gently. */
+      .staff.staff--compact {
+        width: min(780px, 88vw);
+        height: 130px;
+      }
+      .staff.staff--compact.on {
+        opacity: 0.64;
+      }
       canvas {
         width: 100%;
         height: 100%;
@@ -91,8 +103,27 @@ interface Glyph {
       @media (max-width: 640px) {
         .staff {
           height: 125px;
-          bottom: 0.75rem;
+          bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
           width: 94vw;
+        }
+        .staff.staff--compact {
+          width: 92vw;
+          height: 80px;
+        }
+        .staff.staff--compact.on {
+          opacity: 0.42;
+        }
+      }
+      @media (orientation: landscape) and (max-height: 600px) {
+        .staff {
+          bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+        }
+        .staff.staff--compact {
+          width: 88vw;
+          height: 62px;
+        }
+        .staff.staff--compact.on {
+          opacity: 0.38;
         }
       }
     `,
@@ -140,25 +171,50 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
   private H = 0;
   private readonly onResize = () => this.resize();
   private staffDiv?: HTMLElement;
+  private heroSection?: HTMLElement;
+  private visualViewport: VisualViewport | null = null;
+  private compact = false;
   private baseBottom = 36; // the resting CSS bottom offset (px), measured at init
   private placeRaf = 0;
-  private readonly onScroll = () => {
+  private readonly schedulePlacement = () => {
     if (this.placeRaf) return;
     this.placeRaf = requestAnimationFrame(() => {
       this.placeRaf = 0;
+      const modeChanged = this.updateCompactMode();
+      if (modeChanged) this.resizeCanvas();
       this.placeAboveFooter();
     });
+  };
+  private readonly onScroll = () => this.schedulePlacement();
+  private readonly onViewportResize = () => this.resize();
+  private readonly onViewportScroll = () => this.schedulePlacement();
+  private readonly onVisibilityChange = () => {
+    if (document.hidden) {
+      if (this.raf) cancelAnimationFrame(this.raf);
+      this.raf = 0;
+      return;
+    }
+    this.resize();
+    this.sync();
   };
 
   ngAfterViewInit(): void {
     if (typeof window === 'undefined' || !this.cvRef) return;
     this.g = this.cvRef.nativeElement.getContext('2d');
     this.ready = true;
+    this.staffDiv = this.cvRef.nativeElement.parentElement as HTMLElement;
+    this.heroSection = document.querySelector<HTMLElement>('.manifesto') ?? undefined;
+    this.visualViewport = window.visualViewport;
     this.resize();
     window.addEventListener('resize', this.onResize, { passive: true });
-    this.staffDiv = this.cvRef.nativeElement.parentElement as HTMLElement;
-    this.baseBottom = parseFloat(getComputedStyle(this.staffDiv).bottom) || 36;
     window.addEventListener('scroll', this.onScroll, { passive: true });
+    this.visualViewport?.addEventListener('resize', this.onViewportResize, {
+      passive: true,
+    });
+    this.visualViewport?.addEventListener('scroll', this.onViewportScroll, {
+      passive: true,
+    });
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.placeAboveFooter();
     this.sync();
   }
@@ -169,7 +225,27 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     if (typeof window !== 'undefined') {
       window.removeEventListener('resize', this.onResize);
       window.removeEventListener('scroll', this.onScroll);
+      this.visualViewport?.removeEventListener('resize', this.onViewportResize);
+      this.visualViewport?.removeEventListener('scroll', this.onViewportScroll);
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
     }
+  }
+
+  /** Keep the full score in the manifesto. As soon as following content reaches the score's
+   *  fixed reading lane, switch to the quieter footprint so it cannot overprint that content. */
+  private updateCompactMode(): boolean {
+    const staff = this.staffDiv;
+    const hero = this.heroSection;
+    if (!staff || !hero || typeof window === 'undefined') return false;
+    const viewportBottom = this.visualViewport
+      ? this.visualViewport.offsetTop + this.visualViewport.height
+      : window.innerHeight;
+    const scoreTop = viewportBottom - staff.clientHeight - this.baseBottom;
+    const compact = hero.getBoundingClientRect().bottom <= scoreTop;
+    if (compact === this.compact) return false;
+    this.compact = compact;
+    staff.classList.toggle('staff--compact', compact);
+    return true;
   }
 
   /** Keep the staff resting ABOVE the footer: once the footer scrolls into view, lift the staff
@@ -180,11 +256,24 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     const footer = document.querySelector('.footer');
     if (!footer) return;
     const footerTop = footer.getBoundingClientRect().top;
-    const desired = window.innerHeight - footerTop + 14; // bottom offset that clears the footer + gap
+    const viewportBottom = this.visualViewport
+      ? this.visualViewport.offsetTop + this.visualViewport.height
+      : window.innerHeight;
+    const desired = viewportBottom - footerTop + 14; // bottom offset that clears the footer + gap
     staff.style.bottom = desired > this.baseBottom ? desired + 'px' : '';
   }
 
   private resize(): void {
+    if (this.staffDiv) {
+      this.staffDiv.style.bottom = '';
+      this.baseBottom = parseFloat(getComputedStyle(this.staffDiv).bottom) || 36;
+      this.updateCompactMode();
+    }
+    this.resizeCanvas();
+    this.placeAboveFooter();
+  }
+
+  private resizeCanvas(): void {
     const c = this.cvRef?.nativeElement;
     if (!c) return;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -193,17 +282,14 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
     c.width = Math.round(this.W * this.dpr);
     c.height = Math.round(this.H * this.dpr);
     this.g?.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    if (this.staffDiv) {
-      this.staffDiv.style.bottom = '';
-      this.baseBottom = parseFloat(getComputedStyle(this.staffDiv).bottom) || 36;
-      this.placeAboveFooter();
-    }
   }
 
   private sync(): void {
     if (!this.ready) return;
     if (this._active) {
-      if (!this.raf) this.raf = requestAnimationFrame(this.loop);
+      if (!document.hidden && !this.raf) {
+        this.raf = requestAnimationFrame(this.loop);
+      }
     } else if (this.raf) {
       cancelAnimationFrame(this.raf);
       this.raf = 0;
@@ -212,6 +298,8 @@ export class StaffVisualizerComponent implements AfterViewInit, OnDestroy {
   }
 
   private readonly loop = (): void => {
+    this.raf = 0;
+    if (!this._active || document.hidden) return;
     this.draw();
     this.raf = requestAnimationFrame(this.loop);
   };

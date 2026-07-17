@@ -16,8 +16,13 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
   private focusableElements: HTMLElement[] = [];
   private firstFocusableElement: HTMLElement | null = null;
   private lastFocusableElement: HTMLElement | null = null;
+  private previouslyFocusedElement: HTMLElement | null = null;
 
   ngOnInit() {
+    this.previouslyFocusedElement =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     this.initializeFocusTrap();
   }
 
@@ -51,10 +56,13 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
       this.lastFocusableElement =
         this.focusableElements[this.focusableElements.length - 1];
 
-      // Focus first element
+      const initialFocus = element.querySelector<HTMLElement>(
+        '[data-focus-initial]',
+      );
+
       setTimeout(() => {
-        this.firstFocusableElement?.focus();
-      }, 100);
+        (initialFocus ?? this.firstFocusableElement)?.focus();
+      });
     }
   }
 
@@ -84,7 +92,7 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
     if (event.key === 'Escape') {
       // Emit close event if needed
       const closeButton = this.el.nativeElement.querySelector(
-        '[aria-label*="Close"], .close, .modal-close',
+        '[data-focus-close], [aria-label*="Close"], .close, .modal-close',
       );
       if (closeButton instanceof HTMLElement) {
         closeButton.click();
@@ -93,6 +101,7 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Return focus to previously focused element if needed
+    const target = this.previouslyFocusedElement;
+    setTimeout(() => target?.focus());
   }
 }

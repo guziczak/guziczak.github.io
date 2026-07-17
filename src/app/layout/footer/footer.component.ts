@@ -16,7 +16,7 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
           <span class="footer__meta">AI Engineer · Wrocław</span>
         </div>
         <div class="footer__right">
-          <nav class="footer__links">
+          <nav class="footer__links" aria-label="Footer navigation">
             <a [href]="contact.github" target="_blank" rel="noopener noreferrer">GitHub</a>
             <a [href]="contact.linkedin" target="_blank" rel="noopener noreferrer">LinkedIn</a>
             <a [href]="'mailto:' + contact.email">Email</a>
@@ -50,6 +50,12 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
       .footer__right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; }
       .footer__links { display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: flex-end; }
       .footer__links a {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding-inline: 0.25rem;
         color: var(--text-secondary);
         font-size: 0.9rem;
         text-decoration: none;
@@ -61,20 +67,32 @@ import { CONTACT_CONFIG } from '../../core/config/contact.config';
         font-size: 0.8rem;
         letter-spacing: 0.02em;
       }
-      /* Mobile: the same two columns, tighter — links + © stay to the RIGHT of the
-         name, never stacked beneath it. The name column holds its width; the links
-         row wraps (right-aligned) on very narrow screens instead. */
+      /* Mobile: stack identity and links so a 320 px viewport never has to squeeze
+         two independent columns into one row. */
       @media (max-width: 640px) {
         .footer {
           padding: 2rem 1.5rem 1.75rem;
         }
         .footer__inner {
-          flex-wrap: nowrap;
-          gap: 1rem;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 1.25rem;
         }
-        .footer__left { flex-shrink: 0; }
-        .footer__right { gap: 0.55rem; }
-        .footer__links { gap: 0.8rem 1rem; }
+        .footer__right {
+          width: 100%;
+          align-items: flex-start;
+          gap: 0.4rem;
+        }
+        .footer__links {
+          width: 100%;
+          justify-content: flex-start;
+          gap: 0.25rem 0.5rem;
+        }
+      }
+      @media (max-width: 350px) {
+        .footer {
+          padding-inline: 1.25rem;
+        }
       }
     `,
   ],

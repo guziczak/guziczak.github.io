@@ -27,9 +27,7 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
 
         <div class="exit__contacts">
           <a [href]="'mailto:' + contact.email">{{ contact.email }}</a>
-          <span class="exit__sep">·</span>
           <a [href]="contact.github" target="_blank" rel="noopener noreferrer">github.com/guziczak</a>
-          <span class="exit__sep">·</span>
           <a [href]="contact.linkedin" target="_blank" rel="noopener noreferrer">in/guziczak</a>
         </div>
 
@@ -243,14 +241,24 @@ const EXIT: Record<string, { line: string; cta: string; cvText: string; cvNote: 
         font-size: 1.05rem;
       }
       .exit__contacts a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
         color: var(--text-secondary);
         text-decoration: none;
         transition: color 0.25s ease;
       }
+      .exit__contacts a + a::before {
+        content: '·';
+        margin-right: 0.8rem;
+        color: var(--text-tertiary);
+      }
       .exit__contacts a:hover { color: var(--color-primary); text-decoration: none; }
-      .exit__sep { color: var(--text-tertiary); }
       .exit__cv {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
         color: var(--text-tertiary);
         font-size: 0.95rem;
         text-decoration: none;

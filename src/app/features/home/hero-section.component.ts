@@ -25,6 +25,7 @@ import {
 } from './swiatlo-player';
 import { saveHandoff, swiatloBus } from './swiatlo-sync';
 import { StaffVisualizerComponent } from './staff-visualizer.component';
+import { FocusTrapDirective } from '../../shared/directives/focus-trap.directive';
 
 const MANIFESTO: Record<string, any> = {
   en: {
@@ -45,6 +46,15 @@ const MANIFESTO: Record<string, any> = {
     enter: 'Enter',
     cvText: 'The full CV',
     cvNote: "(You won't need it.)",
+    musicPlay:
+      "Play 'Lux in tenebris' — composed by Łukasz Guziczak and Opus 4.6, with a variation by Fable 5",
+    musicPause: "Pause 'Lux in tenebris'",
+    scoreText: 'Score',
+    scoreLabel: "View the full score of 'Lux in tenebris'",
+    scoreTitle: 'score',
+    download: 'Download',
+    closeScore: 'Close score',
+    scoreAlt: "Full score of 'Lux in tenebris'",
   },
   pl: {
     stamp: [
@@ -64,6 +74,15 @@ const MANIFESTO: Record<string, any> = {
     enter: 'Wejdź',
     cvText: 'Pełne CV',
     cvNote: '(Nie będzie Ci potrzebne)',
+    musicPlay:
+      "Odtwórz 'Lux in tenebris' — kompozycję Łukasza Guziczaka i Opus 4.6, z wariacją Fable 5",
+    musicPause: "Wstrzymaj 'Lux in tenebris'",
+    scoreText: 'Partytura',
+    scoreLabel: "Zobacz pełną partyturę 'Lux in tenebris'",
+    scoreTitle: 'partytura',
+    download: 'Pobierz',
+    closeScore: 'Zamknij partyturę',
+    scoreAlt: "Pełna partytura 'Lux in tenebris'",
   },
   de: {
     stamp: [
@@ -87,6 +106,15 @@ const MANIFESTO: Record<string, any> = {
     enter: 'Eintreten',
     cvText: 'Der vollständige Lebenslauf',
     cvNote: '(Sie werden ihn nicht brauchen.)',
+    musicPlay:
+      "'Lux in tenebris' abspielen — komponiert von Łukasz Guziczak und Opus 4.6, mit einer Variation von Fable 5",
+    musicPause: "'Lux in tenebris' pausieren",
+    scoreText: 'Partitur',
+    scoreLabel: "Die vollständige Partitur von 'Lux in tenebris' ansehen",
+    scoreTitle: 'Partitur',
+    download: 'Herunterladen',
+    closeScore: 'Partitur schließen',
+    scoreAlt: "Vollständige Partitur von 'Lux in tenebris'",
   },
 };
 
@@ -98,7 +126,12 @@ const MANIFESTO: Record<string, any> = {
 @Component({
   selector: 'app-hero-section',
   standalone: true,
-  imports: [CommonModule, RouterModule, StaffVisualizerComponent],
+  imports: [
+    CommonModule,
+    RouterModule,
+    StaffVisualizerComponent,
+    FocusTrapDirective,
+  ],
   template: `
     <section class="manifesto" id="home" [class.is-seq]="animate()">
       <!-- Signature: a whisper of real code, drifting, near-invisible -->
@@ -121,14 +154,14 @@ const MANIFESTO: Record<string, any> = {
         <p class="manifesto__lead reveal" [class.is-in]="step() >= 2">
           {{ m().lead }}
         </p>
-        <p class="manifesto__punch reveal" [class.is-in]="step() >= 3">
+        <h1 class="manifesto__punch reveal" [class.is-in]="step() >= 3">
           <span class="manifesto__type">{{ typed() }}</span
           ><span
             class="manifesto__dot"
             [class.manifesto__dot--period]="typedDone()"
             aria-hidden="true"
           ></span>
-        </p>
+        </h1>
         <p class="manifesto__reframe" [class.is-in]="step() >= 4">
           <span class="manifesto__reframe-line"
             >{{ m().reframeA }}<span class="manifesto__num">{{ m().num }}</span
@@ -209,7 +242,7 @@ const MANIFESTO: Record<string, any> = {
             [class.is-playing]="musicOn()"
             (click)="toggleMusic()"
             [attr.aria-pressed]="musicOn()"
-            aria-label="Play 'Lux in tenebris' (światło w ciemności) — composed by Łukasz Guziczak &amp; Opus 4.6, with a variation by Fable 5, synthesised live"
+            [attr.aria-label]="musicOn() ? m().musicPause : m().musicPlay"
           >
             <span class="manifesto__eq" aria-hidden="true"
               ><i></i><i></i><i></i><i></i
@@ -226,12 +259,12 @@ const MANIFESTO: Record<string, any> = {
             class="manifesto__score"
             type="button"
             (click)="openScore()"
-            aria-label="Zobacz pełną partyturę „Lux in tenebris” (PDF)"
+            [attr.aria-label]="m().scoreLabel"
           >
             <span class="manifesto__score-clef" aria-hidden="true"
               ><i class="fas fa-file-lines"></i
             ></span>
-            <span class="manifesto__score-text">Partytura</span>
+            <span class="manifesto__score-text">{{ m().scoreText }}</span>
           </button>
         </div>
       </footer>
@@ -247,30 +280,40 @@ const MANIFESTO: Record<string, any> = {
     @if (scoreOpen()) {
       <div
         class="score-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Partytura — Lux in tenebris"
         (click)="closeScore()"
       >
-        <div class="score-modal__panel" (click)="$event.stopPropagation()">
+        <div
+          class="score-modal__panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="score-modal-title"
+          appFocusTrap
+          (click)="$event.stopPropagation()"
+        >
           <div class="score-modal__bar">
-            <span class="score-modal__title"
-              >Lux in tenebris <em>— partytura</em></span
+            <span class="score-modal__title" id="score-modal-title"
+              >Lux in tenebris <em>— {{ m().scoreTitle }}</em></span
             >
             <span class="score-modal__actions">
               <a
                 class="score-modal__download"
                 [href]="scorePdf"
+                [attr.aria-label]="m().download"
                 download="Swiatlo-w-Ciemnosci.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
-                >⭳ Pobierz</a
+                ><span aria-hidden="true">↓</span
+                ><span class="score-modal__download-label">{{
+                  m().download
+                }}</span></a
               >
               <button
                 class="score-modal__close"
                 type="button"
                 (click)="closeScore()"
-                aria-label="Zamknij partyturę"
+                [attr.aria-label]="m().closeScore"
+                data-focus-initial
+                data-focus-close
               >
                 ✕
               </button>
@@ -281,14 +324,14 @@ const MANIFESTO: Record<string, any> = {
               <img
                 class="score-modal__page"
                 [src]="scoreFull"
-                alt="Partytura — Lux in tenebris"
+                [alt]="m().scoreAlt"
               />
             </div>
           } @else {
             <iframe
               class="score-modal__doc"
               [src]="safeScorePdf"
-              title="Partytura — Lux in tenebris"
+              [title]="m().scoreAlt"
             ></iframe>
           }
         </div>
@@ -418,10 +461,7 @@ const MANIFESTO: Record<string, any> = {
         }
       }
 
-      /* styles.scss blankets every p/span/a/button on the page with
-         \`animation: fadeInUp … forwards\`, which pins them to opacity:1 and (being an animation)
-         overrides the step reveal — text leaked through the gate. Cancel it on the manifesto's
-         sequenced elements so \`step\` owns visibility here, through transitions, not a global fade. */
+      /* The manifesto's score exclusively owns these reveals. */
       .manifesto.is-seq .reveal,
       .manifesto.is-seq .manifesto__reframe,
       .manifesto.is-seq .manifesto__reframe-line,
@@ -674,6 +714,7 @@ const MANIFESTO: Record<string, any> = {
         font-size: 1rem;
         letter-spacing: 0.04em;
         padding: 0.85rem 1.8rem;
+        min-height: 44px;
         border-radius: var(--radius-full);
         cursor: pointer;
         transition:
@@ -721,6 +762,11 @@ const MANIFESTO: Record<string, any> = {
         gap: 1.2rem;
       }
       .manifesto__social a {
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         color: var(--text-tertiary);
         font-size: 1.15rem;
         transition:
@@ -739,8 +785,9 @@ const MANIFESTO: Record<string, any> = {
       }
       .manifesto__cv {
         display: inline-flex;
-        align-items: baseline;
+        align-items: center;
         flex-wrap: wrap;
+        min-height: 44px;
         gap: 0.2rem 0.35rem;
         color: var(--text-secondary);
         font-size: 0.9rem;
@@ -759,7 +806,7 @@ const MANIFESTO: Record<string, any> = {
       /* Utilities arrive just after the primary CTA, without adding another sequence step.
          Once present they stay quiet until the reader points, focuses, or starts the music. */
       .manifesto__utility-group {
-        opacity: 0.62;
+        opacity: 0.78;
         transition: opacity 0.35s ease;
       }
       .manifesto.is-seq .manifesto__utility-group.reveal {
@@ -769,7 +816,7 @@ const MANIFESTO: Record<string, any> = {
           filter 0.7s ease;
       }
       .manifesto.is-seq .manifesto__utility-group.reveal.is-in {
-        opacity: 0.62;
+        opacity: 0.78;
       }
       .manifesto.is-seq .manifesto__footer-left.reveal.is-in {
         transition-delay: 0.14s;
@@ -802,6 +849,7 @@ const MANIFESTO: Record<string, any> = {
         align-items: center;
         gap: 9px;
         padding: 8px 16px 8px 13px;
+        min-height: 44px;
         background: rgba(56, 189, 248, 0.04);
         border: 1px solid rgba(56, 189, 248, 0.18);
         border-radius: var(--radius-full);
@@ -888,6 +936,7 @@ const MANIFESTO: Record<string, any> = {
         align-items: center;
         gap: 7px;
         padding: 8px 15px;
+        min-height: 44px;
         background: rgba(56, 189, 248, 0.04);
         border: 1px solid rgba(56, 189, 248, 0.18);
         border-radius: var(--radius-full);
@@ -923,7 +972,11 @@ const MANIFESTO: Record<string, any> = {
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: clamp(0.5rem, 3vw, 2.5rem);
+        padding:
+          max(clamp(0.5rem, 3vw, 2.5rem), env(safe-area-inset-top))
+          max(clamp(0.5rem, 3vw, 2.5rem), env(safe-area-inset-right))
+          max(clamp(0.5rem, 3vw, 2.5rem), env(safe-area-inset-bottom))
+          max(clamp(0.5rem, 3vw, 2.5rem), env(safe-area-inset-left));
         background: rgba(6, 11, 22, 0.72);
         backdrop-filter: blur(4px);
         animation: scoreFade 0.2s ease;
@@ -938,7 +991,7 @@ const MANIFESTO: Record<string, any> = {
       }
       .score-modal__panel {
         width: min(1000px, 100%);
-        height: min(92vh, 100%);
+        height: min(92dvh, 100%);
         display: flex;
         flex-direction: column;
         background: var(--bg-secondary, #0f172a);
@@ -976,9 +1029,10 @@ const MANIFESTO: Record<string, any> = {
         align-items: center;
         gap: 0.4rem;
         padding: 0.45rem 0.85rem;
+        min-height: 44px;
         border-radius: 8px;
         background: var(--color-primary);
-        color: #fff;
+        color: var(--text-inverse);
         text-decoration: none;
         font-size: 0.85rem;
         font-weight: 600;
@@ -988,8 +1042,8 @@ const MANIFESTO: Record<string, any> = {
         filter: brightness(1.06);
       }
       .score-modal__close {
-        width: 34px;
-        height: 34px;
+        width: 44px;
+        height: 44px;
         border-radius: 8px;
         border: 1px solid rgba(148, 163, 184, 0.2);
         background: transparent;
@@ -1030,6 +1084,22 @@ const MANIFESTO: Record<string, any> = {
         }
         .score-modal__title {
           font-size: 0.9rem;
+        }
+      }
+
+      @media (max-width: 360px) {
+        .score-modal__bar {
+          gap: 0.45rem;
+          padding-inline: 0.7rem;
+        }
+        .score-modal__title em,
+        .score-modal__download-label {
+          display: none;
+        }
+        .score-modal__download {
+          width: 44px;
+          padding-inline: 0;
+          justify-content: center;
         }
       }
 
@@ -1115,6 +1185,16 @@ const MANIFESTO: Record<string, any> = {
         }
       }
 
+      @media (max-width: 350px) {
+        .manifesto__coda {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        .manifesto__act {
+          align-self: flex-start;
+        }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         .manifesto.is-seq .manifesto__utility-group.reveal,
         .manifesto__utility-group,
@@ -1194,6 +1274,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   private unregisterMusicProvider?: () => void;
   private bus?: { claim: () => void; close: () => void };
   private musicSaveTimer?: ReturnType<typeof setInterval>;
+  private bodyOverflowBeforeScore: string | null = null;
 
   constructor() {
     const hasWin = typeof window !== 'undefined';
@@ -1378,7 +1459,7 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
     this.bus?.close();
     this.player?.dispose(); // stop & release audio so navigating away+back doesn't double it
     this.player = null;
-    if (typeof document !== 'undefined') document.body.style.overflow = ''; // release scroll lock if modal was open
+    this.restoreBodyScroll();
   }
 
   private startMusicSave(): void {
@@ -1439,9 +1520,12 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   }
 
   openScore(): void {
-    this.scoreOpen.set(true);
-    if (typeof document !== 'undefined')
+    if (this.scoreOpen()) return;
+    if (typeof document !== 'undefined') {
+      this.bodyOverflowBeforeScore = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
+    }
+    this.scoreOpen.set(true);
   }
 
   /** iOS / iPadOS only clip a PDF-in-iframe. Desktop (incl. Safari) keeps the modal. */
@@ -1459,7 +1543,17 @@ export class HeroSectionComponent implements AfterViewInit, OnDestroy {
   closeScore(): void {
     if (!this.scoreOpen()) return;
     this.scoreOpen.set(false);
-    if (typeof document !== 'undefined') document.body.style.overflow = '';
+    this.restoreBodyScroll();
+  }
+
+  private restoreBodyScroll(): void {
+    if (
+      typeof document !== 'undefined' &&
+      this.bodyOverflowBeforeScore !== null
+    ) {
+      document.body.style.overflow = this.bodyOverflowBeforeScore;
+    }
+    this.bodyOverflowBeforeScore = null;
   }
 
   @HostListener('document:keydown.escape')
