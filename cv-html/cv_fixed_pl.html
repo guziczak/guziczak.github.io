@@ -723,7 +723,7 @@ ol[role="list"] {
 
 .pie-chart__svg {
     width: var(--pie-chart-size);
-    height: var(--pie-chart-size);
+    height: calc(var(--pie-chart-size) * 116 / 160);
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
@@ -2492,7 +2492,7 @@ class OnPremExtractor:
 
                 <figure class="pie-chart" role="figure" aria-labelledby="pie-chart-desc">
                     <span id="pie-chart-desc" class="sr-only">Industry experience breakdown: Education sector 5.5 years (36%), Industry sector 2.5 years (16%), Finance sector 2.25 years (15%), Analytics sector 2 years (13%), Medical sector 3 years (20%). 5+ years of professional experience.</span>
-                    <svg class="pie-chart__svg" viewBox="-30 -30 160 160" aria-hidden="true">
+                    <svg class="pie-chart__svg" viewBox="-30 -4 160 116" aria-hidden="true">
                         <path d="M 50,50 L 50.0,4.0 A 46,46 0 0,1 85.3,79.5 Z" fill="#0ea5e9" />
                         <path d="M 50,50 L 85.3,79.5 A 46,46 0 0,1 42.9,95.5 Z" fill="#1e3a5f" />
                         <path d="M 50,50 L 42.9,95.5 A 46,46 0 0,1 9.4,71.6 Z" fill="#6366f1" />
