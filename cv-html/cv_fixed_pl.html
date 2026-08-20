@@ -608,11 +608,11 @@ ol[role="list"] {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 5px;
+    gap: 4px;
 }
 
 .skills__tag {
-    padding: 3px var(--spacing-sm);
+    padding: 2px var(--spacing-sm);
     background: rgba(14, 165, 233, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: var(--radius-xl);
@@ -1294,7 +1294,7 @@ ol[role="list"] {
 .project__link::after { content: ' ↗'; opacity: 0.6; }
 
 .skills__group {
-    margin: 11px 0 5px;
+    margin: 7px 0 4px;
     text-align: center;
     font-size: 0.6rem;
     font-weight: 700;
@@ -2136,6 +2136,11 @@ class OnPremExtractor:
                     <li class="skills__tag">FastAPI</li>
                     <li class="skills__tag">SQL (PostgreSQL)</li>
                 </ul>
+                <p class="skills__group">Frontend</p>
+                <ul class="skills" role="list" aria-label="Frontend">
+                    <li class="skills__tag">React · TypeScript</li>
+                    <li class="skills__tag">Angular</li>
+                </ul>
                 <p class="skills__group">Cloud · Infra</p>
                 <ul class="skills" role="list" aria-label="Cloud · Infra">
                     <li class="skills__tag">AWS · Azure</li>
@@ -2340,7 +2345,7 @@ class OnPremExtractor:
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier badawczy AI/ML — IoT</h3>
+                                    <h3 class="job__title">Full-stack Engineer AI/ML — IoT</h3>
                                     <p class="job__company">Astek · Software House</p>
                                 </div>
                                 <time class="job__date" datetime="2025">2025</time>
@@ -2371,14 +2376,14 @@ class OnPremExtractor:
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Rozwiązania AI — analityka w ochronie zdrowia</h3>
+                                    <h3 class="job__title">Full-stack Developer — AI w ochronie zdrowia</h3>
                                     <p class="job__company">Kamsoft · SaaS</p>
                                 </div>
                                 <time class="job__date" datetime="2024/2025">2024 – 2025</time>
                             </header>
                             <p class="job__project"><em>Projekt: Analityczny system wspomagania decyzji oparty na AI dla ochrony zdrowia</em></p>
                             <ul class="job__list">
-                                <li>Zbudowałem funkcje automatyzacji analitycznej ze wspomaganiem decyzji opartym na danych dla diagnostyki medycznej.</li>
+                                <li>Zbudowałem funkcje wspomagania decyzji dla diagnostyki — REST API w Spring Boot i UI w React/TypeScript.</li>
                                 <li>Zaprojektowałem zoptymalizowane pipeline’y przetwarzania dużych zbiorów danych medycznych.</li>
                             </ul>
                             <div class="tech-stack" aria-label="Technologies">
@@ -2401,7 +2406,7 @@ class OnPremExtractor:
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier ML i danych — systemy kosmiczne</h3>
+                                    <h3 class="job__title">Full-stack Developer — systemy kosmiczne</h3>
                                     <p class="job__company">Thorium Space Technology · Łączność satelitarna</p>
                                 </div>
                                 <time class="job__date" datetime="2024">2024</time>
@@ -2409,7 +2414,7 @@ class OnPremExtractor:
                             <p class="job__project"><em>Projekt: Zarządzanie zasobami dla platform łączności satelitarnej</em></p>
                             <ul class="job__list">
                                 <li>Zaprojektowałem inteligentną alokację zasobów dla platform łączności satelitarnej.</li>
-                                <li>Zbudowałem moduły czasu rzeczywistego optymalizujące alokację pasma.</li>
+                                <li>Zbudowałem moduły czasu rzeczywistego end-to-end (Spring Boot + React) do optymalizacji pasma.</li>
                             </ul>
                             <div class="tech-stack" aria-label="Technologies">
                                 <span class="tech-logo"><img src="assets/tech_icons/java.svg" class="tech-logo__img" alt="" title="Java"><span class="sr-only">Java</span></span>
@@ -2571,7 +2576,7 @@ class OnPremExtractor:
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier danych wspierany AI</h3>
+                                    <h3 class="job__title">Full-stack Developer — ERP, AI-assisted</h3>
                                     <p class="job__company">Right Information · Software House</p>
                                 </div>
                                 <time class="job__date" datetime="2023/2024">2023 – 2024</time>
@@ -2579,7 +2584,7 @@ class OnPremExtractor:
                             <p class="job__project"><em>Projekt: System ERP do płatności, księgowości i kadr-płac</em></p>
                             <ul class="job__list">
                                 <li>Zmigrowałem system legacy na nowoczesną architekturę; pioniersko wdrożyłem rozwój wspomagany AI z ChatGPT.</li>
-                                <li>Wdrożyłem zautomatyzowane przepływy przetwarzania danych z inteligentnymi systemami powiadomień.</li>
+                                <li>Rozwijałem ERP end-to-end (Java/Spring + React): integracje, drukarki fiskalne, powiadomienia.</li>
                             </ul>
                             <div class="tech-stack" aria-label="Technologies">
                                 <span class="tech-logo"><img src="assets/tech_icons/java.svg" class="tech-logo__img" alt="" title="Java"><span class="sr-only">Java</span></span>
@@ -2604,7 +2609,7 @@ class OnPremExtractor:
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier danych</h3>
+                                    <h3 class="job__title">Java Developer — ERP i fintech</h3>
                                     <p class="job__company">Streamsoft · SaaS</p>
                                 </div>
                                 <time class="job__date" datetime="2022/2023">2022 – 2023</time>
@@ -2635,7 +2640,7 @@ class OnPremExtractor:
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier oprogramowania i danych</h3>
+                                    <h3 class="job__title">Java/Spring Developer — systemy finansowe</h3>
                                     <p class="job__company">Luxoft · Software House</p>
                                 </div>
                                 <time class="job__date" datetime="2022">2022</time>
@@ -2663,7 +2668,7 @@ class OnPremExtractor:
                         <div class="job__content">
                             <header class="job__header">
                                 <div>
-                                    <h3 class="job__title">Inżynier badawczy — Data Science</h3>
+                                    <h3 class="job__title">Inżynier badawczy — Python + React</h3>
                                     <p class="job__company">University of Twente, Niderlandy · środowisko międzynarodowe</p>
                                 </div>
                                 <time class="job__date" datetime="2021/2022">2021 – 2022</time>
