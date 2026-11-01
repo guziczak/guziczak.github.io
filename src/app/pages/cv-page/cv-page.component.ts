@@ -1,3 +1,4 @@
+import { observeCvFrame } from '../cv-frame-layout';
 import {
   Component,
   inject,
@@ -11,7 +12,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeResourceUrl, Title } from '@angular/platform-browser';
 import {
   DataService,
   Experience,
@@ -83,11 +84,11 @@ import {
             <a routerLink="/" class="btn-action">
               <i class="fas fa-arrow-left"></i> Back to Portfolio
             </a>
-            <button (click)="downloadCV()" class="btn-action btn-primary">
-              <i class="fas fa-download"></i> Download PDF
-            </button>
-            <a routerLink="/cv-print" class="btn-action">
-              <i class="fas fa-print"></i> Print Version
+            <a [href]="cvPdfUrl()" download class="btn-action btn-primary">
+              <i class="fas fa-download"></i> {{ downloadLabels().pdf }}
+            </a>
+            <a [href]="cvPrintPdfUrl()" download class="btn-action">
+              <i class="fas fa-print"></i> {{ downloadLabels().print }}
             </a>
           </div>
         </header>
@@ -465,7 +466,7 @@ import {
       }
 
       .cv-iframe {
-        width: 794px;
+        width: 100%;
         height: 1123px;
         border: 0;
         display: block;
@@ -575,6 +576,8 @@ export class CvPageComponent implements OnInit, OnDestroy {
   private dataService = inject(DataService);
   private languageService = inject(LanguageService);
   private sanitizer = inject(DomSanitizer);
+  private title = inject(Title);
+  private previousTitle?: string;
 
   // The bell, handed off from the portfolio tab — continues here from the same position.
   private player: SwiatloPlayer | null = null;
@@ -599,10 +602,8 @@ export class CvPageComponent implements OnInit, OnDestroy {
 
   @ViewChild('cvFrame') private cvFrame?: ElementRef<HTMLIFrameElement>;
   @ViewChild('cvWrapper') private cvWrapper?: ElementRef<HTMLElement>;
-  private static readonly CV_DOC_WIDTH = 794;
   private static readonly MUSIC_LEAD_IN_SEC = 6;
-  private fitFrameId?: number;
-  private fitGeneration = 0;
+  private stopFrameLayout?: () => void;
 
   experience = signal<Experience[]>([]);
   education = signal<Education[]>([]);
@@ -611,16 +612,21 @@ export class CvPageComponent implements OnInit, OnDestroy {
   // Reactive: follows the global language (en/pl/de) from LanguageService
   currentLang = this.languageService.currentLanguage;
 
+  downloadLabels = computed(
+    () =>
+      ({
+        pl: { pdf: 'Pobierz PDF', print: 'PDF do druku' },
+        en: { pdf: 'Download PDF', print: 'Print PDF' },
+        de: { pdf: 'PDF herunterladen', print: 'Druck-PDF' },
+      })[this.currentLang()],
+  );
+  cvPdfUrl = computed(() => '/cv_' + this.currentLang() + '.pdf');
+  cvPrintPdfUrl = computed(() => '/cv_' + this.currentLang() + '_print.pdf');
+
   private static readonly CV_HTML_BY_LANG: Record<string, string> = {
     en: '/cv-html/cv_fixed.html?portfolio-embed=1',
     pl: '/cv-html/cv_fixed_pl.html?portfolio-embed=1',
     de: '/cv-html/cv_fixed_de.html?portfolio-embed=1',
-  };
-
-  private static readonly CV_PDF_BY_LANG: Record<string, string> = {
-    en: '/cv_en.pdf',
-    pl: '/cv_pl.pdf',
-    de: '/cv_de.pdf',
   };
 
   cvIframeUrl = computed<SafeResourceUrl>(() => {
@@ -631,15 +637,15 @@ export class CvPageComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
+    this.previousTitle = this.title.getTitle();
+    this.title.setTitle('Łukasz Guziczak — AI Engineer | CV');
     this.loadData();
     this.initBellHandoff();
   }
 
   ngOnDestroy(): void {
-    if (this.fitFrameId !== undefined) {
-      cancelAnimationFrame(this.fitFrameId);
-      this.fitFrameId = undefined;
-    }
+    if (this.previousTitle !== undefined) this.title.setTitle(this.previousTitle);
+    this.stopFrameLayout?.();
     this.removeKick?.();
     this.unbindIframeMusicButton();
     this.stopMusicSave();
@@ -800,75 +806,16 @@ export class CvPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  downloadCV() {
-    const url =
-      CvPageComponent.CV_PDF_BY_LANG[this.currentLang()] ??
-      CvPageComponent.CV_PDF_BY_LANG['en'];
-    window.open(url, '_blank');
-  }
-
   onCvFrameLoad(): void {
     this.bindIframeMusicButton();
     this.fitCv();
   }
 
-  /**
-   * Fit the fixed-width (A4 / 794px) CV document to the frame:
-   * always keep the desktop composition and scale the whole document down on
-   * narrow screens. The outer page scrolls; the preview never does.
-   */
   fitCv(): void {
+    this.stopFrameLayout?.();
     const frame = this.cvFrame?.nativeElement;
     const wrapper = this.cvWrapper?.nativeElement;
-    if (!frame || !wrapper) return;
-
-    const availableWidth = Math.max(1, wrapper.clientWidth);
-    const scale = Math.min(1, availableWidth / CvPageComponent.CV_DOC_WIDTH);
-
-    // Keep the iframe viewport at the A4 desktop width even on phones. This
-    // prevents the embedded document's mobile media query from reflowing and
-    // deforming the CV; the finished desktop layout is scaled as one unit.
-    frame.style.width = CvPageComponent.CV_DOC_WIDTH + 'px';
-    frame.style.height = '1123px';
-    frame.style.transform = `scale(${scale})`;
-    wrapper.style.height = Math.ceil(1123 * scale) + 'px';
-
-    if (this.fitFrameId !== undefined) {
-      cancelAnimationFrame(this.fitFrameId);
-    }
-    const generation = ++this.fitGeneration;
-
-    const measure = () => {
-      if (generation !== this.fitGeneration) return;
-
-      let docHeight = 1123;
-      try {
-        const doc = frame.contentDocument ?? frame.contentWindow?.document;
-        if (doc) {
-          doc.documentElement.style.overflow = 'hidden';
-          doc.body.style.overflow = 'hidden';
-          docHeight = Math.max(
-            doc.documentElement.scrollHeight,
-            doc.body.scrollHeight,
-            docHeight,
-          );
-        }
-      } catch {
-        // same-origin iframe; retain the safe fallback if unavailable
-      }
-
-      const h = docHeight + 2;
-      frame.style.height = h + 'px';
-      frame.style.transform = `scale(${scale})`;
-      wrapper.style.height = Math.ceil(h * scale) + 'px';
-      this.fitFrameId = undefined;
-    };
-
-    // Chromium updates the iframe layout asynchronously after a width change.
-    // Measure after two frames so the fixed-width composition is complete.
-    this.fitFrameId = requestAnimationFrame(() => {
-      this.fitFrameId = requestAnimationFrame(measure);
-    });
+    if (frame && wrapper) this.stopFrameLayout = observeCvFrame(frame, wrapper);
   }
 
   @HostListener('window:resize')

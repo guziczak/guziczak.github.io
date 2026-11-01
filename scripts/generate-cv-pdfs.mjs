@@ -33,7 +33,10 @@ const CVS = [
   { language: "en", source: "cv-html/cv_fixed.html", output: "cv_en.pdf" },
   { language: "pl", source: "cv-html/cv_fixed_pl.html", output: "cv_pl.pdf" },
   { language: "de", source: "cv-html/cv_fixed_de.html", output: "cv_de.pdf" },
-];
+].flatMap((cv) => [
+  { ...cv, variant: "standard" },
+  { ...cv, variant: "print", output: cv.output.replace(".pdf", "_print.pdf") },
+]);
 
 const MIME_TYPES = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -628,6 +631,7 @@ async function renderPdf({
   profileDirectory,
   sourceUrl,
   targetPath,
+  variant,
 }) {
   let chrome;
   let client;
@@ -660,6 +664,14 @@ async function renderPdf({
       throw new Error(`Navigation failed: ${navigation.errorText}`);
 
     await waitForDocumentReady(client, sessionId, sourceUrl);
+    await client.send(
+      "Runtime.evaluate",
+      {
+        expression: `document.documentElement.classList.toggle('cv-print-variant', ${variant === "print"});`,
+      },
+      sessionId,
+    );
+    await client.send("Emulation.setEmulatedMedia", { media: "print" }, sessionId);
     await network.waitForIdle();
     await waitForFontsAndImages(client, sessionId);
     if (network.failedAssets.length > 0) {
@@ -668,6 +680,29 @@ async function renderPdf({
           .map((failure) => `  - ${failure}`)
           .join("\n")}`,
       );
+    }
+
+    const layout = await client.send(
+      "Runtime.evaluate",
+      {
+        expression: `(() => {
+          const pages = [...document.querySelectorAll('.page')];
+          return { count: pages.length, pages: pages.map((page, index) => ({
+            index, width: page.clientWidth, height: page.clientHeight,
+            scrollWidth: page.scrollWidth, scrollHeight: page.scrollHeight,
+            display: getComputedStyle(page).display
+          })) };
+        })()`,
+        returnByValue: true,
+      },
+      sessionId,
+    );
+    const metrics = layout.result?.value;
+    if (metrics?.count !== 3 || metrics.pages.some((page) =>
+      page.display === "none" || page.height === 0 ||
+      page.scrollWidth > page.width + 2 || page.scrollHeight > page.height + 2
+    )) {
+      throw new Error(`The CV must contain three visible pages without overflow: ${JSON.stringify(metrics)}`);
     }
 
     const printResult = await client.send(
@@ -732,7 +767,7 @@ async function main() {
     for (const cv of CVS) {
       const sourceUrl = new URL(cv.source, `${baseUrl}/`).href;
       const stagingPath = join(stagingDirectory, cv.output);
-      const profileDirectory = join(profilesDirectory, cv.language);
+      const profileDirectory = join(profilesDirectory, `${cv.language}-${cv.variant}`);
       await mkdir(profileDirectory, { recursive: true });
       console.log(`Generating ${cv.language.toUpperCase()}: ${cv.output}`);
       await renderPdf({
@@ -740,6 +775,7 @@ async function main() {
         profileDirectory,
         sourceUrl,
         targetPath: stagingPath,
+        variant: cv.variant,
       });
     }
 
