@@ -32,7 +32,6 @@ export class EmailService {
         email: 'd94wcrgcc6@privaterelay.appleid.com',
       },
       to: [
-        { email: 'guziczak@pm.me', name: 'LG ITS' },
         { email: 'guziczak@proton.me', name: 'LG ITS' },
         { email: 'jguziczak@wp.pl', name: 'LG ITS - backup' },
       ],

@@ -16,17 +16,17 @@ describe('ContactProtectionService', () => {
   describe('Email functionality', () => {
     it('should return decoded email on getEmail()', () => {
       const email = service.getEmail();
-      expect(email).toBe('guziczak@pm.me');
+      expect(email).toBe('guziczak@proton.me');
     });
 
     it('should return mailto link on getMailtoLink()', () => {
       const mailtoLink = service.getMailtoLink();
-      expect(mailtoLink).toBe('mailto:guziczak@pm.me');
+      expect(mailtoLink).toBe('mailto:guziczak@proton.me');
     });
 
     it('should return obfuscated email for display', () => {
       const obfuscatedEmail = service.getObfuscatedEmail();
-      expect(obfuscatedEmail).toBe('guziczak[at]pm[dot]me');
+      expect(obfuscatedEmail).toBe('guziczak[at]proton[dot]me');
     });
 
     it('should cache decoded email after first call', () => {
@@ -36,7 +36,7 @@ describe('ContactProtectionService', () => {
       const email2 = service.getEmail();
 
       expect(email1).toBe(email2);
-      expect(email1).toBe('guziczak@pm.me');
+      expect(email1).toBe('guziczak@proton.me');
     });
   });
 

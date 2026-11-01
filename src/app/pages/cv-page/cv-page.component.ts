@@ -59,8 +59,8 @@ import {
               <h1>Łukasz Guziczak</h1>
               <h2>AI Engineer</h2>
               <div class="contact-info">
-                <a href="mailto:guziczak@pm.me">
-                  <i class="fas fa-envelope"></i> guziczak&#64;pm.me
+                <a href="mailto:guziczak@proton.me">
+                  <i class="fas fa-envelope"></i> guziczak&#64;proton.me
                 </a>
                 <a
                   href="https://linkedin.com/in/guziczak"

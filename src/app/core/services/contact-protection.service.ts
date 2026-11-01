@@ -51,7 +51,7 @@ export class ContactProtectionService {
    * Get obfuscated email for display
    */
   getObfuscatedEmail(): string {
-    return 'guziczak[at]pm[dot]me';
+    return 'guziczak[at]proton[dot]me';
   }
 
   /**

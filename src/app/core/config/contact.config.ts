@@ -3,7 +3,7 @@
  * Centralized contact information used across the application
  */
 export const CONTACT_CONFIG = {
-  email: 'guziczak@pm.me',
+  email: 'guziczak@proton.me',
   phone: '+48693069832',
   phoneDisplay: '+48 693 069 832',
   github: 'https://github.com/guziczak',

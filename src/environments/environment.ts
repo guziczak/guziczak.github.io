@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  contactEmailEncoded: 'Z3V6aWN6YWtAcG0ubWU=',
+  contactEmailEncoded: 'Z3V6aWN6YWtAcHJvdG9uLm1l',
   contactPhoneEncoded: 'KzQ4NjkzMDY5ODMy',
   apiUrl: 'http://localhost:3001',
   enableAnalytics: false,
