@@ -143,6 +143,14 @@
     {
       "positive": false,
       "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*\\/.*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/zloto$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/zloto\\/.*$"
     }
   ],
   "navigationRequestStrategy": "performance"
