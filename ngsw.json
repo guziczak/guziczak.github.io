@@ -151,6 +151,14 @@
     {
       "positive": false,
       "regex": "^\\/zloto\\/.*$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/4lapy$"
+    },
+    {
+      "positive": false,
+      "regex": "^\\/4lapy\\/.*$"
     }
   ],
   "navigationRequestStrategy": "performance"
