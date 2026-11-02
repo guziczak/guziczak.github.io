@@ -27,13 +27,17 @@
     }
   ],
   "navigationUrls": [
-    "/**",
+    "/",
+    "/certificates",
+    "/certificates/",
+    "/cv",
+    "/cv/",
+    "/cv-print",
+    "/cv-print/",
+    "/score",
+    "/score/",
     "!/**/*.*",
     "!/**/*__*",
-    "!/**/*__*/**",
-    "!/zloto",
-    "!/zloto/**",
-    "!/4lapy",
-    "!/4lapy/**"
+    "!/**/*__*/**"
   ]
 }

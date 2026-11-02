@@ -130,7 +130,39 @@
   "navigationUrls": [
     {
       "positive": true,
-      "regex": "^\\/.*$"
+      "regex": "^\\/$"
+    },
+    {
+      "positive": true,
+      "regex": "^\\/certificates$"
+    },
+    {
+      "positive": true,
+      "regex": "^\\/certificates\\/$"
+    },
+    {
+      "positive": true,
+      "regex": "^\\/cv$"
+    },
+    {
+      "positive": true,
+      "regex": "^\\/cv\\/$"
+    },
+    {
+      "positive": true,
+      "regex": "^\\/cv-print$"
+    },
+    {
+      "positive": true,
+      "regex": "^\\/cv-print\\/$"
+    },
+    {
+      "positive": true,
+      "regex": "^\\/score$"
+    },
+    {
+      "positive": true,
+      "regex": "^\\/score\\/$"
     },
     {
       "positive": false,
@@ -143,22 +175,6 @@
     {
       "positive": false,
       "regex": "^\\/(?:.+\\/)?[^/]*__[^/]*\\/.*$"
-    },
-    {
-      "positive": false,
-      "regex": "^\\/zloto$"
-    },
-    {
-      "positive": false,
-      "regex": "^\\/zloto\\/.*$"
-    },
-    {
-      "positive": false,
-      "regex": "^\\/4lapy$"
-    },
-    {
-      "positive": false,
-      "regex": "^\\/4lapy\\/.*$"
     }
   ],
   "navigationRequestStrategy": "performance"
