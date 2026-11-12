@@ -97,3 +97,18 @@ input,select,textarea{min-width:0;max-width:100%}
 .catalogue-notice.reference-only{background:var(--warn-bg);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 20%,transparent)}
 .catalogue-notice.reference-only strong{display:block;color:var(--warn);margin-bottom:5px}
 .catalogue-notice.reference-only a{display:inline-block;margin-top:7px}
+
+/* Explicit source regimen selection stays readable on narrow screens. */
+.source-regimen-picker{min-width:0;margin-bottom:22px}
+.source-regimen-picker select{width:100%;text-overflow:ellipsis}
+.source-regimen-card{padding:15px;margin-top:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-soft);font-size:11px;line-height:1.7;overflow-wrap:anywhere}
+.source-regimen-heading{display:flex;align-items:center;flex-wrap:wrap;gap:7px;color:var(--accent)}
+.source-regimen-heading svg{width:16px;height:16px}
+.source-regimen-heading button{margin-left:auto;font-size:11px;padding:5px 0}
+.source-regimen-card p{margin:10px 0}
+.source-regimen-card ul{padding-left:18px;margin:10px 0}
+.source-regimen-card li+li{margin-top:6px}
+.source-regimen-card .source-screening{border-top:1px solid var(--border);padding-top:10px;color:var(--muted)}
+.source-regimen-card small{display:block;margin-top:5px;color:var(--muted);font-size:10px}
+.regimen-body input[readonly],.regimen-body select:disabled{color:var(--ink);opacity:1;background:var(--surface-soft)}
+@media(max-width:780px){.source-regimen-card{font-size:12px}.source-regimen-heading button{font-size:12px;min-height:40px}.source-regimen-picker select{font-size:16px;min-height:44px}}

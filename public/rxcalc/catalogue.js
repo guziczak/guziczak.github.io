@@ -59,7 +59,7 @@ const liquid = (id, label, form, concentrationMg, concentrationMl, sizes, source
 });
 
 // Species belong to the exact formulation, never to the substance alone.
-// These entries supply product metadata only; clinical regimens stay empty.
+// Product metadata never silently selects a regimen; explicit source records live in regimens.js.
 const upd = id => `https://medicines.health.europa.eu/veterinary/en/${id}`;
 const vet = (targetSpecies, options = {}) => ({ targetSpecies, defaultMode: 'perKgDose', ...options });
 const VETERINARY_DRUGS = [
@@ -130,14 +130,14 @@ const VETERINARY_DRUGS = [
     id: 'vet-cerenia', name: 'Cerenia', substance: 'Maropitantum',
     category: 'antiemetic', specialties: ['veterinary'],
     searchTerms: ['maropitant', 'wymioty', 'nudności'],
-    forms: [tablet('cerenia-dog-16', 'Cerenia · 16 mg · pies', 16, [4], 'https://www.vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2243320.PDF', vet(['dog'], {
-      sourceLabel: 'SPC · VMD (EN)', registrationUrl: upd('600000001524'), doseBasisIngredient: 'maropitantu', allowedFractions: [1, 0.5],
+    forms: [16, 24, 60].map(strength => tablet(`cerenia-dog-${strength}`, `Cerenia · ${strength} mg · pies`, strength, [4], 'https://www.zoetis.com.pl/_locale-assets/charakterystyki-produktow/cerenia_qrd_2024.10_vnra.pdf', vet(['dog'], {
+      sourceLabel: 'Polska ChPL · Zoetis (10/2024)', ...(strength === 16 ? { registrationUrl: upd('600000001524') } : {}), doseBasisIngredient: 'maropitantu', allowedFractions: [1, 0.5],
       notes: [
-        'Tabletka zawiera 16 mg maropitantu w postaci soli. Przeliczenie odnosi się do maropitantu, nie masy cytrynianu.',
+        `Tabletka zawiera ${strength} mg maropitantu w postaci soli. Przeliczenie odnosi się do maropitantu, nie masy cytrynianu.`,
         'Tabletki można dzielić na połowy. Niewykorzystaną połówkę zużyć w ciągu 2 dni; termin nie dotyczy całego opakowania.',
-        'Postać doustna dla psów. Schemat zależy od wskazania. Metadane UE: UPD; szczegóły: VMD (EN).',
+        'Postać doustna dla psów. Schemat zależy od wskazania. Dostępne schematy z tabeli nie obejmują choroby lokomocyjnej.',
       ],
-    }))],
+    }))),
   },
   {
     id: 'vet-enrobactin', name: 'Enrobactin', substance: 'Enrofloxacinum',
