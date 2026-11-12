@@ -1,0 +1,11 @@
+{
+  "name": "rxcalc",
+  "version": "1.0.0-beta.1",
+  "private": true,
+  "description": "Lokalny kalkulator dawek i zapotrzebowania na leki",
+  "type": "module",
+  "scripts": {
+    "test": "node --test engine.test.mjs",
+    "build": "node build.mjs"
+  }
+}
