@@ -36,7 +36,8 @@ input,select,textarea{min-width:0;max-width:100%}
   .categories button{font-size:11px;min-height:36px;flex-shrink:0}
   .regimen-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
   .regimen-fields>.field:first-child{grid-column:1/-1}
-  .input-unit input{padding-right:90px}
+  .input-unit input{padding-right:45px}
+  .regimen-fields>.field:first-child .input-unit input{padding-right:90px}
   .mobile-result-link{bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 36px)}
   .dialog-content .tool-result{overflow-wrap:anywhere;font-size:22px}
   .update-banner{flex-wrap:wrap}
