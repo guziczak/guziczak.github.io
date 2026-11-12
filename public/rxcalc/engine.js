@@ -6,6 +6,8 @@
  */
 const FORMS = new Set(['tablet', 'suspension', 'spray', 'gel', 'drops', 'injection', 'solution']);
 const MODES = new Set(['fixed', 'perKgDay', 'perKgDose', 'units']);
+const PATIENT_KINDS = new Set(['human', 'animal']);
+const ANIMAL_SPECIES = new Set(['dog', 'cat', 'horse', 'hamster', 'rat']);
 const empty = value => value === null || value === undefined || value === '';
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 const clean = value => Number(value.toPrecision(14));
@@ -45,6 +47,10 @@ export function calculate(input = {}) {
     expiryWasteUnits: null, singleUseContainers: null, unusedSingleUseVolume: null,
   };
   const invalid = [];
+  const patientKind = input.patientKind === undefined ? 'human' : input.patientKind;
+  const animal = patientKind === 'animal';
+  if (!PATIENT_KINDS.has(patientKind)) invalid.push('Wybierz poprawny profil pacjenta.');
+  if (animal && !ANIMAL_SPECIES.has(input.species)) invalid.push('Wybierz gatunek zwierzęcia.');
   let incomplete = false;
   let critical = false;
   const number = (key, label, { required = false, min = 0, max = 1e7, allowZero = false } = {}) => {
@@ -78,7 +84,8 @@ export function calculate(input = {}) {
   const singleUseUnitSize = input.form === 'injection'
     ? number('singleUseUnitSize', 'objętość pojedynczej ampułki lub ampułkostrzykawki w ml', { required: true, max: 1e7 })
     : null;
-  const weight = number('weight', 'masę ciała w kg', { required: ['perKgDay', 'perKgDose'].includes(input.doseMode), max: 500 });
+  // Technical input bounds only; they do not establish a species-specific normal weight.
+  const weight = number('weight', 'masę ciała w kg', { required: animal || ['perKgDay', 'perKgDose'].includes(input.doseMode), max: animal ? 2000 : 500 });
   const age = number('age', 'wiek w latach', { allowZero: true, max: 130 });
   const roundingStep = number('roundingStep', 'krok zaokrąglenia', { max: 1e6 });
   const maxDailyMg = number('maxDailyMg', 'maksymalną dawkę dobową', { max: 1e7 });
@@ -288,6 +295,9 @@ export function calculate(input = {}) {
     }
   }
 
+  if (animal) {
+    result.warnings.push('Przeliczenie arytmetyczne. Dobór leku i dawkowanie dla tego gatunku wymagają weryfikacji lekarza weterynarii.');
+  }
   result.valid = result.errors.length === 0;
   result.status = critical ? 'critical' : incomplete ? 'incomplete' : result.warnings.length ? 'warning' : 'ok';
   return result;

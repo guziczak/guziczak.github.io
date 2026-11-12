@@ -65,3 +65,23 @@ input,select,textarea{min-width:0;max-width:100%}
 
 /* The topbar reserves the device safe area in its padding and total height.
    Per-breakpoint custom properties preserve that inset on every viewport. */
+/* Three specialties stay readable without widening the phone viewport. */
+.page-heading{flex-wrap:wrap}
+.page-heading>div:first-child{min-width:0}
+.specialty-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));min-width:0;max-width:100%;flex-shrink:1}
+.specialty-switch button{width:auto;min-width:0;justify-content:center;white-space:normal;text-align:center}
+.patient-fields.vet-patient-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px}
+.vet-patient-fields>.field{max-width:none}
+@media(max-width:960px) and (min-width:781px){
+  .page-heading{gap:16px}
+  .specialty-switch{margin-top:0}
+}
+@media(max-width:780px){
+  .patient-fields.vet-patient-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+  .vet-patient-fields>.field:first-child{grid-column:1/-1}
+}
+@media(max-width:480px){
+  .specialty-switch{gap:3px}
+  .specialty-switch button{flex-direction:column;gap:5px;padding:9px 4px;min-height:58px;font-size:11px;line-height:1.35}
+  .specialty-switch button svg{width:17px;height:17px}
+}

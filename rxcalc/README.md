@@ -7,6 +7,8 @@ Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym
 ## Zakres pierwszej wersji
 
 - Profile stomatologiczny i kardiologiczny oraz katalog wybranych preparatów z odnośnikami do źródeł.
+- Profil weterynaryjny z wymaganym wyborem: pies, kot, koń, chomik lub szczur. Preparat, droga podania i schemat są wprowadzane ręcznie przez lekarza weterynarii; brak automatycznej weterynaryjnej bazy dawek i przeciwwskazań. Gatunek i masa są wymagane i nie są zapamiętywane. Zmiana gatunku czyści poprzedni preparat i schemat. Profil specjalizacji pozostaje zapisany.
+- Dla zwierząt masa jest zawsze w kilogramach (100 g = 0,1 kg); techniczny zakres wejścia do 2000 kg. Wiek można podać w latach lub miesiącach. Wynik weterynaryjny zawiera gatunek, masę i drogę podania; pozostaje przeliczeniem arytmetycznym wymagającym weryfikacji, nie kompletną receptą weterynaryjną.
 - Przeliczenia dawek stałych, dawek zależnych od masy oraz ilości preparatu.
 - Obsługa różnych jednostek podania, liczby opakowań i przygotowanie tekstu `D.S.`.
 - Kontrole arytmetyczne i wybrane ograniczenia opisane w danych konkretnego produktu.

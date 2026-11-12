@@ -213,3 +213,69 @@ test('injection package and container volume must describe an integer count', ()
   }
   assert.equal(calculate({...base,form:'injection',dose:0.1,packageSize:0.3,singleUseUnitSize:0.1}).valid,true);
 });
+
+
+// Synthetic concentrations and dose inputs verify arithmetic only, not veterinary regimens.
+const animalArithmetic = {
+  patientKind: 'animal', form: 'solution', doseMode: 'perKgDose',
+  dose: 10, frequency: 2, days: 1, concentrationMg: 100,
+  concentrationMl: 1, packageSize: 1000, unitLabel: 'ml',
+};
+test('animal arithmetic retains sub-kilogram weights and accepts a 700 kg horse', () => {
+  for (const [species, weight, singleMg, singleUnits] of [
+    ['hamster', 0.08, 0.8, 0.008],
+    ['rat', 0.3, 3, 0.03],
+    ['horse', 700, 7000, 70],
+  ]) {
+    const r = calculate({...animalArithmetic, species, weight});
+    assert.equal(r.valid, true, species);
+    assert.equal(r.singleMg, singleMg, species);
+    assert.equal(r.singleUnits, singleUnits, species);
+    assert.equal(r.dailyUnits, singleUnits * 2, species);
+    assert.equal(r.status, 'warning', species);
+  }
+});
+test('animal profile requires a supported species rather than assuming one', () => {
+  for (const species of [undefined, null, '', 'rabbit', 'Dog', ['dog'], {}]) {
+    const r = calculate({...animalArithmetic, species, weight: 1});
+    assert.equal(r.valid, false);
+    assert.equal(r.singleUnits, null);
+    assert.match(r.errors.join(' '), /gatunek/);
+  }
+  for (const species of ['dog', 'cat', 'horse', 'hamster', 'rat']) {
+    assert.equal(calculate({...animalArithmetic, species, weight: 1}).valid, true, species);
+  }
+});
+test('animal weight is mandatory for every dose mode, including fixed and unit modes', () => {
+  for (const doseMode of ['units', 'fixed', 'perKgDay', 'perKgDose']) {
+    for (const weight of [undefined, null, '', 0, -1, NaN, Infinity, '0.08']) {
+      const r = calculate({...animalArithmetic, species: 'hamster', doseMode, weight});
+      assert.equal(r.valid, false, `${doseMode}: ${weight}`);
+      assert.equal(r.singleUnits, null);
+      assert.match(r.errors.join(' '), /masę ciała/);
+    }
+  }
+});
+test('technical veterinary weight range does not expand the human range', () => {
+  assert.equal(calculate({...base, weight: 500}).valid, true);
+  assert.equal(calculate({...base, weight: 500.01}).valid, false);
+  assert.equal(calculate({...base, patientKind: 'human', weight: 700}).valid, false);
+  assert.equal(calculate({...animalArithmetic, species: 'horse', weight: 2000}).valid, true);
+  assert.equal(calculate({...animalArithmetic, species: 'horse', weight: 2000.01}).valid, false);
+  assert.equal(calculateCrCl({age: 60, sex: 'male', weight: 700, creatinine: 1}), null);
+});
+test('invalid patient kind cannot silently bypass human validation', () => {
+  for (const patientKind of ['', null, false, 'veterinary', ['animal'], {}]) {
+    assert.equal(calculate({...base, patientKind}).valid, false);
+  }
+});
+test('animal results never imply clinical clearance even with user-supplied limits', () => {
+  const r = calculate({...animalArithmetic, species: 'dog', weight: 10, maxDailyMg: 200});
+  assert.equal(r.valid, true);
+  assert.equal(r.maxRatio, 1);
+  assert.equal(r.status, 'warning');
+  assert.ok(r.warnings.includes('Przeliczenie arytmetyczne. Dobór leku i dawkowanie dla tego gatunku wymagają weryfikacji lekarza weterynarii.'));
+  const critical = calculate({...animalArithmetic, species: 'dog', weight: 10, maxDailyMg: 199});
+  assert.equal(critical.valid, false);
+  assert.equal(critical.status, 'critical');
+});
