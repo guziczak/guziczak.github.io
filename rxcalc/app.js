@@ -276,7 +276,7 @@ function updateResult() {
   const hasResult=r.singleUnits!==null&&sourceApplicable;
   $('#dose-value').textContent=hasResult?n(r.singleUnits,isVeterinary()?10:6):'—';
   $('#dose-unit').textContent=f.unitLabel;
-  $('#frequency-output').textContent=hasResult?`${n(input.frequency)} × na dobę · przez ${n(input.days)} dni`:'Uzupełnij schemat podawania';
+  $('#frequency-output').textContent=hasResult?`${n(input.frequency)} × na dobę · przez ${n(input.days)} ${input.days===1?'dzień':'dni'}`:'Uzupełnij schemat podawania';
   let equivalent=hasResult?(r.singleMg!==null?`${n(r.singleMg,4)} mg${f.doseBasisIngredient?' '+f.doseBasisIngredient:''} na podanie`:`Ilość preparatu na jedno podanie`):'Dawka, częstotliwość i czas stosowania.';
   if(f.ingredients && hasResult) equivalent+=` · ${n(r.singleUnits*f.ingredients[1].amountMg/f.ingredients[1].perMl,3)} mg kw. klawulanowego`;
   $('#dose-equivalent').textContent=equivalent;
