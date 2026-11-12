@@ -7,7 +7,9 @@ Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym
 ## Zakres pierwszej wersji
 
 - Profile stomatologiczny i kardiologiczny oraz katalog wybranych preparatów z odnośnikami do źródeł.
-- Profil weterynaryjny z wymaganym wyborem: pies, kot, koń, chomik lub szczur. Preparat, droga podania i schemat są wprowadzane ręcznie przez lekarza weterynarii; brak automatycznej weterynaryjnej bazy dawek i przeciwwskazań. Gatunek i masa są wymagane i nie są zapamiętywane. Zmiana gatunku czyści poprzedni preparat i schemat. Profil specjalizacji pozostaje zapisany.
+- Profil weterynaryjny z wymaganym wyborem: pies, kot, koń, chomik lub szczur. Katalog obejmuje Metacam (osobne stężenia dla psa, kota i konia), Cardisure Flavoured, Onsior, Cerenię i informacyjną kartę koncentratu Enrobactin dla chomika/szczura. Dokładne postaci są filtrowane według gatunku. Moc, droga doustna i opakowanie pochodzą z danych produktu; dawkę, częstość i czas terapii zawsze wpisuje lekarz weterynarii. Można przejść do własnego preparatu. Brak automatycznej weterynaryjnej bazy dawek i przeciwwskazań. Gatunek i masa są wymagane i nie są zapamiętywane. Zmiana gatunku czyści poprzedni preparat i schemat. Profil specjalizacji pozostaje zapisany.
+- Enrobactin jest koncentratem wymagającym przygotowania: karta katalogowa nie oblicza ani nie kopiuje dawki do podania, także w trybie jednostek. Stężenie koncentratu nie trafia do przelicznika. Gotowy roztwór może być opisany odrębnie w formularzu ręcznym.
+- Źródła i ograniczenia katalogu weterynaryjnego opisuje [veterinary-catalogue.md](veterinary-catalogue.md). Rejestracja i postać nie oznaczają oceny wskazania, przeciwwskazań ani doboru leczenia.
 - Dla zwierząt masa jest zawsze w kilogramach (100 g = 0,1 kg); techniczny zakres wejścia do 2000 kg. Wiek można podać w latach lub miesiącach. Wynik weterynaryjny zawiera gatunek, masę i drogę podania; pozostaje przeliczeniem arytmetycznym wymagającym weryfikacji, nie kompletną receptą weterynaryjną.
 - Przeliczenia dawek stałych, dawek zależnych od masy oraz ilości preparatu.
 - Obsługa różnych jednostek podania, liczby opakowań i przygotowanie tekstu `D.S.`.
@@ -70,7 +72,8 @@ Po zmianie reguł klinicznych trzeba osobno zaktualizować źródło, datę wery
 | --- | --- |
 | `index.html`, `styles.css`, `app.js` | Interfejs i przepływ pracy |
 | `engine.js`, `engine.test.mjs` | Deterministyczne przeliczenia i testy |
-| `catalogue.js` | Dane wybranych produktów i źródła |
+| `catalogue.js`, `catalogue-selection.js` | Dane produktów, źródła i filtrowanie postaci według gatunku |
+| `catalogue-selection.test.mjs`, `veterinary-catalogue.md` | Kontrole izolacji gatunków i dokumentacja katalogu |
 | `manifest.webmanifest`, `sw.js`, `icons/` | Instalacja PWA i cache offline |
 | `.github/workflows/pages.yml` | Testy i publikacja GitHub Pages |
 

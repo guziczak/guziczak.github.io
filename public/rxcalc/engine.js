@@ -46,6 +46,12 @@ export function calculate(input = {}) {
     unitLabel: typeof input.unitLabel === 'string' ? input.unitLabel : '',
     expiryWasteUnits: null, singleUseContainers: null, unusedSingleUseVolume: null,
   };
+  // Some catalogue entries are reference-only concentrates. Unit mode must not
+  // bypass a preparation requirement or expose their undiluted volume as a dose.
+  if (input.calculationBlocked === true) {
+    result.errors.push('Preparat wymaga przygotowania przed podaniem. Automatyczne przeliczenie dawki i ilości preparatu jest niedostępne — sprawdź sposób przygotowania w aktualnej ChPL.');
+    return result;
+  }
   const invalid = [];
   const patientKind = input.patientKind === undefined ? 'human' : input.patientKind;
   const animal = patientKind === 'animal';

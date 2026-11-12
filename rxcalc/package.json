@@ -5,7 +5,7 @@
   "description": "Lokalny kalkulator dawek i zapotrzebowania na leki",
   "type": "module",
   "scripts": {
-    "test": "node --test engine.test.mjs",
+    "test": "node --test *.test.mjs",
     "build": "node build.mjs"
   }
 }

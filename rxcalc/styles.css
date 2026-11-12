@@ -85,3 +85,15 @@ input,select,textarea{min-width:0;max-width:100%}
   .specialty-switch button{flex-direction:column;gap:5px;padding:9px 4px;min-height:58px;font-size:11px;line-height:1.35}
   .specialty-switch button svg{width:17px;height:17px}
 }
+
+/* Species-scoped catalogue and reference-only preparations. */
+.regimen-body{border:0;padding:0;margin:0;min-inline-size:0;max-width:100%}
+.regimen-body:disabled{opacity:.55}
+.catalogue-notice{display:flex;gap:9px;align-items:flex-start;padding:12px 13px;margin-top:14px;border-radius:9px;background:var(--surface-soft);color:var(--muted);font-size:11px;line-height:1.65;overflow-wrap:anywhere}
+.catalogue-notice>svg{width:17px;height:17px;margin-top:2px}
+.catalogue-notice>div{min-width:0}
+.catalogue-notice p{margin:0}
+.catalogue-notice strong{color:var(--ink)}
+.catalogue-notice.reference-only{background:var(--warn-bg);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 20%,transparent)}
+.catalogue-notice.reference-only strong{display:block;color:var(--warn);margin-bottom:5px}
+.catalogue-notice.reference-only a{display:inline-block;margin-top:7px}

@@ -6,7 +6,7 @@
  */
 
 export const CATALOGUE_META = Object.freeze({
-  version: '2026.11.12',
+  version: '2026.11.12.vet.1',
   sourceCheckedAt: '2026-11-12',
   status: 'Wersja do weryfikacji',
   scope: 'Dane wybranych postaci i opakowań do przeliczeń. Dawka, wskazanie, interakcje i przeciwwskazania wymagają oceny lekarza na podstawie aktualnej ChPL.',
@@ -25,6 +25,12 @@ export const CATEGORIES = Object.freeze({
     { id: 'bloodpressure', label: 'ACE-I / ARB' },
     { id: 'diuretic', label: 'Diuretyki' },
     { id: 'lipid', label: 'Lipidy' },
+  ],
+  veterinary: [
+    { id: 'pain', label: 'Przeciwbólowe' },
+    { id: 'vet-cardio', label: 'Serce' },
+    { id: 'antiemetic', label: 'Przeciwwymiotne' },
+    { id: 'antibiotics', label: 'Antybiotyki' },
   ],
 });
 
@@ -51,6 +57,106 @@ const liquid = (id, label, form, concentrationMg, concentrationMl, sizes, source
   packOptions: packages(sizes, 'ml'), sourceUrl,
   sourceLabel: 'ChPL · skład, postać i opakowania', routeLabel: 'doustnie', notes: [], ...options,
 });
+
+// Species belong to the exact formulation, never to the substance alone.
+// These entries supply product metadata only; clinical regimens stay empty.
+const upd = id => `https://medicines.health.europa.eu/veterinary/en/${id}`;
+const vet = (targetSpecies, options = {}) => ({ targetSpecies, defaultMode: 'perKgDose', ...options });
+const VETERINARY_DRUGS = [
+  {
+    id: 'vet-metacam', name: 'Metacam', substance: 'Meloxicamum',
+    category: 'pain', specialties: ['veterinary'],
+    searchTerms: ['meloksykam', 'meloxicam', 'nlpz', 'ból', 'zawiesina'],
+    forms: [
+      liquid('metacam-dog-1-5', 'Metacam · 1,5 mg/ml · pies', 'suspension', 1.5, 1, [10, 32, 100, 180], 'https://www.vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2177020.PDF', vet(['dog'], {
+        sourceLabel: 'SPC · VMD (EN)', registrationUrl: upd('600000001530'), doseBasisIngredient: 'meloksykamu',
+        unmodelledShelfLifeMonths: 6,
+        notes: [
+          'Zawiesina doustna dla psów. Wstrząsnąć przed użyciem. Objętość w ml; podziałka strzykawki w kg nie jest podziałką w ml.',
+          'Dawkowanie zależy od etapu leczenia. Każdy etap z inną dawką przelicz osobno.',
+          'Po otwarciu: 6 miesięcy. Kalkulator nie wyznacza daty ważności według kalendarza; przy długiej terapii sprawdź zapotrzebowanie z datą otwarcia.',
+          'Metadane UE: UPD. Szczegółowa dokumentacja: brytyjski urząd VMD, w języku angielskim. Potwierdź aktualne warunki stosowania w Polsce.',
+        ],
+      })),
+      liquid('metacam-cat-0-5', 'Metacam · 0,5 mg/ml · kot', 'suspension', 0.5, 1, [3], 'https://www.vmd.defra.gov.uk/productinformationdatabase/files/QRD_Documents/QRD-Auth_2177231.PDF', vet(['cat'], {
+        sourceLabel: 'Dokumentacja produktu · VMD (EN)', registrationUrl: upd('600000001701'), doseBasisIngredient: 'meloksykamu', shelfLifeDays: 14,
+        notes: [
+          'Zawiesina doustna. Wstrząsnąć przed użyciem. Dawka i etap leczenia wymagają decyzji lekarza weterynarii.',
+          'W katalogu ujęto butelkę 3 ml: trwałość po otwarciu 14 dni, uwzględniona w opakowaniach. Większe butelki mają inną trwałość i nie są tu modelowane.',
+          'Produkt obejmuje także świnki morskie; nie oznacza to przypisania go chomikom ani szczurom.',
+          'Metadane UE: UPD. Szczegóły produktu: VMD (EN). Sprawdź aktualne warunki stosowania w Polsce.',
+        ],
+      })),
+      liquid('metacam-horse-15', 'Metacam · 15 mg/ml · koń', 'suspension', 15, 1, [100, 250], 'https://vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2177034.PDF', vet(['horse'], {
+        sourceLabel: 'SPC · VMD (EN)', registrationUrl: upd('600000001534'), doseBasisIngredient: 'meloksykamu',
+        unmodelledShelfLifeMonths: 6,
+        notes: [
+          'Zawiesina doustna dla koni. Wstrząsnąć przed użyciem. Podziałka strzykawki w kg nie jest podziałką w ml.',
+          'Po otwarciu: 6 miesięcy. Przy długiej terapii sprawdź opakowania z uwzględnieniem daty otwarcia; kalkulator nie modeluje kalendarzowej trwałości.',
+          'Schemat, przeciwwskazania i karencję ocenia lekarz weterynarii; zapis kalkulatora nie jest pełną receptą weterynaryjną.',
+          'Metadane UE: UPD. Szczegółowa dokumentacja: VMD (EN). Potwierdź aktualne warunki stosowania w Polsce.',
+        ],
+      })),
+    ],
+  },
+  {
+    id: 'vet-cardisure', name: 'Cardisure Flavoured', substance: 'Pimobendanum',
+    category: 'vet-cardio', specialties: ['veterinary'],
+    searchTerms: ['pimobendan', 'serce', 'niewydolność serca'],
+    forms: [1.25, 2.5, 5, 10].map(strength => tablet(`cardisure-${strength}`, `Cardisure Flavoured · ${String(strength).replace('.', ',')} mg`, strength, [20, 50, 100, 250], 'https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/25271/leaflet', vet(['dog'], {
+      sourceLabel: 'Ulotka urzędowa · RPL (PL)', doseBasisIngredient: 'pimobendanu',
+      allowedFractions: strength === 1.25 ? [1, 0.5] : [1, 0.25, 0.5, 0.75],
+      routeLabel: 'doustnie, na czczo, co najmniej godzinę przed posiłkiem',
+      notes: [
+        'Dla psów. Moc 1,25 mg: równe połowy; pozostałe moce: równe ćwiartki.',
+        'Fragment przechowuj w blistrze, do 3 dni. Ten termin nie dotyczy całego opakowania.',
+      ],
+    }))),
+  },
+  {
+    id: 'vet-onsior', name: 'Onsior', substance: 'Robenacoxibum',
+    category: 'pain', specialties: ['veterinary'],
+    searchTerms: ['robenakoksyb', 'robenacoxib', 'nlpz', 'ból'],
+    forms: [tablet('onsior-cat-6', 'Onsior · 6 mg · kot', 6, [6, 12, 30, 60], 'https://www.vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2652572.PDF', vet(['cat'], {
+      sourceLabel: 'SPC · VMD (EN)', registrationUrl: upd('600000004134'), doseBasisIngredient: 'robenakoksybu', allowedFractions: [1],
+      notes: [
+        'Postać dla kotów. Tabletek nie dzielić ani nie łamać. Katalog uwzględnia wyłącznie całe tabletki.',
+        'Dawkowanie zależy od wskazania, masy i czasu leczenia; ustala je lekarz weterynarii.',
+        'Metadane UE: UPD. Szczegółowa dokumentacja: VMD (EN). Sprawdź aktualne warunki stosowania w Polsce.',
+      ],
+    }))],
+  },
+  {
+    id: 'vet-cerenia', name: 'Cerenia', substance: 'Maropitantum',
+    category: 'antiemetic', specialties: ['veterinary'],
+    searchTerms: ['maropitant', 'wymioty', 'nudności'],
+    forms: [tablet('cerenia-dog-16', 'Cerenia · 16 mg · pies', 16, [4], 'https://www.vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2243320.PDF', vet(['dog'], {
+      sourceLabel: 'SPC · VMD (EN)', registrationUrl: upd('600000001524'), doseBasisIngredient: 'maropitantu', allowedFractions: [1, 0.5],
+      notes: [
+        'Tabletka zawiera 16 mg maropitantu w postaci soli. Przeliczenie odnosi się do maropitantu, nie masy cytrynianu.',
+        'Tabletki można dzielić na połowy. Niewykorzystaną połówkę zużyć w ciągu 2 dni; termin nie dotyczy całego opakowania.',
+        'Postać doustna dla psów. Schemat zależy od wskazania. Metadane UE: UPD; szczegóły: VMD (EN).',
+      ],
+    }))],
+  },
+  {
+    id: 'vet-enrobactin', name: 'Enrobactin', substance: 'Enrofloxacinum',
+    category: 'antibiotics', specialties: ['veterinary'],
+    searchTerms: ['enrofloksacyna', 'enrofloxacin', 'koncentrat', 'antybiotyk'],
+    forms: [liquid('enrobactin-rodents-25', 'Enrobactin · 25 mg/ml · koncentrat', 'solution', null, null, [10, 30, 50], 'https://assets.hpra.ie/products/Animal/905/ie-spc-nlv0315001a004-mr-vpa10475-020-001-en_30042026111356.pdf', vet(['hamster', 'rat'], {
+      sourceLabel: 'SPC · HPRA (EN)', registrationUrl: upd('600000034874'),
+      calculationBlocked: true, defaultMode: 'units', unitOnly: true,
+      referenceConcentrationMg: 25, referenceConcentrationMl: 1,
+      calculationNote: 'Nie podawać nierozcieńczonego koncentratu. Ta karta pokazuje dane produktu; obliczenia i kopiowanie dawki są wyłączone. Lekarz weterynarii ustala przygotowanie i stężenie gotowego roztworu.',
+      notes: [
+        'Koncentrat do sporządzania roztworu doustnego. Stężenie 25 mg/ml dotyczy koncentratu; nie jest automatycznie przenoszone do objętości podania.',
+        'Docelowe gatunki obejmują gryzonie. HPRA wymienia chomika i szczura; polski wpis UPD potwierdza gryzonie.',
+        'Otwarty koncentrat: 28 dni. Przygotowany roztwór: zużyć bezpośrednio po przygotowaniu.',
+        'Polski wpis rejestracyjny: UPD. Szczegóły: HPRA (EN). Nie określamy automatycznie rozcieńczenia ani dawkowania.',
+      ],
+    }))],
+  },
+];
 
 export const DRUGS = [
   {
@@ -230,4 +336,5 @@ export const DRUGS = [
       ],
     })),
   },
+  ...VETERINARY_DRUGS,
 ];

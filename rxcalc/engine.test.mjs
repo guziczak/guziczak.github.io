@@ -279,3 +279,29 @@ test('animal results never imply clinical clearance even with user-supplied limi
   assert.equal(critical.valid, false);
   assert.equal(critical.status, 'critical');
 });
+
+test('reference-only preparation is blocked before any mg-based quantity is calculated', () => {
+  for (const doseMode of ['fixed', 'perKgDay', 'perKgDose']) {
+    const input = {...animalArithmetic, species: 'rat', weight: 0.3, doseMode, calculationBlocked: true};
+    const r = calculate(input);
+    assert.equal(r.valid, false, doseMode);
+    assert.equal(r.singleUnits, null, doseMode);
+    assert.equal(r.singleMg, null, doseMode);
+    assert.equal(r.packages, null, doseMode);
+    assert.match(r.errors.join(' '), /wymaga przygotowania/);
+    assert.match(r.errors.join(' '), /przeliczenie.*niedostępne/);
+    assert.equal(calculate({...input, calculationBlocked: false}).valid, true);
+  }
+});
+
+test('unit mode cannot bypass a reference-only preparation block', () => {
+  const input = {...animalArithmetic, species: 'rat', weight: 0.3, doseMode: 'units', dose: 0.1, calculationBlocked: true};
+  const r = calculate(input);
+  assert.equal(r.valid, false);
+  assert.equal(r.singleUnits, null);
+  assert.equal(r.dailyUnits, null);
+  assert.equal(r.totalUnits, null);
+  assert.equal(r.packages, null);
+  assert.match(r.errors.join(' '), /wymaga przygotowania/);
+  assert.equal(calculate({...input, calculationBlocked: false}).valid, true);
+});
