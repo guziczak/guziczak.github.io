@@ -536,3 +536,19 @@ html{scroll-padding-top:calc(var(--pinned-header-offset) + 12px)}
 .search-explanation{display:block;margin-top:5px;font-size:11px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
 .search-explanation-label{font-weight:400}
 @media(max-width:780px){.search-explanation{font-size:12px}}
+
+/* Explicit tablet amounts stay beside the editable dose in the requested 2 / 1 / half order. */
+.tablet-dose-field{min-width:0}
+.tablet-dose-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+.tablet-dose-choice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:68px;padding:9px 6px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--muted);font:inherit;line-height:1.35;text-align:center;transition:background 140ms ease,border-color 140ms ease}
+.tablet-dose-choice strong{font-size:15px;font-weight:650;color:var(--ink);overflow-wrap:anywhere}
+.tablet-dose-choice strong small{font-size:11px;font-weight:500}
+.tablet-dose-choice>span{font-size:11px}
+.tablet-dose-choice.active{background:var(--surface-soft);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent)}
+.tablet-dose-choice.active strong{color:var(--accent)}
+.tablet-dose-choice:not(:disabled):hover{border-color:var(--accent)}
+.tablet-dose-choice:disabled{cursor:not-allowed;background:var(--surface-soft);color:var(--muted)}
+.tablet-dose-choice:disabled strong{color:var(--muted);font-weight:500}
+.tablet-dose-reason{font-size:10px;line-height:1.4;overflow-wrap:anywhere}
+.tablet-dose-reason:empty{display:none}
+@media(max-width:780px){.tablet-dose-choice{min-height:76px}.tablet-dose-choice strong{font-size:17px}.tablet-dose-choice>span{font-size:12px}.tablet-dose-reason{font-size:11px}}
