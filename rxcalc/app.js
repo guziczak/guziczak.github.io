@@ -6,7 +6,7 @@ import { availableRegimens, resolveRegimen } from './regimen-engine.js';
 import { patientFieldsFor } from './workflow.js';
 import { HUMAN_REGIMENS } from './human-regimens.js';
 import { availableHumanRegimens, resolveHumanRegimen } from './human-regimen-engine.js';
-import { catalogueProducts, searchProducts } from './product-search.js';
+import { catalogueProducts, searchProducts, highlightSegments, searchMatchDetails } from './product-search.js';
 import { humanDosingText, instructionDosingText } from './dental-output.js';
 import { createSelectMenus } from './select-menu.js';
 
@@ -364,6 +364,19 @@ function modeOptions(f) {
 const doseLabel = () => ({ fixed:'Dawka jednorazowa', perKgDay:'Dawka na kg / dobę', perKgDose:'Dawka na kg / podanie', units:'Ilość na podanie' }[state.doseMode]);
 const doseUnit = () => ({ fixed:'mg', perKgDay:'mg/kg/d', perKgDose:'mg/kg', units:getForm().unitLabel }[state.doseMode]);
 
+function highlightedSearchText(value) {
+  return highlightSegments(value, state.search).map(part => part.matched
+    ? `<strong class="search-match">${esc(part.text)}</strong>` : esc(part.text)).join('');
+}
+function productSearchHit(row) {
+  const substance = row.drug.substanceLabel || row.drug.substance || '';
+  const visibleText = new Set([row.form.label, row.pack.label, substance]);
+  const details = searchMatchDetails(row.drug, state.search, row.form, row.pack)
+    .filter(detail => !visibleText.has(detail.text));
+  const explanation = details.length ? `<span class="search-explanation"><span class="search-explanation-label">Pasuje:</span> ${details.map(detail => highlightedSearchText(detail.text)).join(' · ')}</span>` : '';
+  return `<button class="drug-card product-hit" data-action="product" data-value="${esc(row.key)}"><span class="drug-icon">${icon(row.form.form === 'tablet' ? 'pill' : 'bottle')}</span><span class="product-hit-copy"><span class="drug-name">${highlightedSearchText(row.form.label)}</span><span class="product-pack">${highlightedSearchText(row.pack.label)}</span><span class="drug-description">${highlightedSearchText(substance)}${isReference(row.form) ? ' · karta informacyjna' : productKindLabel(row.form) ? ` · ${esc(productKindLabel(row.form))}` : ''}</span>${explanation}</span><span class="product-hit-arrow">${icon(isReference(row.form) ? 'book' : 'arrow')}</span></button>`;
+}
+
 function renderDrugs() {
   const node = $('#drug-list'); if (!node) return;
   const query = normalize(state.search);
@@ -374,7 +387,7 @@ function renderDrugs() {
     node.hidden = false;
     $('#favorites-inline').innerHTML = '';
     $('#catalogue-heading').textContent = `${products.length} ${variantUnit(products.length)} · preparat, moc i opakowanie`;
-    node.innerHTML = shown.length ? shown.map(row => `<button class="drug-card product-hit" data-action="product" data-value="${esc(row.key)}"><span class="drug-icon">${icon(row.form.form === 'tablet' ? 'pill' : 'bottle')}</span><span class="product-hit-copy"><span class="drug-name">${esc(row.form.label)}</span><span class="product-pack">${esc(row.pack.label)}</span><span class="drug-description">${esc(row.drug.substanceLabel || row.drug.substance)}${isReference(row.form) ? ' · karta informacyjna' : productKindLabel(row.form) ? ` · ${esc(productKindLabel(row.form))}` : ''}</span></span><span class="product-hit-arrow">${icon(isReference(row.form) ? 'book' : 'arrow')}</span></button>`).join('') : '<div class="empty-search">Nie znaleziono takiego wariantu.<br>Wpisz nazwę, substancję lub moc.</div>';
+    node.innerHTML = shown.length ? shown.map(productSearchHit).join('') : '<div class="empty-search">Nie znaleziono takiego wariantu.<br>Wpisz nazwę, substancję lub moc.</div>';
     $('#catalogue-more').innerHTML = products.length > 8 ? `<button class="show-more" data-action="browse-catalogue" aria-expanded="${ui.showAll}">${ui.showAll ? 'Pokaż mniej' : `Pozostałe warianty (${products.length - 8})`} ${icon('down')}</button>` : '';
     return;
   }

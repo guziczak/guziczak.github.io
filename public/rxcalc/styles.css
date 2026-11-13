@@ -515,3 +515,18 @@ dl.result-review{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2f
 }
 @media(prefers-reduced-motion:reduce){.rx-select-menu{animation:none}.rx-select-trigger,.rx-select-chevron,.rx-select-option{transition:none}}
 @media print{.rx-select-menu,.rx-select-package{display:none!important}}
+
+/* Persistent controls share one safe-area-aware offset with result/focus scrolling. */
+:root{--pinned-bar-height:68px;--pinned-header-offset:calc(var(--pinned-bar-height) + env(safe-area-inset-top,0px))}
+html{scroll-padding-top:calc(var(--pinned-header-offset) + 12px)}
+.topbar{--bar-height:var(--pinned-bar-height);position:sticky;top:0;z-index:30;box-shadow:0 3px 12px #10251c08}
+@media(min-width:781px){.result-column{top:calc(var(--pinned-header-offset) + 16px)}}
+@media(max-width:780px){:root{--pinned-bar-height:62px}}
+
+/* Match emphasis uses the original catalogue text, never generated clinical keywords. */
+.product-hit .drug-name{font-weight:550}
+.search-match{font-weight:800;color:var(--ink)}
+.product-pack .search-match{color:inherit}
+.search-explanation{display:block;margin-top:5px;font-size:11px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+.search-explanation-label{font-weight:400}
+@media(max-width:780px){.search-explanation{font-size:12px}}

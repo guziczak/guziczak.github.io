@@ -1,5 +1,5 @@
 /* RxCalc only caches its static application. Patient inputs never enter this worker. */
-const CACHE_VERSION = '2026-11-13.14';
+const CACHE_VERSION = '2026-11-13.15';
 const SCOPE = new URL(self.registration.scope);
 const CACHE_PREFIX = `rxcalc:${encodeURIComponent(SCOPE.pathname)}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
