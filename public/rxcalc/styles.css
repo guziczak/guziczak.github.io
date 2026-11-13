@@ -541,6 +541,9 @@ html{scroll-padding-top:calc(var(--pinned-header-offset) + 12px)}
 .tablet-dose-field{min-width:0}
 .tablet-dose-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
 .tablet-dose-choice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:68px;padding:9px 6px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--muted);font:inherit;line-height:1.35;text-align:center;transition:background 140ms ease,border-color 140ms ease}
+.tablet-dose-choice .tablet-dose-icon{display:block;width:48px;height:32px;flex-shrink:0;margin:0 0 2px;stroke-width:1.8;color:var(--ink)}
+.tablet-dose-choice.active .tablet-dose-icon{color:var(--accent)}
+.tablet-dose-choice:disabled .tablet-dose-icon{color:var(--muted)}
 .tablet-dose-choice strong{font-size:15px;font-weight:650;color:var(--ink);overflow-wrap:anywhere}
 .tablet-dose-choice strong small{font-size:11px;font-weight:500}
 .tablet-dose-choice>span{font-size:11px}
