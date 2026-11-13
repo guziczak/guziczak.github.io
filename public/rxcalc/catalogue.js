@@ -7,9 +7,11 @@
 
 import { EQUINE_NSAID_DRUGS } from './equine-nsaids.js';
 import { EQUINE_ANTIPARASITIC_DRUGS } from './equine-antiparasitics.js';
+import { DENTAL_SYSTEMIC_FORM_ADDITIONS, DENTAL_SYSTEMIC_FORM_PATCHES } from './dental-systemic.js';
+import { DENTAL_TOPICAL_DRUGS, DENTAL_TOPICAL_FORM_PATCHES } from './dental-topicals.js';
 
 export const CATALOGUE_META = Object.freeze({
-  version: '2026.11.13.equine.2',
+  version: '2026.11.13.dental.1',
   updatedAt: '2026-11-13',
   sourceCheckedAt: '2026-11-12',
   status: 'Wersja do weryfikacji',
@@ -219,7 +221,7 @@ const VETERINARY_DRUGS = [
   },
 ];
 
-export const DRUGS = [
+const BASE_DRUGS = [
   {
     id: 'amoxicillin-clavulanate',
     name: 'Amoksycylina + klawulanian',
@@ -400,4 +402,17 @@ export const DRUGS = [
   ...VETERINARY_DRUGS,
   ...EQUINE_NSAID_DRUGS,
   ...EQUINE_ANTIPARASITIC_DRUGS,
+  ...DENTAL_TOPICAL_DRUGS,
 ];
+
+const dentalPatches = [...DENTAL_SYSTEMIC_FORM_PATCHES, ...DENTAL_TOPICAL_FORM_PATCHES];
+export const DRUGS = BASE_DRUGS.map(drug => ({
+  ...drug,
+  forms: [
+    ...drug.forms.map(form => ({
+      ...form,
+      ...(dentalPatches.find(patch => patch.drugId === drug.id && patch.formId === form.id)?.changes || {}),
+    })),
+    ...DENTAL_SYSTEMIC_FORM_ADDITIONS.filter(addition => addition.drugId === drug.id).map(addition => addition.form),
+  ],
+}));

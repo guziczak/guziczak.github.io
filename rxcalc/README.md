@@ -27,6 +27,18 @@ To pierwsza wersja pomocniczego kalkulatora. Katalog oraz zakres kontroli nie za
 
 Praca offline jest dostępna po udanym zarejestrowaniu service workera i zapisaniu plików aplikacji. Pierwsze uruchomienie, instalacja aktualizacji i otwieranie zewnętrznych ChPL wymagają połączenia. System lub przeglądarka mogą usunąć pamięć witryny, co wymaga ponownego otwarcia online.
 
+## Rozszerzenie stomatologiczne — 13.11.2026
+
+- Katalog: **21 grup, 28 postaci i 48 wariantów z opakowaniem**. Obejmuje leki, wyroby medyczne, kosmetyk oraz wyraźnie oznaczone zagraniczne i historyczne karty referencyjne. Nie jest wykazem bieżących stanów aptek.
+- Wpisanie substancji, marki, mocy lub wielkości opakowania pokazuje dokładne warianty. Jeden wybór ustala preparat, moc i opakowanie. Można wyszukać kilka cech jednocześnie, np. `amoksycylina 1000 14`.
+- **31 jawnie wybieranych schematów źródłowych:** 18 liczbowych i 13 instrukcyjnych. Wskazanie wybiera lekarz. Stałe wartości są uzupełniane; zakresy pozostają do decyzji lekarza. Nie ustawiamy automatycznie końca zakresu ani czasu antybiotykoterapii.
+- Podpowiedzi liczbowe sprawdzają warunki konkretnego schematu: wiek, masę, czas, postać, dawkę i częstość, a tam, gdzie trzeba, potwierdzenie oceny nerek. Znany CrCl jest opcjonalny i nie jest zamieniany z eGFR. Schematy redukcji nerkowej są poza zakresem tego modułu.
+- Dobowy limit w mg/kg jest przeliczany na aktualną masę. Granice zakresu antybiotyku są podpisane jako granice wybranego schematu, nie uniwersalne maksimum substancji. Niższy limit lekarza obowiązuje także w kopiowanym tekście.
+- Schematy doraźne zachowują słowa „w razie potrzeby”, maksymalną liczbę podań oraz minimalny odstęp. Opakowania oznaczają maksymalne zaplanowane zużycie.
+- Żele z porcją opisaną słownie i zabiegi miejscowe mają instrukcje bez zmyślonej dawki w gramach, FTU czy liczby tub. Lekarz może jawnie wpisać liczbę opakowań. Wymagany źródłowo czas stosowania trafia do skopiowanego tekstu.
+- Warianty referencyjne nie generują dawkowania. Wyroby i kosmetyk są opisane właściwą kategorią, a ich zapis zaczyna się od „Preparat”, nie od „Rp.”.
+- Źródła, dokładny zakres, ograniczenia i przykłady do niezależnego przeglądu opisuje [dental-source-review.md](dental-source-review.md). Testy programu i sprawdzenie źródeł nie stanowią walidacji klinicznej.
+
 ## Rozszerzenie praktyki końskiej — 13.11.2026
 
 - Polska ChPL jest podpięta bezpośrednio do każdego z sześciu nowych preparatów i dziewięciu nowych schematów. Wybór wskazania i etapu jest jawny; brak automatycznego rozpoznania lub harmonogramu odrobaczania.
@@ -95,6 +107,10 @@ Po zmianie reguł klinicznych trzeba osobno zaktualizować źródło, datę wery
 | `engine.js`, `engine.test.mjs`, `oral-forms.test.mjs` | Deterministyczne przeliczenia i testy |
 | `catalogue.js`, `catalogue-selection.js`, `equine-nsaids.js`, `equine-antiparasitics.js` | Dane produktów, źródła i filtrowanie postaci według gatunku |
 | `regimens.js`, `regimen-engine.js` | Jawnie wybierane schematy źródłowe i kontrola ich zakresu |
+| `dental-systemic.js`, `dental-topicals.js`, `human-regimens.js` | Źródłowe dane stomatologiczne: preparaty, postaci, opakowania, schematy i instrukcje |
+| `human-regimen-engine.js`, `dental-output.js` | Warunki schematu dla ludzi i teksty zachowujące doraźne limity |
+| `product-search.js` | Wyszukiwanie dokładnych wariantów preparat–moc–opakowanie |
+| `dental-source-review.md`, `dental-*.test.mjs`, `human-regimen-engine.test.mjs`, `product-search.test.mjs` | Ścieżka źródeł oraz testy zakresów i integracji |
 | `regimen-engine.test.mjs`, `regimens.test.mjs`, `equine-regimens.test.mjs`, `equine-practice.test.mjs`, `veterinary-vials.test.mjs` | Testy granic wieku/masy, faz, czasu i zgodności z katalogiem |
 | `catalogue-selection.test.mjs`, `veterinary-catalogue.md` | Kontrole izolacji gatunków i dokumentacja katalogu |
 | `manifest.webmanifest`, `sw.js`, `icons/` | Instalacja PWA i cache offline |

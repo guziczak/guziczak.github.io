@@ -16,9 +16,12 @@ export function patientFieldsFor({
   const child = !veterinary && patientType === 'child';
   return {
     age: entered(age) || form?.minAge != null
-      || (veterinary ? source?.minimumAge != null : child || hasCondition(form, AGE_CONDITIONS)),
+      || (veterinary ? source?.minimumAge != null : child || hasCondition(form, AGE_CONDITIONS)
+        || source?.minAgeMonths != null || source?.maxAgeMonths != null),
     weight: entered(weight) || veterinary || child
-      || ['perKgDay', 'perKgDose'].includes(doseMode) || hasCondition(form, WEIGHT_CONDITIONS),
+      || ['perKgDay', 'perKgDose'].includes(doseMode) || hasCondition(form, WEIGHT_CONDITIONS)
+      || source?.minWeight != null || source?.maxWeight != null
+      || source?.maxDailyMgPerKg != null || source?.maxSingleMgPerKg != null,
     foodChain: veterinary && species === 'horse'
       && (form?.requiresFoodChainExclusion === true || source?.requiresFoodChainExclusion === true),
   };
