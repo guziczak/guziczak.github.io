@@ -382,10 +382,10 @@ function prefillSourceTabletDose() {
 const tabletChoiceLabel = choice => `${choice.tablets===0.5?'½':choice.tablets} ${getForm()?.unitLabel||'tabl.'}`;
 const tabletChoiceSelected = choice => choice.allowed&&num(state.dose)===choice.value;
 function tabletAmountIcon(tablets) {
-  const whole = x => `<circle cx="${x}" cy="16" r="10" fill="currentColor" fill-opacity=".12"/><path d="M${x-7} 16h14"/>`;
+  const whole = (x,y) => `<rect x="${x}" y="${y}" width="32" height="12" rx="6" fill="currentColor" fill-opacity=".12"/><path d="M${x+16} ${y+3}v6"/>`;
   const shape = tablets===0.5
-    ? '<path d="M14 16l3-1.5 3.5 3 3.5-3 3.5 3 3.5-3 3 1.5a10 10 0 0 1-20 0Z" fill="currentColor" fill-opacity=".12"/>'
-    : tablets===2 ? whole(12)+whole(36) : whole(24);
+    ? '<path d="M32 10H22a6 6 0 0 0 0 12h10l-1.5-3 3-3-3-3 1.5-3Z" fill="currentColor" fill-opacity=".12"/>'
+    : tablets===2 ? whole(2,1)+whole(14,19) : whole(8,10);
   return `<svg class="tablet-dose-icon" viewBox="0 0 48 32" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shape}</svg>`;
 }
 function tabletChoiceReason(choice) {
