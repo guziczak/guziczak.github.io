@@ -5,8 +5,11 @@
  * No regimen is inferred from a diagnosis. Prescriber enters and confirms it.
  */
 
+import { EQUINE_NSAID_DRUGS } from './equine-nsaids.js';
+import { EQUINE_ANTIPARASITIC_DRUGS } from './equine-antiparasitics.js';
+
 export const CATALOGUE_META = Object.freeze({
-  version: '2026.11.13.equine.1',
+  version: '2026.11.13.equine.2',
   updatedAt: '2026-11-13',
   sourceCheckedAt: '2026-11-12',
   status: 'Wersja do weryfikacji',
@@ -65,7 +68,7 @@ const liquid = (id, label, form, concentrationMg, concentrationMl, sizes, source
 // Species belong to the exact formulation, never to the substance alone.
 // Product metadata never silently selects a regimen; explicit source records live in regimens.js.
 const upd = id => `https://medicines.health.europa.eu/veterinary/en/${id}`;
-const vet = (targetSpecies, options = {}) => ({ targetSpecies, defaultMode: 'perKgDose', ...options });
+const vet = (targetSpecies, options = {}) => ({ targetSpecies, routeCode: 'oral', defaultMode: 'perKgDose', ...options });
 const horse = (options = {}) => vet(['horse'], { sourceCheckedAt: '2026-11-13', ...options });
 const oralMass = (id, label, form, strengthMg, packOptions, sourceUrl, options = {}) => ({
   ...baseForm, id, label, form, unitLabel: 'g', strengthMg,
@@ -74,7 +77,7 @@ const oralMass = (id, label, form, strengthMg, packOptions, sourceUrl, options =
 });
 const VETERINARY_DRUGS = [
   {
-    id: 'vet-metacam', name: 'Metacam', substance: 'Meloxicamum',
+    id: 'vet-metacam', name: 'Metacam', substance: 'Meloxicamum', substanceLabel: 'Meloksykam',
     category: 'pain', specialties: ['veterinary'],
     searchTerms: ['meloksykam', 'meloxicam', 'nlpz', 'ból', 'zawiesina'],
     forms: [
@@ -110,7 +113,7 @@ const VETERINARY_DRUGS = [
     ],
   },
   {
-    id: 'vet-panacur', name: 'Panacur', substance: 'Fenbendazolum',
+    id: 'vet-panacur', name: 'Panacur', substance: 'Fenbendazolum', substanceLabel: 'Fenbendazol',
     category: 'antiparasitic', specialties: ['veterinary'],
     searchTerms: ['fenbendazol', 'pasożyty', 'nicienie', 'słupkowce', 'owsiki', 'glisty', 'parascaris'],
     forms: [
@@ -127,7 +130,7 @@ const VETERINARY_DRUGS = [
     ],
   },
   {
-    id: 'vet-gastazole', name: 'Gastazole', substance: 'Omeprazolum',
+    id: 'vet-gastazole', name: 'Gastazole', substance: 'Omeprazolum', substanceLabel: 'Omeprazol',
     category: 'gastric', specialties: ['veterinary'], searchTerms: ['omeprazol', 'wrzody', 'żołądek', 'nawroty'],
     forms: [oralMass('gastazole-horse-paste-370', 'Gastazole · 370 mg/g · koń', 'oralPaste', 370,
       [{ id: '7.57', label: '1 strzykawka doustna × 7,57 g', quantity: 7.57 }], 'https://rejestry.ezdrowie.gov.pl/api/rpl/medicinal-products/46637/characteristic', {
@@ -139,7 +142,7 @@ const VETERINARY_DRUGS = [
       })],
   },
   {
-    id: 'vet-ventipulmin', name: 'Ventipulmin granulat', substance: 'Clenbuteroli hydrochloridum',
+    id: 'vet-ventipulmin', name: 'Ventipulmin granulat', substance: 'Clenbuteroli hydrochloridum', substanceLabel: 'Chlorowodorek klenbuterolu',
     category: 'respiratory', specialties: ['veterinary'], searchTerms: ['klenbuterol', 'oskrzela', 'oddechowe', 'rao', 'kaszel', 'duszność'],
     forms: [oralMass('ventipulmin-horse-granules', 'Ventipulmin · 0,016 mg/g · granulat', 'oralPowder', 0.016,
       [{ id: '500', label: '1 pojemnik × 500 g', quantity: 500 }], rpl(16870), {
@@ -150,7 +153,7 @@ const VETERINARY_DRUGS = [
       })],
   },
   {
-    id: 'vet-equioxx', name: 'Equioxx', substance: 'Firocoxibum',
+    id: 'vet-equioxx', name: 'Equioxx', substance: 'Firocoxibum', substanceLabel: 'Firokoksyb',
     category: 'pain', specialties: ['veterinary'], searchTerms: ['firokoksyb', 'firocoxib', 'stawy', 'osteoarthritis', 'kulawizna'],
     forms: [tablet('equioxx-horse-57', 'Equioxx · 57 mg · tabletki dla koni', 57, [10, 30, 60, 180], 'https://vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2285817.PDF', horse({
       sourceLabel: 'SPC VMD · EN (08/2023)', registrationUrl: upd('600000000067'), doseBasisIngredient: 'firokoksybu', defaultMode: 'units', allowedFractions: [1],
@@ -158,7 +161,7 @@ const VETERINARY_DRUGS = [
     }))],
   },
   {
-    id: 'vet-cardisure', name: 'Cardisure Flavoured', substance: 'Pimobendanum',
+    id: 'vet-cardisure', name: 'Cardisure Flavoured', substance: 'Pimobendanum', substanceLabel: 'Pimobendan',
     category: 'vet-cardio', specialties: ['veterinary'],
     searchTerms: ['pimobendan', 'serce', 'niewydolność serca'],
     forms: [1.25, 2.5, 5, 10].map(strength => tablet(`cardisure-${strength}`, `Cardisure Flavoured · ${String(strength).replace('.', ',')} mg`, strength, [20, 50, 100, 250], 'https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/25271/leaflet', vet(['dog'], {
@@ -172,7 +175,7 @@ const VETERINARY_DRUGS = [
     }))),
   },
   {
-    id: 'vet-onsior', name: 'Onsior', substance: 'Robenacoxibum',
+    id: 'vet-onsior', name: 'Onsior', substance: 'Robenacoxibum', substanceLabel: 'Robenakoksyb',
     category: 'pain', specialties: ['veterinary'],
     searchTerms: ['robenakoksyb', 'robenacoxib', 'nlpz', 'ból'],
     forms: [tablet('onsior-cat-6', 'Onsior · 6 mg · kot', 6, [6, 12, 30, 60], 'https://www.vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2652572.PDF', vet(['cat'], {
@@ -185,7 +188,7 @@ const VETERINARY_DRUGS = [
     }))],
   },
   {
-    id: 'vet-cerenia', name: 'Cerenia', substance: 'Maropitantum',
+    id: 'vet-cerenia', name: 'Cerenia', substance: 'Maropitantum', substanceLabel: 'Maropitant',
     category: 'antiemetic', specialties: ['veterinary'],
     searchTerms: ['maropitant', 'wymioty', 'nudności'],
     forms: [16, 24, 60].map(strength => tablet(`cerenia-dog-${strength}`, `Cerenia · ${strength} mg · pies`, strength, [4], 'https://www.zoetis.com.pl/_locale-assets/charakterystyki-produktow/cerenia_qrd_2024.10_vnra.pdf', vet(['dog'], {
@@ -198,7 +201,7 @@ const VETERINARY_DRUGS = [
     }))),
   },
   {
-    id: 'vet-enrobactin', name: 'Enrobactin', substance: 'Enrofloxacinum',
+    id: 'vet-enrobactin', name: 'Enrobactin', substance: 'Enrofloxacinum', substanceLabel: 'Enrofloksacyna',
     category: 'antibiotics', specialties: ['veterinary'],
     searchTerms: ['enrofloksacyna', 'enrofloxacin', 'koncentrat', 'antybiotyk'],
     forms: [liquid('enrobactin-rodents-25', 'Enrobactin · 25 mg/ml · koncentrat', 'solution', null, null, [10, 30, 50], 'https://assets.hpra.ie/products/Animal/905/ie-spc-nlv0315001a004-mr-vpa10475-020-001-en_30042026111356.pdf', vet(['hamster', 'rat'], {
@@ -395,4 +398,6 @@ export const DRUGS = [
     })),
   },
   ...VETERINARY_DRUGS,
+  ...EQUINE_NSAID_DRUGS,
+  ...EQUINE_ANTIPARASITIC_DRUGS,
 ];

@@ -24,6 +24,19 @@ const fixtures = [
   ] },
 ];
 
+test('route filtering keeps only explicit species-matched formulations without reusing another route', () => {
+  const horse = availableDrugs(DRUGS, 'veterinary', 'horse');
+  const iv = availableDrugs(DRUGS, 'veterinary', 'horse', 'iv');
+  const oral = availableDrugs(DRUGS, 'veterinary', 'horse', 'oral');
+  assert.deepEqual(iv.map(d => d.id), ['vet-flunivis']);
+  assert.equal(iv[0].forms[0].routeLabel, 'dożylnie');
+  assert.equal(oral.length + iv.length, horse.length);
+  assert.ok(oral.every(d => d.forms.every(f => f.routeCode === 'oral' && f.targetSpecies.includes('horse'))));
+  assert.deepEqual(availableDrugs(DRUGS, 'veterinary', 'dog', 'iv'), []);
+  for (const route of ['im', 'sc', 'unknown', '', null]) assert.deepEqual(availableDrugs(DRUGS, 'veterinary', 'horse', route), []);
+  assert.ok(horse.some(d => d.id === 'vet-flunivis'), 'Filtering leaves the full source catalogue available');
+});
+
 test('species selection filters formulations, including strengths under one product', () => {
   const dog = availableDrugs(fixtures, 'veterinary', 'dog');
   assert.deepEqual(dog.map(d => d.id), ['vet-family', 'mixed-metadata']);

@@ -3,13 +3,17 @@
  * Every clinical limit must be supplied by the caller from a product-specific rule.
  * All package sizes are expressed in the same unit as singleUnits.
  * Drops additionally need a product-specific dropsPerMl for mg conversions.
- * Oral paste/powder use actual product grams; strengthMg means mg per 1 g.
+ * Oral paste/powder/gel use actual product grams; strengthMg means mg per 1 g.
+ * Multi-dose injection packages each represent exactly one vial. Each full
+ * administration is withdrawn once from one vial; residues are never pooled.
  */
-const FORMS = new Set(['tablet', 'suspension', 'spray', 'gel', 'drops', 'injection', 'solution', 'oralPaste', 'oralPowder']);
-const MASS_FORMS = new Set(['oralPaste', 'oralPowder']);
+const FORMS = new Set(['tablet', 'suspension', 'spray', 'gel', 'drops', 'injection', 'solution', 'oralPaste', 'oralPowder', 'oralGel']);
+const MASS_FORMS = new Set(['oralPaste', 'oralPowder', 'oralGel']);
 const MODES = new Set(['fixed', 'perKgDay', 'perKgDose', 'units']);
 const PATIENT_KINDS = new Set(['human', 'animal']);
 const ANIMAL_SPECIES = new Set(['dog', 'cat', 'horse', 'hamster', 'rat']);
+const INJECTION_CONTAINER_USES = new Set(['singleUse', 'multiDose']);
+const FOOD_CHAIN_STATUSES = new Set(['unknown', 'excluded', 'notExcluded']);
 const empty = value => value === null || value === undefined || value === '';
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 const clean = value => Number(value.toPrecision(14));
@@ -47,6 +51,8 @@ export function calculate(input = {}) {
     leftoverUnits: null, roundingDifferencePercent: null, maxRatio: null,
     unitLabel: typeof input.unitLabel === 'string' ? input.unitLabel : '',
     expiryWasteUnits: null, singleUseContainers: null, unusedSingleUseVolume: null,
+    unusedSingleUseUnits: null,
+    dosesPerVial: null, discardedMultiDoseVolume: null,
   };
   // Some catalogue entries are reference-only concentrates. Unit mode must not
   // bypass a preparation requirement or expose their undiluted volume as a dose.
@@ -61,6 +67,20 @@ export function calculate(input = {}) {
   if (animal && !ANIMAL_SPECIES.has(input.species)) invalid.push('Wybierz gatunek zwierzęcia.');
   let incomplete = false;
   let critical = false;
+  if (!empty(input.foodChainStatus) && !FOOD_CHAIN_STATUSES.has(input.foodChainStatus)) {
+    invalid.push('Wybierz poprawny status wyłączenia konia z łańcucha żywnościowego.');
+  }
+  if (!empty(input.requiresFoodChainExclusion) && typeof input.requiresFoodChainExclusion !== 'boolean') {
+    invalid.push('Nieprawidłowe dane o wymaganym wyłączeniu z łańcucha żywnościowego.');
+  }
+  if (input.requiresFoodChainExclusion === true) {
+    // Product eligibility is checked independently of the selected dose mode;
+    // entering ml or grams directly cannot bypass this requirement.
+    if (!animal || input.species !== 'horse' || input.foodChainStatus !== 'excluded') {
+      critical = true;
+      invalid.push('Ten preparat wymaga potwierdzenia, że pacjentem jest koń wyłączony z uboju do spożycia przez ludzi. Uzupełnij status przed obliczeniem dawki i zapotrzebowania.');
+    } else result.checks.push('Potwierdzono wyłączenie konia z uboju do spożycia przez ludzi.');
+  }
   const number = (key, label, { required = false, min = 0, max = 1e7, allowZero = false } = {}) => {
     const value = input[key];
     if (empty(value)) {
@@ -83,7 +103,26 @@ export function calculate(input = {}) {
     invalid.push('Roztwór do wstrzyknięć wymaga jednostki ml; wielkość opakowania i dawkę podaj w ml.');
   }
   if (MASS_FORMS.has(input.form) && result.unitLabel.trim().toLowerCase() !== 'g') {
-    invalid.push('Pasta lub proszek doustny wymaga jednostki g. Dawka i opakowanie dotyczą masy całego preparatu, nie masy samej substancji czynnej.');
+    invalid.push('Pasta, proszek lub żel doustny wymaga jednostki g. Dawka i opakowanie dotyczą masy całego preparatu, nie masy samej substancji czynnej.');
+  }
+  const injection = input.form === 'injection';
+  const injectionContainerUse = injection
+    ? (input.injectionContainerUse === undefined ? 'singleUse' : input.injectionContainerUse)
+    : null;
+  if (injection && !INJECTION_CONTAINER_USES.has(injectionContainerUse)) {
+    invalid.push('Wybierz poprawny rodzaj pojemnika do wstrzyknięć: jednorazowy lub fiolka wielodawkowa.');
+  } else if (!injection && !empty(input.injectionContainerUse)) {
+    invalid.push('Rodzaj pojemnika do wstrzyknięć można określić wyłącznie dla postaci do wstrzyknięć.');
+  }
+  const multiDose = injectionContainerUse === 'multiDose';
+  const oralSingleUse = MASS_FORMS.has(input.form)
+    && (!empty(input.singleUseUnitSize) || input.discardRemainderAfterUse === true);
+  const singleUse = injectionContainerUse === 'singleUse' || oralSingleUse;
+  if (!empty(input.discardRemainderAfterUse) && typeof input.discardRemainderAfterUse !== 'boolean') {
+    invalid.push('Nieprawidłowe dane o jednorazowym użyciu opakowania.');
+  }
+  if (input.discardRemainderAfterUse === true && !singleUse) {
+    invalid.push('Jednorazowe użycie wymaga obsługiwanej postaci i określenia wielkości pojedynczego pojemnika.');
   }
 
   const dose = number('dose', 'dawkę na podanie lub podstawę przeliczenia', { required: true, max: 1e6 });
@@ -92,9 +131,19 @@ export function calculate(input = {}) {
   if (frequency !== null && !Number.isInteger(frequency)) invalid.push('Liczba podań na dobę musi być dodatnią liczbą całkowitą.');
   if (days !== null && !Number.isInteger(days)) invalid.push('Czas stosowania musi być dodatnią, całkowitą liczbą dni.');
   const packageSize = number('packageSize', 'wielkość opakowania', { required: true, max: 1e7 });
-  const singleUseUnitSize = input.form === 'injection'
-    ? number('singleUseUnitSize', 'objętość pojedynczej ampułki lub ampułkostrzykawki w ml', { required: true, max: 1e7 })
+  const singleUseUnitSize = singleUse
+    ? number('singleUseUnitSize', oralSingleUse ? 'masę preparatu w pojedynczym jednorazowym opakowaniu w g' : 'objętość pojedynczej ampułki lub ampułkostrzykawki w ml', { required: true, max: 1e7 })
     : null;
+  if (multiDose && !empty(input.singleUseUnitSize)) {
+    invalid.push('Fiolka wielodawkowa nie może mieć objętości pojemnika jednorazowego. Wprowadź objętość jednej fiolki jako wielkość opakowania.');
+  }
+  const maxWithdrawalsPerVial = number('maxWithdrawalsPerVial', 'maksymalną liczbę nakłuć jednej fiolki', { max: Number.MAX_SAFE_INTEGER });
+  if (maxWithdrawalsPerVial !== null && !Number.isSafeInteger(maxWithdrawalsPerVial)) {
+    invalid.push('Maksymalna liczba nakłuć jednej fiolki musi być dodatnią liczbą całkowitą.');
+  }
+  if (!multiDose && !empty(input.maxWithdrawalsPerVial)) {
+    invalid.push('Limit nakłuć dotyczy wyłącznie fiolki wielodawkowej.');
+  }
   // Technical input bounds only; they do not establish a species-specific normal weight.
   const weight = number('weight', 'masę ciała w kg', { required: animal || ['perKgDay', 'perKgDose'].includes(input.doseMode), max: animal ? 2000 : 500 });
   const age = number('age', 'wiek w latach', { allowZero: true, max: 130 });
@@ -103,15 +152,20 @@ export function calculate(input = {}) {
   const maxDailyMg = number('maxDailyMg', 'maksymalną dawkę dobową', { max: 1e7 });
   const maxSingleMg = number('maxSingleMg', 'maksymalną dawkę jednorazową', { max: 1e7 });
   const minAge = number('minAge', 'minimalny wiek', { allowZero: true, max: 130 });
-  const shelfLifeDays = number('shelfLifeDays', 'trwałość po otwarciu lub przygotowaniu', { max: 3660 });
+  const shelfLifeDays = number('shelfLifeDays', 'trwałość po otwarciu lub przygotowaniu', { required: multiDose, max: 3660 });
+  if (multiDose && shelfLifeDays !== null && !Number.isInteger(shelfLifeDays)) {
+    invalid.push('Trwałość fiolki wielodawkowej po otwarciu musi być dodatnią, całkowitą liczbą dni.');
+  }
   let containersPerPackage = null;
-  if (input.form === 'injection') {
-    if (shelfLifeDays !== null) invalid.push('Dla jednorazowych pojemników do wstrzyknięć nie stosuje się trwałości po otwarciu.');
+  if (singleUse) {
+    if (shelfLifeDays !== null) invalid.push('Dla jednorazowych pojemników nie stosuje się trwałości po otwarciu; każde podanie wymaga nowego pojemnika.');
     if (singleUseUnitSize !== null && packageSize !== null) {
       const ratio = packageSize / singleUseUnitSize;
       const count = Math.round(ratio);
       if (!finite(ratio) || !Number.isSafeInteger(count) || count < 1 || Math.abs(ratio - count) > tolerance(ratio)) {
-        invalid.push('Opakowanie musi zawierać całkowitą liczbę jednorazowych ampułek lub ampułkostrzykawek.');
+        invalid.push(oralSingleUse
+          ? 'Opakowanie musi zawierać całkowitą liczbę jednorazowych pojemników; ich masę i masę całego opakowania podaj w g.'
+          : 'Opakowanie musi zawierać całkowitą liczbę jednorazowych ampułek lub ampułkostrzykawek.');
       } else containersPerPackage = count;
     }
   }
@@ -153,6 +207,7 @@ export function calculate(input = {}) {
 
   if (invalid.length) {
     result.errors.push(...invalid);
+    if (critical) result.status = 'critical';
     return result;
   }
 
@@ -241,27 +296,64 @@ export function calculate(input = {}) {
 
   // Each package is opened only when needed. Its usable quantity is constrained by
   // capacity and by regular consumption during the stated in-use shelf life.
-  const usablePerPackage = shelfLifeDays === null ? packageSize : Math.min(packageSize, result.dailyUnits * shelfLifeDays);
+  let usablePerPackage = shelfLifeDays === null ? packageSize : Math.min(packageSize, result.dailyUnits * shelfLifeDays);
   if (!finite(usablePerPackage) || usablePerPackage <= 0) {
     result.errors.push('Użyteczna ilość preparatu w opakowaniu jest poza zakresem obliczeń.');
     return result;
   }
   let packageRatio = result.totalUnits / usablePerPackage;
-  if (input.form === 'injection') {
+  let packagesWithoutShelfLife = ceil(result.totalUnits / packageSize);
+  let multiDoseExpiryLimited = false;
+  if (multiDose) {
+    // Work from the unformatted dose to retain exact recurring-ratio boundaries.
+    // Capacity is counted in whole administrations, not pooled leftover ml.
+    const capacityRatio = packageSize / singleUnits;
+    if (!finite(capacityRatio) || capacityRatio <= 0) {
+      result.errors.push('Liczba podań z fiolki jest poza zakresem obliczeń. Sprawdź objętość fiolki i dawkę.');
+      return result;
+    }
+    if (capacityRatio < 1 - tolerance(capacityRatio)) {
+      result.errors.push('Jedno podanie przekracza objętość jednej fiolki. Ten model pobiera całą dawkę z jednej fiolki. Wybierz większą fiolkę lub oblicz zaopatrzenie indywidualnie.');
+      return result;
+    }
+    const volumeDoseCapacity = Math.floor(capacityRatio + tolerance(capacityRatio));
+    const shelfDoseCapacity = shelfLifeDays * frequency;
+    const withdrawalDoseCapacity = maxWithdrawalsPerVial ?? Infinity;
+    const dosesPerVial = Math.min(volumeDoseCapacity, shelfDoseCapacity, withdrawalDoseCapacity);
+    const administrations = frequency * days;
+    if (!Number.isSafeInteger(dosesPerVial) || dosesPerVial < 1 || !Number.isSafeInteger(administrations)) {
+      result.errors.push('Liczba pełnych podań z fiolki jest poza zakresem obliczeń. Sprawdź dawkę, trwałość i limit nakłuć.');
+      return result;
+    }
+    result.dosesPerVial = dosesPerVial;
+    usablePerPackage = Math.min(packageSize, dosesPerVial * result.singleUnits);
+    packageRatio = administrations / dosesPerVial;
+    packagesWithoutShelfLife = ceil(administrations / Math.min(volumeDoseCapacity, withdrawalDoseCapacity));
+    // A tied volume or withdrawal limit is not labelled solely as expiry waste.
+    multiDoseExpiryLimited = shelfDoseCapacity < volumeDoseCapacity && shelfDoseCapacity < withdrawalDoseCapacity;
+    result.checks.push('Jedno opakowanie oznacza jedną fiolkę wielodawkową. Przyjęto jedno nakłucie na podanie i pobranie całej dawki z jednej fiolki; pozostałości niewystarczające na kolejne pełne podanie nie są łączone między fiolkami.');
+    result.checks.push(`Z jednej fiolki uwzględniono maksymalnie ${formatNumber(dosesPerVial, 0)} pełnych podań, zgodnie z objętością, trwałością po otwarciu i wprowadzonym limitem nakłuć.`);
+    if (maxWithdrawalsPerVial !== null) {
+      result.checks.push(`Uwzględniono maksymalnie ${formatNumber(maxWithdrawalsPerVial, 0)} nakłuć jednej fiolki; jedno podanie oznacza jedno nakłucie.`);
+    }
+  } else if (singleUse) {
     const perDoseRatio = result.singleUnits / singleUseUnitSize;
     const containersPerDose = finite(perDoseRatio) ? Math.max(1, ceil(perDoseRatio)) : null;
     const containers = containersPerDose === null ? null : containersPerDose * frequency * days;
     const unused = containers === null ? null : Math.max(0, containers * singleUseUnitSize - result.totalUnits);
     if (!Number.isSafeInteger(containersPerDose) || !Number.isSafeInteger(containers) || containers <= 0 || !finite(unused)) {
-      result.errors.push('Liczba jednorazowych pojemników jest poza zakresem obliczeń. Sprawdź ich objętość.');
+      result.errors.push(`Liczba jednorazowych pojemników jest poza zakresem obliczeń. Sprawdź ich ${oralSingleUse ? 'masę w g' : 'objętość w ml'}.`);
       return result;
     }
     result.singleUseContainers = containers;
-    result.unusedSingleUseVolume = clean(unused);
+    result.unusedSingleUseUnits = clean(unused);
+    if (injection) result.unusedSingleUseVolume = clean(unused);
     packageRatio = containers / containersPerPackage;
-    result.checks.push('Dla każdego podania uwzględniono nowe jednorazowe ampułki lub ampułkostrzykawki.');
+    result.checks.push(oralSingleUse
+      ? 'Dla każdego podania uwzględniono nowe jednorazowe pojemniki preparatu doustnego; pozostałość po podaniu jest usuwana.'
+      : 'Dla każdego podania uwzględniono nowe jednorazowe ampułki lub ampułkostrzykawki.');
     if (unused > tolerance(result.totalUnits)) {
-      result.warnings.push(`Pozostałość w otwartych jednorazowych pojemnikach (${formatNumber(unused, 4)} ml łącznie) nie jest przenoszona na kolejne podania.`);
+      result.warnings.push(`Pozostałość w otwartych jednorazowych pojemnikach (${formatNumber(unused, 4)} ${result.unitLabel} łącznie) nie jest przenoszona na kolejne podania.`);
     }
   }
   const packages = finite(packageRatio) ? Math.max(1, ceil(packageRatio)) : null;
@@ -273,10 +365,17 @@ export function calculate(input = {}) {
   result.packages = packages;
   result.providedUnits = clean(providedUnits);
   result.leftoverUnits = clean(Math.max(0, result.providedUnits - result.totalUnits));
-  result.expiryWasteUnits = clean(Math.max(0, (result.packages - 1) * (packageSize - usablePerPackage)));
+  const priorContainerWaste = Math.max(0, (result.packages - 1) * (packageSize - usablePerPackage));
+  result.expiryWasteUnits = clean(multiDose && !multiDoseExpiryLimited ? 0 : priorContainerWaste);
+  if (multiDose) {
+    result.discardedMultiDoseVolume = clean(priorContainerWaste);
+    if (priorContainerWaste > tolerance(result.providedUnits)) {
+      result.warnings.push(`Pozostałości w poprzednich fiolkach (${formatNumber(priorContainerWaste, 4)} ml łącznie) nie są przenoszone na następne podania po wyczerpaniu liczby pełnych dawek, trwałości lub limitu nakłuć.`);
+    }
+  }
   if (shelfLifeDays !== null) {
     result.checks.push(`Uwzględniono trwałość po otwarciu/przygotowaniu: ${formatNumber(shelfLifeDays)} dni.`);
-    if (result.packages > ceil(result.totalUnits / packageSize)) {
+    if (result.packages > packagesWithoutShelfLife) {
       result.warnings.push('Liczbę opakowań zwiększono ze względu na trwałość po otwarciu lub przygotowaniu. Kolejne opakowanie otwórz dopiero, gdy jest potrzebne.');
     }
   }
@@ -316,7 +415,7 @@ export function calculate(input = {}) {
   }
   if (result.singleMg === null) result.warnings.push('Obliczono ilość preparatu; dawka substancji w mg nie została oceniona.');
 
-  for (const key of ['singleMg', 'dailyMg', 'theoreticalUnits', 'singleUnits', 'dailyUnits', 'totalUnits', 'packages', 'providedUnits', 'leftoverUnits', 'roundingDifferencePercent', 'maxRatio', 'expiryWasteUnits', 'singleUseContainers', 'unusedSingleUseVolume']) {
+  for (const key of ['singleMg', 'dailyMg', 'theoreticalUnits', 'singleUnits', 'dailyUnits', 'totalUnits', 'packages', 'providedUnits', 'leftoverUnits', 'roundingDifferencePercent', 'maxRatio', 'expiryWasteUnits', 'singleUseContainers', 'unusedSingleUseVolume', 'unusedSingleUseUnits', 'dosesPerVial', 'discardedMultiDoseVolume']) {
     if (result[key] !== null && !finite(result[key])) {
       result[key] = null;
       incomplete = true;

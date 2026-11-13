@@ -26,6 +26,11 @@ function metadataErrors(regimen) {
     return ['Schemat ma nieprawidłowe przypisanie do preparatu lub gatunku.'];
   }
   const errors = [];
+  if (Object.hasOwn(regimen, 'requiresFoodChainExclusion') && typeof regimen.requiresFoodChainExclusion !== 'boolean') {
+    errors.push('Schemat ma nieprawidłowy warunek wykluczenia z produkcji żywności.');
+  } else if (regimen.requiresFoodChainExclusion === true && regimen.species.some(species => species !== 'horse')) {
+    errors.push('Warunek wykluczenia z produkcji żywności wymaga schematu przeznaczonego wyłącznie dla koni.');
+  }
   if (!MODES.has(regimen.doseMode)) errors.push('Schemat ma nieprawidłową jednostkę dawkowania.');
   if (!positiveInteger(regimen.frequency)) errors.push('Schemat ma nieprawidłową częstotliwość podawania.');
   const hasBands = present(regimen.weightBands);
@@ -175,6 +180,9 @@ export function resolveRegimen(regimen, context = {}) {
       if (present(regimen.minDays) && context.days < regimen.minDays) result.errors.push(`Czas stosowania jest krótszy od minimum wybranego schematu (${regimen.minDays} dni).`);
       if (present(regimen.maxDays) && context.days > regimen.maxDays) result.errors.push(`Czas stosowania przekracza limit wybranego schematu (${regimen.maxDays} dni).`);
     }
+  }
+  if (regimen.requiresFoodChainExclusion === true && context.foodChainStatus !== 'excluded') {
+    result.errors.push('Schemat wymaga konia wykluczonego z produkcji żywności. Sprawdź paszport i potwierdź status wykluczenia; bez takiego wpisu nie stosuj tego schematu.');
   }
   result.valid = result.errors.length === 0;
   return result;

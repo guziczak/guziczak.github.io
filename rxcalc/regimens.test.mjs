@@ -33,6 +33,7 @@ function evaluate(regimenId, formId, overrides = {}) {
     weight: firstBand ? (firstBand.min + firstBand.max) / 2 : species === 'horse' ? horseWeight : species === 'cat' ? 5 : 10,
     age: 2,
     ageUnit: 'years',
+    foodChainStatus: 'excluded',
     days: regimen.fixedDays ?? regimen.minDays ?? 1,
     calculationBlocked: form.calculationBlocked === true,
     ...overrides,
@@ -42,6 +43,7 @@ function evaluate(regimenId, formId, overrides = {}) {
     ...form,
     patientKind: 'animal',
     species: context.species,
+    foodChainStatus: context.foodChainStatus,
     weight: context.weight,
     doseMode: source.doseMode,
     dose: source.dose,
@@ -53,8 +55,17 @@ function evaluate(regimenId, formId, overrides = {}) {
   return { regimen, form, context, source, arithmetic };
 }
 
-test('all twenty source records point to existing veterinary formulations and exact target species', () => {
+test('all shipped source records point to existing veterinary formulations and exact target species', () => {
   const expected = [
+    ['flunivis-horse-msk-pyrexia', ['flunivis-horse-50-iv'], ['horse']],
+    ['butagran-horse-day-one', ['butagran-equi-horse-200'], ['horse']],
+    ['butagran-horse-days-two-four', ['butagran-equi-horse-200'], ['horse']],
+    ['butagran-horse-daily-continuation', ['butagran-equi-horse-200'], ['horse']],
+    ['paramectin-horse-susceptible-parasites', ['paramectin-horse-paste-18-7'], ['horse']],
+    ['iverpraz-horse-mixed-infestation-table', ['iverpraz-horse-paste-18-7-140-3'], ['horse']],
+    ['equimoxin-horse-susceptible-parasites', ['equimoxin-horse-gel-18-92'], ['horse']],
+    ['pyrantel-vet-planet-horse-nematodes', ['pyrantel-vet-planet-horse-paste-350'], ['horse']],
+    ['pyrantel-vet-planet-horse-anoplocephala', ['pyrantel-vet-planet-horse-paste-350'], ['horse']],
     ['panacur-paste-nematodes', ['panacur-horse-paste-187-5'], ['horse']],
     ['panacur-paste-parascaris', ['panacur-horse-paste-187-5'], ['horse']],
     ['panacur-susp-larvae-five-days', ['panacur-horse-susp-100'], ['horse']],

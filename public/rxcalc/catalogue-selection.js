@@ -5,7 +5,7 @@
  */
 const ANIMAL_SPECIES = new Set(['dog', 'cat', 'horse', 'hamster', 'rat']);
 
-export function availableDrugs(drugs, specialty, species) {
+export function availableDrugs(drugs, specialty, species, routeCode = 'all') {
   if (!Array.isArray(drugs) || typeof specialty !== 'string' || !specialty) return [];
   const veterinary = specialty === 'veterinary';
   if (veterinary && !ANIMAL_SPECIES.has(species)) return [];
@@ -16,6 +16,7 @@ export function availableDrugs(drugs, specialty, species) {
       if (!form || typeof form !== 'object') return false;
       return veterinary
         ? Array.isArray(form.targetSpecies) && form.targetSpecies.includes(species)
+          && (routeCode === 'all' || (typeof routeCode === 'string' && routeCode.length > 0 && form.routeCode === routeCode))
         : !Object.hasOwn(form, 'targetSpecies');
     }).map(form => ({ ...form }));
     return forms.length ? [{ ...drug, forms }] : [];

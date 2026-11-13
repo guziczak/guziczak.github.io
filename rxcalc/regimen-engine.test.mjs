@@ -17,6 +17,79 @@ const catBands = {
   ],
 };
 const cat = { formId: 'cat-tablet', species: 'cat', weight: 4, age: null, ageUnit: 'months', days: null };
+const horseRestricted = {
+  id: 'horse-food-restricted', formIds: ['horse-oral'], species: ['horse'],
+  doseMode: 'perKgDose', dose: 1, frequency: 1, requiresFoodChainExclusion: true,
+};
+const horse = { formId: 'horse-oral', species: 'horse', weight: 500, age: null, ageUnit: 'years', days: null };
+
+test('food-chain metadata is optional but must be a literal boolean when supplied', () => {
+  for (const requiresFoodChainExclusion of [undefined, null, 'true', 'false', 0, 1, [], {}]) {
+    const record = { ...horseRestricted, requiresFoodChainExclusion };
+    const result = resolveRegimen(record, { ...horse, foodChainStatus: 'excluded' });
+    assert.equal(result.valid, false);
+    assert.equal(result.dose, null);
+    assert.match(result.errors.join(' '), /warunek wykluczenia/);
+    assert.deepEqual(availableRegimens([record], horse), []);
+  }
+  assert.equal(resolveRegimen(weightBased, dog).valid, true);
+  assert.equal(resolveRegimen({ ...weightBased, requiresFoodChainExclusion: false }, dog).valid, true);
+  assert.equal(resolveRegimen({ ...horseRestricted, requiresFoodChainExclusion: false }, horse).valid, true);
+});
+
+test('a true food-chain restriction is coherent only with horse-only source records', () => {
+  for (const species of [['dog'], ['horse', 'dog'], ['horse', 'cat']]) {
+    const record = { ...horseRestricted, species };
+    const context = { ...horse, species: species[0], foodChainStatus: 'excluded' };
+    const result = resolveRegimen(record, context);
+    assert.equal(result.valid, false);
+    assert.equal(result.dose, null);
+    assert.match(result.errors.join(' '), /wyłącznie dla koni/);
+    assert.deepEqual(availableRegimens([record], context), []);
+  }
+  assert.equal(resolveRegimen(horseRestricted, { ...horse, foodChainStatus: 'excluded' }).valid, true);
+});
+
+test('well-formed restricted regimens remain visible before food-chain status is chosen', () => {
+  for (const foodChainStatus of [undefined, null, 'unknown', 'notExcluded', 'excluded', 'invalid']) {
+    const available = availableRegimens([horseRestricted], { ...horse, foodChainStatus });
+    assert.equal(available.length, 1);
+    assert.equal(available[0].id, horseRestricted.id);
+    assert.equal(available[0].requiresFoodChainExclusion, true);
+  }
+});
+
+test('restricted resolution requires the exact excluded status and fails closed otherwise', () => {
+  const allowed = resolveRegimen(horseRestricted, { ...horse, foodChainStatus: 'excluded' });
+  assert.equal(allowed.valid, true);
+  assert.deepEqual(allowed.errors, []);
+  const contexts = [horse, ...[undefined, null, 'unknown', 'notExcluded', 'invalid', 'Excluded', ' excluded', 'excluded ', true, false, 0, 1, [], {}]
+    .map(foodChainStatus => ({ ...horse, foodChainStatus }))];
+  for (const context of contexts) {
+    const result = resolveRegimen(horseRestricted, context);
+    assert.equal(result.valid, false);
+    assert.match(result.errors.join(' '), /paszport/);
+    assert.match(result.errors.join(' '), /potwierdź status wykluczenia/);
+  }
+});
+
+test('each resolution rechecks the current food-chain status without changing other constraints', () => {
+  const context = { ...horse, foodChainStatus: 'excluded' };
+  assert.equal(resolveRegimen(horseRestricted, context).valid, true);
+  context.foodChainStatus = 'unknown';
+  assert.equal(resolveRegimen(horseRestricted, context).valid, false);
+  context.foodChainStatus = 'notExcluded';
+  assert.equal(resolveRegimen(horseRestricted, context).valid, false);
+  context.foodChainStatus = 'excluded';
+  assert.equal(resolveRegimen(horseRestricted, context).valid, true);
+  const bounded = { ...horseRestricted, maxDays: 5 };
+  const invalid = resolveRegimen(bounded, { ...horse, weight: 0, days: 6 });
+  assert.equal(invalid.valid, false);
+  assert.match(invalid.errors.join(' '), /masę/);
+  assert.match(invalid.errors.join(' '), /limit/);
+  assert.match(invalid.errors.join(' '), /paszport/);
+  assert.equal(resolveRegimen({ ...horseRestricted, requiresFoodChainExclusion: false }, { ...horse, foodChainStatus: 'invalid' }).valid, true);
+});
 
 test('a regimen is available only for its exact formulation and species', () => {
   const records = [weightBased, catBands];

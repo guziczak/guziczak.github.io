@@ -1,6 +1,6 @@
 # Katalog weterynaryjny — zakres i źródła
 
-Rozszerzenie końskie sprawdzono **13 listopada 2026 r.**; wcześniejsze wpisy zachowują datę sprawdzenia 12 listopada 2026 r. Katalog zawiera 9 marek i 17 postaci/mocy, w tym jedną kartę informacyjną bez obliczeń. Dla konia dostępnych jest 5 marek, 6 postaci i 9 schematów. Cały katalog zawiera 20 jawnie wybieranych rekordów schematów źródłowych, przypisanych do konkretnej postaci, gatunku, wskazania i fazy. Nie wybiera rozpoznania ani fazy za lekarza. Dawka, częstość i czas pozostają puste po zmianie preparatu lub postaci aż do wyboru schematu lub ręcznego wpisania.
+Rozszerzenie końskie sprawdzono **13 listopada 2026 r.**; wcześniejsze wpisy zachowują datę sprawdzenia 12 listopada 2026 r. Katalog zawiera 15 marek i 23 postaci/mocy, w tym jedną kartę informacyjną bez obliczeń. Dla konia dostępnych jest 11 marek, 12 postaci i 18 schematów. Cały katalog zawiera 29 jawnie wybieranych rekordów schematów źródłowych, przypisanych do konkretnej postaci, gatunku, wskazania i fazy. Nie wybiera rozpoznania ani fazy za lekarza. Dawka, częstość i czas pozostają puste po zmianie preparatu lub postaci aż do wyboru schematu lub ręcznego wpisania.
 
 ## Zakres
 
@@ -11,6 +11,12 @@ Rozszerzenie końskie sprawdzono **13 listopada 2026 r.**; wcześniejsze wpisy z
 | Gastazole | Pasta 370 mg/g, strzykawka 7,57 g | Koń | Osobne 28-dniowe etapy, kontrola podziałki aplikatora |
 | Ventipulmin | Granulat 0,016 mg chlorowodorku klenbuterolu/g, 500 g | Koń | Masa całego granulatu; otwarte opakowanie 21 dni |
 | Equioxx | Tabletki 57 mg | Koń | Cała tabletka wyłącznie w zakresie 450–600 kg |
+| Flunivis | Iniekcja 50 mg/ml; fiolki 50/100/250 ml | Koń | Wyłącznie dożylnie; fiolka wielodawkowa |
+| Butagran Equi | Proszek 200 mg/g, jednorazowe saszetki 5 g | Koń | Trzy oddzielne fazy, wykluczenie z produkcji żywności |
+| Paramectin Pasta | Pasta 18,7 mg/g, strzykawka 7,49 g | Koń | Iwermektyna; działki po 100 kg, resztki usuwane |
+| Iverpraz | Pasta 18,7 + 140,3 mg/g, strzykawka 7,49 g | Koń | Iwermektyna + prazykwantel; literalna tabela gramów |
+| Equimoxin | Żel doustny 18,92 mg/g, aplikator 14,8 g | Koń | Moksydektyna; działki po 50 kg, status żywnościowy |
+| Pyrantel Vet Planet | Pasta 350 mg embonianu pyrantelu/g, 30 g | Koń | Odrębne schematy nicieni i A. perfoliata; status żywnościowy |
 | Cardisure Flavoured | Tabletki 1,25 / 2,5 / 5 / 10 mg | Pies | Dane z polskiej dokumentacji RPL |
 | Onsior | Tabletki 6 mg | Kot | Całe tabletki |
 | Cerenia | Tabletki 16 / 24 / 60 mg | Pies | Moc w mg maropitantu; dopuszczone połowy |
@@ -36,7 +42,26 @@ Rozszerzenie końskie sprawdzono **13 listopada 2026 r.**; wcześniejsze wpisy z
 - **Ventipulmin granulat:** [polska ChPL RPL](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/16870/characteristic), sekcje 3.2–3.9 i 5.2–5.4. 0,016 mg chlorowodorku klenbuterolu/g, 500 g w pojemniku; 21 dni po otwarciu. Podstawa dawki to 0,8 µg soli/kg na podanie = 0,0008 mg/kg, dwa razy dziennie. Nie używamy zawartości zasady (0,014 mg/g) do przeliczenia dawki soli. Ostry przebieg: 10–14 dni; przewlekły: co najmniej 28 dni. Źródło nie ustanawia ogólnego maksimum przewlekłego leczenia. Miarka ma 10 g, a wymaganą dokładność odmierzenia części miarki potwierdza lekarz.
 - **Equioxx:** [SPC VMD, EN, 08/2023](https://vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2285817.PDF), sekcje 4.1–4.9 i 6.5, oraz [wpis UPD obejmujący Polskę](https://medicines.health.europa.eu/veterinary/en/600000000067). Jedna cała tabletka 57 mg raz dziennie dla koni 450–600 kg, do 14 dni, w opisanym wskazaniu choroby zwyrodnieniowej stawów. Opakowania 10/30/60/180 tabletek. Nie dodajemy progu wieku z dokumentacji innej postaci ani nie uznajemy samej kreski na tabletce za dopuszczenie równych części dawki.
 
-Pasty doustne i granulat mają osobne typy `oralPaste` i `oralPowder`: ich `strengthMg` oznacza mg substancji w 1 g rzeczywistego preparatu. Nie używamy objętości ml ani masy substancji jako masy całego produktu. Weryfikacja dawki na podziałce jest dodatkowym warunkiem, obok warunków źródła i poprawności arytmetycznej.
+Pasty doustne i granulat mają osobne typy `oralPaste`, `oralPowder` i `oralGel`: ich `strengthMg` oznacza mg substancji w 1 g rzeczywistego preparatu. Nie używamy objętości ml ani masy substancji jako masy całego produktu. Weryfikacja dawki na podziałce jest dodatkowym warunkiem, obok warunków źródła i poprawności arytmetycznej.
+
+## Dalsze rozszerzenie: NLPZ, fiolki i leki przeciwpasożytnicze
+
+Źródła poniżej sprawdzono 13.11.2026. Każdy nowy wpis zachowuje dokładną postać, gatunek i drogę podania. Nie jest to lista „najczęściej stosowanych w Polsce”; nie zebrano danych sprzedażowych ani reprezentatywnego badania praktyki.
+
+- **Flunivis:** [polska ChPL RPL 50492](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/50492/characteristic), sekcje 2, 3.2–3.9, 3.12 i 5.2–5.4. 50 mg fluniksyny/ml (nie 82,9 mg soli). Dodany schemat narządu ruchu/gorączki: 1,1 mg/kg raz dziennie, do 5 dni, wyłącznie dożylnie. Kolka i endotoksemia wymagają odrębnych schematów i nie są automatycznie modelowane. Fiolki 50/100/250 ml, trwałość 28 dni. ChPL podaje 25 nakłuć igłą 18 G albo 100 igłą 21 G; model przyjmuje zachowawczo 25 i opisuje to założenie.
+- **Butagran Equi:** [polska ChPL RPL 30160, rewizja 04/2026](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/30160/characteristic), sekcje 3.9 i 5.2–5.4. 200 mg fenylbutazonu/g proszku; saszetka 5 g, pudełka 20 lub 100 saszetek. Dzień 1: 4,4 mg/kg dwa razy dziennie. Dni 2–4: 2,2 mg/kg dwa razy dziennie. Dalszy wariant codzienny: 2,2 mg/kg raz dziennie z czasem ustalanym przez lekarza; wariant co drugi dzień nie jest obsługiwany. Dawki liczymy z literalnych mg/kg; uproszczone przykłady 10/5 g na 450 kg nie są identyczne arytmetycznie. Resztki otwartych saszetek nie są magazynowane.
+- **Paramectin Pasta:** [polska ChPL RPL 18731](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/18731/characteristic), sekcje 3.9, 3.12 i 5.3–5.4. Iwermektyna 18,7 mg/g, jednorazowo 0,2 mg/kg w wymienionych w źródle inwazjach; działki po 100 kg. Zakres wybranego rekordu od 6 tygodni wynika z opisu pierwszego podania w wieku 6–8 tygodni, nie z twierdzenia o bezwzględnym przeciwwskazaniu. Otwarta strzykawka 7,49 g nie jest przechowywana do kolejnego podania.
+- **Iverpraz:** [polska ChPL RPL 31634](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/31634/characteristic), sekcje 4.3–4.4, 4.9, 4.11 i 6.3–6.5. 18,7 mg iwermektyny i 140,3 mg prazykwantelu/g; tabela gramów na jedno podanie jest źródłem dawki. Wartość mg podstawy obliczenia dotyczy iwermektyny, a interfejs pokazuje również ilość prazykwantelu. Działka 0,535 g; strzykawka 7,49 g. Minimum 2 tygodnie; brak potrzeby leczenia poniżej 2 miesięcy zapisano osobno jako uwagę źródła. Luki między wydrukowanymi zakresami nie są domykane przez zaokrąglenie masy.
+- **Equimoxin:** [polska ChPL RPL 47141](https://rejestry.ezdrowie.gov.pl/api/rpl/medicinal-products/47141/characteristic), sekcje 4.3, 4.9, 4.11 i 6.3–6.5. Moksydektyna 18,92 mg/g, jednorazowo 0,4 mg/kg, od 4 miesięcy. Aplikator 14,8 g, 14 działek po 50 kg. Źródło podaje również 1,056 g/50 kg, podczas gdy iloraz dawki i mocy to 1,05708245 g; rozbieżność jest jawnie opisana. Wynik użytkowy pokazuje pełne działki, a gramy jako przybliżenie. Nie dopisano zaokrąglania masy do najbliższej kreski.
+- **Pyrantel Vet Planet:** [polska ChPL RPL 16565](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/16565/characteristic), sekcje 4.9, 4.11 i 6.5. 350 mg embonianu pyrantelu/g, nie wolnego pyrantelu. Oddzielne pojedyncze dawki: 19 mg/kg przeciw wrażliwym nicieniom oraz 38 mg/kg przy A. perfoliata. Strzykawka opisana jako 50 ml zawiera 30 g pasty; opakowanie liczone w gramach. Brak liczbowego kroku podziałki w źródle — nie wymyślamy kliknięć.
+
+### Status konia i zapotrzebowanie
+
+Butagran, Equimoxin i Pyrantel mają `requiresFoodChainExclusion: true` na postaci i schemacie. Status w paszporcie jest niezależnym polem pacjenta: nieustalony, wykluczony, niewykluczony z uboju do spożycia przez ludzi. Wymagany status musi wynosić `excluded`; blokada postaci działa również przy ręcznym dawkowaniu. Nie jest to pełny system karencji, weryfikacji paszportu, mleka ani dopuszczenia do zawodów. Źródłowe ograniczenia nadal wymagają oceny lekarza.
+
+`injectionContainerUse: 'multiDose'` oznacza jedną nową fiolkę w modelowanym opakowaniu. Liczba pełnych podań z fiolki uwzględnia objętość, trwałość i limit nakłuć; cała dawka pochodzi z jednej fiolki. Resztek z różnych fiolek nie łączymy. Dla 11 ml raz dziennie przez 5 dni potrzeba 2 fiolek po 50 ml albo 1 fiolki 100 ml. Założenie pojawia się przy wyniku i w pełnym kopiowanym tekście.
+
+`singleUseUnitSize` obsługuje także doustne gramy: każdy termin podania zużywa nowe saszetki lub strzykawki, a pozostałości są odrzucane. Przykład kontrolny, nie zalecenie terapii: Butagran 5,5 g raz dziennie przez wpisane 28 dni to 56 saszetek po 5 g, czyli 3 pudełka po 20 saszetek. Suma podanych gramów sama nie wystarcza do obliczenia zapasu.
 
 ## Schematy źródłowe
 
@@ -49,7 +74,7 @@ Schemat źródłowy blokuje edycję podstawy dawki, częstości i zaokrąglania.
 
 Kopiowanie wymaga zarówno poprawnego przeliczenia, jak i spełnienia zapisanych warunków schematu oraz jawnego potwierdzenia lekarza. Wiek oceniany jest w jednostkach źródła; między jednostkami stosujemy ostrożne granice kalendarzowe. Nie przyjmujemy, że miesiąc oznacza cztery tygodnie. Parametry pacjenta nie trafiają do pamięci trwałej.
 
-Faza pierwszego dnia i podanie jednorazowe mają dokładnie 1 dzień; wybrane inne schematy stałe mają 5 albo 28 dni. Wskazanie i etap zawsze są zapisane w kopiowanym tekście. Zapas dotyczy wyłącznie wybranego etapu, a nie połączonej terapii początkowej i podtrzymującej. Warunkowe przerwanie Metacamu przy braku poprawy liczone jest od rozpoczęcia całego leczenia. Nie jest modelowane jako uniwersalny limit czasu u każdego odpowiadającego pacjenta.
+Faza pierwszego dnia i podanie jednorazowe mają dokładnie 1 dzień; wybrane inne schematy stałe mają 3, 5 albo 28 dni. Wskazanie i etap zawsze są zapisane w kopiowanym tekście. Zapas dotyczy wyłącznie wybranego etapu, a nie połączonej terapii początkowej i podtrzymującej. Warunkowe przerwanie Metacamu przy braku poprawy liczone jest od rozpoczęcia całego leczenia. Nie jest modelowane jako uniwersalny limit czasu u każdego odpowiadającego pacjenta.
 
 Dla chomika i szczura nadal nie ma schematu podania gotowego roztworu. Karta Enrobactinu pozostaje informacyjna i nie może ominąć blokady obliczeń.
 
@@ -59,4 +84,4 @@ Dla chomika i szczura nadal nie ma schematu podania gotowego roztworu. Karta Enr
 
 Trwałość fragmentu tabletki nie jest traktowana jako trwałość całego opakowania. Okresu 6 miesięcy po otwarciu wybranych zawiesin nie przybliżamy do 180 dni w silniku. Długie schematy otrzymują informację o konieczności sprawdzenia liczby opakowań według dat otwarcia i ważności.
 
-Wynik pozostaje przeliczeniem arytmetycznym. Katalog nie rozstrzyga wskazania, przeciwwskazań, interakcji, okresu karencji ani dawkowania dla konkretnego zwierzęcia. Fazy leczenia z różnymi dawkami wymagają osobnych przeliczeń. Kopiowany tekst wymaga weryfikacji przez lekarza weterynarii.
+Wynik pozostaje przeliczeniem arytmetycznym. Katalog nie rozstrzyga wskazania, pełnych przeciwwskazań, interakcji, okresu karencji ani indywidualnego doboru leczenia. Wybrane zapisane warunki, w tym status żywnościowy przy wymagających go produktach, są sprawdzane przez aplikację. Fazy leczenia z różnymi dawkami wymagają osobnych przeliczeń. Kopiowany tekst wymaga weryfikacji przez lekarza weterynarii.

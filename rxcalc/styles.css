@@ -114,4 +114,11 @@ input,select,textarea{min-width:0;max-width:100%}
 .measurement-note{display:flex;gap:8px;align-items:flex-start;padding:11px 12px;border-radius:8px;background:var(--surface-soft);font-size:11px;line-height:1.7;color:var(--muted);overflow-wrap:anywhere;margin:15px 0 0}
 .measurement-note svg{width:16px;height:16px;margin-top:2px;flex-shrink:0}
 .measurement-note span{min-width:0}
+.food-chain-field{grid-column:span 2;min-width:0}
+.food-chain-field small{display:block;margin-top:6px;color:var(--muted);font-size:10px;line-height:1.5}
+.route-filters{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:-4px 0 18px;font-size:11px;color:var(--muted)}
+.route-filters>span{margin-right:3px}
+.route-filters button{border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--muted);padding:7px 11px;font:inherit;cursor:pointer;min-height:34px}
+.route-filters button.active{border-color:var(--accent);background:var(--surface-soft);color:var(--accent);font-weight:650}
+@media(max-width:780px){.food-chain-field{grid-column:1/-1}.food-chain-field small{font-size:11px}.route-filters button{min-height:40px}}
 @media(max-width:780px){.source-regimen-card{font-size:12px}.source-regimen-heading button{font-size:12px;min-height:40px}.source-regimen-picker select{font-size:16px;min-height:44px}}

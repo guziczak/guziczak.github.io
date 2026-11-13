@@ -1,4 +1,6 @@
 /** Explicit, source-bound reference regimens. No diagnosis or phase is inferred. */
+import { EQUINE_NSAID_REGIMENS } from './equine-nsaids.js';
+import { EQUINE_ANTIPARASITIC_REGIMENS } from './equine-antiparasitics.js';
 const checked = '2026-11-12';
 const source = (sourceUrl, sourceLabel, sourceSection) => ({ sourceUrl, sourceLabel, sourceSection, sourceCheckedAt: checked });
 const metacamDogSource = source('https://www.vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2177020.PDF', 'SPC VMD (EN, kwiecień 2026)', '3.3–3.9');
@@ -138,4 +140,6 @@ export const REGIMENS = [
     screening: 'Potwierdź przyczynę wymiotów i możliwość leczenia doustnego, wyklucz niedrożność. Oceń wątrobę, serce, ciążę/laktację i inne leki. Nie łączyć z antagonistami kanałów wapniowych.',
     notes: ['Tabela dotyczy konkretnej mocy. Poza jej przedziałami wybierz odpowiednią moc lub ustal schemat indywidualnie.', 'Zapobiegawczo podać ponad godzinę przed czynnikiem wywołującym wymioty.', 'Nie obejmuje choroby lokomocyjnej. U młodych psów z wirusowym zapaleniem jelit bezpieczeństwo stosowania ponad 5 dni nie zostało określone.'],
   })),
+  ...EQUINE_NSAID_REGIMENS,
+  ...EQUINE_ANTIPARASITIC_REGIMENS,
 ];

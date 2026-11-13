@@ -41,7 +41,7 @@ const paths = {
   settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--surface)"/><circle cx="16" cy="17" r="3" fill="var(--surface)"/>',
 };
 const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.pill}</svg>`;
-const forms = { tablet: ['Tabletki', 'tabl.'], capsule: ['Kapsułki', 'kaps.'], suspension: ['Zawiesina doustna', 'ml'], oralPaste: ['Pasta doustna', 'g'], oralPowder: ['Granulat / proszek doustny', 'g'], spray: ['Aerozol', 'rozp.'], gel: ['Żel / maść', 'g'], drops: ['Krople', 'kropli'], solution: ['Roztwór', 'ml'], injection: ['Iniekcja · pojemniki jednorazowe', 'ml'] };
+const forms = { tablet: ['Tabletki', 'tabl.'], capsule: ['Kapsułki', 'kaps.'], suspension: ['Zawiesina doustna', 'ml'], oralPaste: ['Pasta doustna', 'g'], oralGel: ['Żel doustny', 'g'], oralPowder: ['Granulat / proszek doustny', 'g'], spray: ['Aerozol', 'rozp.'], gel: ['Żel / maść', 'g'], drops: ['Krople', 'kropli'], solution: ['Roztwór', 'ml'], injection: ['Iniekcja · pojemniki jednorazowe', 'ml'] };
 const ANIMALS = [{id:'dog',label:'Pies',weight:'np. 12'},{id:'cat',label:'Kot',weight:'np. 4'},{id:'horse',label:'Koń',weight:'np. 550'},{id:'hamster',label:'Chomik',weight:'np. 0,08'},{id:'rat',label:'Szczur',weight:'np. 0,3'}];
 const VET_SOURCE = 'https://medicines.health.europa.eu/veterinary/en/search-medicines';
 let specialty = readPreference('specialty', 'dental');
@@ -50,8 +50,8 @@ let favoriteIds = readPreference('favorites', []);
 if (!Array.isArray(favoriteIds)) favoriteIds = [];
 favoriteIds = favoriteIds.filter(id => DRUGS.some(d => d.id === id));
 const state = {
-  specialty, category: 'all', search: '', drugId: '', formId: '', packageId: '',
-  patientType: 'adult', age: '', weight: '', sex: '', creatinine: '', species: '', vetAgeUnit: 'years', vetRoute: '',
+  specialty, category: 'all', routeFilter: 'all', search: '', drugId: '', formId: '', packageId: '',
+  patientType: 'adult', age: '', weight: '', sex: '', creatinine: '', species: '', vetAgeUnit: 'years', vetRoute: '', foodChainStatus: 'unknown',
   doseMode: 'fixed', dose: '', frequency: '', days: '', roundingStep: '', manualMax: '', regimenId: '',
   extraInstructions: '', confirmed: false, rxMode: 'full', custom: false,
   customName: '', customForm: 'tablet', customStrength: '', customConcentration: '', customVolume: '5', customPack: '', customFractions: '1', customDrops: '', customContainers: '1',
@@ -64,9 +64,11 @@ let offlineReady = false, requestedUpdate = false;
 const field = (id, label, value, placeholder, unit = '', extra = '') => `<div class="field"><label for="${id}">${label}</label><div class="input-unit"><input id="${id}" data-field="${id}" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(value)}" placeholder="${esc(placeholder)}" ${extra}>${unit ? `<span>${unit}</span>` : ''}</div></div>`;
 const isVeterinary = () => state.specialty === 'veterinary';
 const getAnimal = () => ANIMALS.find(a => a.id === state.species);
-const getCatalogue = () => availableDrugs(DRUGS, state.specialty, state.species);
+const getSpeciesCatalogue = () => availableDrugs(DRUGS, state.specialty, state.species);
+const getCatalogue = () => availableDrugs(DRUGS, state.specialty, state.species, state.routeFilter);
+const ROUTES = { oral: 'Doustnie', iv: 'Dożylnie', im: 'Domięśniowo', sc: 'Podskórnie', topical: 'Miejscowo' };
 const getDrug = () => getCatalogue().find(d => d.id === state.drugId);
-const visibleFavorites = () => (isVeterinary() ? getCatalogue() : DRUGS.filter(d => !d.specialties.includes('veterinary'))).filter(d => favoriteIds.includes(d.id));
+const visibleFavorites = () => (isVeterinary() ? getSpeciesCatalogue() : DRUGS.filter(d => !d.specialties.includes('veterinary'))).filter(d => favoriteIds.includes(d.id));
 const getForm = () => {
   if (state.custom) return {
     id: 'custom', label: state.customName || 'Preparat własny', form: state.customForm === 'capsule' ? 'tablet' : state.customForm,
@@ -107,7 +109,7 @@ function quickDays(source, cardio) {
 }
 const deviceDivisions = (r, f) => r.valid && f.doseStepUnits > 0 ? Math.round(r.singleUnits / f.doseStepUnits) : null;
 const divisionUnit = count => count === 1 ? 'działka' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'działki' : 'działek';
-const regimenContext = () => ({ formId: getForm()?.id, species: state.species, weight: num(state.weight), age: num(state.age), ageUnit: state.vetAgeUnit, days: num(state.days), calculationBlocked: getForm()?.calculationBlocked === true });
+const regimenContext = () => ({ formId: getForm()?.id, species: state.species, weight: num(state.weight), age: num(state.age), ageUnit: state.vetAgeUnit, foodChainStatus: state.foodChainStatus, days: num(state.days), calculationBlocked: getForm()?.calculationBlocked === true });
 const getAvailableRegimens = () => isVeterinary() && !state.custom ? availableRegimens(REGIMENS, regimenContext()) : [];
 const ageUnitLabel = () => ({ years: 'lat', months: 'mies.', weeks: 'tyg.', days: 'dni' })[state.vetAgeUnit] || '';
 function syncSourceRegimen() {
@@ -147,16 +149,32 @@ function selectForm(id) {
   resetRegimen();
   return true;
 }
+function foodChainField() {
+  if (state.species !== 'horse') return '';
+  return `<div class="field food-chain-field"><label for="foodChainStatus">Status w paszporcie konia</label><select id="foodChainStatus" data-field="foodChainStatus"><option value="unknown" ${state.foodChainStatus === 'unknown' ? 'selected' : ''}>Nieustalony</option><option value="excluded" ${state.foodChainStatus === 'excluded' ? 'selected' : ''}>Wykluczony z uboju</option><option value="notExcluded" ${state.foodChainStatus === 'notExcluded' ? 'selected' : ''}>Niewykluczony z uboju</option></select><small>Dotyczy uboju do spożycia przez ludzi. Sprawdź wpis w paszporcie.</small></div>`;
+}
+function supplyNote(r, f) {
+  const notes = [];
+  if (f.injectionContainerUse === 'multiDose') {
+    notes.push(`Zapas z nowych fiolek; jedno nakłucie na podanie. Cała dawka z jednej fiolki; resztek z różnych fiolek nie łączymy. Trwałość po otwarciu: ${n(f.shelfLifeDays)} dni${f.maxWithdrawalsPerVial ? `; najwyżej ${n(f.maxWithdrawalsPerVial)} pobrań z fiolki w tym modelu` : ''}.`);
+  }
+  if (r.singleUseContainers !== null && r.singleUseContainers > 0) {
+    notes.push(`Pojemniki jednorazowe do otwarcia: ${n(r.singleUseContainers)} × ${n(f.singleUseUnitSize,6)} ${f.unitLabel}.`);
+    if (r.unusedSingleUseUnits > 0) notes.push(`Pozostałości do odrzucenia po podaniach: ${n(r.unusedSingleUseUnits,6)} ${f.unitLabel}.`);
+  }
+  if (f.packageCalculationNote) notes.push(f.packageCalculationNote);
+  return notes.join(' ');
+}
 function clearCustomProduct() {
   Object.assign(state,{customName:'',customForm:'tablet',customStrength:'',customConcentration:'',customVolume:'5',customPack:'',customFractions:'1',customDrops:'',customContainers:'1',vetRoute:''});
 }
 function clearPatientContext() {
-  Object.assign(state,{age:'',weight:'',sex:'',creatinine:'',patientType:'adult',species:'',vetAgeUnit:'years'});
+  Object.assign(state,{age:'',weight:'',sex:'',creatinine:'',patientType:'adult',species:'',vetAgeUnit:'years',foodChainStatus:'unknown'});
   resetRegimen();
 }
 function startVeterinary() {
   clearCustomProduct();
-  Object.assign(state,{custom:true,drugId:'',formId:'custom',packageId:'custom',doseMode:'perKgDose',roundingStep:'',rxMode:'full',search:'',category:'all'});
+  Object.assign(state,{custom:true,drugId:'',formId:'custom',packageId:'custom',doseMode:'perKgDose',roundingStep:'',rxMode:'full',search:'',category:'all',routeFilter:'all'});
   resetRegimen();
   const first = getCatalogue()[0];
   if (first) chooseDrug(first.id);
@@ -166,7 +184,7 @@ function switchSpecialty(value) {
   if(state.specialty===value){savePreference('specialty',value);return;}
   const animalTransition=isVeterinary() || value==='veterinary';
   if(animalTransition){clearPatientContext();clearCustomProduct();}
-  state.specialty=value;state.search='';state.category='all';savePreference('specialty',value);
+  state.specialty=value;state.search='';state.category='all';state.routeFilter='all';savePreference('specialty',value);
   if(isVeterinary())startVeterinary();else chooseDrug(DRUGS.find(d=>d.specialties.includes(value)).id);
 }
 if(isVeterinary())startVeterinary();else chooseDrug(DRUGS.find(d => d.specialties.includes(state.specialty)).id);
@@ -195,7 +213,7 @@ function render() {
         <nav class="mobile-nav" aria-label="Narzędzia mobilne"><button data-action="calculator">${icon('calc')}Kalkulator</button><button data-action="favorites">${icon('star')}Ulubione</button><button data-action="tools">${icon('tools')}Narzędzia</button></nav>
         <div class="clinical-note">${icon('info')}<span>${state.demo ? '<strong>Przykład arytmetyczny.</strong> To dane demonstracyjne, nie schemat dla pacjenta.' : vet ? '<strong>Weterynaria · schematy ze źródeł.</strong> Wybierz wskazanie i etap leczenia, a następnie potwierdź je dla pacjenta.' : '<strong>Wersja do weryfikacji.</strong> Schemat ustala lekarz. Potwierdź go w aktualnej ChPL.'}</span><button data-action="about">Zakres kalkulatora</button></div>
         <section class="patient-card" aria-labelledby="patient-title"><div class="section-heading"><span class="step-number">01</span><h2 id="patient-title">Kontekst pacjenta</h2><span class="trailing">${icon('lock')} Bez zapisywania danych</span></div><div class="patient-fields ${vet ? 'vet-patient-fields' : ''}">
-          ${vet ? `<div class="field"><label for="species">Gatunek zwierzęcia <span aria-hidden="true">*</span></label><select id="species" data-field="species" required><option value="">Wybierz gatunek</option>${ANIMALS.map(a=>`<option value="${a.id}" ${state.species===a.id?'selected':''}>${a.label}</option>`).join('')}</select></div>${field('weight','Masa ciała',state.weight,getAnimal()?.weight||'Masa w kilogramach','kg','required')}<div class="field"><label for="vetAgeUnit">Jednostka wieku</label><select id="vetAgeUnit" data-field="vetAgeUnit"><option value="years" ${state.vetAgeUnit==='years'?'selected':''}>Lata</option><option value="months" ${state.vetAgeUnit==='months'?'selected':''}>Miesiące</option><option value="weeks" ${state.vetAgeUnit==='weeks'?'selected':''}>Tygodnie</option><option value="days" ${state.vetAgeUnit==='days'?'selected':''}>Dni</option></select></div>${field('age',source?.minimumAge?'Wiek (do schematu)':'Wiek (opcjonalnie)',state.age,'—',ageUnitLabel(),source?.minimumAge?'required':'')}` : `
+          ${vet ? `<div class="field"><label for="species">Gatunek zwierzęcia <span aria-hidden="true">*</span></label><select id="species" data-field="species" required><option value="">Wybierz gatunek</option>${ANIMALS.map(a=>`<option value="${a.id}" ${state.species===a.id?'selected':''}>${a.label}</option>`).join('')}</select></div>${field('weight','Masa ciała',state.weight,getAnimal()?.weight||'Masa w kilogramach','kg','required')}<div class="field"><label for="vetAgeUnit">Jednostka wieku</label><select id="vetAgeUnit" data-field="vetAgeUnit"><option value="years" ${state.vetAgeUnit==='years'?'selected':''}>Lata</option><option value="months" ${state.vetAgeUnit==='months'?'selected':''}>Miesiące</option><option value="weeks" ${state.vetAgeUnit==='weeks'?'selected':''}>Tygodnie</option><option value="days" ${state.vetAgeUnit==='days'?'selected':''}>Dni</option></select></div>${field('age',source?.minimumAge?'Wiek (do schematu)':'Wiek (opcjonalnie)',state.age,'—',ageUnitLabel(),source?.minimumAge?'required':'')}${foodChainField()}` : `
           ${!cardio ? `<div class="patient-type"><div class="field-label">Grupa pacjenta</div><div class="segmented" aria-label="Grupa pacjenta"><button data-action="patient-type" data-value="adult" class="${state.patientType === 'adult' ? 'active' : ''}" aria-pressed="${state.patientType === 'adult'}">Dorosły</button><button data-action="patient-type" data-value="child" class="${state.patientType === 'child' ? 'active' : ''}" aria-pressed="${state.patientType === 'child'}">Dziecko</button></div></div><div class="patient-divider"></div>` : ''}
           ${field('age', 'Wiek', state.age, state.patientType === 'child' ? 'np. 8' : 'np. 35', 'lat')}
           ${field('weight', 'Masa ciała', state.weight, state.patientType === 'child' ? 'np. 24' : 'np. 70', 'kg')}
@@ -213,6 +231,7 @@ function render() {
               ${durationHint(source) ? `<p class="small-help">${esc(durationHint(source))}</p>` : ''}
               ${source?.fixedDays ? '' : `<div class="quick-days"><span>Szybki wybór:</span>${quickDays(source,cardio).map(d => `<button class="${state.days === String(d) ? 'active' : ''}" data-action="days" data-value="${d}">${d} dni</button>`).join('')}</div>`}
               ${f.measurementNote ? `<p class="measurement-note">${icon('info')}<span>${esc(f.measurementNote)}</span></p>` : ''}
+              ${f.combinationNote ? `<p class="small-help">${esc(f.combinationNote)}</p>` : ''}
               <details class="advanced"><summary>${icon('settings')}Szczegóły przeliczenia i zalecenia</summary><div class="advanced-grid">${field('manualMax', 'Limit dobowy z ChPL (opcjonalnie)', state.manualMax, 'Ustalony przez lekarza', 'mg')}<div class="field"><label for="roundingStep">Krok zaokrąglenia (${esc(f.unitLabel)})</label><select id="roundingStep" data-field="roundingStep" ${sourceLocked ? 'disabled' : ''}>${[['','Bez zaokrąglania'],['0.01','0,01'],['0.05','0,05'],['0.1','0,1'],['0.5','0,5'],['1','1']].map(([v,l]) => `<option value="${v}" ${state.roundingStep === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div><div class="field" style="grid-column:1/-1"><label for="extraInstructions">${!vet && f.form === 'injection' ? 'Droga i sposób podania (wymagane)' : 'Dodatkowe zalecenia do D.S.'}</label><input id="extraInstructions" data-field="extraInstructions" value="${esc(state.extraInstructions)}" placeholder="Np. wstrząsnąć przed użyciem" maxlength="500" autocomplete="off"></div></div><p class="small-help">Limit ręczny może zaostrzyć limit katalogowy. Kontrole dotyczą wyłącznie wybranego preparatu. Sumowanie innych leków z tą samą substancją wymaga oceny lekarza.</p></details>
             </fieldset>
           </section>
@@ -234,10 +253,12 @@ function render() {
 function productPicker(f) {
   const vet = isVeterinary(), catalogue = getCatalogue();
   if (vet && !state.species) return `<div class="empty-search">${icon('paw')}<p>Wybierz gatunek zwierzęcia powyżej.<br>Pokażemy preparaty przypisane do tego gatunku.</p></div>`;
+  const routes = [...new Set(getSpeciesCatalogue().flatMap(d => d.forms.map(x => x.routeCode)))].filter(code => ROUTES[code]);
   const categories = (CATEGORIES[state.specialty] || []).filter(c => catalogue.some(d => d.category === c.id));
   const selector = state.custom ? customFields() : `
     <div class="search-wrap">${icon('search')}<input id="search" type="search" value="${esc(state.search)}" placeholder="Nazwa leku, substancja lub wskazanie…" aria-label="Szukaj preparatu" autocomplete="off"><span class="search-shortcut">⌘ K</span></div>
     <div class="categories" aria-label="Kategorie"><button class="${state.category === 'all' ? 'active' : ''}" data-action="category" data-value="all">Wszystkie</button>${categories.map(c => `<button class="${state.category === c.id ? 'active' : ''}" data-action="category" data-value="${c.id}">${c.label}</button>`).join('')}</div>
+    ${vet && routes.length > 1 ? `<div class="route-filters" role="group" aria-label="Droga podania"><span>Podanie</span><button data-action="route" data-value="all" class="${state.routeFilter === 'all' ? 'active' : ''}" aria-pressed="${state.routeFilter === 'all'}">Każda droga</button>${routes.map(code => `<button data-action="route" data-value="${code}" class="${state.routeFilter === code ? 'active' : ''}" aria-pressed="${state.routeFilter === code}">${ROUTES[code]}</button>`).join('')}</div>` : ''}
     <div class="drug-list" id="drug-list"></div>
     <div class="form-selection"><div class="selected-label"><span>Postać i moc preparatu</span><button class="favorite-button ${favoriteIds.includes(state.drugId) ? 'saved' : ''}" data-action="favorite">${icon('star')}${favoriteIds.includes(state.drugId) ? 'W ulubionych' : 'Zapisz'}</button></div><div class="form-chips">${getDrug().forms.map(x => `<button class="${x.id === f.id ? 'active' : ''}" data-action="form" data-value="${x.id}" aria-pressed="${x.id === f.id}">${esc(x.label)}</button>`).join('')}</div></div>
     ${vet ? `<div class="catalogue-notice ${f.calculationBlocked ? 'reference-only' : ''}">${icon(f.calculationBlocked ? 'info' : 'book')}<div>${f.calculationBlocked ? `<strong>Karta informacyjna · koncentrat do rozcieńczenia</strong><p>${esc(f.calculationNote)}</p>` : `<p>Postać przypisana do gatunku: <strong>${esc(getAnimal()?.label)}</strong>. ${getAvailableRegimens().length ? `Schematy ze źródła: ${getAvailableRegimens().length}. Wybierz wskazanie i etap w kroku 03.` : 'Schemat ustala lekarz weterynarii.'}</p>`}${f.calculationBlocked ? `<a href="${esc(f.sourceUrl)}" target="_blank" rel="noopener noreferrer">Otwórz źródło preparatu ↗</a>` : ''}</div></div>` : ''}`;
@@ -247,8 +268,8 @@ function productPicker(f) {
 
 function customFields() {
   const liquid = ['suspension','solution','injection','drops'].includes(state.customForm);
-  const oralMass = ['oralPaste','oralPowder'].includes(state.customForm);
-  return `<div class="custom-fields"><div class="field full"><label for="customName">Nazwa i moc preparatu</label><input id="customName" data-field="customName" value="${esc(state.customName)}" placeholder="Pełna nazwa, moc i postać" maxlength="160" autocomplete="off"></div><div class="field full"><label for="customForm">Postać leku</label><select id="customForm" data-field="customForm">${Object.entries(forms).filter(([id]) => isVeterinary() || !['oralPaste','oralPowder'].includes(id)).map(([id,[label]]) => `<option value="${id}" ${id === state.customForm ? 'selected' : ''}>${label}</option>`).join('')}</select></div>${liquid ? `${field('customConcentration', 'Substancja w stężeniu', state.customConcentration, 'np. 400', 'mg')}${field('customVolume', 'W objętości', state.customVolume, 'np. 5', 'ml')}` : field('customStrength', oralMass ? 'Substancja w 1 g preparatu' : ['tablet','capsule'].includes(state.customForm) ? 'Moc 1 tabletki / kapsułki' : 'Substancja w 1 jednostce (opcjonalnie)', state.customStrength, oralMass ? 'Z dokumentacji produktu' : 'np. 500', oralMass ? 'mg/g' : 'mg')}${field('customPack', state.customForm === 'injection' ? 'Objętość 1 ampułki / strzykawki' : 'Wielkość opakowania', state.customPack, state.customForm === 'injection' ? 'np. 1' : 'np. 20', forms[state.customForm][1])}${state.customForm === 'injection' ? field('customContainers','Ampułek w opakowaniu',state.customContainers,'np. 10','szt.') : ''}${state.customForm === 'drops' ? field('customDrops','Kalibracja preparatu',state.customDrops,'Z ChPL','kropli/ml') : ''}${state.customForm === 'tablet' ? `<div class="field full"><label for="customFractions">Podzielność potwierdzona w ChPL</label><select id="customFractions" data-field="customFractions"><option value="1" ${state.customFractions==='1'?'selected':''}>Tylko cała tabletka / kapsułka</option><option value="1,0.5" ${state.customFractions==='1,0.5'?'selected':''}>Cała tabletka lub połowa</option><option value="1,0.25,0.5,0.75" ${state.customFractions==='1,0.25,0.5,0.75'?'selected':''}>Podział na ćwiartki</option></select></div>` : ''}${isVeterinary() ? `<div class="field full"><label for="vetRoute">Droga podania (wymagana)</label><input id="vetRoute" data-field="vetRoute" value="${esc(state.vetRoute)}" placeholder="Np. doustnie" maxlength="100" autocomplete="off" required></div>` : ''}</div><p class="small-help">${isVeterinary() ? 'Wprowadź dane z odpowiedniego źródła weterynaryjnego. Schemat i stężenie nie są dobierane automatycznie.' : 'Wprowadź dane dokładnie z ChPL.'} Dla pasty i granulatu doustnego podaj mg substancji w 1 g całego preparatu, a opakowanie w gramach preparatu. Dla kropli opakowanie podaj w liczbie kropli. Dla aerozolu — w liczbie dozowanych rozpyleń. Dla postaci „Iniekcja” ampułki / ampułkostrzykawki są jednorazowe; pozostałość po podaniu jest odrzucana.</p>`;
+  const oralMass = ['oralPaste','oralPowder','oralGel'].includes(state.customForm);
+  return `<div class="custom-fields"><div class="field full"><label for="customName">Nazwa i moc preparatu</label><input id="customName" data-field="customName" value="${esc(state.customName)}" placeholder="Pełna nazwa, moc i postać" maxlength="160" autocomplete="off"></div><div class="field full"><label for="customForm">Postać leku</label><select id="customForm" data-field="customForm">${Object.entries(forms).filter(([id]) => isVeterinary() || !['oralPaste','oralPowder','oralGel'].includes(id)).map(([id,[label]]) => `<option value="${id}" ${id === state.customForm ? 'selected' : ''}>${label}</option>`).join('')}</select></div>${liquid ? `${field('customConcentration', 'Substancja w stężeniu', state.customConcentration, 'np. 400', 'mg')}${field('customVolume', 'W objętości', state.customVolume, 'np. 5', 'ml')}` : field('customStrength', oralMass ? 'Substancja w 1 g preparatu' : ['tablet','capsule'].includes(state.customForm) ? 'Moc 1 tabletki / kapsułki' : 'Substancja w 1 jednostce (opcjonalnie)', state.customStrength, oralMass ? 'Z dokumentacji produktu' : 'np. 500', oralMass ? 'mg/g' : 'mg')}${field('customPack', state.customForm === 'injection' ? 'Objętość 1 ampułki / strzykawki' : 'Wielkość opakowania', state.customPack, state.customForm === 'injection' ? 'np. 1' : 'np. 20', forms[state.customForm][1])}${state.customForm === 'injection' ? field('customContainers','Ampułek w opakowaniu',state.customContainers,'np. 10','szt.') : ''}${state.customForm === 'drops' ? field('customDrops','Kalibracja preparatu',state.customDrops,'Z ChPL','kropli/ml') : ''}${state.customForm === 'tablet' ? `<div class="field full"><label for="customFractions">Podzielność potwierdzona w ChPL</label><select id="customFractions" data-field="customFractions"><option value="1" ${state.customFractions==='1'?'selected':''}>Tylko cała tabletka / kapsułka</option><option value="1,0.5" ${state.customFractions==='1,0.5'?'selected':''}>Cała tabletka lub połowa</option><option value="1,0.25,0.5,0.75" ${state.customFractions==='1,0.25,0.5,0.75'?'selected':''}>Podział na ćwiartki</option></select></div>` : ''}${isVeterinary() ? `<div class="field full"><label for="vetRoute">Droga podania (wymagana)</label><input id="vetRoute" data-field="vetRoute" value="${esc(state.vetRoute)}" placeholder="Np. doustnie" maxlength="100" autocomplete="off" required></div>` : ''}</div><p class="small-help">${isVeterinary() ? 'Wprowadź dane z odpowiedniego źródła weterynaryjnego. Schemat i stężenie nie są dobierane automatycznie.' : 'Wprowadź dane dokładnie z ChPL.'} Dla pasty, żelu i granulatu doustnego podaj mg substancji w 1 g całego preparatu, a opakowanie w gramach preparatu. Dla kropli opakowanie podaj w liczbie kropli. Dla aerozolu — w liczbie dozowanych rozpyleń. Dla postaci „Iniekcja” ampułki / ampułkostrzykawki są jednorazowe; pozostałość po podaniu jest odrzucana.</p>`;
 }
 function modeOptions(f) {
   const opts = [['fixed','Dawka jednorazowa · mg'],['perKgDay','Według masy · mg/kg/dobę'],['perKgDose','Według masy · mg/kg/podanie'],['units',`Ilość preparatu · ${f.unitLabel}/podanie`]];
@@ -260,10 +281,10 @@ const doseUnit = () => ({ fixed:'mg', perKgDay:'mg/kg/d', perKgDose:'mg/kg', uni
 function renderDrugs() {
   const node = $('#drug-list'); if (!node) return;
   const query = normalize(state.search);
-  const list = getCatalogue().filter(d => (state.category === 'all' || d.category === state.category) && normalize([d.name,d.substance,...d.searchTerms,...d.forms.map(f => f.label)].join(' ')).includes(query));
-  node.innerHTML = list.length ? list.map(d => `<button class="drug-card ${d.id === state.drugId ? 'selected' : ''}" data-action="drug" data-value="${d.id}" aria-pressed="${d.id === state.drugId}"><span class="drug-icon">${icon(d.forms[0].form === 'tablet' ? 'pill' : 'bottle')}</span><span><span class="drug-name">${esc(d.name)}</span><span class="drug-description">${esc(d.forms[0].label.split(' · ')[0])} · ${d.forms[0].calculationBlocked ? 'karta informacyjna' : d.forms.length === 1 ? shortForm(d.forms[0]) : `${d.forms.length} warianty`}</span></span><span class="drug-check">${d.id === state.drugId ? icon('check') : ''}</span></button>`).join('') : '<div class="empty-search">Nie znaleziono preparatu.<br>Zmień kategorię lub wprowadź własny poniżej.</div>';
+  const list = getCatalogue().filter(d => (state.category === 'all' || d.category === state.category) && normalize([d.name,d.substance,d.substanceLabel,...d.searchTerms,...d.forms.flatMap(f => [f.label,f.routeLabel])].join(' ')).includes(query));
+  node.innerHTML = list.length ? list.map(d => `<button class="drug-card ${d.id === state.drugId ? 'selected' : ''}" data-action="drug" data-value="${d.id}" aria-pressed="${d.id === state.drugId}"><span class="drug-icon">${icon(d.forms[0].form === 'tablet' ? 'pill' : 'bottle')}</span><span><span class="drug-name">${esc(d.name)}</span><span class="drug-description">${esc(isVeterinary() ? d.substanceLabel || d.substance : d.forms[0].label.split(' · ')[0])} · ${d.forms[0].calculationBlocked ? 'karta informacyjna' : d.forms.length === 1 ? shortForm(d.forms[0]) : `${d.forms.length} warianty`}${isVeterinary() && d.forms[0].routeCode === 'iv' ? ' · dożylnie' : ''}</span></span><span class="drug-check">${d.id === state.drugId ? icon('check') : ''}</span></button>`).join('') : '<div class="empty-search">Nie znaleziono preparatu.<br>Zmień kategorię lub wprowadź własny poniżej.</div>';
 }
-function shortForm(f) { return ({tablet:'tabletki',suspension:'zawiesina',oralPaste:'pasta doustna',oralPowder:'granulat doustny',spray:'aerozol',solution:'roztwór',gel:'żel',drops:'krople',injection:'iniekcja'})[f.form] || f.form; }
+function shortForm(f) { return ({tablet:'tabletki',suspension:'zawiesina',oralPaste:'pasta doustna',oralGel:'żel doustny',oralPowder:'granulat doustny',spray:'aerozol',solution:'roztwór',gel:'żel',drops:'krople',injection:'iniekcja'})[f.form] || f.form; }
 function applicableLimit(f) {
   const age=num(state.age),weight=num(state.weight);
   let rule=(f.conditionalLimits||[]).find(r => {
@@ -276,7 +297,7 @@ function applicableLimit(f) {
 }
 function makeInput(packageOverride) {
   const f=getForm(), limit=applicableLimit(f), pack=packageOverride||f.packOptions.find(p=>p.id===state.packageId)||f.packOptions[0];
-  return { patientKind:isVeterinary()?'animal':'human',calculationBlocked:f.calculationBlocked===true,species:isVeterinary()?state.species:undefined,form:f.form,doseMode:state.doseMode,dose:num(state.dose),weight:num(state.weight),age:isVeterinary()&&num(state.age)!==null?num(state.age)*({years:1,months:1/12,weeks:7/365,days:1/365}[state.vetAgeUnit]||1):num(state.age),frequency:num(state.frequency),days:num(state.days),strengthMg:f.strengthMg??null,concentrationMg:f.concentrationMg??null,concentrationMl:f.concentrationMl??null,unitLabel:f.unitLabel,packageSize:pack.quantity,roundingStep:num(state.roundingStep),allowedFractions:f.allowedFractions??null,maxDailyMg:limit.daily,maxSingleMg:limit.single,minAge:f.minAge??null,shelfLifeDays:f.shelfLifeDays??null,dropsPerMl:f.dropsPerMl??null,singleUseUnitSize:f.singleUseUnitSize??null,doseBasisIngredient:f.doseBasisIngredient,doseStepUnits:f.doseStepUnits??null };
+  return { patientKind:isVeterinary()?'animal':'human',calculationBlocked:f.calculationBlocked===true,species:isVeterinary()?state.species:undefined,form:f.form,doseMode:state.doseMode,dose:num(state.dose),weight:num(state.weight),age:isVeterinary()&&num(state.age)!==null?num(state.age)*({years:1,months:1/12,weeks:7/365,days:1/365}[state.vetAgeUnit]||1):num(state.age),frequency:num(state.frequency),days:num(state.days),strengthMg:f.strengthMg??null,concentrationMg:f.concentrationMg??null,concentrationMl:f.concentrationMl??null,unitLabel:f.unitLabel,packageSize:pack.quantity,roundingStep:num(state.roundingStep),allowedFractions:f.allowedFractions??null,maxDailyMg:limit.daily,maxSingleMg:limit.single,minAge:f.minAge??null,shelfLifeDays:f.shelfLifeDays??null,dropsPerMl:f.dropsPerMl??null,singleUseUnitSize:f.singleUseUnitSize??null,doseBasisIngredient:f.doseBasisIngredient,doseStepUnits:f.doseStepUnits??null,foodChainStatus:state.foodChainStatus,injectionContainerUse:f.injectionContainerUse,maxWithdrawalsPerVial:f.maxWithdrawalsPerVial,discardRemainderAfterUse:f.discardRemainderAfterUse,...(Object.hasOwn(f,'requiresFoodChainExclusion')?{requiresFoodChainExclusion:f.requiresFoodChainExclusion}:{}) };
 }
 function updateResult() {
   const sourceCheck=syncSourceRegimen();
@@ -295,6 +316,7 @@ function updateResult() {
   $('#frequency-output').textContent=hasResult?`${n(input.frequency)} × na dobę · przez ${n(input.days)} ${input.days===1?'dzień':'dni'}`:'Uzupełnij schemat podawania';
   let equivalent=hasResult?(r.singleMg!==null?`${n(r.singleMg,4)} mg${f.doseBasisIngredient?' '+f.doseBasisIngredient:''} na podanie`:`Ilość preparatu na jedno podanie`):'Dawka, częstotliwość i czas stosowania.';
   if(f.ingredients && hasResult) equivalent+=` · ${n(r.singleUnits*f.ingredients[1].amountMg/f.ingredients[1].perMl,3)} mg kw. klawulanowego`;
+  if(hasResult && f.activeIngredients?.length>1) equivalent+=' · '+f.activeIngredients.slice(1).map(i=>`${n(r.singleUnits*i.strengthMg,4)} mg (${i.substanceLabel})`).join(' · ');
   if(divisions!==null) equivalent+=` · około ${n(r.singleUnits,6)} ${f.unitLabel} preparatu · ${f.doseStepLabel || 'podziałka przyrządu'}`;
   $('#dose-equivalent').textContent=equivalent;
   const showStatus=hasResult||r.status==='critical';
@@ -314,7 +336,7 @@ function updateResult() {
   $('#total-units').textContent=quantitiesAvailable&&r.totalUnits!==null?`${n(r.totalUnits,4)} ${f.unitLabel}`:'—';
   $('#package-result').textContent=quantitiesAvailable&&r.packages!==null?`${n(r.packages)} op. × ${pack.label}`:'— opakowań';
   $('#package-description').textContent=quantitiesAvailable&&r.leftoverUnits!==null?`${n(r.leftoverUnits,4)} ${f.unitLabel} nadmiaru${r.expiryWasteUnits>0?` · w tym ${n(r.expiryWasteUnits,3)} ${f.unitLabel} po terminie przydatności`:''}`:'Wybierz opakowanie preparatu';
-  if(quantitiesAvailable&&r.packages!==null&&f.packageCalculationNote) $('#package-description').textContent+=' '+f.packageCalculationNote;
+  if(quantitiesAvailable&&r.packages!==null) $('#package-description').textContent+=' '+supplyNote(r,f);
   const alternatives=(quantitiesAvailable?f.packOptions:[]).map(p=>({p,r:calculate(makeInput(p))})).filter(x=>x.r.valid).sort((a,b)=>a.r.leftoverUnits-b.r.leftoverUnits||a.r.packages-b.r.packages);
   const best=alternatives[0];
   $('#best-package').innerHTML=best && best.p.id!==state.packageId && !state.custom?`<button class="best-package" data-action="best-package" data-value="${esc(best.p.id)}">${icon('arrow')}Mniej nadmiaru / opakowań: ${n(best.r.packages)} × ${esc(best.p.label)}</button>`:'';
@@ -338,11 +360,11 @@ function prescription(r,f,input) {
   if(divisions!==null && f.doseStepLabel) ds+=` Kalibracja: ${f.doseStepLabel}.`;
   if(source?.administration) ds+=' '+source.administration;
   if(state.extraInstructions.trim()) ds+=' '+state.extraInstructions.trim();
-  const context=(isVeterinary()?`Gatunek: ${getAnimal()?.label || '—'}. Masa ciała: ${n(input.weight,6)} kg.\n`:'')+(source?`Wskazanie: ${source.indication}.\nEtap: ${source.phaseLabel}.\n`:'');
+  const context=(isVeterinary()?`Gatunek: ${getAnimal()?.label || '—'}. Masa ciała: ${n(input.weight,6)} kg.${f.requiresFoodChainExclusion?' Status w paszporcie: wykluczony z uboju do spożycia przez ludzi.':''}\n`:'')+(source?`Wskazanie: ${source.indication}.\nEtap: ${source.phaseLabel}.\n`:'');
   if(state.rxMode==='ds')return context+ds;
   const name=state.custom?state.customName.trim():`${getDrug().substance}\n${f.label}`;
   const pack=f.packOptions.find(p=>p.id===state.packageId)||f.packOptions[0];
-  return `${context}${isVeterinary()?'Preparat:':'Rp.'} ${name}\n${n(r.packages)} op. po ${pack.label}${f.packageCalculationNote?'\nZapas: '+f.packageCalculationNote:''}\n${ds}`;
+  return `${context}${isVeterinary()?'Preparat:':'Rp.'} ${name}\n${n(r.packages)} op. po ${pack.label}${supplyNote(r,f)?'\nZapas: '+supplyNote(r,f):''}\n${ds}`;
 }
 function dirty() { state.confirmed=false; }
 function toast(message) { clearTimeout(toastTimer); const el=$('#toast');el.textContent=message;el.classList.add('show');toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
@@ -402,6 +424,14 @@ document.addEventListener('click',e=>{
     case 'patient-type':state.patientType=value;state.age='';state.weight='';resetRegimen();render();break;
     case 'drug':chooseDrug(value);render();break;
     case 'form':selectForm(value);render();break;
+    case 'route':{
+      const routes=new Set(getSpeciesCatalogue().flatMap(d=>d.forms.map(f=>f.routeCode)));
+      if(value!=='all'&&!routes.has(value))break;
+      state.routeFilter=value;state.category='all';state.search='';
+      const candidates=getCatalogue(),selected=candidates.find(d=>d.id===state.drugId);
+      if(!selected?.forms.some(f=>f.id===state.formId)){const next=selected||candidates[0];if(next)chooseDrug(next.id);}
+      render();break;
+    }
     case 'category':state.category=value;render();$('#search').focus();break;
     case 'manual-regimen':state.regimenId='';dirty();render();toast('Tryb ręczny — wartości wymagają własnej weryfikacji.');break;
     case 'days':if(getSourceRegimen()?.fixedDays)break;state.days=value;dirty();$('#days').value=value;document.querySelectorAll('[data-action=days]').forEach(x=>x.classList.toggle('active',x.dataset.value===value));updateResult();break;
@@ -415,7 +445,7 @@ document.addEventListener('click',e=>{
     case 'favorite-select':{
       const d=visibleFavorites().find(x=>x.id===value);if(!d)break;
       if(!isVeterinary())switchSpecialty(d.specialties[0]);
-      state.category='all';state.search='';chooseDrug(value);$('#dialog').close();render();break;
+      state.category='all';state.search='';state.routeFilter='all';chooseDrug(value);$('#dialog').close();render();break;
     }
     case 'rx-mode':state.rxMode=value;document.querySelectorAll('[data-action=rx-mode]').forEach(x=>x.classList.toggle('active',x.dataset.value===value));updateResult();break;
     case 'best-package':state.packageId=value;dirty();$('#packageId').value=value;updateResult();break;
@@ -445,7 +475,7 @@ $('#app').addEventListener('change',e=>{
   if(key==='regimenId'){chooseSourceRegimen(e.target.value);render();return;}
   if(state.regimenId&&['doseMode','frequency','roundingStep'].includes(key)){e.target.value=state[key];return;}
   state[key]=e.target.value;dirty();
-  if(key==='species'){state.age='';state.weight='';state.vetAgeUnit=['hamster','rat'].includes(state.species)?'months':'years';startVeterinary();render();$('#weight').focus();}
+  if(key==='species'){state.age='';state.weight='';state.foodChainStatus='unknown';state.vetAgeUnit=['hamster','rat'].includes(state.species)?'months':'years';startVeterinary();render();$('#weight').focus();}
   else if(key==='vetAgeUnit'){state.age='';render();}
   else if(key==='doseMode'){state.dose='';render();$('#dose').focus();}
   else if(key==='customForm'){state.customStrength='';state.customConcentration='';state.customPack='';state.customDrops='';state.customFractions='1';state.customContainers='1';state.vetRoute='';state.roundingStep='';state.doseMode=isVeterinary()&&!['spray','gel'].includes(state.customForm)?'perKgDose':'units';resetRegimen();render();}
