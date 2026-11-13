@@ -118,7 +118,7 @@ export const DENTAL_SYSTEMIC_FORM_PATCHES = [
 ];
 
 const dentalAbscess = 'Ropień okołozębowy z szerzącym się zapaleniem tkanki łącznej';
-const antibioticScreening = 'Lekarz potwierdza wskazanie, wrażliwość przewidywanych patogenów, brak przeciwwskazań i interakcji oraz prawidłową czynność nerek. Zakresy nie obejmują schematów dla niewydolności nerek.';
+const antibioticScreening = 'Dobór leczenia uwzględnia wskazanie, wrażliwość przewidywanych patogenów, przeciwwskazania i interakcje. Zakresy nie obejmują schematów dla niewydolności nerek.';
 
 const adultAmoxicillin = (family, formIds, sourceUrl) => [
   {
@@ -164,7 +164,7 @@ const adultAmoxicillin = (family, formIds, sourceUrl) => [
 const analgesicSource = (sourceUrl, sourceLabel) => ({
   specialties: ['dental'], indication: 'Ból zęba', doseMode: 'fixed', asNeeded: true,
   renalPolicy: 'normal-only', ...commonSource(sourceUrl, sourceLabel),
-  screening: 'Lekarz potwierdza zasadność leczenia, czynność nerek, brak przeciwwskazań i istotnych interakcji. W razie czynników ryzyka dawkę i postać ustala indywidualnie.',
+  screening: 'Dobór leczenia uwzględnia wskazanie, przeciwwskazania i istotne interakcje. W razie czynników ryzyka dawkę i postać ustala indywidualnie.',
   limitLabel: 'Maksymalna dawka dobowa według ChPL tego produktu, dla wskazanej populacji',
 });
 
@@ -213,7 +213,7 @@ export const DENTAL_SYSTEMIC_REGIMENS = [
       'Dawkę wyrażono jako dobową ilość amoksycyliny. Kwas klawulanowy jest obliczany z proporcji 57 mg/400 mg w wybranej zawiesinie.',
       'Źródłowy zakres 25–45 mg/kg/dobę nie jest uniwersalnym limitem dla innych wskazań lub proporcji składników. Większe dawki wymagają oceny właściwej postaci i wskazania.',
       'Nie ustalono zaleceń dla tej postaci poniżej 2 miesięcy. Przy masie co najmniej 40 kg ChPL wskazuje stosowanie postaci lub mocy dla dorosłych.',
-      'Przy CrCl <30 ml/min postać 7:1 nie jest zalecana; przy granicy 30 ml/min wymagany jest osobny dobór. Podpowiedź obejmuje ocenioną prawidłową czynność nerek.',
+      'Przy CrCl <30 ml/min postać 7:1 nie jest zalecana; przy granicy 30 ml/min wymagany jest osobny dobór. Przeliczenie nie obejmuje redukcji dawki przy niewydolności nerek.',
       'Czas kuracji ustala lekarz. Powyżej 14 dni potrzebna jest ponowna ocena pacjenta; aplikacja nie wpisuje 14 dni jako dawki ani czasu domyślnego.',
     ],
   },
@@ -295,7 +295,7 @@ export const DENTAL_SYSTEMIC_RESEARCH_NOTES = {
     'Ospamox tablet data uses the family with permits 16801/16802/16687; the legacy Ospamox permit family has different pack metadata and was not merged.',
     'No 4000 mg/day universal amoxicillin maximum, no antibiotic dose or duration default, no automatic higher-dose dental Augmentin regimen.',
     'Amoxicillin dental regimen maxima are computed upper bounds of the selected source range and frequency. Labels must retain that scope.',
-    'Normal renal function requires clinician review. A known CrCl at or below 30 ml/min rejects standard antibiotic suggestions; renal impairment/dialysis regimens are outside this module.',
+    'Optional renal context does not gate arithmetic: missing data remains unknown and shows a scope warning. Explicit impairment or known CrCl at or below 30 ml/min rejects standard antibiotic suggestions; renal impairment/dialysis regimens are outside this module.',
     'Pediatric Ospamox suggestions deliberately exclude newborns and the conditional BID option. This is application coverage, not a new drug contraindication.',
     'Metafen low-weight wording requires separate clinical interpretation. No broad low-weight numerical suggestion was created from the narrow 12-year-old passage.',
     'PRN frequency represents a clinician-selected daily administration ceiling. Export must retain as-needed wording, minimum intervals and the daily limit.',

@@ -125,7 +125,7 @@ test('missing clinical context blocks use without deleting the known source cand
   assert.equal(result.valid, false);
   assert.equal(result.dose, 100);
   assert.equal(result.frequency, 3);
-  assert.deepEqual(new Set(result.requirements), new Set(['age', 'weight', 'renalStatus', 'days']));
+  assert.deepEqual(new Set(result.requirements), new Set(['age', 'weight', 'days']));
   const completed = resolveHumanRegimen(record, {
     ...context, age: 5, ageUnit: 'years', weight: 20, renalStatus: 'normal',
   });
@@ -217,18 +217,37 @@ test('invalid supplied age and weight are not silently ignored', () => {
   }
 });
 
-test('renal acknowledgement gates a normal-function source without demanding a numeric test for every patient', () => {
+test('optional renal context permits arithmetic without asserting normal function and keeps known limits', () => {
   const record = { ...fixed, renalPolicy: 'normal-only', minCrCl: 30, minCrClExclusive: true };
-  for (const renalStatus of [undefined, 'unknown', 'impaired', 'Normal', true]) {
+  for (const renalStatus of [undefined, null, 'unknown']) {
+    const supplied = { ...context, renalStatus };
+    const result = resolveHumanRegimen(record, supplied);
+    assert.equal(result.valid, true);
+    assert.equal(result.requirements.includes('renalStatus'), false);
+    assert.match(result.warnings.join(' '), /bez oceny czynności nerek/);
+    assert.equal(supplied.renalStatus, renalStatus);
+  }
+  for (const renalStatus of ['impaired', 'Normal', true]) {
     assert.equal(resolveHumanRegimen(record, { ...context, renalStatus }).valid, false);
   }
-  const eligible = { ...context, renalStatus: 'normal' };
-  assert.equal(resolveHumanRegimen(record, eligible).valid, true);
+  assert.equal(resolveHumanRegimen(record, { ...context, renalStatus: 'normal' }).valid, true);
+  const eligible = { ...context, renalStatus: 'unknown' };
   assert.equal(resolveHumanRegimen(record, { ...eligible, crcl: 30.1 }).valid, true);
   for (const crcl of [30, 29, 0, -1, NaN, Infinity, '60']) {
     assert.equal(resolveHumanRegimen(record, { ...eligible, crcl }).valid, false);
   }
   assert.equal(resolveHumanRegimen({ ...record, minCrClExclusive: false }, { ...eligible, crcl: 30 }).valid, true);
+  assert.equal(resolveHumanRegimen(record, { ...eligible, renalStatus: 'impaired', crcl: 90 }).valid, false);
+});
+
+test('known impairment still blocks a source with no numeric CrCl threshold', () => {
+  const record = { ...fixed, renalPolicy: 'normal-only' };
+  const unknown = resolveHumanRegimen(record, { ...context, renalStatus: 'unknown', crcl: 90 });
+  assert.equal(unknown.valid, true);
+  assert.match(unknown.warnings.join(' '), /bez oceny czynności nerek/);
+  for (const crcl of [undefined, 90]) {
+    assert.equal(resolveHumanRegimen(record, { ...context, renalStatus: 'impaired', crcl }).valid, false);
+  }
 });
 
 test('only an explicit requireCrCl flag makes numeric CrCl mandatory; eGFR is not substituted', () => {

@@ -258,9 +258,11 @@ function patientPanel(f) {
   const needs = patientFieldsFor({ ...state, form:f, source });
   const cardio = state.specialty === 'cardio';
   const weight = required => field('weight', required ? 'Masa ciała' : 'Masa (opcjonalnie)', state.weight, isVeterinary() ? getAnimal()?.weight || 'kg' : state.patientType === 'child' ? 'np. 24' : 'np. 70', 'kg', required ? 'required' : '');
-  const renal = !isVeterinary() && source?.renalPolicy ? `<div class="field renal-status-field"><label for="renalStatus">Czynność nerek · warunek schematu</label><select id="renalStatus" data-field="renalStatus"><option value="unknown" ${state.renalStatus === 'unknown' ? 'selected' : ''}>Wymaga oceny lekarza</option><option value="normal" ${state.renalStatus === 'normal' ? 'selected' : ''}>Oceniona · bez wskazań do redukcji</option><option value="impaired" ${state.renalStatus === 'impaired' ? 'selected' : ''}>Zaburzona · potrzebna modyfikacja</option></select><small>Potwierdź, że czynność nerek pozwala zastosować wybrany schemat.</small><details class="context-details"><summary>Znany CrCl (opcjonalnie)</summary>${field('humanCrCl','CrCl ustalony klinicznie',state.humanCrCl,'Wartość CrCl','ml/min')}<p class="small-help">To nie jest eGFR przeliczony na 1,73 m². Nie stosujemy wzoru dla dorosłych u dzieci.</p></details></div>` : '';
-  const essential = `${needs.weight ? weight(true) : ''}${needs.age ? ageFields(true) : ''}${needs.foodChain ? foodChainField() : ''}${renal}`;
-  const additional = `${!needs.age ? ageFields() : ''}${!needs.weight ? weight(false) : ''}${cardio ? `<div class="field"><label for="sex">Płeć do wzoru CrCl</label><select id="sex" data-field="sex"><option value="">Wybierz</option><option value="female" ${state.sex === 'female' ? 'selected' : ''}>Kobieta</option><option value="male" ${state.sex === 'male' ? 'selected' : ''}>Mężczyzna</option></select></div>${field('creatinine','Kreatynina',state.creatinine,'np. 1,0','mg/dl')}` : ''}`;
+  const renalRelevant = !isVeterinary() && (source?.renalPolicy || source?.minCrCl != null || source?.requireCrCl);
+  const renal = renalRelevant ? field('humanCrCl', source.requireCrCl ? 'CrCl ustalony klinicznie' : 'Znany CrCl (opcjonalnie)', state.humanCrCl, 'Wartość CrCl', 'ml/min', source.requireCrCl ? 'required' : '') : '';
+  const renalImpairment = !isVeterinary() && source?.renalPolicy ? `<div class="field renal-details-field"><label class="renal-impairment-option" for="renalImpairment"><input id="renalImpairment" type="checkbox" ${state.renalStatus === 'impaired' ? 'checked' : ''}><span>Rozpoznane zaburzenia czynności nerek</span></label><small>Opcjonalnie, jeśli dotyczy pacjenta. CrCl podawaj w ml/min, nie jako eGFR na 1,73 m².</small></div>` : '';
+  const essential = `${needs.weight ? weight(true) : ''}${needs.age ? ageFields(true) : ''}${needs.foodChain ? foodChainField() : ''}${source?.requireCrCl ? renal : ''}`;
+  const additional = `${!needs.age ? ageFields() : ''}${!needs.weight ? weight(false) : ''}${!source?.requireCrCl ? renal : ''}${renalImpairment}${cardio ? `<div class="field"><label for="sex">Płeć do wzoru CrCl</label><select id="sex" data-field="sex"><option value="">Wybierz</option><option value="female" ${state.sex === 'female' ? 'selected' : ''}>Kobieta</option><option value="male" ${state.sex === 'male' ? 'selected' : ''}>Mężczyzna</option></select></div>${field('creatinine','Kreatynina',state.creatinine,'np. 1,0','mg/dl')}` : ''}`;
   return `<section class="patient-card embedded-context" aria-labelledby="patient-title"><div class="section-heading"><h3 id="patient-title">Dane pacjenta</h3><span class="trailing">${icon('lock')} Tylko na ten czas</span></div>${essential ? `<div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${essential}</div>` : '<p class="small-help">Wybrane przeliczenie nie wymaga dodatkowych parametrów pacjenta.</p>'}${isVeterinary() ? '<p class="small-help">Masę wpisz w kg: 100 g = 0,1 kg.</p>' : ''}${additional ? `<details class="context-details" data-disclosure="patientDetailsOpen" ${ui.patientDetailsOpen ? 'open' : ''}><summary>${cardio ? 'Czynność nerek · pomocniczy CrCl' : 'Dodatkowe parametry pacjenta'}</summary><div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${additional}</div>${cardio ? '<div id="renal-inline" class="renal-output"></div><p class="small-help">CrCl jest pomocniczym oszacowaniem. Nie dobiera dawki leku.</p>' : ''}</details>` : ''}</section>`;
 }
 
@@ -453,7 +455,7 @@ function updateResultContent() {
   const sourceCheck=syncSourceRegimen();
   if(isInstruction(getForm())) { updateInstructionResult(sourceCheck); return; }
   const f=getForm(),input=makeInput(),r=calculate(input),limit=applicableLimit(f);
-  if(sourceCheck){r.errors.push(...sourceCheck.errors);r.warnings.push(...sourceCheck.warnings);if(!sourceCheck.valid){r.valid=false;if(r.status!=='critical')r.status='incomplete';}}
+  if(sourceCheck){r.errors.push(...sourceCheck.errors);r.warnings.push(...sourceCheck.warnings);if(!sourceCheck.valid){r.valid=false;if(r.status!=='critical')r.status='incomplete';}else if(sourceCheck.warnings.length&&r.status==='ok')r.status='warning';}
   if(sourceCheck && !isVeterinary()) {
     if(sourceCheck.maxUnitsPerDose != null && r.singleUnits > sourceCheck.maxUnitsPerDose + 1e-9) { r.errors.push('Ilość na podanie przekracza limit tego schematu.');r.valid=false;r.status='critical'; }
     if(sourceCheck.maxDailyUnits != null && r.dailyUnits > sourceCheck.maxDailyUnits + 1e-9) { r.errors.push('Dobowa ilość preparatu przekracza limit tego schematu.');r.valid=false;r.status='critical'; }
@@ -663,6 +665,7 @@ $('#app').addEventListener('input',e=>{
 });
 $('#app').addEventListener('change',e=>{
   if(e.target.id==='confirmed'){state.confirmed=e.target.checked&&!!latest?.valid&&productReady()&&!state.demo;updateResult();return;}
+  if(e.target.id==='renalImpairment'){state.renalStatus=e.target.checked?'impaired':'unknown';dirty();updateResult();return;}
   const key=e.target.dataset.field;if(!key||e.target.tagName!=='SELECT')return;
   if(key==='productVariant'){if(e.target.value)chooseProduct(e.target.value);else{resetRegimen();ui.formChosen=false;}render();return;}
   if(!Object.hasOwn(state,key))return;

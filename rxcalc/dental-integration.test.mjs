@@ -6,13 +6,14 @@ import { HUMAN_REGIMENS } from './human-regimens.js';
 import { resolveHumanRegimen } from './human-regimen-engine.js';
 import { searchProducts } from './product-search.js';
 import { calculate } from './engine.js';
+import { humanDosingText } from './dental-output.js';
 
 const dental=DRUGS.filter(drug=>drug.specialties.includes('dental'));
 function run(formId,regimenId,context,packageId) {
   const form=dental.flatMap(drug=>drug.forms).find(form=>form.id===formId);
   const pack=form.packOptions.find(pack=>pack.id===packageId)||form.packOptions[0];
   const source=HUMAN_REGIMENS.find(source=>source.id===regimenId);
-  const resolved=resolveHumanRegimen(source,{formId,specialty:'dental',patientType:'adult',ageUnit:'years',renalStatus:'normal',...context});
+  const resolved=resolveHumanRegimen(source,{formId,specialty:'dental',patientType:'adult',ageUnit:'years',...context});
   const result=calculate({patientKind:'human',form:form.form,unitLabel:form.unitLabel,
     doseMode:resolved.doseMode,dose:resolved.dose,frequency:resolved.frequency,
     days:context.days,weight:context.weight,age:context.age,
@@ -49,6 +50,26 @@ test('adult source does not override physical tablet subdivision after choosing 
   const half=run('ospamox-tablet-500','dental-ospamox-tablet-ge40-q12',{weight:70,dose:750,days:7},'14');
   assert.equal(half.result.valid,true);
   assert.equal(half.result.singleUnits,1.5);
+});
+
+test('Ospamox calculation and dosing text are available without a separate renal confirmation', () => {
+  const regimenId='dental-ospamox-tablet-ge40-q8';
+  const source=HUMAN_REGIMENS.find(source=>source.id===regimenId);
+  const context={weight:80,dose:500,days:7};
+  const {resolved,result,form}=run('ospamox-tablet-500',regimenId,context,'16');
+  assert.equal(resolved.valid,true);
+  assert.equal(result.valid,true);
+  assert.equal(resolved.requirements.includes('renalStatus'),false);
+  assert.equal(result.singleUnits,1);
+  assert.equal(result.dailyMg,1500);
+  assert.equal(result.totalUnits,21);
+  assert.equal(result.packages,2);
+  const output=humanDosingText({source,amount:'1 tabl.',route:form.routeLabel,frequency:3,days:7});
+  assert.match(output,/1 tabl\./);
+  assert.match(output,/7 dni/);
+  for(const change of [{crcl:30},{crcl:29},{renalStatus:'impaired'}]) {
+    assert.equal(run('ospamox-tablet-500',regimenId,{...context,...change},'16').resolved.valid,false);
+  }
 });
 
 test('rinse packages use ml while active mg remains unspecified', () => {

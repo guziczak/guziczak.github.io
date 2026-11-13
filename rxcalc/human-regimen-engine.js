@@ -3,7 +3,9 @@
  * This module does not diagnose, select a regimen, choose an endpoint of a source
  * range, round a dose or infer grams from a qualitative application instruction.
  * The caller must re-resolve after every patient or regimen edit and must check
- * valid before applying/copying a result. Final formulation arithmetic and the
+ * valid before applying/copying a result. Missing optional renal context permits
+ * arithmetic with a scope warning; it never establishes normal renal function.
+ * Final formulation arithmetic and the
  * actual administered-dose checks remain in engine.js.
  */
 const MODES = new Set(['fixed', 'perKgDay', 'perKgDose', 'units', 'instruction']);
@@ -277,11 +279,11 @@ export function resolveHumanRegimen(record, context = {}) {
   }
 
   if (record.renalPolicy === 'normal-only') {
-    result.requirements.push('renalStatus');
-    if (context.renalStatus !== 'normal') {
-      result.errors.push(context.renalStatus === 'impaired'
-        ? 'Ten schemat wymaga innej oceny przy zaburzonej czynności nerek. Nie zastosowano automatycznej redukcji dawki.'
-        : 'Potwierdź ocenę czynności nerek i brak wskazań do redukcji dawki w tym schemacie.');
+    if (context.renalStatus === 'impaired') {
+      result.errors.push('Ten schemat wymaga innej oceny przy zaburzonej czynności nerek. Nie zastosowano automatycznej redukcji dawki.');
+    } else if ((missing(context.renalStatus) || context.renalStatus === 'unknown')
+        && (missing(context.crcl) || !present(record.minCrCl))) {
+      result.warnings.push('Przeliczenie bez oceny czynności nerek; schemat nie obejmuje redukcji dawki przy niewydolności nerek.');
     }
   }
   if (present(context.renalStatus) && !RENAL_STATUSES.has(context.renalStatus)) {

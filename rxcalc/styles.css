@@ -442,9 +442,10 @@ dl.result-review{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2f
 .product-hit-arrow{flex:0 0 18px;color:var(--accent)}
 .product-hit-arrow svg{width:18px;height:18px}
 .product-classification{font-size:10px;line-height:1.6}
-.renal-status-field{grid-column:1/-1}
-.renal-status-field>small{line-height:1.6;color:var(--muted);font-size:11px}
-.renal-status-field .context-details{margin-top:0}
+.renal-details-field{grid-column:1/-1}
+.renal-details-field>small{line-height:1.6;color:var(--muted);font-size:11px}
+.field .renal-impairment-option{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer}
+.left-stack .patient-fields .renal-impairment-option input{width:18px;height:18px;min-height:18px;flex:0 0 18px;margin:0;accent-color:var(--accent)}
 .human-regimen-fields{align-items:start;margin-top:15px;min-width:0}
 .human-regimen-fields>div{min-width:0}
 .human-regimen-fields .input-unit input{padding-right:90px}
@@ -469,7 +470,7 @@ dl.result-review{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2f
  .product-hit .drug-description{font-size:11px;overflow-wrap:anywhere}
  .human-regimen-fields{grid-template-columns:minmax(0,1fr);gap:12px}
  .human-regimen-fields .source-fact{padding:0}
- .source-fact small,.renal-status-field>small{font-size:12px}
+ .source-fact small,.renal-details-field>small{font-size:12px}
  .source-fact strong{font-size:18px}
  .instruction-summary{font-size:14px;padding:12px}
  .dose-equivalent.instruction-equivalent{font-size:14px}
