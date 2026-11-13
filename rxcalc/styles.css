@@ -420,3 +420,10 @@ dl.result-review{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2f
 @media print{
   .context-bar,.mobile-action-bar{display:none!important}
 }
+.regimen-panel .embedded-context{padding:18px 0;margin:18px 0;border:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-radius:0;background:transparent;box-shadow:none}
+.embedded-context .section-heading h3{margin:0;font-size:13px;font-weight:600;letter-spacing:0}
+.age-input-group{display:grid;grid-template-columns:minmax(0,1fr) 70px;gap:6px;min-width:0}
+.age-input-group input{min-width:0;padding-left:10px;padding-right:8px}
+.age-input-group select{min-width:0;padding-left:7px;padding-right:16px}
+.mobile-action-bar.inline-copy-visible{display:none}
+@media(max-width:780px){.regimen-panel .embedded-context{padding:16px 0;margin:16px 0}.embedded-context .section-heading h3{font-size:14px}.age-input-group{grid-template-columns:minmax(0,1fr) 65px;gap:4px}}
