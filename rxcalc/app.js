@@ -600,7 +600,7 @@ function resetPatient() {
   clearPatientContext();
   clearCustomProduct();state.search='';state.category='all';state.routeFilter='all';
   if(isVeterinary())startVeterinary();else{state.custom=false;chooseDrug(getSpeciesCatalogue()[0].id);resetProductView();}
-  render();toast('Nowy pacjent — parametry i schemat wyczyszczone.');
+  render();window.scrollTo({top:0,behavior:'auto'});toast('Nowy pacjent — parametry i schemat wyczyszczone.');
 }
 function example() {
   if(isVeterinary())return;
@@ -683,7 +683,7 @@ $('#app').addEventListener('change',e=>{
   const key=e.target.dataset.field;if(!key||e.target.tagName!=='SELECT')return;
   if(key==='productVariant'){if(e.target.value)chooseProduct(e.target.value);else{resetRegimen();ui.formChosen=false;}render();return;}
   if(!Object.hasOwn(state,key))return;
-  if(key==='specialty'){switchSpecialty(e.target.value);render();return;}
+  if(key==='specialty'){switchSpecialty(e.target.value);render();window.scrollTo({top:0,behavior:'auto'});return;}
   if(key==='formId'){if(e.target.value){selectForm(e.target.value);ui.productExpanded=false;}else{resetRegimen();ui.formChosen=false;}render();return;}
   if(key==='regimenId'){chooseSourceRegimen(e.target.value);render();return;}
   if(state.regimenId&&(['doseMode','roundingStep'].includes(key)||(key==='frequency'&&(isVeterinary()||!getSourceRegimen()?.frequencyOptions)))){e.target.value=state[key];return;}
