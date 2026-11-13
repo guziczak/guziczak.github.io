@@ -381,12 +381,16 @@ function prefillSourceTabletDose() {
 }
 const tabletChoiceLabel = choice => `${choice.tablets===0.5?'½':choice.tablets} ${getForm()?.unitLabel||'tabl.'}`;
 const tabletChoiceSelected = choice => choice.allowed&&num(state.dose)===choice.value;
-function tabletAmountIcon(tablets) {
-  const whole = (x,y) => `<rect x="${x}" y="${y}" width="32" height="12" rx="6" fill="currentColor" fill-opacity=".12"/><path d="M${x+16} ${y+3}v6"/>`;
+function tabletCanSplitInHalf() {
+  const fractions=getForm()?.allowedFractions;
+  return Array.isArray(fractions)&&fractions.includes(0.5);
+}
+function tabletAmountIcon(tablets, splittable=tabletCanSplitInHalf()) {
+  const whole = (x,y) => `<rect x="${x}" y="${y}" width="32" height="12" rx="6" fill="currentColor" fill-opacity=".12"/>${splittable?`<path d="M${x+16} ${y+3}v6"/>`:''}`;
   const shape = tablets===0.5
     ? '<path d="M32 10H22a6 6 0 0 0 0 12h10l-1.5-3 3-3-3-3 1.5-3Z" fill="currentColor" fill-opacity=".12"/>'
     : tablets===2 ? whole(2,1)+whole(14,19) : whole(8,10);
-  return `<svg class="tablet-dose-icon" viewBox="0 0 48 32" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shape}</svg>`;
+  return `<svg class="tablet-dose-icon" data-splittable="${splittable}" viewBox="0 0 48 32" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shape}</svg>`;
 }
 function tabletChoiceReason(choice) {
   const range=getSourceRegimen()?.doseRange;
@@ -407,6 +411,7 @@ function updateTabletDoseButtons() {
   const choices=currentTabletDoseChoices();
   const buttons=slot.querySelectorAll('[data-action="tablet-dose"]');
   if(buttons.length!==choices.length){slot.innerHTML=tabletDoseChoicesMarkup(choices);return;}
+  const splittable=tabletCanSplitInHalf();
   buttons.forEach(button=>{
     const choice=choices.find(item=>item.tablets===num(button.dataset.value));
     if(!choice){button.disabled=true;return;}
@@ -416,6 +421,8 @@ function updateTabletDoseButtons() {
     button.title=tabletChoiceReason(choice)||`${tabletChoiceLabel(choice)} = ${n(choice.mg,6)} mg`;
     button.querySelector('.tablet-dose-amount').textContent=n(choice.mg,6);
     button.querySelector('.tablet-dose-reason').textContent=tabletChoiceReason(choice);
+    const doseIcon=button.querySelector('.tablet-dose-icon');
+    if(doseIcon&&doseIcon.dataset.splittable!==String(splittable))doseIcon.outerHTML=tabletAmountIcon(choice.tablets,splittable);
   });
 }
 
