@@ -261,6 +261,13 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     let backdropStart = false;
     dialog.addEventListener('pointerdown', event => { backdropStart = event.target === dialog; });
     dialog.addEventListener('click', event => { if (backdropStart && event.target === dialog) close(); });
+    // Give native dialog autofocus an on-screen position before showModal.
+    // Its static position at the end of body would otherwise scroll the page.
+    const viewport = window.visualViewport;
+    dialog.style.left = `${(viewport?.offsetLeft || 0) + 12}px`;
+    dialog.style.top = `${(viewport?.offsetTop || 0) + 12}px`;
+    dialog.style.width = `${Math.min(370, (viewport?.width || window.innerWidth) - 24)}px`;
+    dialog.style.maxHeight = `${Math.max(160, (viewport?.height || window.innerHeight) - 24)}px`;
     dialog.showModal();
     setMode(session, model.manualRequired ? 'manual' : 'wheels');
     requestAnimationFrame(() => { if (active === session) { alignWheels(session); position(); } });
