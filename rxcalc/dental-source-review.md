@@ -1,6 +1,6 @@
 # RxCalc — stomatologia: źródła i zakres do przeglądu klinicznego
 
-**Stan katalogu:** `2026.11.13.dental.1` · **opracowanie:** 2026-11-13.
+**Stan katalogu:** `2026.11.14.dental.2` · **opracowanie:** 2026-11-13 · **aktualizacja zakresu:** 2026-11-14.
 
 **Status: dane i reguły nie zostały niezależnie zwalidowane klinicznie.** Dokument opisuje przygotowaną implementację i materiały dla lekarza dokonującego przeglądu. Nie potwierdza zakończenia takiego przeglądu ani gotowości do używania kalkulatora przy rzeczywistej ordynacji. Przed wdrożeniem klinicznym potrzebne jest zatwierdzenie przez lekarza właściwych wskazań, populacji, reguł i wygenerowanych zaleceń.
 
@@ -10,17 +10,17 @@ Liczby pochodzą z importu `DRUGS` z `catalogue.js` oraz `HUMAN_REGIMENS` z `hum
 
 | Zakres | Liczba |
 |---|---:|
-| Grupy preparatów/substancji w katalogu | 20 |
-| Konkretne postaci i moce | 27 |
-| Warianty preparat–moc–opakowanie, łącznie z referencjami | 47 |
-| Rekordy schematów lub instrukcji ze wskazanym źródłem | 30 |
-| W tym rekordy liczbowe | 18 |
-| W tym instrukcje bez liczbowej masy/objętości dawki | 12 |
-| Postaci mające co najmniej jeden taki rekord | 18 |
+| Grupy preparatów/substancji w katalogu | 17 |
+| Konkretne postaci i moce | 22 |
+| Warianty preparat–moc–opakowanie, łącznie z referencjami | 42 |
+| Rekordy schematów lub instrukcji ze wskazanym źródłem | 24 |
+| W tym rekordy liczbowe | 17 |
+| W tym instrukcje bez liczbowej masy/objętości dawki | 7 |
+| Postaci mające co najmniej jeden taki rekord | 13 |
 | Postaci wyłącznie referencyjne, bez wykonywalnego schematu | 8 |
 | Pozostałe postaci: ręczne przeliczenie objętości | 1 — Nystatyna Teva |
 
-Wybór produktu nie ustala sam rozpoznania, dawki ani czasu antybiotykoterapii. Dla zakresu z ChPL lekarz wybiera wartość; aplikacja sprawdza zgodność z zakresem przypisanym do konkretnej postaci, wskazania i populacji.
+Wybór produktu nie ustala sam rozpoznania, dawki ani czasu antybiotykoterapii. Dla zakresu z ChPL lekarz zatwierdza wartość; aplikacja sprawdza zgodność z zakresem przypisanym do konkretnej postaci, wskazania i populacji. Po jawnym wyborze schematu z edytowalnym zakresem puste pole dla tabletek może zostać jednorazowo uzupełnione mocą całej tabletki, jeśli mieści się w tym zakresie i dostępnych limitach. Skróty dwóch, jednej i połowy tabletki uwzględniają podzielność preparatu; nie zastępują dawek zależnych od masy.
 
 **Trzy sposoby obsługi:**
 
@@ -42,9 +42,6 @@ Opakowania w tabeli są **udokumentowane w źródłach, ale nie oznaczają potwi
 | Paracetamol | Metafen Paracetamol 500 mg; 10/20/60 tabl. | Lek; podpowiedź wyłącznie >12 lat i >50 kg | [S06] |
 | Benzydamina | Tantum Verde 1,5 mg/ml: aerozol 30 ml i płyn 120/240 ml | Lek; aerozol zależnie od wieku, płyn w ml; <6 lat instrukcja wg masy | [S07], [S08] |
 | Nystatyna | Nystatyna Teva 100 000 j.m./ml; 28 ml po sporządzeniu | Lek; ręcznie w ml, bez gotowego schematu | [S09] |
-| Dezaftan | Żel ochronny; 8 g | Wyrób medyczny; instrukcja kropli | [S12] |
-| Dezaftan med | Aerozol (2,9 + 1,96 + 25,6 mg)/ml; 30 ml | Lek; instrukcja rozpyleń z limitem liczby aplikacji | [S13] |
-| Anaftin | Żel 8 ml, spray 15 ml, płyn 120 ml | Wyroby medyczne; żel/spray instrukcyjnie, płyn liczbowo | [S14], [S15], [S16] |
 | Dentinox N | 15% + 0,34% + 0,32%; 10 g | Lek na objawy ząbkowania; instrukcja w aplikacji od 12 miesięcy | [S17] |
 | Baikadent | 5,77 mg/g; 15 g | Lek; instrukcja dla dorosłych | [S18], [S19] |
 | Eludril Care | CHX 0,05% + CPC 0,05%; 500 ml | Kosmetyk; ilość płynu i częstotliwość wg producenta | [S20], [S21] |
@@ -64,14 +61,13 @@ Opakowania w tabeli są **udokumentowane w źródłach, ale nie oznaczają potwi
 1. **Limit jest przypisany do schematu.** Górne wartości amoksycyliny wynikające z wariantu wskazania i częstości nie są uniwersalną „maksymalną dawką amoksycyliny”. Aplikacja nie przyjmuje ogólnego limitu 4000 mg/dobę ani nie zamienia wszystkich dawek dorosłych na mg/kg. [S02], [S04]
 2. **Augmentin:** wprowadzana dawka mg/kg/dobę dotyczy amoksycyliny; klawulanian jest pokazywany oddzielnie. Zakres stomatologiczny 25–45 mg/kg/dobę w dwóch podaniach dotyczy dzieci od 2 miesięcy i <40 kg. Wyższy zakres opisany dla innych zakażeń nie został automatycznie przeniesiony do stomatologii. [S01]
 3. **Ospamox u dzieci:** wariant aplikacji obejmuje od 1 miesiąca, <40 kg i trzy podania. Nie modeluje schematu noworodkowego ani warunkowego schematu dwóch podań przy dawkach z górnej części zakresu. Jest to zakres implementacji, nie nowa granica dopuszczenia produktu. [S02], [S03]
-4. **Czynność nerek:** standardowe podpowiedzi wymagają potwierdzenia przez lekarza prawidłowej funkcji nerek; nie implementują redukcji dla niewydolności/dializ. Znana wartość CrCl ≤30 ml/min blokuje standardowe schematy antybiotyków. eGFR nie zastępuje automatycznie CrCl. Samo zaznaczenie potwierdzenia nie jest oceną kliniczną. [S01], [S02], [S04]
+4. **Czynność nerek:** nie ma obowiązkowego pola potwierdzania prawidłowej funkcji nerek. Brak danych nie jest równoznaczny z potwierdzeniem prawidłowej funkcji. Standardowe podpowiedzi nie implementują redukcji dla niewydolności/dializ. Znana wartość CrCl ≤30 ml/min blokuje standardowe schematy antybiotyków. eGFR nie zastępuje automatycznie CrCl. [S01], [S02], [S04]
 5. **Doraźne leki przeciwbólowe:** częstość oznacza wybrany limit planowanych podań, a liczba opakowań — maksymalne zaplanowane zużycie. Eksport zachowuje „w razie bólu”, odstęp i limit dobowy. Ibuprom 200 mg nie otrzymuje ogólnego limitu 2400 mg/dobę; Metafen nie otrzymuje automatycznego limitu 4000 mg dla osoby ≤50 kg. [S05], [S06]
 
 ### Preparaty miejscowe i zabiegowe
 
-- **Brak FTU i umownych gramów:** pasek 1–2 cm, krople żelu oraz „ziarnko grochu” pozostają ilościami opisowymi. Nie wynikają z nich dokładne mg/dobę ani tuby na kurację. Baikadent 5,77 mg/g dotyczy zespołu flawonów. [S12], [S14], [S17], [S18]
+- **Brak FTU i umownych gramów:** pasek 1–2 cm oraz „ziarnko grochu” pozostają ilościami opisowymi. Nie wynikają z nich dokładne mg/dobę ani tuby na kurację. Baikadent 5,77 mg/g dotyczy zespołu flawonów. [S17], [S18]
 - **Dentinox N:** ChPL wyklucza <3 miesięcy i, przy określonych lekach wywołujących methemoglobinemię, także <12 miesięcy. Gotowy schemat aplikacji zawężono do ≥12 miesięcy, gdyż brak odpowiedniego wywiadu lekowego. Podanie pozostaje **doraźne (`asNeeded`)**, krótkotrwałe, przy objawach ząbkowania; 2–3 aplikacje nie oznaczają obowiązku stosowania codziennie. [S17]
-- **Dezaftan med:** trzy rozpylenia tworzą jedną aplikację. U dorosłego maks.8 aplikacji/dobę, u dzieci >6 lat maks.6; dokładnie 6 lat wymaga indywidualnej interpretacji granicy źródłowej. Rozruch pompki zużywa produkt, dlatego nie generujemy dokładnej liczby butelek. Limit pięciu dni wymaga podania czasu — pusty czas nie przechodzi eksportu. [S13]
 - **Tantum:** przedział 6–12 lat i grupa >12 lat są rozdzielone. Dla <6 lat brak reguły zaokrąglenia ułamka rozpylenia w źródle, więc moduł pokazuje instrukcję, nie wymyśla zaokrągleń. Około 176 rozpyleń z 30 ml to szacunek; nie gwarantowana liczba dawek użytkowych. Płyn wymaga umiejętności płukania i wypluwania. [S07], [S08]
 - **Metronidazol Chema:** ropień po odbarczeniu i wkładka do kanału są procedurami; nie przeliczamy kieszonek ani kanałów na mg/kg/dobę. Dla zapalenia przyzębia oraz wrzodziejącego zapalenia dziąseł źródłowy okres w aplikacji wynosi **7–10 dni**, z wymaganą wartością czasu. W drugim wskazaniu instrukcja zachowuje sanację po 3–5 dniach. [S22]
 - **Ligosan/Chlo-Site:** oba są referencyjne. Ligosan ma dostępną polską ChPL w materiale producenta z 2017 r.; nie potwierdzono aktualności dokumentu. Dla Chlo-Site zweryfikowano kartę producenta, ale nie aktualną polską instrukcję. Wkład Ligosan 260 mg to masa żelu, zawierająca 36,4 mg doksycykliny. [S23], [S24]
@@ -79,7 +75,7 @@ Opakowania w tabeli są **udokumentowane w źródłach, ale nie oznaczają potwi
 
 ## 4. Przypadki odbioru: wyłącznie sztuczne dane i arytmetyka
 
-Poniższe wartości służą sprawdzeniu przeliczeń i blokad. **Nie są zaleceniami leczenia, ustaleniem wskazania ani klinicznym zatwierdzeniem dawek i czasu.** Wiek, masa i okres są danymi testowymi. Dla przypadków źródłowych zakłada się świadome wybranie właściwego wskazania i wymagane potwierdzenie czynności nerek.
+Poniższe wartości służą sprawdzeniu przeliczeń i blokad. **Nie są zaleceniami leczenia, ustaleniem wskazania ani klinicznym zatwierdzeniem dawek i czasu.** Wiek, masa i okres są danymi testowymi. Dla przypadków źródłowych zakłada się świadome wybranie właściwego wskazania; przykłady poniżej dotyczą arytmetyki, a nie oceny czynności nerek.
 
 | Przypadek | Wprowadzenie do sprawdzenia | Oczekiwany wynik |
 |---|---|---|
@@ -88,8 +84,6 @@ Poniższe wartości służą sprawdzeniu przeliczeń i blokad. **Nie są zalecen
 | Dwa składniki | Augmentin 400+57 mg/5 ml; fikcyjnie 20 kg, 45 mg amoksycyliny/kg/dobę, 2 podania, 7 dni | 900 mg amoksycyliny i 128,25 mg klawulanianu/dobę; 5,625 ml/podanie przed oceną możliwości odmierzenia; 78,75 ml łącznie; 2 × 70 ml albo 1 × 140 ml |
 | Doraźne maksimum | Ibuprom 200 mg; fikcyjnie dorosły, 400 mg × 4/dobę | Blokada: 1600 mg przekracza limit 1200 mg dla tego źródłowego wariantu |
 | Granica populacji | Schemat Metafen: masa dokładnie 50 kg albo wiek dokładnie 12 lat | Brak dostępności tego automatycznego wariantu; nie dopisać 4000 mg jako uniwersalnej normy |
-| Instrukcja bez masy | Dezaftan żel ochronny, 3 aplikacje/dobę | Tekst o 1–2 kroplach; brak wymyślonych gramów, mg/dobę i dokładnej liczby tub |
-| Wymagany czas | Dezaftan med: pusty czas /5 dni /6 dni | Odpowiednio: blokada /czas mieści się w zakresie /blokada źródłowego wariantu |
 | Niemowlę | Dentinox: 11 miesięcy, następnie 12 miesięcy | Brak automatycznego schematu dla 11 miesięcy; od 12 miesięcy dostępna instrukcja doraźna, po pozostałych kontrolach |
 | Rzeczywiste ml płynu | Eludril Care: fikcyjnie dorosły, 15 ml × 2/dobę, okres 7 dni | 210 ml, 1 butelka 500 ml; nie jest to dawka leku do połknięcia |
 
@@ -123,11 +117,6 @@ Nie należy zaokrąglać 5,625 ml wyłącznie w celu otrzymania estetycznego wyn
 - **S07 — Tantum Verde aerozol:** [ChPL RPL 6561](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/6561/characteristic). Sprawdzenie 2026-11-13; daty rewizji nie zapisano.
 - **S08 — Tantum Verde płyn:** [ChPL RPL 6560](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/6560/characteristic). Sprawdzenie 2026-11-13; daty rewizji nie zapisano.
 - **S09 — Nystatyna Teva:** [ChPL RPL 20512](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/20512/characteristic). Data sprawdzenia w odziedziczonych metadanych 2026-11-12; brak nowego schematu w tym wydaniu.
-- **S12 — Dezaftan żel:** [Aflofarm, oznakowanie i instrukcja](https://www.aflofarm.com.pl/media/produkt_zalaczniki/dezaftan-ulotka-iB.pdf). Sprawdzenie 2026-11-13; daty rewizji nie zapisano.
-- **S13 — Dezaftan med:** [ChPL RPL 38148](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/38148/characteristic). Sprawdzenie 2026-11-13; daty rewizji nie zapisano.
-- **S14 — Anaftin żel:** [instrukcja producenta](https://anaftin.pl/wp-content/uploads/2020/03/Anaftin_zel_PIL.pdf). Dokument 09/2016; sprawdzenie 2026-11-13.
-- **S15 — Anaftin spray:** [instrukcja producenta](https://anaftin.pl/wp-content/uploads/2020/03/Anaftin_spray_PIL.pdf). Dokument 09/2016; sprawdzenie 2026-11-13.
-- **S16 — Anaftin płyn:** [instrukcja producenta](https://anaftin.pl/wp-content/uploads/2020/03/Anatin_Plyn_do_plukania_jamy_ustnej_PIL.pdf). Dokument 09/2016; sprawdzenie 2026-11-13.
 - **S17 — Dentinox N:** [ChPL RPL 1765](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/1765/characteristic). Sprawdzenie 2026-11-13; daty rewizji nie zapisano.
 - **S18 — Baikadent:** [ChPL RPL 10297](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/10297/characteristic). Sprawdzenie 2026-11-13; daty rewizji nie zapisano.
 - **S19 — Baikadent 15 g:** [karta producenta Herbapol](https://herbapol.pl/produkty/baikadent/). Sprawdzenie 2026-11-13; data rewizji strony nieustalona.

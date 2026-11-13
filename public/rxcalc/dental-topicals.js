@@ -8,11 +8,6 @@
 const CHECKED = '2026-11-13';
 const rpl = id => `https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/${id}/characteristic`;
 const SOURCE = Object.freeze({
-  dezaftan: 'https://www.aflofarm.com.pl/media/produkt_zalaczniki/dezaftan-ulotka-iB.pdf',
-  dezaftanMed: rpl(38148),
-  anaftinGel: 'https://anaftin.pl/wp-content/uploads/2020/03/Anaftin_zel_PIL.pdf',
-  anaftinSpray: 'https://anaftin.pl/wp-content/uploads/2020/03/Anaftin_spray_PIL.pdf',
-  anaftinRinse: 'https://anaftin.pl/wp-content/uploads/2020/03/Anatin_Plyn_do_plukania_jamy_ustnej_PIL.pdf',
   dentinox: rpl(1765),
   baikadent: rpl(10297),
   baikadentPack: 'https://herbapol.pl/produkty/baikadent/',
@@ -62,52 +57,6 @@ const foreign = {
 };
 
 export const DENTAL_TOPICAL_DRUGS = [
-  drug('dezaftan-barrier', 'Dezaftan', 'Preparat barierowy: powidon, dekspantenol, kwas glicyretynowy', [
-    instructionForm('dezaftan-gel-8g', 'Dezaftan · żel ochronny', 'device', SOURCE.dezaftan,
-      [pack('8g', 'tuba 8 g')], {
-        amountText: '1–2 krople punktowo na zmianę',
-        notes: [
-          'Wyrób medyczny. Skład i instrukcja różnią się od leku Dezaftan med.',
-          'Instrukcja obejmuje dorosłych i dzieci, bez podanej liczbowej granicy wieku; dobór dla dziecka wymaga oceny lekarza.',
-          'Brak kalibracji kropli w ml lub gramach; opakowanie nie służy do automatycznego obliczania liczby aplikacji.',
-        ],
-      }),
-  ], ['dezaftan', 'żel', 'afty', 'powidon', 'dekspantenol', 'bariera']),
-
-  drug('dezaftan-med', 'Dezaftan med', 'Cetylopirydyniowy chlorek + lidokainy chlorowodorek jednowodny + cynku glukonian', [
-    instructionForm('dezaftan-med-spray', 'Dezaftan med · (2,9 + 1,96 + 25,6 mg)/ml, aerozol', 'medicine', SOURCE.dezaftanMed,
-      [pack('30ml', 'butelka 30 ml')], {
-        form: 'spray', minAge: 6, unitLabel: 'rozp.', amountText: '3 rozpylenia (łącznie 0,51 ml)',
-        notes: [
-          'Jedno rozpylenie: 0,17 ml. Limity dotyczą liczby aplikacji po 3 rozpylenia, nie pojedynczych rozpyleń.',
-          'Przed pierwszym użyciem wykonać 6 rozpyleń przygotowawczych; po przerwie co najmniej 2 dni — 3 kolejne. Dlatego nie wyliczamy dokładnej wydajności butelki.',
-          'Nie stosować poniżej 6 lat. Instrukcja dla dzieci mówi „powyżej 6 lat”; dla dokładnie 6 lat wymagane indywidualne potwierdzenie schematu.',
-          'Sprawdzić m.in. ciężką niewydolność nerek/wątroby, methemoglobinemię, miastenię i nadwrażliwość na amidowe środki znieczulające.',
-        ],
-      }),
-  ], ['dezaftan med', 'cpc', 'cetylopirydyna', 'lidokaina', 'cynk', 'aerozol', 'spray']),
-
-  drug('anaftin', 'Anaftin', 'Bariera ochronna: PVP, hialuronian sodu, aloes', [
-    instructionForm('anaftin-gel', 'Anaftin · żel', 'device', SOURCE.anaftinGel,
-      [pack('8ml', 'tuba 8 ml')], {
-        sourceDocumentDate: '2016-09', amountText: '1–2 krople na zmianę',
-        notes: ['Nie jest to Anaftin Baby. Tubka dla jednego pacjenta. Bez przelicznika kropli na ml nie wyliczamy wydajności tuby.'],
-      }),
-    instructionForm('anaftin-spray', 'Anaftin · spray', 'device', SOURCE.anaftinSpray,
-      [pack('15ml', 'butelka 15 ml')], {
-        form: 'spray', sourceDocumentDate: '2016-09',
-        amountText: '3 naciśnięcia lub ilość potrzebna do pokrycia zmiany',
-        notes: ['Instrukcja nie podaje ml na naciśnięcie ani liczby dawek w butelce. Nie zakładamy wydajności innego aerozolu.'],
-      }),
-    rinseForm('anaftin-rinse', 'Anaftin · płyn do płukania', 'device', SOURCE.anaftinRinse, 120, {
-      sourceDocumentDate: '2016-09',
-      notes: [
-        'Wymaga umiejętności płukania i wypluwania. Instrukcja nie określa liczbowej granicy wieku.',
-        'Instrukcja dopuszcza stosowanie w razie potrzeby; 3–4 razy na dobę nie jest toksykologicznym maksimum.',
-      ],
-    }),
-  ], ['anaftin', 'afta', 'afty', 'hialuronowy', 'hialuronian', 'aloes', 'pvp', 'poliwinylopirolidon', 'żel', 'spray', 'płukanka']),
-
   drug('dentinox-n', 'Dentinox N', 'Nalewka z rumianku + lidokainy chlorowodorek + lauromakrogol 400', [
     instructionForm('dentinox-n-gel', 'Dentinox N · 15% + 0,34% + 0,32%, żel', 'medicine', SOURCE.dentinox,
       [pack('10g', 'tuba 10 g')], {
@@ -270,53 +219,6 @@ const instruction = (id, formId, label, options) => scheme(id, [formId], label, 
 });
 
 export const DENTAL_TOPICAL_REGIMENS = [
-  instruction('dezaftan-barrier-use', 'dezaftan-gel-8g', 'Punktowo na zmiany błony śluzowej', {
-    indication: 'Afty i drobne zmiany błony śluzowej', frequencyOptions: [3, 4],
-    instructionText: 'Nałożyć 1–2 krople żelu punktowo, gazikiem albo czystym palcem.',
-    administration: 'Nie dotykać zmiany tuż po aplikacji; przez co najmniej godzinę nie jeść ani nie pić.',
-    limitLabel: 'Instrukcja: 3–4 aplikacje/dobę. Brak dawki w mg/kg i ilości gramów na aplikację.',
-    ...source(SOURCE.dezaftan, 'Aflofarm · oznakowanie i instrukcja wyrobu', 'Sposób postępowania z wyrobem'),
-  }),
-  instruction('dezaftan-med-adult', 'dezaftan-med-spray', 'Dorośli · miejscowe stosowanie doraźne', {
-    patientTypes: ['adult'], minAgeMonths: 216, indication: 'Stany zapalne, zakażenia i owrzodzenia jamy ustnej',
-    asNeeded: true, minIntervalHours: 1, reviewAfterDays: 5, maxDays: 5,
-    instructionText: 'Jednorazowo 3 rozpylenia, w razie potrzeby co 1–2 godziny; najwyżej 8 takich aplikacji na dobę.',
-    administration: 'Stosować poza posiłkami, najlepiej godzinę przed lub po posiłku. Przygotować pompkę zgodnie z ChPL.',
-    limitLabel: 'Maks. 8 aplikacji po 3 rozpylenia = 24 rozpylenia/dobę. Limit nie jest zalecaną stałą częstotliwością.',
-    ...source(SOURCE.dezaftanMed),
-  }),
-  instruction('dezaftan-med-child', 'dezaftan-med-spray', 'Dzieci powyżej 6 lat · miejscowo', {
-    patientTypes: ['child'], minAgeMonths: 72, minAgeExclusive: true, maxAgeMonths: 216, maxAgeExclusive: true,
-    indication: 'Stany zapalne, zakażenia i owrzodzenia jamy ustnej',
-    asNeeded: true, minIntervalHours: 2, reviewAfterDays: 5, maxDays: 5,
-    instructionText: 'Jednorazowo 3 rozpylenia, w razie potrzeby co 2–3 godziny; najwyżej 6 takich aplikacji na dobę.',
-    administration: 'Stosować poza posiłkami; sprawdzić zdolność prawidłowego podania i przeciwwskazania lidokainy.',
-    limitLabel: 'Maks. 6 aplikacji po 3 rozpylenia = 18 rozpyleń/dobę. Limit nie jest stałą częstotliwością.',
-    ...source(SOURCE.dezaftanMed),
-  }),
-  instruction('anaftin-gel-use', 'anaftin-gel', 'Żel · osłona zmian błony śluzowej', {
-    indication: 'Afty, owrzodzenia i niewielkie urazy śluzówki',
-    instructionText: 'Pokryć zmianę 1–2 kroplami żelu; zwykle 3–4 razy dziennie lub częściej w razie potrzeby.',
-    administration: 'Nie dotykać aplikatorem zmiany ani językiem przez co najmniej 2 minuty. Przez godzinę nie jeść ani nie pić.',
-    limitLabel: 'Instrukcja nie określa liczbowego maksimum dobowego ani przelicznika kropli na ml.',
-    ...source(SOURCE.anaftinGel, 'Anaftin · instrukcja użycia, 09/2016', 'Instrukcja użycia i uwagi'),
-  }),
-  instruction('anaftin-spray-use', 'anaftin-spray', 'Spray · osłona zmian błony śluzowej', {
-    indication: 'Afty, owrzodzenia i niewielkie urazy śluzówki',
-    instructionText: 'Skierować dozownik na zmianę; nacisnąć 3 razy lub tyle, aby ją pokryć. Stosować 3–4 razy dziennie lub częściej w razie potrzeby.',
-    administration: 'Przez co najmniej godzinę po zastosowaniu nie jeść ani nie pić.',
-    limitLabel: 'Brak kalibracji pompki i liczbowego maksimum dobowego w instrukcji; nie wyliczamy wydajności butelki.',
-    ...source(SOURCE.anaftinSpray, 'Anaftin · instrukcja użycia, 09/2016', 'Instrukcja użycia i uwagi'),
-  }),
-  scheme('anaftin-rinse-use', ['anaftin-rinse'], 'Płyn · płukanie zmian błony śluzowej', {
-    indication: 'Afty, owrzodzenia i uszkodzenia błony śluzowej', doseMode: 'units', dose: 10,
-    frequencyOptions: [3, 4], requiresDuration: true,
-    administration: 'Płukać nierozcieńczonym płynem co najmniej minutę i wypluć. Przez godzinę nie jeść ani nie pić.',
-    screening: 'Potwierdź zdolność do płukania i wypluwania. U dziecka dobór wymaga oceny lekarza; instrukcja nie podaje granicy wieku.',
-    notes: ['Instrukcja dopuszcza dodatkowe użycie w razie potrzeby. Wyliczenie opakowań obejmuje wyłącznie wybrane 3 albo 4 płukania dziennie.'],
-    limitLabel: '10 ml na płukanie; 3–4 razy/dobę lub w razie potrzeby. Nie ustalono liczbowego maksimum mg/dobę.',
-    ...source(SOURCE.anaftinRinse, 'Anaftin · instrukcja użycia, 09/2016', 'Instrukcja użycia'),
-  }),
   instruction('dentinox-teething', 'dentinox-n-gel', 'Objawy ząbkowania · od 12 miesięcy w aplikacji', {
     patientTypes: ['child'], minAgeMonths: 12, maxAgeMonths: 216, maxAgeExclusive: true,
     indication: 'Bolesne wyrzynanie zębów mlecznych', frequencyOptions: [2, 3], reviewAfterDays: 7, asNeeded: true,

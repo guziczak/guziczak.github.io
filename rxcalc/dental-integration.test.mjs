@@ -73,11 +73,11 @@ test('Ospamox calculation and dosing text are available without a separate renal
 });
 
 test('rinse packages use ml while active mg remains unspecified', () => {
-  const {resolved,result}=run('anaftin-rinse','anaftin-rinse-use',{dose:null,frequency:4,days:7},'120');
+  const {resolved,result}=run('eludril-care-rinse','eludril-care-adult',{age:30,dose:null,frequency:2,days:21},'500');
   assert.equal(resolved.valid,true);
   assert.equal(result.valid,true);
-  assert.equal(result.totalUnits,280);
-  assert.equal(result.packages,3);
+  assert.equal(result.totalUnits,630);
+  assert.equal(result.packages,2);
   assert.equal(result.dailyMg,null);
 });
 

@@ -48,33 +48,10 @@ test('foreign, historical and insufficiently current references expose no execut
   assert.match(formById('dentomycin-gel-ie').marketStatusLabel, /Irlandia.*2022-12-07/);
 });
 
-test('brand families retain distinct medicinal, device and cosmetic classifications', () => {
-  assert.equal(formById('dezaftan-gel-8g').productKind, 'device');
-  assert.equal(formById('dezaftan-med-spray').productKind, 'medicine');
-  assert.equal(formById('anaftin-gel').productKind, 'device');
-  assert.equal(formById('anaftin-spray').productKind, 'device');
-  assert.equal(formById('anaftin-rinse').productKind, 'device');
+test('topical products retain distinct medicinal, device and cosmetic classifications', () => {
   assert.equal(formById('eludril-care-rinse').productKind, 'cosmetic');
   assert.equal(formById('chlosite-025').productKind, 'device');
   assert.equal(formById('ligosan-periodontal-gel').productKind, 'medicine');
-});
-
-test('Dezaftan med separates three actuations from daily administration limits and does not infer bottle yield', () => {
-  const adult = regimenById('dezaftan-med-adult');
-  const child = regimenById('dezaftan-med-child');
-  for (const regimen of [adult, child]) {
-    assert.equal(regimen.doseMode, 'instruction');
-    assert.equal(regimen.asNeeded, true);
-    assert.equal(regimen.frequency, undefined);
-    assert.equal(regimen.maxDays, 5);
-  }
-  assert.match(adult.limitLabel, /24 rozpylenia/);
-  assert.match(child.limitLabel, /18 rozpyleń/);
-  assert.equal(adult.minIntervalHours, 1);
-  assert.equal(child.minIntervalHours, 2);
-  assert.equal(child.minAgeMonths, 72);
-  assert.equal(child.minAgeExclusive, true);
-  assert.match(formById('dezaftan-med-spray').notes.join(' '), /6 rozpyleń przygotowawczych/);
 });
 
 test('Dentinox source suggestion excludes infants needing unimplemented co-medication screening', () => {
@@ -108,16 +85,11 @@ test('Tantum preserves age-specific actuation ranges and does not round preschoo
 });
 
 test('measurable rinses calculate physical ml without manufacturing mg/kg limits', () => {
-  const anaftin = formById('anaftin-rinse');
   const eludril = formById('eludril-care-rinse');
-  assert.equal(anaftin.packOptions[0].quantity, 120);
   assert.equal(eludril.packOptions[0].quantity, 500);
-  for (const form of [anaftin, eludril]) {
-    assert.equal(form.unitLabel, 'ml');
-    assert.equal(form.strengthMg, null);
-    assert.equal(form.maxDailyMg, null);
-  }
-  assert.equal(regimenById('anaftin-rinse-use').dose, 10);
+  assert.equal(eludril.unitLabel, 'ml');
+  assert.equal(eludril.strengthMg, null);
+  assert.equal(eludril.maxDailyMg, null);
   assert.equal(regimenById('eludril-care-adult').dose, 15);
   assert.equal(regimenById('eludril-care-child').dose, 10);
   assert.equal(regimenById('eludril-care-child').minAgeMonths, 72);

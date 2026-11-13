@@ -451,20 +451,18 @@ test('the researched systemic records enforce their actual product and populatio
 test('the researched topical records preserve qualitative quantities and bounded treatment time', () => {
   const find = id => DENTAL_TOPICAL_REGIMENS.find(record => record.id === id);
   const adult = { ...context, age: 30, ageUnit: 'years', days: null };
-  const barrier = resolveHumanRegimen(find('dezaftan-barrier-use'), {
-    ...adult, formId: 'dezaftan-gel-8g', frequency: 3,
+  const gel = resolveHumanRegimen(find('dentinox-teething'), {
+    ...adult, patientType: 'child', age: 24, ageUnit: 'months',
+    formId: 'dentinox-n-gel', frequency: 3,
   });
-  assert.equal(barrier.valid, true);
-  assert.equal(barrier.dose, null);
-  assert.match(barrier.instructionText, /1–2 krople/);
-  const dezaftanContext = { ...adult, formId: 'dezaftan-med-spray' };
-  assert.equal(resolveHumanRegimen(find('dezaftan-med-adult'), dezaftanContext).valid, false);
-  assert.equal(resolveHumanRegimen(find('dezaftan-med-adult'), { ...dezaftanContext, days: 5 }).valid, true);
-  assert.equal(resolveHumanRegimen(find('dezaftan-med-adult'), { ...dezaftanContext, days: 6 }).valid, false);
+  assert.equal(gel.valid, true);
+  assert.equal(gel.dose, null);
+  assert.match(gel.instructionText, /ziarnka grochu/);
   const periodontal = { ...adult, formId: 'metronidazol-chema-ointment' };
   assert.equal(resolveHumanRegimen(find('metronidazole-periodontal'), periodontal).valid, false);
   const course = resolveHumanRegimen(find('metronidazole-periodontal'), { ...periodontal, days: 7 });
   assert.equal(course.valid, true);
   assert.equal(course.frequency, 2);
   assert.equal(course.dose, null);
+  assert.equal(resolveHumanRegimen(find('metronidazole-periodontal'), { ...periodontal, days: 11 }).valid, false);
 });

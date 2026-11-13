@@ -1,5 +1,5 @@
 /**
- * RxCalc product metadata, version 2026.11.13.
+ * RxCalc product metadata, version 2026.11.14.
  * Sources are linked on every formulation. This is a limited calculation
  * catalogue, not a clinical guideline, reimbursement database or complete ChPL.
  * No regimen is inferred from a diagnosis. Prescriber enters and confirms it.
@@ -11,8 +11,8 @@ import { DENTAL_SYSTEMIC_FORM_ADDITIONS, DENTAL_SYSTEMIC_FORM_PATCHES } from './
 import { DENTAL_TOPICAL_DRUGS, DENTAL_TOPICAL_FORM_PATCHES } from './dental-topicals.js';
 
 export const CATALOGUE_META = Object.freeze({
-  version: '2026.11.13.dental.1',
-  updatedAt: '2026-11-13',
+  version: '2026.11.14.dental.2',
+  updatedAt: '2026-11-14',
   sourceCheckedAt: '2026-11-12',
   status: 'Wersja do weryfikacji',
   scope: 'Dane wybranych postaci i opakowań do przeliczeń. Dawka, wskazanie, interakcje i przeciwwskazania wymagają oceny lekarza na podstawie aktualnej ChPL.',
