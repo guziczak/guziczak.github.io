@@ -142,6 +142,12 @@ main{padding-top:24px}
 .context-selectors .patient-type .field-label{display:block;margin-bottom:7px}
 .context-selectors .segmented{height:44px}
 .context-selectors .segmented button{min-height:38px}
+/* One shared selection surface; JS continues its slide across full renders. */
+.patient-segmented{position:relative;isolation:isolate}
+.patient-type-thumb{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 4.5px);border-radius:6px;background:var(--surface);box-shadow:0 1px 3px #23392c0c;pointer-events:none}
+.patient-segmented[data-patient-type="child"] .patient-type-thumb{left:calc(50% + 1.5px)}
+.patient-segmented button{position:relative;z-index:1;min-width:0;flex:1 1 0}
+.patient-segmented button.active{background:transparent;box-shadow:none}
 .clinical-note{margin-bottom:16px}
 .left-stack>.patient-card{margin-bottom:0}
 .left-stack .patient-fields,.left-stack .patient-fields.vet-patient-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
