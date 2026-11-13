@@ -149,6 +149,7 @@ function quickDays(source, cardio) {
 }
 const deviceDivisions = (r, f) => r.valid && f.doseStepUnits > 0 ? Math.round(r.singleUnits / f.doseStepUnits) : null;
 const divisionUnit = count => count === 1 ? 'działka' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'działki' : 'działek';
+const variantUnit = count => count === 1 ? 'wariant' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'warianty' : 'wariantów';
 const regimenContext = () => ({ formId: getForm()?.id, species: state.species, weight: num(state.weight), age: num(state.age), ageUnit: state.vetAgeUnit, foodChainStatus: state.foodChainStatus, days: num(state.days), calculationBlocked: getForm()?.calculationBlocked === true });
 const humanContext = () => {
   const source=getSourceRegimen();
@@ -364,7 +365,7 @@ function renderDrugs() {
     const shown = products.slice(0,ui.showAll ? products.length : 8);
     node.hidden = false;
     $('#favorites-inline').innerHTML = '';
-    $('#catalogue-heading').textContent = `${products.length} wariantów · preparat, moc i opakowanie`;
+    $('#catalogue-heading').textContent = `${products.length} ${variantUnit(products.length)} · preparat, moc i opakowanie`;
     node.innerHTML = shown.length ? shown.map(row => `<button class="drug-card product-hit" data-action="product" data-value="${esc(row.key)}"><span class="drug-icon">${icon(row.form.form === 'tablet' ? 'pill' : 'bottle')}</span><span class="product-hit-copy"><span class="drug-name">${esc(row.form.label)}</span><span class="product-pack">${esc(row.pack.label)}</span><span class="drug-description">${esc(row.drug.substanceLabel || row.drug.substance)}${isReference(row.form) ? ' · karta informacyjna' : productKindLabel(row.form) ? ` · ${esc(productKindLabel(row.form))}` : ''}</span></span><span class="product-hit-arrow">${icon(isReference(row.form) ? 'book' : 'arrow')}</span></button>`).join('') : '<div class="empty-search">Nie znaleziono takiego wariantu.<br>Wpisz nazwę, substancję lub moc.</div>';
     $('#catalogue-more').innerHTML = products.length > 8 ? `<button class="show-more" data-action="browse-catalogue" aria-expanded="${ui.showAll}">${ui.showAll ? 'Pokaż mniej' : `Pozostałe warianty (${products.length - 8})`} ${icon('down')}</button>` : '';
     return;
@@ -408,7 +409,7 @@ function updateInstructionResult(check) {
   $('#dose-value').textContent=source?'Instrukcja':'—';
   $('#dose-value').classList.add('instruction-number');
   $('#dose-unit').textContent='';
-  $('#frequency-output').textContent=source?(state.frequency!==''?`${source.asNeeded?'W razie potrzeby, do ':''}${n(num(state.frequency))} aplikacji na dobę${state.days!==''?` · ${n(num(state.days))} dni`:''}`:source.professionalUse?'Procedura stomatologiczna':'Stosowanie według instrukcji źródłowej'):'Wybierz właściwy schemat';
+  $('#frequency-output').textContent=source?(state.frequency!==''?`${source.asNeeded?'W razie potrzeby, do ':''}${n(num(state.frequency))} × na dobę${state.days!==''?` · ${n(num(state.days))} dni`:''}`:source.professionalUse?'Procedura stomatologiczna':'Stosowanie według instrukcji źródłowej'):'Wybierz właściwy schemat';
   $('#dose-equivalent').textContent=source?.instructionText||'Instrukcja pojawi się po wyborze wskazania.';
   $('#dose-equivalent').classList.add('instruction-equivalent');
   $('#dose-meter').hidden=true;
@@ -502,7 +503,7 @@ function updateResult() {
   else if(state.age!==''||state.weight!=='')review.push(['Pacjent',[state.age!==''?`${n(num(state.age))} ${({years:'lat',months:'mies.',days:'dni'})[state.humanAgeUnit]}`:'',state.weight!==''?`${n(num(state.weight),6)} kg`:''].filter(Boolean).join(' · ')]);
   if(isVeterinary()&&state.age!=='')review.push(['Wiek',`${n(num(state.age),6)} ${ageUnitLabel()}`]);
   if(source)review.push(['Wskazanie i schemat',[source.indication,source.phaseLabel].filter(Boolean).join(' · ')]);
-  else review.push(['Schemat',isVeterinary()&&!ui.manualRegimen&&getAvailableRegimens().length?'Wybierz wskazanie i etap':'Wprowadzony ręcznie']);
+  else review.push(['Schemat',!ui.manualRegimen&&getAvailableRegimens().length?(isVeterinary()?'Wybierz wskazanie i etap':'Wybierz wskazanie i schemat'):'Wprowadzony ręcznie']);
   if(f.requiresFoodChainExclusion||source?.requiresFoodChainExclusion)review.push(['Paszport',({excluded:'Wykluczony z uboju',notExcluded:'Niewykluczony z uboju',unknown:'Do sprawdzenia'})[state.foodChainStatus]]);
   $('#result-review').innerHTML=`<h3>Sprawdź przed skopiowaniem</h3><dl>${review.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
   $('#result-requirements').textContent=state.demo?'Przykład · kopiowanie wyłączone.':!r.valid?'Uzupełnij dane i usuń wskazane niezgodności.':!state.confirmed?'Potwierdź schemat powyżej, aby skopiować.':'Gotowe do wklejenia w systemie gabinetowym.';
