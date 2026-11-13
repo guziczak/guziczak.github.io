@@ -8,6 +8,7 @@ import { HUMAN_REGIMENS } from './human-regimens.js';
 import { availableHumanRegimens, resolveHumanRegimen } from './human-regimen-engine.js';
 import { catalogueProducts, searchProducts } from './product-search.js';
 import { humanDosingText, instructionDosingText } from './dental-output.js';
+import { createSelectMenus } from './select-menu.js';
 
 const $ = (q, root = document) => root.querySelector(q);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -46,6 +47,7 @@ const paths = {
   settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--surface)"/><circle cx="16" cy="17" r="3" fill="var(--surface)"/>',
 };
 const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.pill}</svg>`;
+const selectMenus = createSelectMenus({ icon });
 const forms = { tablet: ['Tabletki', 'tabl.'], capsule: ['Kapsułki', 'kaps.'], suspension: ['Zawiesina doustna', 'ml'], oralPaste: ['Pasta doustna', 'g'], oralGel: ['Żel doustny', 'g'], oralPowder: ['Granulat / proszek doustny', 'g'], spray: ['Aerozol', 'rozp.'], gel: ['Żel / maść', 'g'], drops: ['Krople', 'kropli'], solution: ['Roztwór', 'ml'], injection: ['Iniekcja · pojemniki jednorazowe', 'ml'] };
 const SPECIALTIES = [{id:'dental',label:'Stomatologia',icon:'tooth'},{id:'cardio',label:'Kardiologia',icon:'heart'},{id:'veterinary',label:'Weterynaria',icon:'paw'}];
 const ANIMALS = [{id:'dog',label:'Pies',weight:'np. 12'},{id:'cat',label:'Kot',weight:'np. 4'},{id:'horse',label:'Koń',weight:'np. 550'},{id:'hamster',label:'Chomik',weight:'np. 0,08'},{id:'rat',label:'Szczur',weight:'np. 0,3'}];
@@ -82,11 +84,6 @@ let theme = readPreference('theme', 'light');
 document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
 let latest = null, latestText = '', deferredInstall = null, swRegistration = null, toastTimer = null, copyObserver = null;
 let offlineReady = false, requestedUpdate = false;
-let keyboardNavigation = false;
-document.addEventListener('pointerdown', () => { keyboardNavigation = false; }, true);
-document.addEventListener('keydown', event => {
-  if (!['Alt', 'Control', 'Meta', 'Shift'].includes(event.key)) keyboardNavigation = true;
-}, true);
 const field = (id, label, value, placeholder, unit = '', extra = '') => `<div class="field"><label for="${id}">${label}</label><div class="input-unit"><input id="${id}" data-field="${id}" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(value)}" placeholder="${esc(placeholder)}" ${extra}>${unit ? `<span>${unit}</span>` : ''}</div></div>`;
 const isVeterinary = () => state.specialty === 'veterinary';
 const getAnimal = () => ANIMALS.find(a => a.id === state.species);
@@ -293,92 +290,14 @@ function resultPanel(f) {
 }
 
 function specialtyPicker() {
-  const current=SPECIALTIES.find(item=>item.id===state.specialty);
-  return `<div class="field specialty-field"><label id="specialty-label" for="specialty">Specjalizacja</label><div class="specialty-picker"><button type="button" id="specialty" class="specialty-trigger" role="combobox" aria-labelledby="specialty-label" aria-haspopup="listbox" aria-controls="specialty-options" aria-expanded="false" data-action="specialty-toggle"><span class="specialty-symbol">${icon(current.icon)}</span><span class="specialty-value">${current.label}</span><span class="specialty-chevron">${icon('down')}</span></button><div id="specialty-options" class="specialty-options" role="listbox" aria-labelledby="specialty-label" hidden>${SPECIALTIES.map(item=>`<div id="specialty-option-${item.id}" class="specialty-option" role="option" aria-selected="${item.id===state.specialty}" data-action="specialty" data-value="${item.id}"><span class="specialty-option-icon">${icon(item.icon)}</span><span>${item.label}</span><span class="specialty-check">${icon('check')}</span></div>`).join('')}</div></div></div>`;
-}
-let specialtySearchText='', specialtySearchAt=0;
-const specialtyIsOpen=()=>$('#specialty')?.getAttribute('aria-expanded')==='true';
-function highlightSpecialty(index) {
-  const menu=$('#specialty-options'), trigger=$('#specialty');
-  if(!menu||!trigger)return;
-  index=Math.max(0,Math.min(SPECIALTIES.length-1,index));
-  menu.dataset.activeIndex=String(index);
-  const options=[...menu.querySelectorAll('[role="option"]')];
-  options.forEach((option,i)=>option.classList.toggle('is-active',i===index));
-  const option=options[index];
-  trigger.setAttribute('aria-activedescendant',option.id);
-  // Scroll only inside the popup, without moving the surrounding page.
-  if(option.offsetTop<menu.scrollTop)menu.scrollTop=option.offsetTop;
-  else if(option.offsetTop+option.offsetHeight>menu.scrollTop+menu.clientHeight)menu.scrollTop=option.offsetTop+option.offsetHeight-menu.clientHeight;
-}
-function positionSpecialtyMenu() {
-  const menu=$('#specialty-options'), trigger=$('#specialty');
-  if(!menu||!trigger)return;
-  const rect=trigger.getBoundingClientRect();
-  const viewportTop=window.visualViewport?.offsetTop||0;
-  const viewportBottom=viewportTop+(window.visualViewport?.height||window.innerHeight);
-  const below=viewportBottom-rect.bottom-12, above=rect.top-viewportTop-12;
-  const opensUp=below<menu.scrollHeight&&above>below;
-  menu.classList.toggle('opens-up',opensUp);
-  menu.style.maxHeight=`${Math.max(44,Math.min(240,opensUp?above:below))}px`;
-}
-function openSpecialtyMenu(index=SPECIALTIES.findIndex(item=>item.id===state.specialty)) {
-  const menu=$('#specialty-options'), trigger=$('#specialty');
-  if(!menu||!trigger)return;
-  if(!specialtyIsOpen()){specialtySearchText='';specialtySearchAt=0;}
-  menu.hidden=false;
-  trigger.setAttribute('aria-expanded','true');
-  trigger.focus({preventScroll:true});
-  positionSpecialtyMenu();
-  highlightSpecialty(index);
-}
-function closeSpecialtyMenu() {
-  const menu=$('#specialty-options'), trigger=$('#specialty');
-  if(menu)menu.hidden=true;
-  if(trigger){trigger.setAttribute('aria-expanded','false');trigger.removeAttribute('aria-activedescendant');}
-  specialtySearchText='';specialtySearchAt=0;
-}
-function commitSpecialty(value) {
-  closeSpecialtyMenu();
-  switchSpecialty(value);
-  render();
-  $('#specialty')?.focus({preventScroll:true});
-}
-function specialtyKeydown(event) {
-  if(event.target.id!=='specialty'||event.ctrlKey||event.metaKey)return;
-  const open=specialtyIsOpen(), menu=$('#specialty-options');
-  const active=Number(menu?.dataset.activeIndex??SPECIALTIES.findIndex(item=>item.id===state.specialty));
-  const key=event.key;
-  if(key==='Escape'&&open){event.preventDefault();event.stopPropagation();closeSpecialtyMenu();return;}
-  if(key==='Tab'){if(open)commitSpecialty(SPECIALTIES[active].id);return;}
-  if(key==='Enter'||key===' '){event.preventDefault();if(open)commitSpecialty(SPECIALTIES[active].id);else openSpecialtyMenu();return;}
-  if(['ArrowDown','ArrowUp','Home','End','PageDown','PageUp'].includes(key)){
-    event.preventDefault();
-    if(open&&event.altKey&&key==='ArrowUp'){commitSpecialty(SPECIALTIES[active].id);return;}
-    let next=active;
-    if(key==='Home'||key==='PageUp')next=0;
-    else if(key==='End'||key==='PageDown')next=SPECIALTIES.length-1;
-    else if(open&&!event.altKey)next+=key==='ArrowDown'?1:-1;
-    else if(!open&&key==='ArrowUp')next=0;
-    else if(!open)next=SPECIALTIES.findIndex(item=>item.id===state.specialty);
-    if(open)highlightSpecialty(next);else openSpecialtyMenu(next);
-    return;
-  }
-  if(key.length===1&&!event.altKey){
-    event.preventDefault();
-    if(!open)openSpecialtyMenu();
-    const now=Date.now(), letter=normalize(key);
-    specialtySearchText=now-specialtySearchAt<700?specialtySearchText+letter:letter;
-    specialtySearchAt=now;
-    let next=SPECIALTIES.findIndex(item=>normalize(item.label).startsWith(specialtySearchText));
-    if(next<0){specialtySearchText=letter;next=SPECIALTIES.findIndex(item=>normalize(item.label).startsWith(letter));}
-    if(next>=0)highlightSpecialty(next);
-  }
+  return `<div class="field specialty-field"><label for="specialty">Specjalizacja</label><select id="specialty" data-field="specialty">${SPECIALTIES.map(item => `<option value="${item.id}" data-icon="${item.icon}" ${item.id === state.specialty ? 'selected' : ''}>${item.label}</option>`).join('')}</select></div>`;
 }
 
 function render() {
   const previousFocus = document.activeElement;
   const focusId = previousFocus?.id;
+  const focusField = previousFocus?.dataset?.selectId || focusId;
+  selectMenus.close();
   const focusAction = previousFocus?.dataset?.action, focusValue = previousFocus?.dataset?.value;
   const vet = isVeterinary(), f = getForm();
   syncSourceRegimen();
@@ -387,6 +306,7 @@ function render() {
     <div class="workspace"><header class="topbar"><div class="topbar-title">Twój gabinet ${icon('arrow')} <strong>Kalkulator dawkowania</strong></div><a href="./" class="brand mobile-brand" aria-label="RxCalc — strona główna"><span class="brand-mark">Rx</span><span class="brand-word">RxCalc</span></a><div class="topbar-actions"><span class="online-status" id="online-status"><span class="dot"></span><span id="connection-text">Obliczenia na urządzeniu</span></span><button class="icon-button mobile-tools" data-action="tools" aria-label="Narzędzia" title="Narzędzia">${icon('tools')}</button><button class="icon-button" data-action="theme" aria-label="Zmień motyw" title="Zmień motyw">${icon(theme === 'dark' ? 'sun' : 'moon')}</button><button class="new-patient" data-action="reset" aria-label="Nowy pacjent — wyczyść parametry i schemat" title="Nowy pacjent — wyczyść parametry i schemat">${icon('plus')}<span>Nowy pacjent</span></button></div></header>
       <main id="main"><div id="update-slot"></div><section class="context-bar" aria-label="Profil pracy"><div class="context-heading"><h1>Kalkulator dawkowania</h1><span>${icon('lock')} Dane pacjenta pozostają w tej karcie</span></div><div class="context-selectors">${specialtyPicker()}${vet ? `<div class="field"><label for="species">Gatunek zwierzęcia</label><select id="species" data-field="species" required><option value="">Wybierz gatunek</option>${ANIMALS.map(a => `<option value="${a.id}" ${state.species === a.id ? 'selected' : ''}>${a.label}</option>`).join('')}</select></div>` : state.specialty === 'dental' ? `<div class="patient-type"><div class="field-label">Grupa pacjenta</div><div class="segmented patient-segmented" data-patient-type="${state.patientType}" role="group" aria-label="Grupa pacjenta"><span class="patient-type-thumb" aria-hidden="true"></span><button data-action="patient-type" data-value="adult" class="${state.patientType === 'adult' ? 'active' : ''}" aria-pressed="${state.patientType === 'adult'}">Dorosły</button><button data-action="patient-type" data-value="child" class="${state.patientType === 'child' ? 'active' : ''}" aria-pressed="${state.patientType === 'child'}">Dziecko</button></div></div>` : ''}</div></section><div class="clinical-note">${icon('info')}<span>${state.demo ? '<strong>Przykład arytmetyczny.</strong> Dane demonstracyjne; kopiowanie wyłączone.' : vet ? 'Wskazanie i schemat potwierdza lekarz weterynarii w aktualnej dokumentacji.' : 'Schemat ustala lekarz. Potwierdź go w aktualnej ChPL.'}</span><button data-action="about">Zakres kalkulatora</button></div>
       <div class="calculator-grid"><div class="left-stack"><section class="panel product-panel" aria-labelledby="drug-title"><div class="section-heading"><span class="step-number">01</span><h2 id="drug-title">${ui.productChosen ? 'Wybrany preparat' : 'Wybierz preparat'}</h2><span class="trailing">${vet && !state.species ? '' : `${getSpeciesCatalogue().length} w katalogu`}</span></div>${productPicker(f)}</section>${regimenPanel(f)}${productReady() ? `<div class="source-row">${icon('book')}<span>${f.sourceUrl ? `<a href="${esc(f.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(f.sourceLabel)} ↗</a> · ` : ''}<button data-action="source" class="text-button">Uwagi do preparatu</button><br>${state.custom ? 'Dane preparatu wprowadzone ręcznie.' : `Dane katalogowe: ${esc(f.sourceCheckedAt || CATALOGUE_META.sourceCheckedAt)}.`}</span></div>` : ''}</div>${resultPanel(f)}</div><footer class="page-footer"><span>RxCalc · podręczny kalkulator dawkowania</span><div class="footer-links">${!vet ? '<button data-action="example">Przykład obliczenia</button>' : ''}<button data-action="favorites">Ulubione</button><button data-action="install">Zainstaluj</button><button data-action="about">O aplikacji</button></div></footer></main></div><div class="mobile-action-bar" id="mobile-action-bar" ${!productReady() || isReference(f) ? 'hidden' : ''}><button class="mobile-action-summary" data-action="result" aria-label="Przejdź do podsumowania obliczenia"><small id="mobile-action-label">Sprawdź wynik</small><strong id="mobile-action-value">Uzupełnij dane</strong></button><button class="copy-button" id="mobile-copy" data-action="copy" disabled>${icon('copy')}Kopiuj</button></div>`;
+  selectMenus.enhance($('#app'));
   renderDrugs(); updateResult(); updateConnection(); showUpdate();
   copyObserver?.disconnect();
   if ('IntersectionObserver' in window && $('#copy-button')) {
@@ -399,11 +319,12 @@ function render() {
   let nextFocus = focusId ? document.getElementById(focusId) : null;
   if(!nextFocus && focusAction) nextFocus = [...$('#app').querySelectorAll('[data-action]')].find(el => el.dataset.action === focusAction && el.dataset.value === focusValue);
   if(!nextFocus && ['drug','form','product','favorite-select'].includes(focusAction)) nextFocus = $('[data-action="edit-product"]');
-  if(!nextFocus && ['formId','productVariant'].includes(focusId)) nextFocus = $('[data-action="edit-product"]');
-  if(!nextFocus && focusId === 'regimenId') nextFocus = $('[data-action="edit-regimen"]');
-  // Refocusing a replacement native select can reopen the iOS picker after a tap.
-  // Retain focus for keyboard navigation; let pointer selections close normally.
-  if(nextFocus && previousFocus !== document.body && (nextFocus.tagName !== 'SELECT' || keyboardNavigation)) nextFocus.focus({preventScroll:true});
+  if(!nextFocus && ['formId','productVariant'].includes(focusField)) nextFocus = $('[data-action="edit-product"]');
+  if(!nextFocus && focusField === 'regimenId') nextFocus = $('[data-action="edit-regimen"]');
+  if(nextFocus && previousFocus !== document.body) {
+    if(nextFocus.tagName === 'SELECT') selectMenus.focus(nextFocus.id);
+    else nextFocus.focus({preventScroll:true});
+  }
 }
 
 function productPicker(f) {
@@ -521,6 +442,9 @@ function updateInstructionResult(check) {
 }
 
 function updateResult() {
+  try { updateResultContent(); } finally { selectMenus.refresh(); }
+}
+function updateResultContent() {
   if(!productReady() || !$('#dose-value')) {
     latest=null;latestText='';state.confirmed=false;
     if($('#mobile-copy')) $('#mobile-copy').disabled=true;
@@ -618,7 +542,9 @@ function prescription(r,f,input) {
 function dirty() { state.confirmed=false; }
 function toast(message) { clearTimeout(toastTimer); const el=$('#toast');el.textContent=message;el.classList.add('show');toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
 function openDialog(title,content) {
+  selectMenus.close();
   const dialog=$('#dialog');dialog.innerHTML=`<div class="dialog-inner"><div class="dialog-header"><h2 id="dialog-title">${title}</h2><button class="icon-button" data-action="close-dialog" aria-label="Zamknij">${icon('close')}</button></div><div class="dialog-content">${content}</div></div>`;
+  selectMenus.enhance(dialog);
   if(!dialog.open)dialog.showModal();
 }
 function aboutDialog() {
@@ -668,27 +594,10 @@ function example() {
   Object.assign(state,{patientType:'child',age:'8',weight:'24',doseMode:'perKgDay',dose:'45',frequency:'2',days:'7',roundingStep:'0.1',demo:true});render();toast('Przykład działania. Rozpocznij własne obliczenie przyciskiem „Nowy pacjent”.');
 }
 
-document.addEventListener('keydown',specialtyKeydown);
-document.addEventListener('pointerdown',event=>{
-  const option=event.target.closest('.specialty-option');
-  if(option&&event.pointerType==='mouse')event.preventDefault();
-  if(specialtyIsOpen()&&!event.target.closest('.specialty-picker'))closeSpecialtyMenu();
-});
-document.addEventListener('pointermove',event=>{
-  const option=event.target.closest('.specialty-option');
-  if(option&&event.pointerType!=='touch'&&specialtyIsOpen())highlightSpecialty(SPECIALTIES.findIndex(item=>item.id===option.dataset.value));
-});
-document.addEventListener('focusin',event=>{
-  if(specialtyIsOpen()&&!event.target.closest('.specialty-picker'))closeSpecialtyMenu();
-});
-window.addEventListener('resize',()=>{if(specialtyIsOpen())positionSpecialtyMenu();});
-
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-action]');if(!b)return;
   const {action,value}=b.dataset;
   switch(action){
-    case 'specialty-toggle':if(specialtyIsOpen())closeSpecialtyMenu();else openSpecialtyMenu();break;
-    case 'specialty':commitSpecialty(value);break;
     case 'patient-type':{
       // Keep the thumb's current visual position when a fast tap reverses a slide.
       const thumb=$('.patient-type-thumb');
@@ -715,8 +624,8 @@ document.addEventListener('click',e=>{
       render();break;
     }
     case 'category':state.category=value;ui.showAll=false;render();break;
-    case 'edit-regimen':ui.regimenExpanded=true;render();$('#regimenId')?.focus({preventScroll:true});break;
-    case 'source-mode':resetRegimen();ui.regimenExpanded=true;render();$('#regimenId')?.focus({preventScroll:true});break;
+    case 'edit-regimen':ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
+    case 'source-mode':resetRegimen();ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
     case 'manual-regimen':if(isInstruction(getForm()))break;state.regimenId='';ui.manualRegimen=true;ui.regimenExpanded=false;ui.sourceDetailsOpen=false;dirty();render();toast('Tryb ręczny — wartości wymagają własnej weryfikacji.');break;
     case 'days':if(getSourceRegimen()?.fixedDays)break;state.days=value;dirty();if($('#days'))$('#days').value=value;document.querySelectorAll('[data-action=days]').forEach(x=>{x.classList.toggle('active',x.dataset.value===value);x.setAttribute('aria-pressed',String(x.dataset.value===value));});updateResult();break;
     case 'custom':{
@@ -780,7 +689,7 @@ document.addEventListener('focusout',()=>requestAnimationFrame(updateKeyboardSta
 window.visualViewport?.addEventListener('resize',updateKeyboardState);
 $('#dialog').addEventListener('input',updateTool);$('#dialog').addEventListener('change',updateTool);
 $('#dialog').addEventListener('click',e=>{if(e.target===$('#dialog'))$('#dialog').close();});
-document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();ui.productExpanded=true;render();($('#search')||$('#species'))?.focus();}if(e.key==='Escape' && $('#search')===document.activeElement){state.search='';$('#search').value='';renderDrugs();}});
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();ui.productExpanded=true;render();if($('#search'))$('#search').focus();else selectMenus.focus('species');}if(e.key==='Escape' && $('#search')===document.activeElement){state.search='';$('#search').value='';renderDrugs();}});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
 window.addEventListener('appinstalled',()=>{deferredInstall=null;toast('RxCalc dodany do aplikacji.');});
 function updateConnection(){const el=$('#connection-text');if(el)el.textContent=!navigator.onLine?(offlineReady?'Tryb offline':'Brak połączenia'):(offlineReady?'Gotowy do pracy offline':'Obliczenia na urządzeniu');}

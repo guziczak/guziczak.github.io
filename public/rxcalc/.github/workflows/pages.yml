@@ -1,0 +1,45 @@
+name: Publish RxCalc to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test calculator
+        run: node --test *.test.mjs
+      - name: Set up Pages
+        uses: actions/configure-pages@v5
+      - name: Prepare static site
+        run: |
+          mkdir -p _site
+          cp index.html styles.css app.js select-menu.js engine.js catalogue.js catalogue-selection.js workflow.js dental-systemic.js dental-topicals.js human-regimens.js human-regimen-engine.js product-search.js dental-output.js regimens.js regimen-engine.js equine-nsaids.js equine-antiparasitics.js manifest.webmanifest sw.js .nojekyll _site/
+          cp -r icons _site/icons
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
