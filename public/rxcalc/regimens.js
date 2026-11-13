@@ -12,8 +12,73 @@ const meloxicam = (id, formId, species, label, indication, phaseLabel, dose, doc
   screening: nsaidReview, administration: 'Wstrząsnąć przed użyciem. Objętość podano w ml; podziałka strzykawki w kg nie jest podziałką w ml.', ...document, ...options,
 });
 const cereniaSource = source('https://www.zoetis.com.pl/_locale-assets/charakterystyki-produktow/cerenia_qrd_2024.10_vnra.pdf', 'Polska ChPL · Zoetis (10/2024)', '3.2–3.9, tabela na s. 5');
+const horseSource = (url, label, sections) => ({ ...source(url, label, sections), sourceCheckedAt: '2026-11-13' });
+const panacurPasteSource = horseSource('https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/18365/characteristic', 'Polska ChPL · RPL', '3.2–3.9, 3.12 i 5.4');
+const gastazoleSource = horseSource('https://rejestry.ezdrowie.gov.pl/api/rpl/medicinal-products/46637/characteristic', 'Polska ChPL · RPL', '3.2–3.9 i 5.2–5.4');
+const ventipulminSource = horseSource('https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/16870/characteristic', 'Polska ChPL · RPL', '3.2–3.9 i 5.2–5.4');
+const parasiteReview = 'Potwierdź rozpoznanie i wrażliwość pasożytów; uwzględnij lokalną oporność na benzimidazole. Dokładnie określ masę, sprawdź dozownik, nadwrażliwość i karencję. Aplikacja nie ustala programu odrobaczania.';
+const gastricReview = 'Potwierdź rozpoznanie i etap leczenia. Oceń nadwrażliwość, ciążę/laktację oraz interakcje, w tym z warfaryną, benzodiazepinami, sukralfatem i cyjanokobalaminą. Uwzględnij żywienie, utrzymanie i trening.';
+const respiratoryReview = 'Nie stosować przy stwierdzonej chorobie serca, nadwrażliwości, w ciągu 2 dni przed spodziewanym porodem ani w pierwszych tygodniach karmienia. Sprawdź interakcje, zwłaszcza glikokortykosteroidy, oksytocynę, prostaglandyny, alkaloidy ergotaminy i atropinę.';
 
 export const REGIMENS = [
+  {
+    id: 'panacur-paste-nematodes', formIds: ['panacur-horse-paste-187-5'], species: ['horse'],
+    label: 'Dorosłe słupkowce i owsiki · jedno podanie',
+    indication: 'Inwazje dorosłych dużych i małych słupkowców wymienionych w ChPL oraz dorosłych i jelitowych larwalnych postaci Oxyuris equi',
+    phaseLabel: 'Podanie jednorazowe', doseMode: 'perKgDose', dose: 7.5, frequency: 1, fixedDays: 1,
+    ...panacurPasteSource, screening: parasiteReview,
+    administration: 'Podać pastę na tylną część języka. Nastawę pierścienia dozującego potwierdzić według opakowania i ChPL.',
+    notes: ['Schemat nie obejmuje inwazji Parascaris equorum ani Strongyloides westeri u źrebiąt ssących.', 'Nie przedłużaj jednorazowego podania na codzienną kurację. Ewentualne ponowne leczenie wymaga odrębnej decyzji lekarza.'],
+  },
+  {
+    id: 'panacur-paste-parascaris', formIds: ['panacur-horse-paste-187-5'], species: ['horse'],
+    label: 'Parascaris equorum · jedno podanie', indication: 'Inwazja Parascaris equorum',
+    phaseLabel: 'Podanie jednorazowe', doseMode: 'perKgDose', dose: 10, frequency: 1, fixedDays: 1,
+    ...panacurPasteSource, screening: parasiteReview,
+    administration: 'Podać pastę na tylną część języka. Nastawę pierścienia dozującego potwierdzić według opakowania i ChPL.',
+    notes: ['Przy tej dawce cała strzykawka 24 g odpowiada masie 450 kg. Nie używaj ustawienia dla dawki rutynowej bez przeliczenia.', 'Nie obejmuje odrębnego schematu dla Strongyloides westeri u źrebiąt ssących.'],
+  },
+  {
+    id: 'panacur-susp-larvae-five-days', formIds: ['panacur-horse-susp-100'], species: ['horse'],
+    label: 'Stadia larwalne słupkowców · 5 dni',
+    indication: 'Wędrujące stadia larwalne dużych słupkowców i otorbione stadia śluzówkowe małych słupkowców',
+    phaseLabel: 'Schemat pięciodniowy', doseMode: 'perKgDose', dose: 7.5, frequency: 1, fixedDays: 5,
+    ...horseSource('https://assets.hpra.ie/products/Animal/2272/VPA10996_111_001_CRN00FDZT_04_10_2024_Nationalspc_14102024155757.pdf', 'SPC HPRA · EN, Irlandia (10/2024)', '3.2–3.9 i 5.4'),
+    screening: parasiteReview, administration: 'Wstrząsnąć przed użyciem. Zawiesina gotowa do podania, bez rozcieńczania.',
+    notes: ['Schemat dotyczy wskazanych stadiów pasożytów. Nie przenosi się automatycznie na inne inwazje ani na pastę Panacur.', 'Dokument opisuje produkt irlandzki; lekarz potwierdza właściwe warunki zastosowania preparatu w Polsce.'],
+  },
+  ...[
+    { id: 'gastazole-treatment', label: 'Wrzody żołądka · pierwsze 28 dni', dose: 4, phaseLabel: 'Leczenie wrzodów · etap 1 (28 dni)' },
+    { id: 'gastazole-followup', label: 'Po leczeniu wrzodów · kolejne 28 dni', dose: 1, phaseLabel: 'Ograniczanie nawrotów bezpośrednio po etapie 1 · etap 2 (28 dni)' },
+  ].map(phase => ({
+    ...phase, formIds: ['gastazole-horse-paste-370'], species: ['horse'],
+    indication: 'Leczenie wrzodów żołądka i zmniejszenie ryzyka ich nawrotu po leczeniu',
+    doseMode: 'perKgDose', frequency: 1, fixedDays: 28, minimumAge: { value: 4, unit: 'weeks' }, minWeight: 70,
+    ...gastazoleSource, screening: gastricReview,
+    administration: 'Odmierzyć według podziałki strzykawki właściwej dla wybranej fazy. Podziałka w kg nie jest ilością pasty w g.',
+    notes: ['Etapy mają różne dawki. Zapas i zapis dotyczą tylko wybranego etapu, a nie obu faz łącznie.', 'Aplikator ma kreski co 100 kg przy dawce 4 mg/kg. W fazie 1 mg/kg nastawa odpowiada ¼ masy. Aplikacja blokuje niewykonalne ustawienie i nie zaokrągla go.'],
+  })),
+  ...[
+    { id: 'ventipulmin-acute', label: 'Ostre zapalenie oskrzeli / oskrzelików', phaseLabel: 'Przebieg ostry · 10–14 dni', minDays: 10, maxDays: 14 },
+    { id: 'ventipulmin-chronic', label: 'Przewlekła choroba dróg oddechowych', phaseLabel: 'Przebieg przewlekły · co najmniej 4 tygodnie', minDays: 28 },
+  ].map(variant => ({
+    ...variant, formIds: ['ventipulmin-horse-granules'], species: ['horse'],
+    indication: 'Choroba układu oddechowego ze zwężeniem dróg oddechowych wskutek skurczu oskrzeli/oskrzelików lub nadmiaru śluzu',
+    doseMode: 'perKgDose', dose: 0.0008, frequency: 2, ...ventipulminSource, screening: respiratoryReview,
+    administration: 'Podawać po wymieszaniu z karmą, najlepiej rano i wieczorem.',
+    notes: ['Podstawa dawki: 0,8 µg chlorowodorku klenbuterolu/kg na podanie = 0,0008 mg/kg. Wynik to gramy rzeczywistego granulatu.', 'Czas wybiera lekarz w granicach wybranego schematu. Nie ustawiamy domyślnie ani najkrótszej, ani najdłuższej kuracji.'],
+  })),
+  {
+    id: 'equioxx-horse-osteoarthritis', formIds: ['equioxx-horse-57'], species: ['horse'],
+    label: 'Choroba zwyrodnieniowa stawów · 450–600 kg',
+    indication: 'Ból i zapalenie w chorobie zwyrodnieniowej stawów oraz związana z nimi kulawizna',
+    phaseLabel: 'Leczenie doustne · do 14 dni', doseMode: 'units', dose: 1, frequency: 1,
+    minWeight: 450, maxWeight: 600, maxDays: 14,
+    ...horseSource('https://vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2285817.PDF', 'SPC VMD · EN (08/2023)', '4.1–4.9 i 6.5'),
+    screening: 'Sprawdź choroby przewodu pokarmowego, krwawienia, nerki, wątrobę, serce, nadwrażliwość i nawodnienie. Nie stosować u zwierząt przeznaczonych do rozrodu, ciężarnych lub karmiących ani łącznie z innymi NLPZ lub kortykosteroidami.',
+    administration: 'Podać z małą ilością pokarmu i sprawdzić, czy tabletka została połknięta.',
+    notes: ['Ta tabletka jest przeznaczona wyłącznie dla koni 450–600 kg. Poza tym zakresem należy wybrać odpowiednią postać, nie część ani wielokrotność tej tabletki.', 'Czas zależy od odpowiedzi; maksymalnie 14 dni według źródła.'],
+  },
   meloxicam('metacam-dog-initial', 'metacam-dog-1-5', 'dog', 'Narząd ruchu · pierwszy dzień',
     'Ból i zapalenie w ostrych lub przewlekłych schorzeniach narządu ruchu', 'Dawka początkowa · dzień 1', 0.2, metacamDogSource,
     { fixedDays: 1, notes: [firstDay] }),

@@ -3,8 +3,10 @@
  * Every clinical limit must be supplied by the caller from a product-specific rule.
  * All package sizes are expressed in the same unit as singleUnits.
  * Drops additionally need a product-specific dropsPerMl for mg conversions.
+ * Oral paste/powder use actual product grams; strengthMg means mg per 1 g.
  */
-const FORMS = new Set(['tablet', 'suspension', 'spray', 'gel', 'drops', 'injection', 'solution']);
+const FORMS = new Set(['tablet', 'suspension', 'spray', 'gel', 'drops', 'injection', 'solution', 'oralPaste', 'oralPowder']);
+const MASS_FORMS = new Set(['oralPaste', 'oralPowder']);
 const MODES = new Set(['fixed', 'perKgDay', 'perKgDose', 'units']);
 const PATIENT_KINDS = new Set(['human', 'animal']);
 const ANIMAL_SPECIES = new Set(['dog', 'cat', 'horse', 'hamster', 'rat']);
@@ -80,6 +82,9 @@ export function calculate(input = {}) {
   if (input.form === 'injection' && result.unitLabel.trim().toLowerCase() !== 'ml') {
     invalid.push('Roztwór do wstrzyknięć wymaga jednostki ml; wielkość opakowania i dawkę podaj w ml.');
   }
+  if (MASS_FORMS.has(input.form) && result.unitLabel.trim().toLowerCase() !== 'g') {
+    invalid.push('Pasta lub proszek doustny wymaga jednostki g. Dawka i opakowanie dotyczą masy całego preparatu, nie masy samej substancji czynnej.');
+  }
 
   const dose = number('dose', 'dawkę na podanie lub podstawę przeliczenia', { required: true, max: 1e6 });
   const frequency = number('frequency', 'liczbę podań na dobę', { required: true, max: 48 });
@@ -94,6 +99,7 @@ export function calculate(input = {}) {
   const weight = number('weight', 'masę ciała w kg', { required: animal || ['perKgDay', 'perKgDose'].includes(input.doseMode), max: animal ? 2000 : 500 });
   const age = number('age', 'wiek w latach', { allowZero: true, max: 130 });
   const roundingStep = number('roundingStep', 'krok zaokrąglenia', { max: 1e6 });
+  const doseStepUnits = number('doseStepUnits', 'krok podziałki przyrządu w jednostce preparatu', { max: 1e6 });
   const maxDailyMg = number('maxDailyMg', 'maksymalną dawkę dobową', { max: 1e7 });
   const maxSingleMg = number('maxSingleMg', 'maksymalną dawkę jednorazową', { max: 1e7 });
   const minAge = number('minAge', 'minimalny wiek', { allowZero: true, max: 130 });
@@ -120,6 +126,9 @@ export function calculate(input = {}) {
   let mgPerUnit = null;
   if (input.form === 'tablet') {
     mgPerUnit = number('strengthMg', 'moc tabletki w mg', { required: input.doseMode !== 'units' });
+  } else if (MASS_FORMS.has(input.form)) {
+    // Do not infer product mass from active mg or borrow a liquid mg/ml ratio.
+    mgPerUnit = number('strengthMg', 'ilość substancji czynnej w 1 g preparatu (mg/g)', { required: input.doseMode !== 'units' });
   } else if (['suspension', 'solution', 'injection', 'drops'].includes(input.form)) {
     const concentrationRequired = input.doseMode !== 'units';
     const concentrationMg = number('concentrationMg', 'ilość substancji w stężeniu', { required: concentrationRequired });
@@ -178,6 +187,20 @@ export function calculate(input = {}) {
   }
   if (Math.abs(result.roundingDifferencePercent) > 1e-7) {
     result.warnings.push(`Zaokrąglono ilość z ${formatNumber(theoreticalUnits, 6)} do ${formatNumber(result.singleUnits, 6)} ${result.unitLabel}. Sprawdź zmianę dawki (${formatNumber(result.roundingDifferencePercent, 2)}%).`);
+  }
+
+  if (doseStepUnits !== null) {
+    // This validates the final administered amount; it never rounds it to the
+    // device. Use the unformatted quantity so display precision does not create
+    // a false mismatch for recurring fractions such as 400/370 g per division.
+    const divisions = singleUnits / doseStepUnits;
+    const wholeDivisions = Math.round(divisions);
+    if (!Number.isSafeInteger(wholeDivisions) || wholeDivisions < 1 || Math.abs(divisions - wholeDivisions) > tolerance(divisions)) {
+      critical = true;
+      result.errors.push(`Wyliczona ilość nie odpowiada pełnym podziałkom przyrządu (${formatNumber(doseStepUnits, 10)} ${result.unitLabel}). Nie zaokrąglono do podziałki przyrządu. Wybierz postać lub sposób odmierzania potwierdzony dla tego schematu.`);
+    } else {
+      result.checks.push('Ilość preparatu odpowiada pełnym podziałkom opisanego przyrządu.');
+    }
   }
 
   if (input.form === 'tablet') {

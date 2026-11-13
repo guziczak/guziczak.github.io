@@ -111,4 +111,7 @@ input,select,textarea{min-width:0;max-width:100%}
 .source-regimen-card .source-screening{border-top:1px solid var(--border);padding-top:10px;color:var(--muted)}
 .source-regimen-card small{display:block;margin-top:5px;color:var(--muted);font-size:10px}
 .regimen-body input[readonly],.regimen-body select:disabled{color:var(--ink);opacity:1;background:var(--surface-soft)}
+.measurement-note{display:flex;gap:8px;align-items:flex-start;padding:11px 12px;border-radius:8px;background:var(--surface-soft);font-size:11px;line-height:1.7;color:var(--muted);overflow-wrap:anywhere;margin:15px 0 0}
+.measurement-note svg{width:16px;height:16px;margin-top:2px;flex-shrink:0}
+.measurement-note span{min-width:0}
 @media(max-width:780px){.source-regimen-card{font-size:12px}.source-regimen-heading button{font-size:12px;min-height:40px}.source-regimen-picker select{font-size:16px;min-height:44px}}

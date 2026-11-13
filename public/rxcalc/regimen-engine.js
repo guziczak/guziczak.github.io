@@ -18,7 +18,7 @@ const stringList = value => Array.isArray(value) && value.length > 0 && value.ev
 const positiveInteger = value => Number.isSafeInteger(value) && value > 0;
 const resultShape = () => ({
   valid: false, errors: [], warnings: [],
-  doseMode: null, dose: null, frequency: null, fixedDays: null, maxDays: null,
+  doseMode: null, dose: null, frequency: null, fixedDays: null, minDays: null, maxDays: null,
 });
 
 function metadataErrors(regimen) {
@@ -52,8 +52,14 @@ function metadataErrors(regimen) {
     }
   } else if (!positive(regimen.dose)) errors.push('Schemat nie zawiera prawidłowej dawki.');
 
-  for (const key of ['fixedDays', 'maxDays']) {
+  for (const key of ['fixedDays', 'minDays', 'maxDays']) {
     if (present(regimen[key]) && !positiveInteger(regimen[key])) errors.push('Schemat ma nieprawidłowy czas stosowania.');
+  }
+  if (present(regimen.minDays) && present(regimen.maxDays) && regimen.minDays > regimen.maxDays) {
+    errors.push('Schemat ma sprzeczne granice czasu stosowania.');
+  }
+  if (present(regimen.fixedDays) && present(regimen.minDays) && regimen.fixedDays < regimen.minDays) {
+    errors.push('Stały czas schematu jest krótszy od jego minimalnego czasu stosowania.');
   }
   if (present(regimen.fixedDays) && present(regimen.maxDays) && regimen.fixedDays > regimen.maxDays) {
     errors.push('Stały czas schematu przekracza jego maksymalny czas stosowania.');
@@ -144,6 +150,7 @@ export function resolveRegimen(regimen, context = {}) {
     dose: present(regimen.weightBands) ? null : regimen.dose,
     frequency: regimen.frequency,
     fixedDays: regimen.fixedDays ?? null,
+    minDays: regimen.minDays ?? null,
     maxDays: regimen.maxDays ?? null,
   });
   const weightOK = positive(context.weight);
@@ -165,6 +172,7 @@ export function resolveRegimen(regimen, context = {}) {
     if (!positiveInteger(context.days)) result.errors.push('Czas stosowania musi być dodatnią, całkowitą liczbą dni.');
     else {
       if (present(regimen.fixedDays) && context.days !== regimen.fixedDays) result.errors.push(`Wybrany etap obejmuje dokładnie ${regimen.fixedDays} ${regimen.fixedDays === 1 ? 'dzień' : 'dni'}. Zmień etap, aby wybrać inny czas stosowania.`);
+      if (present(regimen.minDays) && context.days < regimen.minDays) result.errors.push(`Czas stosowania jest krótszy od minimum wybranego schematu (${regimen.minDays} dni).`);
       if (present(regimen.maxDays) && context.days > regimen.maxDays) result.errors.push(`Czas stosowania przekracza limit wybranego schematu (${regimen.maxDays} dni).`);
     }
   }

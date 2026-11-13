@@ -1,12 +1,13 @@
 /**
- * RxCalc product metadata, version 2026.11.12.
+ * RxCalc product metadata, version 2026.11.13.
  * Sources are linked on every formulation. This is a limited calculation
  * catalogue, not a clinical guideline, reimbursement database or complete ChPL.
  * No regimen is inferred from a diagnosis. Prescriber enters and confirms it.
  */
 
 export const CATALOGUE_META = Object.freeze({
-  version: '2026.11.12.vet.1',
+  version: '2026.11.13.equine.1',
+  updatedAt: '2026-11-13',
   sourceCheckedAt: '2026-11-12',
   status: 'Wersja do weryfikacji',
   scope: 'Dane wybranych postaci i opakowań do przeliczeń. Dawka, wskazanie, interakcje i przeciwwskazania wymagają oceny lekarza na podstawie aktualnej ChPL.',
@@ -28,6 +29,9 @@ export const CATEGORIES = Object.freeze({
   ],
   veterinary: [
     { id: 'pain', label: 'Przeciwbólowe' },
+    { id: 'antiparasitic', label: 'Przeciwpasożytnicze' },
+    { id: 'gastric', label: 'Żołądek' },
+    { id: 'respiratory', label: 'Oddechowe' },
     { id: 'vet-cardio', label: 'Serce' },
     { id: 'antiemetic', label: 'Przeciwwymiotne' },
     { id: 'antibiotics', label: 'Antybiotyki' },
@@ -62,6 +66,12 @@ const liquid = (id, label, form, concentrationMg, concentrationMl, sizes, source
 // Product metadata never silently selects a regimen; explicit source records live in regimens.js.
 const upd = id => `https://medicines.health.europa.eu/veterinary/en/${id}`;
 const vet = (targetSpecies, options = {}) => ({ targetSpecies, defaultMode: 'perKgDose', ...options });
+const horse = (options = {}) => vet(['horse'], { sourceCheckedAt: '2026-11-13', ...options });
+const oralMass = (id, label, form, strengthMg, packOptions, sourceUrl, options = {}) => ({
+  ...baseForm, id, label, form, unitLabel: 'g', strengthMg,
+  packOptions, sourceUrl, sourceLabel: 'Polska ChPL · RPL',
+  routeLabel: 'doustnie', notes: [], ...horse(options),
+});
 const VETERINARY_DRUGS = [
   {
     id: 'vet-metacam', name: 'Metacam', substance: 'Meloxicamum',
@@ -98,6 +108,54 @@ const VETERINARY_DRUGS = [
         ],
       })),
     ],
+  },
+  {
+    id: 'vet-panacur', name: 'Panacur', substance: 'Fenbendazolum',
+    category: 'antiparasitic', specialties: ['veterinary'],
+    searchTerms: ['fenbendazol', 'pasożyty', 'nicienie', 'słupkowce', 'owsiki', 'glisty', 'parascaris'],
+    forms: [
+      oralMass('panacur-horse-paste-187-5', 'Panacur Pasta · 187,5 mg/g · koń', 'oralPaste', 187.5,
+        [{ id: '24', label: '1 strzykawka doustna × 24 g', quantity: 24 }], rpl(18365), {
+          doseBasisIngredient: 'fenbendazolu',
+          measurementNote: 'Wynik podajemy w gramach pasty. Przed podaniem sprawdź nastawę pierścienia dozującego i dokładność odmierzenia. ChPL nie podaje liczbowego kroku podziałki; aplikacja nie wyznacza kliknięć.',
+          notes: ['Dwa odrębne schematy jednorazowe: wybrane nicienie z ChPL oraz Parascaris equorum. Nie przenosić do pasty schematu zawiesiny dla innych stadiów pasożyta.', 'Opakowanie zawiera jedną strzykawkę 24 g. Nie dodano schematu dla Strongyloides westeri u źrebiąt ssących.', 'Karencja tkanek jadalnych według źródła: konie 20 dni, źrebięta ssące 60 dni. Potwierdź właściwy okres i status zwierzęcia.'],
+        }),
+      liquid('panacur-horse-susp-100', 'Panacur · 100 mg/ml · zawiesina (IE)', 'suspension', 100, 1, [250, 1000, 2500], 'https://assets.hpra.ie/products/Animal/2272/VPA10996_111_001_CRN00FDZT_04_10_2024_Nationalspc_14102024155757.pdf', horse({
+        sourceLabel: 'SPC HPRA · EN, Irlandia (10/2024)', registrationUrl: upd('600000064144'), doseBasisIngredient: 'fenbendazolu',
+        notes: ['Gotowa zawiesina: wstrząsnąć, nie rozcieńczać. Dokładnie określ masę i sprawdź urządzenie dozujące.', 'Dostępny schemat pięciodniowy dotyczy określonych stadiów larwalnych słupkowców; nie jest uniwersalnym schematem dla każdej inwazji.', 'Źródło dotyczy produktu zarejestrowanego w Irlandii. Nie potwierdzamy jego dostępności ani warunków stosowania w Polsce.', 'Karencja według tego źródła: tkanki jadalne konia 14 dni. Nie stosować u klaczy produkujących mleko dla ludzi.'],
+      })),
+    ],
+  },
+  {
+    id: 'vet-gastazole', name: 'Gastazole', substance: 'Omeprazolum',
+    category: 'gastric', specialties: ['veterinary'], searchTerms: ['omeprazol', 'wrzody', 'żołądek', 'nawroty'],
+    forms: [oralMass('gastazole-horse-paste-370', 'Gastazole · 370 mg/g · koń', 'oralPaste', 370,
+      [{ id: '7.57', label: '1 strzykawka doustna × 7,57 g', quantity: 7.57 }], 'https://rejestry.ezdrowie.gov.pl/api/rpl/medicinal-products/46637/characteristic', {
+        doseBasisIngredient: 'omeprazolu', shelfLifeDays: 28, registrationUrl: upd('600000047142'),
+        doseStepUnits: 400 / 370, doseStepLabel: 'jedna działka = 100 kg na podziałce dla dawki 4 mg/kg',
+        packageCalculationNote: 'Zapas zakłada wykorzystanie pozostałych pełnych działek; pojedyncza dawka może wymagać dwóch kolejnych strzykawek. Każda otwarta strzykawka ma trwałość 28 dni.',
+        measurementNote: 'Podziałka strzykawki: co 100 kg przy dawce 4 mg/kg. W fazie 1 mg/kg nastawa odpowiada ¼ masy konia. Niewykonalne ustawienie blokuje kopiowanie; aplikacja nie zaokrągla dawki do kreski.',
+        notes: ['Modelowane opakowanie: jedna strzykawka 7,57 g, z trwałością 28 dni po otwarciu. Kartony z wieloma strzykawkami nie są tu modelowane.', 'Przeliczenie pokazuje gramy pasty i liczbę działek; kilogramy na podziałce nie są gramami preparatu. Pełna strzykawka odpowiada siedmiu działkom.', 'Leczenie i następujące po nim ograniczanie nawrotów to osobne etapy. Każdy wymaga osobnego wyliczenia zapasu.', 'Karencja według ChPL: tkanki jadalne 1 dzień; nie stosować u zwierząt produkujących mleko dla ludzi.'],
+      })],
+  },
+  {
+    id: 'vet-ventipulmin', name: 'Ventipulmin granulat', substance: 'Clenbuteroli hydrochloridum',
+    category: 'respiratory', specialties: ['veterinary'], searchTerms: ['klenbuterol', 'oskrzela', 'oddechowe', 'rao', 'kaszel', 'duszność'],
+    forms: [oralMass('ventipulmin-horse-granules', 'Ventipulmin · 0,016 mg/g · granulat', 'oralPowder', 0.016,
+      [{ id: '500', label: '1 pojemnik × 500 g', quantity: 500 }], rpl(16870), {
+        doseBasisIngredient: 'chlorowodorku klenbuterolu', shelfLifeDays: 21,
+        routeLabel: 'doustnie po wymieszaniu z karmą',
+        measurementNote: 'Miarka z opakowania mieści 10 g granulatu. Wynik wyrażamy w gramach; potwierdź dokładność odmierzenia wymaganej części miarki.',
+        notes: ['Stężenie i dawka odnoszą się do chlorowodorku klenbuterolu: 0,016 mg/g. Nie zastępować ich mocą wolnej zasady ani zaokrąglonym wpisem rejestru.', 'Pojemnik 500 g; po otwarciu 21 dni. Trwałość jest uwzględniona w obliczeniu liczby opakowań.', 'Wybierz odrębny wariant dla ostrego lub przewlekłego przebiegu choroby. Okresu obserwacji bezpieczeństwa nie traktujemy jako uniwersalnego limitu terapii.', 'Karencja tkanek jadalnych 28 dni. Nie stosować u klaczy produkujących mleko dla ludzi.'],
+      })],
+  },
+  {
+    id: 'vet-equioxx', name: 'Equioxx', substance: 'Firocoxibum',
+    category: 'pain', specialties: ['veterinary'], searchTerms: ['firokoksyb', 'firocoxib', 'stawy', 'osteoarthritis', 'kulawizna'],
+    forms: [tablet('equioxx-horse-57', 'Equioxx · 57 mg · tabletki dla koni', 57, [10, 30, 60, 180], 'https://vmd.defra.gov.uk/productinformationdatabase/files/SPC_Documents/SPC_2285817.PDF', horse({
+      sourceLabel: 'SPC VMD · EN (08/2023)', registrationUrl: upd('600000000067'), doseBasisIngredient: 'firokoksybu', defaultMode: 'units', allowedFractions: [1],
+      notes: ['Ta postać jest przeznaczona dla koni o masie 450–600 kg. Poza tym zakresem nie przeliczamy dawki na części lub wielokrotność tabletki.', 'Schemat obejmuje całe tabletki. Linia na tabletce nie jest tu traktowana jako potwierdzenie podziału na równe dawki.', 'Podawać z małą ilością pokarmu i sprawdzić połknięcie. Czas leczenia do 14 dni, zależnie od odpowiedzi.', 'Karencja tkanek jadalnych 26 dni; zakaz przy mleku dla ludzi. Szczegółowe źródło: VMD (EN); wpis rejestracyjny UE: UPD.'],
+    }))],
   },
   {
     id: 'vet-cardisure', name: 'Cardisure Flavoured', substance: 'Pimobendanum',

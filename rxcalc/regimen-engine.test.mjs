@@ -66,6 +66,7 @@ test('matching mg/kg candidates retain explicit unit semantics without inventing
     assert.equal(result.dose, 0.1);
     assert.equal(result.frequency, 1);
     assert.equal(result.fixedDays, null);
+    assert.equal(result.minDays, null);
     assert.equal(result.maxDays, null);
   }
 });
@@ -115,6 +116,60 @@ test('a maximum duration is inclusive and is never inserted as the chosen durati
   assert.equal(resolveRegimen(limited, { ...dog, days: 5 }).valid, true);
   assert.equal(resolveRegimen(limited, { ...dog, days: 6 }).valid, false);
   for (const days of [0, -1, 1.5, Infinity, NaN, '5']) assert.equal(resolveRegimen(limited, { ...dog, days }).valid, false);
+});
+
+test('minimum duration is inclusive, permits longer courses, and stays optional', () => {
+  const limited = { ...weightBased, minDays: 10 };
+  const tooShort = resolveRegimen(limited, { ...dog, days: 9 });
+  assert.equal(tooShort.valid, false);
+  assert.match(tooShort.errors.join(' '), /minimum.*10 dni/);
+  assert.equal(resolveRegimen(limited, { ...dog, days: 10 }).valid, true);
+  assert.equal(resolveRegimen(limited, { ...dog, days: 11 }).valid, true);
+  assert.equal(resolveRegimen(weightBased, { ...dog, days: 1 }).valid, true);
+  assert.equal(resolveRegimen(weightBased, dog).minDays, null);
+});
+
+test('a duration range enforces both endpoints and does not choose a missing duration', () => {
+  const ranged = { ...weightBased, minDays: 10, maxDays: 14 };
+  const context = { ...dog, days: null };
+  const suggestion = resolveRegimen(ranged, context);
+  assert.equal(suggestion.valid, true);
+  assert.equal(suggestion.minDays, 10);
+  assert.equal(suggestion.maxDays, 14);
+  assert.equal(suggestion.fixedDays, null);
+  assert.equal(context.days, null);
+  assert.equal(Object.hasOwn(suggestion, 'days'), false);
+  assert.equal(resolveRegimen(ranged, { ...dog, days: undefined }).valid, true);
+  for (const days of [10, 11, 14]) assert.equal(resolveRegimen(ranged, { ...dog, days }).valid, true);
+  for (const days of [9, 15]) assert.equal(resolveRegimen(ranged, { ...dog, days }).valid, false);
+});
+
+test('malformed or contradictory minimum duration constraints cannot expose a dose or option', () => {
+  const malformed = [
+    ...[0, -1, 1.5, NaN, Infinity, '10'].map(minDays => ({ ...weightBased, minDays })),
+    { ...weightBased, minDays: 15, maxDays: 14 },
+    { ...weightBased, minDays: 10, fixedDays: 9 },
+    { ...weightBased, minDays: 10, maxDays: 14, fixedDays: 15 },
+  ];
+  assert.deepEqual(availableRegimens(malformed, dog), []);
+  for (const record of malformed) {
+    const result = resolveRegimen(record, { ...dog, days: 12 });
+    assert.equal(result.valid, false);
+    assert.equal(result.dose, null);
+    assert.equal(result.minDays, null);
+    assert.ok(result.errors.length);
+  }
+});
+
+test('fixed duration can equal either bound of a valid duration range', () => {
+  for (const fixedDays of [10, 12, 14]) {
+    const record = { ...weightBased, minDays: 10, maxDays: 14, fixedDays };
+    assert.equal(availableRegimens([record], dog).length, 1);
+    assert.equal(resolveRegimen(record, { ...dog, days: fixedDays }).valid, true);
+    assert.equal(resolveRegimen(record, { ...dog, days: fixedDays + 1 }).valid, false);
+  }
+  const exact = { ...weightBased, minDays: 10, maxDays: 10, fixedDays: 10 };
+  assert.equal(resolveRegimen(exact, { ...dog, days: 10 }).valid, true);
 });
 
 test('tablet band boundaries 2.5, 6 and 12 are literal without nearest-band rounding', () => {

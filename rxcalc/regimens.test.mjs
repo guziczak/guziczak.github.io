@@ -24,13 +24,16 @@ function evaluate(regimenId, formId, overrides = {}) {
   const form = getForm(formId);
   const species = regimen.species[0];
   const firstBand = regimen.weightBands?.[0];
+  // The 1 mg/kg Gastazole phase needs a whole source-device division: 400 kg.
+  // Its 500 kg arithmetic failure is covered explicitly in equine-regimens.test.mjs.
+  const horseWeight = regimen.id === 'gastazole-followup' ? 400 : 500;
   const context = {
     formId,
     species,
-    weight: firstBand ? (firstBand.min + firstBand.max) / 2 : species === 'horse' ? 500 : species === 'cat' ? 5 : 10,
+    weight: firstBand ? (firstBand.min + firstBand.max) / 2 : species === 'horse' ? horseWeight : species === 'cat' ? 5 : 10,
     age: 2,
     ageUnit: 'years',
-    days: regimen.fixedDays ?? 1,
+    days: regimen.fixedDays ?? regimen.minDays ?? 1,
     calculationBlocked: form.calculationBlocked === true,
     ...overrides,
   };
@@ -50,8 +53,16 @@ function evaluate(regimenId, formId, overrides = {}) {
   return { regimen, form, context, source, arithmetic };
 }
 
-test('all twelve source records point to existing veterinary formulations and exact target species', () => {
+test('all twenty source records point to existing veterinary formulations and exact target species', () => {
   const expected = [
+    ['panacur-paste-nematodes', ['panacur-horse-paste-187-5'], ['horse']],
+    ['panacur-paste-parascaris', ['panacur-horse-paste-187-5'], ['horse']],
+    ['panacur-susp-larvae-five-days', ['panacur-horse-susp-100'], ['horse']],
+    ['gastazole-treatment', ['gastazole-horse-paste-370'], ['horse']],
+    ['gastazole-followup', ['gastazole-horse-paste-370'], ['horse']],
+    ['ventipulmin-acute', ['ventipulmin-horse-granules'], ['horse']],
+    ['ventipulmin-chronic', ['ventipulmin-horse-granules'], ['horse']],
+    ['equioxx-horse-osteoarthritis', ['equioxx-horse-57'], ['horse']],
     ['metacam-dog-initial', ['metacam-dog-1-5'], ['dog']],
     ['metacam-dog-maintenance', ['metacam-dog-1-5'], ['dog']],
     ['metacam-cat-acute-initial', ['metacam-cat-0-5'], ['cat']],
@@ -87,7 +98,7 @@ test('all twelve source records point to existing veterinary formulations and ex
 });
 
 test('every selectable source record has a traceable document, section, indication and phase', () => {
-  const allowedHosts = new Set(['www.vmd.defra.gov.uk', 'vmd.defra.gov.uk', 'rejestrymedyczne.ezdrowie.gov.pl', 'www.zoetis.com.pl']);
+  const allowedHosts = new Set(['www.vmd.defra.gov.uk', 'vmd.defra.gov.uk', 'rejestrymedyczne.ezdrowie.gov.pl', 'rejestry.ezdrowie.gov.pl', 'www.zoetis.com.pl', 'assets.hpra.ie']);
   for (const regimen of REGIMENS) {
     for (const key of ['label', 'indication', 'phaseLabel', 'sourceLabel', 'sourceSection', 'screening']) {
       assert.equal(typeof regimen[key], 'string', `${regimen.id}: ${key}`);
