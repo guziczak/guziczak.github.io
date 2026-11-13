@@ -284,7 +284,7 @@ function renderDrugs() {
   const list = getCatalogue().filter(d => (state.category === 'all' || d.category === state.category) && normalize([d.name,d.substance,d.substanceLabel,...d.searchTerms,...d.forms.flatMap(f => [f.label,f.routeLabel])].join(' ')).includes(query));
   node.innerHTML = list.length ? list.map(d => `<button class="drug-card ${d.id === state.drugId ? 'selected' : ''}" data-action="drug" data-value="${d.id}" aria-pressed="${d.id === state.drugId}"><span class="drug-icon">${icon(d.forms[0].form === 'tablet' ? 'pill' : 'bottle')}</span><span><span class="drug-name">${esc(d.name)}</span><span class="drug-description">${esc(isVeterinary() ? d.substanceLabel || d.substance : d.forms[0].label.split(' · ')[0])} · ${d.forms[0].calculationBlocked ? 'karta informacyjna' : d.forms.length === 1 ? shortForm(d.forms[0]) : `${d.forms.length} warianty`}${isVeterinary() && d.forms[0].routeCode === 'iv' ? ' · dożylnie' : ''}</span></span><span class="drug-check">${d.id === state.drugId ? icon('check') : ''}</span></button>`).join('') : '<div class="empty-search">Nie znaleziono preparatu.<br>Zmień kategorię lub wprowadź własny poniżej.</div>';
 }
-function shortForm(f) { return ({tablet:'tabletki',suspension:'zawiesina',oralPaste:'pasta doustna',oralGel:'żel doustny',oralPowder:'granulat doustny',spray:'aerozol',solution:'roztwór',gel:'żel',drops:'krople',injection:'iniekcja'})[f.form] || f.form; }
+function shortForm(f) { return f.shortFormLabel || ({tablet:'tabletki',suspension:'zawiesina',oralPaste:'pasta doustna',oralGel:'żel doustny',oralPowder:'granulat doustny',spray:'aerozol',solution:'roztwór',gel:'żel',drops:'krople',injection:'iniekcja'})[f.form] || f.form; }
 function applicableLimit(f) {
   const age=num(state.age),weight=num(state.weight);
   let rule=(f.conditionalLimits||[]).find(r => {
@@ -312,6 +312,7 @@ function updateResult() {
   const hasResult=r.singleUnits!==null&&quantitiesAvailable;
   const divisions=deviceDivisions(r,f);
   $('#dose-value').textContent=hasResult?n(divisions??r.singleUnits,isVeterinary()?10:6):'—';
+  $('#dose-value').classList.toggle('compact-number', $('#dose-value').textContent.length > 9);
   $('#dose-unit').textContent=divisions!==null?divisionUnit(divisions):f.unitLabel;
   $('#frequency-output').textContent=hasResult?`${n(input.frequency)} × na dobę · przez ${n(input.days)} ${input.days===1?'dzień':'dni'}`:'Uzupełnij schemat podawania';
   let equivalent=hasResult?(r.singleMg!==null?`${n(r.singleMg,4)} mg${f.doseBasisIngredient?' '+f.doseBasisIngredient:''} na podanie`:`Ilość preparatu na jedno podanie`):'Dawka, częstotliwość i czas stosowania.';
@@ -319,7 +320,7 @@ function updateResult() {
   if(hasResult && f.activeIngredients?.length>1) equivalent+=' · '+f.activeIngredients.slice(1).map(i=>`${n(r.singleUnits*i.strengthMg,4)} mg (${i.substanceLabel})`).join(' · ');
   if(divisions!==null) equivalent+=` · około ${n(r.singleUnits,6)} ${f.unitLabel} preparatu · ${f.doseStepLabel || 'podziałka przyrządu'}`;
   $('#dose-equivalent').textContent=equivalent;
-  const showStatus=hasResult||r.status==='critical';
+  const showStatus=!!state.regimenId||hasResult||r.status==='critical';
   const badge=$('#status-badge'); badge.className=`status-badge ${showStatus?r.status:''}`;
   badge.innerHTML=icon(r.status==='critical'?'alert':r.status==='ok'?'check':'info')+(showStatus?({ok:'Brak przekroczeń limitów',warning:'Wymaga sprawdzenia',critical:'Sprawdź schemat',incomplete:'Niepełna ocena'})[r.status]:'Oczekuje na dane');
   const meter=$('#dose-meter');meter.className=`dose-meter ${r.status}`;
@@ -342,7 +343,7 @@ function updateResult() {
   $('#best-package').innerHTML=best && best.p.id!==state.packageId && !state.custom?`<button class="best-package" data-action="best-package" data-value="${esc(best.p.id)}">${icon('arrow')}Mniej nadmiaru / opakowań: ${n(best.r.packages)} × ${esc(best.p.label)}</button>`:'';
   latestText=r.valid?prescription(r,f,input):'';
   const preview=$('#rx-preview'); preview.classList.toggle('placeholder',!r.valid);
-  preview.textContent=f.calculationBlocked?'Koncentrat wymaga przygotowania. Ta karta nie generuje dawkowania do podania.':r.valid?latestText:(hasResult||r.status==='critical'?'Zapis będzie dostępny po usunięciu wskazanych niezgodności.':'Wprowadź dawkę, częstotliwość i czas stosowania, aby przygotować zapis.');
+  preview.textContent=f.calculationBlocked?'Koncentrat wymaga przygotowania. Ta karta nie generuje dawkowania do podania.':r.valid?latestText:(hasResult||(sourceCheck&&!sourceCheck.valid)||r.status==='critical'?'Zapis będzie dostępny po usunięciu wskazanych niezgodności.':'Wprowadź dawkę, częstotliwość i czas stosowania, aby przygotować zapis.');
   $('#copy-button').disabled=!r.valid||!state.confirmed||state.demo;
   const confirmed=$('#confirmed');confirmed.checked=state.confirmed;confirmed.disabled=!r.valid||state.demo;
   if($('#renal-inline')) {

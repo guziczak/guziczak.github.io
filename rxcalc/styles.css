@@ -122,3 +122,6 @@ input,select,textarea{min-width:0;max-width:100%}
 .route-filters button.active{border-color:var(--accent);background:var(--surface-soft);color:var(--accent);font-weight:650}
 @media(max-width:780px){.food-chain-field{grid-column:1/-1}.food-chain-field small{font-size:11px}.route-filters button{min-height:40px}}
 @media(max-width:780px){.source-regimen-card{font-size:12px}.source-regimen-heading button{font-size:12px;min-height:40px}.source-regimen-picker select{font-size:16px;min-height:44px}}
+
+/* Keep long unrounded results readable without splitting their digits. */
+.dose-output .number.compact-number{font-size:clamp(26px,5vw,36px);letter-spacing:-1px;line-height:1.2;white-space:nowrap}

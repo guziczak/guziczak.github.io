@@ -57,7 +57,7 @@ export const EQUINE_NSAID_DRUGS = [
     forms: [{
       ...formBase,
       id: 'butagran-equi-horse-200', label: 'Butagran Equi · 200 mg/g · saszetki 5 g',
-      form: 'oralPowder', unitLabel: 'g', strengthMg: 200,
+      form: 'oralPowder', shortFormLabel: 'proszek doustny', unitLabel: 'g', strengthMg: 200,
       doseBasisIngredient: 'fenylbutazonu', routeCode: 'oral', routeLabel: 'doustnie',
       requiresFoodChainExclusion: true,
       singleUseUnitSize: 5,
