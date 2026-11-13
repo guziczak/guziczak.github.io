@@ -36,6 +36,17 @@ Praca offline jest dostępna po udanym zarejestrowaniu service workera i zapisan
 - Iverpraz korzysta z literalnej tabeli gramów w ChPL, a wynik pokazuje obie substancje. Niedopasowane podziałki lub luki w tabeli nie powodują automatycznego zaokrąglenia masy.
 - To rozszerzenie zakresu, nie ranking sprzedaży ani potwierdzenie najczęstszego stosowania w Polsce. Część wcześniejszych produktów korzysta z jawnie opisanych dokumentów zagranicznych. Testy kodu nie stanowią pełnej walidacji klinicznej.
 
+## Reaktywny przepływ pracy — 13.11.2026
+
+- Specjalizacja jest małym selektorem w pasku kontekstu; gatunek pojawia się tylko w weterynarii. Zapisana specjalizacja i ulubione pozostają między uruchomieniami.
+- Ulubione dla bieżącej specjalizacji i gatunku są dostępne bezpośrednio w formularzu. Wyszukiwanie zastępuje skróty wynikami; kategorie i droga podania rozwijają się pod „Filtry”. Katalog nie ma wewnętrznego przewijania.
+- Po świadomym wyborze preparatu katalog zwija się do edytowalnego podsumowania. Jedna zgodna postać jest pokazywana bez dodatkowego kliknięcia. Przy kilku wariantach użytkownik jawnie wybiera postać i moc, zanim zobaczy schemat i wynik.
+- Schemat źródłowy pokazuje dawkę, częstość i ewentualny stały czas jako informacje. Pełne źródło i dodatkowe ustawienia są rozwijane, a screening, kalibracja oraz bieżące blokady pozostają widoczne.
+- `workflow.js` wyznacza widoczność pól, bez zmiany walidacji klinicznej. Masa zwierzęcia pozostaje zawsze dostępna. Wiek, warunkowe limity masy oraz paszport konia pojawiają się zgodnie z wymaganiami postaci i schematu; już wpisane wartości zawsze można poprawić. Wykluczenie konia pozostaje wymagane także w trybie ręcznym.
+- Wynik obejmuje podsumowanie kontekstu przed jawnym potwierdzeniem i kopiowaniem. Zmiana danych unieważnia potwierdzenie. Brak świadomego wyboru preparatu lub wariantu czyści poprzedni wynik oraz tekst do skopiowania.
+- Mobilny pasek udostępnia podsumowanie i kopiowanie, uwzględnia safe-area i ukrywa się podczas wpisywania. Pola tekstowe aktualizują wynik bez przebudowy formularza i utraty fokusu.
+- „Nowy pacjent” i przeładowanie usuwają dane kliniczne, wybór gatunku i schemat; nic z nich nie jest zapisywane jako preferencja.
+
 ## Prywatność
 
 Obliczenia wykonują się lokalnie. Service worker zapisuje wyłącznie znane pliki aplikacji; nie zapisuje formularzy, parametrów pacjenta ani zewnętrznych stron. W tej wersji nie dodano analityki ani wysyłania parametrów obliczeń na serwer. Hosting i przeglądarka mogą prowadzić własne logi techniczne. Skopiowany tekst trafia do systemowego schowka na wyraźne żądanie użytkownika.
@@ -80,6 +91,7 @@ Po zmianie reguł klinicznych trzeba osobno zaktualizować źródło, datę wery
 | Plik | Rola |
 | --- | --- |
 | `index.html`, `styles.css`, `app.js` | Interfejs i przepływ pracy |
+| `workflow.js`, `workflow.test.mjs` | Widoczność wymaganych pól w reaktywnym formularzu i testy regresji |
 | `engine.js`, `engine.test.mjs`, `oral-forms.test.mjs` | Deterministyczne przeliczenia i testy |
 | `catalogue.js`, `catalogue-selection.js`, `equine-nsaids.js`, `equine-antiparasitics.js` | Dane produktów, źródła i filtrowanie postaci według gatunku |
 | `regimens.js`, `regimen-engine.js` | Jawnie wybierane schematy źródłowe i kontrola ich zakresu |
