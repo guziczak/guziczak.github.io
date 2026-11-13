@@ -8,8 +8,6 @@
 const CHECKED = '2026-11-13';
 const rpl = id => `https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/${id}/characteristic`;
 const SOURCE = Object.freeze({
-  sachol: rpl(5927),
-  sacholPack: 'https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/5927/package',
   dezaftan: 'https://www.aflofarm.com.pl/media/produkt_zalaczniki/dezaftan-ulotka-iB.pdf',
   dezaftanMed: rpl(38148),
   anaftinGel: 'https://anaftin.pl/wp-content/uploads/2020/03/Anaftin_zel_PIL.pdf',
@@ -64,20 +62,6 @@ const foreign = {
 };
 
 export const DENTAL_TOPICAL_DRUGS = [
-  drug('sachol', 'Sachol', 'Choliny salicylan + cetalkoniowy chlorek', [
-    instructionForm('sachol-gel', 'Sachol · (87,1 mg + 0,1 mg)/g, żel', 'medicine', SOURCE.sachol,
-      [pack('10g', 'tuba 10 g', { sourceUrl: SOURCE.sacholPack, gtin: '5909990230211' })], {
-        sourceDocumentDate: '2026-07-07', minAge: 3,
-        amountText: 'Niewielka ilość, pasek około 1 cm',
-        notes: [
-          'Nie stosować u dzieci w wieku do 3 lat. Źródłowa instrukcja w aplikacji obejmuje wiek powyżej 3 lat.',
-          'Zawiera cetalkoniowy chlorek, nie chlorek cetylopirydyniowy (CPC).',
-          'Salicylany, ciąża i równoczesne preparaty salicylanowe wymagają sprawdzenia przeciwwskazań w ChPL.',
-          'Długość paska nie określa masy dawki; zapotrzebowania w gramach i liczby tub nie wyliczamy.',
-        ],
-      }),
-  ], ['sachol', 'cholina', 'salicylan choliny', 'cetalkonium', 'afta', 'dziąsła']),
-
   drug('dezaftan-barrier', 'Dezaftan', 'Preparat barierowy: powidon, dekspantenol, kwas glicyretynowy', [
     instructionForm('dezaftan-gel-8g', 'Dezaftan · żel ochronny', 'device', SOURCE.dezaftan,
       [pack('8g', 'tuba 8 g')], {
@@ -286,14 +270,6 @@ const instruction = (id, formId, label, options) => scheme(id, [formId], label, 
 });
 
 export const DENTAL_TOPICAL_REGIMENS = [
-  instruction('sachol-mucosa', 'sachol-gel', 'Zmiany zapalne błony śluzowej i dziąseł', {
-    indication: 'Stany zapalne, nadżerki i owrzodzenia jamy ustnej; zapalenie dziąseł',
-    minAgeMonths: 36, minAgeExclusive: true, frequencyOptions: [2, 3],
-    instructionText: 'Nanieść niewielką ilość żelu, pasek około 1 cm, na zmienione miejsce.',
-    administration: 'Delikatnie wcierać przez około 2 minuty; przez około 30 minut nie jeść ani nie pić.',
-    limitLabel: 'ChPL: 2–3 aplikacje/dobę; nie podaje liczbowego maksimum mg/dobę.',
-    ...source(SOURCE.sachol),
-  }),
   instruction('dezaftan-barrier-use', 'dezaftan-gel-8g', 'Punktowo na zmiany błony śluzowej', {
     indication: 'Afty i drobne zmiany błony śluzowej', frequencyOptions: [3, 4],
     instructionText: 'Nałożyć 1–2 krople żelu punktowo, gazikiem albo czystym palcem.',

@@ -295,7 +295,7 @@ export const DENTAL_SYSTEMIC_RESEARCH_NOTES = {
     'Ospamox tablet data uses the family with permits 16801/16802/16687; the legacy Ospamox permit family has different pack metadata and was not merged.',
     'No 4000 mg/day universal amoxicillin maximum, no antibiotic dose or duration default, no automatic higher-dose dental Augmentin regimen.',
     'Amoxicillin dental regimen maxima are computed upper bounds of the selected source range and frequency. Labels must retain that scope.',
-    'Optional renal context does not gate arithmetic: missing data remains unknown and shows a scope warning. Explicit impairment or known CrCl at or below 30 ml/min rejects standard antibiotic suggestions; renal impairment/dialysis regimens are outside this module.',
+    'Optional renal context does not gate arithmetic: missing data remains unknown. Explicit impairment or known CrCl at or below 30 ml/min rejects standard antibiotic suggestions; renal impairment/dialysis regimens are outside this module.',
     'Pediatric Ospamox suggestions deliberately exclude newborns and the conditional BID option. This is application coverage, not a new drug contraindication.',
     'Metafen low-weight wording requires separate clinical interpretation. No broad low-weight numerical suggestion was created from the narrow 12-year-old passage.',
     'PRN frequency represents a clinician-selected daily administration ceiling. Export must retain as-needed wording, minimum intervals and the daily limit.',

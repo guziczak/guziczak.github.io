@@ -224,7 +224,7 @@ test('optional renal context permits arithmetic without asserting normal functio
     const result = resolveHumanRegimen(record, supplied);
     assert.equal(result.valid, true);
     assert.equal(result.requirements.includes('renalStatus'), false);
-    assert.match(result.warnings.join(' '), /bez oceny czynności nerek/);
+    assert.deepEqual(result.warnings, []);
     assert.equal(supplied.renalStatus, renalStatus);
   }
   for (const renalStatus of ['impaired', 'Normal', true]) {
@@ -244,7 +244,7 @@ test('known impairment still blocks a source with no numeric CrCl threshold', ()
   const record = { ...fixed, renalPolicy: 'normal-only' };
   const unknown = resolveHumanRegimen(record, { ...context, renalStatus: 'unknown', crcl: 90 });
   assert.equal(unknown.valid, true);
-  assert.match(unknown.warnings.join(' '), /bez oceny czynności nerek/);
+  assert.deepEqual(unknown.warnings, []);
   for (const crcl of [undefined, 90]) {
     assert.equal(resolveHumanRegimen(record, { ...context, renalStatus: 'impaired', crcl }).valid, false);
   }
@@ -451,12 +451,12 @@ test('the researched systemic records enforce their actual product and populatio
 test('the researched topical records preserve qualitative quantities and bounded treatment time', () => {
   const find = id => DENTAL_TOPICAL_REGIMENS.find(record => record.id === id);
   const adult = { ...context, age: 30, ageUnit: 'years', days: null };
-  const sachol = resolveHumanRegimen(find('sachol-mucosa'), {
-    ...adult, formId: 'sachol-gel', frequency: 3,
+  const barrier = resolveHumanRegimen(find('dezaftan-barrier-use'), {
+    ...adult, formId: 'dezaftan-gel-8g', frequency: 3,
   });
-  assert.equal(sachol.valid, true);
-  assert.equal(sachol.dose, null);
-  assert.match(sachol.instructionText, /około 1 cm/);
+  assert.equal(barrier.valid, true);
+  assert.equal(barrier.dose, null);
+  assert.match(barrier.instructionText, /1–2 krople/);
   const dezaftanContext = { ...adult, formId: 'dezaftan-med-spray' };
   assert.equal(resolveHumanRegimen(find('dezaftan-med-adult'), dezaftanContext).valid, false);
   assert.equal(resolveHumanRegimen(find('dezaftan-med-adult'), { ...dezaftanContext, days: 5 }).valid, true);

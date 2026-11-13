@@ -57,9 +57,6 @@ test('brand families retain distinct medicinal, device and cosmetic classificati
   assert.equal(formById('eludril-care-rinse').productKind, 'cosmetic');
   assert.equal(formById('chlosite-025').productKind, 'device');
   assert.equal(formById('ligosan-periodontal-gel').productKind, 'medicine');
-  const sachol = DENTAL_TOPICAL_DRUGS.find(drug => drug.id === 'sachol');
-  assert.match(sachol.substance, /cetalkoniowy/);
-  assert.doesNotMatch(sachol.substance, /cetylopirydyn/);
 });
 
 test('Dezaftan med separates three actuations from daily administration limits and does not infer bottle yield', () => {

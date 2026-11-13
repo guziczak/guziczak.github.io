@@ -10,13 +10,13 @@ Liczby pochodzą z importu `DRUGS` z `catalogue.js` oraz `HUMAN_REGIMENS` z `hum
 
 | Zakres | Liczba |
 |---|---:|
-| Grupy preparatów/substancji w katalogu | 21 |
-| Konkretne postaci i moce | 28 |
-| Warianty preparat–moc–opakowanie, łącznie z referencjami | 48 |
-| Rekordy schematów lub instrukcji ze wskazanym źródłem | 31 |
+| Grupy preparatów/substancji w katalogu | 20 |
+| Konkretne postaci i moce | 27 |
+| Warianty preparat–moc–opakowanie, łącznie z referencjami | 47 |
+| Rekordy schematów lub instrukcji ze wskazanym źródłem | 30 |
 | W tym rekordy liczbowe | 18 |
-| W tym instrukcje bez liczbowej masy/objętości dawki | 13 |
-| Postaci mające co najmniej jeden taki rekord | 19 |
+| W tym instrukcje bez liczbowej masy/objętości dawki | 12 |
+| Postaci mające co najmniej jeden taki rekord | 18 |
 | Postaci wyłącznie referencyjne, bez wykonywalnego schematu | 8 |
 | Pozostałe postaci: ręczne przeliczenie objętości | 1 — Nystatyna Teva |
 
@@ -42,7 +42,6 @@ Opakowania w tabeli są **udokumentowane w źródłach, ale nie oznaczają potwi
 | Paracetamol | Metafen Paracetamol 500 mg; 10/20/60 tabl. | Lek; podpowiedź wyłącznie >12 lat i >50 kg | [S06] |
 | Benzydamina | Tantum Verde 1,5 mg/ml: aerozol 30 ml i płyn 120/240 ml | Lek; aerozol zależnie od wieku, płyn w ml; <6 lat instrukcja wg masy | [S07], [S08] |
 | Nystatyna | Nystatyna Teva 100 000 j.m./ml; 28 ml po sporządzeniu | Lek; ręcznie w ml, bez gotowego schematu | [S09] |
-| Sachol | (87,1 + 0,1 mg)/g; 10 g | Lek; instrukcja paska żelu | [S10], [S11] |
 | Dezaftan | Żel ochronny; 8 g | Wyrób medyczny; instrukcja kropli | [S12] |
 | Dezaftan med | Aerozol (2,9 + 1,96 + 25,6 mg)/ml; 30 ml | Lek; instrukcja rozpyleń z limitem liczby aplikacji | [S13] |
 | Anaftin | Żel 8 ml, spray 15 ml, płyn 120 ml | Wyroby medyczne; żel/spray instrukcyjnie, płyn liczbowo | [S14], [S15], [S16] |
@@ -70,7 +69,7 @@ Opakowania w tabeli są **udokumentowane w źródłach, ale nie oznaczają potwi
 
 ### Preparaty miejscowe i zabiegowe
 
-- **Brak FTU i umownych gramów:** pasek 1–2 cm, krople żelu oraz „ziarnko grochu” pozostają ilościami opisowymi. Nie wynikają z nich dokładne mg/dobę ani tuby na kurację. Baikadent 5,77 mg/g dotyczy zespołu flawonów; Sachol zawiera chlorek cetalkoniowy, a nie CPC. [S10], [S12], [S14], [S17], [S18]
+- **Brak FTU i umownych gramów:** pasek 1–2 cm, krople żelu oraz „ziarnko grochu” pozostają ilościami opisowymi. Nie wynikają z nich dokładne mg/dobę ani tuby na kurację. Baikadent 5,77 mg/g dotyczy zespołu flawonów. [S12], [S14], [S17], [S18]
 - **Dentinox N:** ChPL wyklucza <3 miesięcy i, przy określonych lekach wywołujących methemoglobinemię, także <12 miesięcy. Gotowy schemat aplikacji zawężono do ≥12 miesięcy, gdyż brak odpowiedniego wywiadu lekowego. Podanie pozostaje **doraźne (`asNeeded`)**, krótkotrwałe, przy objawach ząbkowania; 2–3 aplikacje nie oznaczają obowiązku stosowania codziennie. [S17]
 - **Dezaftan med:** trzy rozpylenia tworzą jedną aplikację. U dorosłego maks.8 aplikacji/dobę, u dzieci >6 lat maks.6; dokładnie 6 lat wymaga indywidualnej interpretacji granicy źródłowej. Rozruch pompki zużywa produkt, dlatego nie generujemy dokładnej liczby butelek. Limit pięciu dni wymaga podania czasu — pusty czas nie przechodzi eksportu. [S13]
 - **Tantum:** przedział 6–12 lat i grupa >12 lat są rozdzielone. Dla <6 lat brak reguły zaokrąglenia ułamka rozpylenia w źródle, więc moduł pokazuje instrukcję, nie wymyśla zaokrągleń. Około 176 rozpyleń z 30 ml to szacunek; nie gwarantowana liczba dawek użytkowych. Płyn wymaga umiejętności płukania i wypluwania. [S07], [S08]
@@ -89,7 +88,7 @@ Poniższe wartości służą sprawdzeniu przeliczeń i blokad. **Nie są zalecen
 | Dwa składniki | Augmentin 400+57 mg/5 ml; fikcyjnie 20 kg, 45 mg amoksycyliny/kg/dobę, 2 podania, 7 dni | 900 mg amoksycyliny i 128,25 mg klawulanianu/dobę; 5,625 ml/podanie przed oceną możliwości odmierzenia; 78,75 ml łącznie; 2 × 70 ml albo 1 × 140 ml |
 | Doraźne maksimum | Ibuprom 200 mg; fikcyjnie dorosły, 400 mg × 4/dobę | Blokada: 1600 mg przekracza limit 1200 mg dla tego źródłowego wariantu |
 | Granica populacji | Schemat Metafen: masa dokładnie 50 kg albo wiek dokładnie 12 lat | Brak dostępności tego automatycznego wariantu; nie dopisać 4000 mg jako uniwersalnej normy |
-| Instrukcja bez masy | Sachol, 3 aplikacje/dobę, właściwy wiek | Tekst o pasku około 1 cm; brak wymyślonych gramów, mg/dobę i dokładnej liczby tub |
+| Instrukcja bez masy | Dezaftan żel ochronny, 3 aplikacje/dobę | Tekst o 1–2 kroplach; brak wymyślonych gramów, mg/dobę i dokładnej liczby tub |
 | Wymagany czas | Dezaftan med: pusty czas /5 dni /6 dni | Odpowiednio: blokada /czas mieści się w zakresie /blokada źródłowego wariantu |
 | Niemowlę | Dentinox: 11 miesięcy, następnie 12 miesięcy | Brak automatycznego schematu dla 11 miesięcy; od 12 miesięcy dostępna instrukcja doraźna, po pozostałych kontrolach |
 | Rzeczywiste ml płynu | Eludril Care: fikcyjnie dorosły, 15 ml × 2/dobę, okres 7 dni | 210 ml, 1 butelka 500 ml; nie jest to dawka leku do połknięcia |
@@ -124,8 +123,6 @@ Nie należy zaokrąglać 5,625 ml wyłącznie w celu otrzymania estetycznego wyn
 - **S07 — Tantum Verde aerozol:** [ChPL RPL 6561](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/6561/characteristic). Sprawdzenie 2026-11-13; daty rewizji nie zapisano.
 - **S08 — Tantum Verde płyn:** [ChPL RPL 6560](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/6560/characteristic). Sprawdzenie 2026-11-13; daty rewizji nie zapisano.
 - **S09 — Nystatyna Teva:** [ChPL RPL 20512](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/20512/characteristic). Data sprawdzenia w odziedziczonych metadanych 2026-11-12; brak nowego schematu w tym wydaniu.
-- **S10 — Sachol:** [ChPL RPL 5927](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/5927/characteristic). Rewizja 2026-07-07; sprawdzenie 2026-11-13.
-- **S11 — Sachol 10 g:** [oznakowanie opakowania RPL 5927](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/5927/package). Sprawdzenie 2026-11-13.
 - **S12 — Dezaftan żel:** [Aflofarm, oznakowanie i instrukcja](https://www.aflofarm.com.pl/media/produkt_zalaczniki/dezaftan-ulotka-iB.pdf). Sprawdzenie 2026-11-13; daty rewizji nie zapisano.
 - **S13 — Dezaftan med:** [ChPL RPL 38148](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/38148/characteristic). Sprawdzenie 2026-11-13; daty rewizji nie zapisano.
 - **S14 — Anaftin żel:** [instrukcja producenta](https://anaftin.pl/wp-content/uploads/2020/03/Anaftin_zel_PIL.pdf). Dokument 09/2016; sprawdzenie 2026-11-13.
