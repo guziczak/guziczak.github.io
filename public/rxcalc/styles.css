@@ -524,7 +524,7 @@ html{scroll-padding-top:calc(var(--pinned-header-offset) + 12px)}
 @media(max-width:780px){
   :root{--pinned-bar-height:62px}
   .topbar{transition:transform 180ms ease,visibility 0s linear}
-  html.keyboard-open{scroll-padding-top:12px;scroll-padding-bottom:16px}
+  html.keyboard-open{scroll-padding-top:calc(12px + env(safe-area-inset-top,0px));scroll-padding-bottom:16px}
   .keyboard-open .topbar{transform:translateY(-100%);visibility:hidden;pointer-events:none;transition:transform 180ms ease,visibility 0s linear 180ms}
 }
 @media(max-width:780px) and (prefers-reduced-motion:reduce){.topbar,.keyboard-open .topbar{transition:none}}
