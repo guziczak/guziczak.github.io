@@ -1,0 +1,83 @@
+/* Patient values use the same field surface; the picker keeps its own draft. */
+.patient-wheel-trigger{position:relative;display:flex;align-items:center;width:100%;min-width:0;min-height:41px;padding:9px 34px 9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;line-height:1.5;text-align:left;transition:border-color 140ms,box-shadow 140ms}
+.patient-wheel-trigger:hover:not(:disabled),.patient-wheel-trigger[aria-expanded="true"]{border-color:var(--accent)}
+.patient-wheel-trigger[aria-expanded="true"]{box-shadow:0 0 0 3px #60b99b18}
+.patient-wheel-value{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.patient-wheel-value.is-placeholder{color:var(--muted);font-size:12px;font-weight:400}
+.patient-wheel-chevron{position:absolute;right:12px;top:50%;display:flex;transform:translateY(-50%);color:var(--muted);pointer-events:none;transition:transform 160ms}
+.patient-wheel-chevron svg{width:15px;height:15px}
+.patient-wheel-trigger[aria-expanded="true"] .patient-wheel-chevron{transform:translateY(-50%) rotate(180deg)}
+.input-unit>.patient-wheel-trigger{padding-right:66px}
+.input-unit>.patient-wheel-trigger~span{right:36px}
+.age-input-group>.patient-wheel-trigger{height:100%;padding-left:10px;padding-right:30px}
+.age-input-group>.patient-wheel-trigger .patient-wheel-chevron{right:8px}
+
+html.patient-picker-open{overflow:hidden}
+.patient-picker{position:fixed;inset:auto;margin:0;z-index:160;max-width:none;min-width:0;padding:0;overflow:auto;overscroll-behavior:contain;border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--ink);box-shadow:0 20px 60px #102b2533,0 4px 12px #102b2514;animation:patient-picker-in 160ms cubic-bezier(.22,1,.36,1)}
+.patient-picker::backdrop{background:#10251d38;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.patient-picker-panel{padding:18px;min-width:0}
+.patient-picker-header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px}
+.patient-picker-header h2{margin:0;font-size:18px;font-weight:650;line-height:1.3;letter-spacing:-.3px}
+.patient-picker-cancel,.patient-picker-clear{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;line-height:1.4;min-height:40px;padding:8px 2px}
+.patient-picker-cancel:hover,.patient-picker-clear:hover{color:var(--accent)}
+.patient-picker-caption{margin:3px 0 12px;color:var(--muted);font-size:12px;line-height:1.5}
+.patient-picker-mode{display:flex;gap:3px;padding:3px;margin:12px 0 10px;border-radius:9px;background:var(--soft)}
+.patient-picker-mode button{flex:1;min-width:0;min-height:34px;padding:6px 12px;border:0;border-radius:6px;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:550;line-height:1.4;transition:background 140ms,color 140ms,box-shadow 140ms}
+.patient-picker-mode button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px #10251c12}
+.patient-picker-wheels{--wheel-height:220px;--wheel-row:44px;--wheel-label:24px;position:relative;display:flex;align-items:flex-start;justify-content:center;gap:4px;width:100%;min-width:0;isolation:isolate;margin:10px 0 4px}
+.patient-picker-selection{position:absolute;top:calc(var(--wheel-label) + (var(--wheel-height) - var(--wheel-row))/2);right:0;left:0;height:var(--wheel-row);border:1px solid var(--border);border-radius:10px;background:var(--mint);pointer-events:none;z-index:-1}
+.patient-picker-column{position:relative;flex:1 1 0;min-width:0;max-width:200px}
+.patient-picker-column[data-part="fraction"],.patient-picker-column.is-fraction{flex:.7 1 0;max-width:140px}
+.patient-picker-column-label{display:flex;justify-content:center;align-items:center;height:var(--wheel-label);margin:0;overflow:hidden;color:var(--muted);font-size:11px;font-weight:500;line-height:1.3;text-align:center;white-space:nowrap}
+.patient-picker-wheel{height:var(--wheel-height);padding-block:calc((var(--wheel-height) - var(--wheel-row))/2);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;mask-image:linear-gradient(to bottom,transparent,#000 34%,#000 66%,transparent);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 34%,#000 66%,transparent);outline-offset:-4px;cursor:ns-resize}
+.patient-picker-wheel::-webkit-scrollbar{display:none}
+.patient-picker-wheel{scroll-behavior:auto}
+.patient-picker-wheel:focus-visible{outline:2px solid var(--accent);border-radius:10px}
+.patient-picker-row{display:flex;align-items:center;justify-content:center;height:var(--wheel-row);min-height:var(--wheel-row);padding:0 4px;scroll-snap-align:center;color:var(--muted);font-size:22px;font-weight:450;font-variant-numeric:tabular-nums;line-height:1;white-space:nowrap;user-select:none;-webkit-user-select:none;cursor:pointer;transition:color 100ms,font-size 100ms}
+.patient-picker-row.is-selected{color:var(--accent);font-size:28px;font-weight:650;letter-spacing:-.4px}
+.patient-picker-unit,.patient-picker-separator{display:flex;align-items:center;justify-content:center;align-self:center;height:var(--wheel-row);margin-top:var(--wheel-label);color:var(--accent);font-size:21px;font-weight:550;line-height:1;pointer-events:none}
+.patient-picker-unit{flex:0 0 auto;min-width:38px;padding:0 10px 0 3px;font-size:17px}
+.patient-picker-separator{flex:0 0 8px}
+.patient-picker-manual{padding:14px 0 8px}
+.patient-picker-manual>label{display:block;margin-bottom:9px;color:var(--muted);font-size:12px;font-weight:550;line-height:1.5}
+.patient-picker-manual-unit{position:relative}
+.patient-picker-manual-unit input{width:100%;height:56px;min-width:0;padding:10px 65px 10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-soft);color:var(--ink);font:inherit;font-size:24px;font-weight:550;line-height:1.4;font-variant-numeric:tabular-nums}
+.patient-picker-manual-unit input::placeholder{color:var(--muted);font-weight:400}
+.patient-picker-manual-unit>span{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none}
+.patient-picker-error{margin:8px 0 0;color:var(--red);font-size:12px;line-height:1.5}
+.patient-picker-error:empty{display:none}
+.patient-picker-preview{display:block;min-height:27px;margin:8px 0 12px;color:var(--ink);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.5;text-align:center;overflow-wrap:anywhere}
+.patient-picker-preview small{display:block;color:var(--muted);font-size:11px;font-weight:400;line-height:1.5}
+.patient-picker-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-top:12px;border-top:1px solid var(--border)}
+.patient-picker-done{flex:0 1 160px;min-width:112px;min-height:46px;padding:11px 24px;border:0;border-radius:10px;background:var(--accent);color:var(--surface);font:inherit;font-size:14px;font-weight:650;line-height:1.5;transition:background 140ms}
+.patient-picker-done:hover:not(:disabled){background:var(--accent-hover)}
+.patient-picker-done:disabled{opacity:.45}
+[data-theme="dark"] .patient-picker{box-shadow:0 20px 60px #0006,0 3px 12px #0004}
+[data-theme="dark"] .patient-picker::backdrop{background:#07130f66}
+@keyframes patient-picker-in{from{opacity:0;transform:translateY(6px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:780px){
+  .patient-wheel-trigger{min-height:46px;font-size:16px;padding-top:10px;padding-bottom:10px}
+  .patient-wheel-value.is-placeholder{font-size:14px}
+  .patient-picker{border-radius:22px 22px 0 0;border-bottom:0;box-shadow:0 -12px 48px #102b2533;animation-name:patient-picker-sheet-in}
+  .patient-picker-panel{padding:15px max(20px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
+  .patient-picker-header h2{font-size:19px}
+  .patient-picker-cancel,.patient-picker-clear{min-height:44px;font-size:14px}
+  .patient-picker-mode button{min-height:36px;font-size:13px}
+  .patient-picker-done{min-height:48px;font-size:15px}
+}
+@keyframes patient-picker-sheet-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@media(max-height:520px){
+  .patient-picker-panel{padding-top:10px;padding-bottom:10px}
+  .patient-picker-header{min-height:30px}
+  .patient-picker-mode{margin:4px 0}
+  .patient-picker-caption{margin-bottom:5px}
+  .patient-picker-wheels{--wheel-height:132px;margin:4px 0 0}
+  .patient-picker-preview{margin:3px 0 7px;font-size:16px}
+  .patient-picker-footer{padding-top:7px}
+}
+@media(prefers-reduced-motion:reduce){
+  .patient-picker{animation:none}
+  .patient-wheel-trigger,.patient-wheel-chevron,.patient-picker-mode button,.patient-picker-row,.patient-picker-done{transition:none}
+  .patient-picker-wheel{scroll-behavior:auto}
+}
+@media print{.patient-picker{display:none!important}}

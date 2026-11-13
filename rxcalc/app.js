@@ -10,6 +10,7 @@ import { catalogueProducts, searchProducts, highlightSegments, searchMatchDetail
 import { humanDosingText, instructionDosingText } from './dental-output.js';
 import { createSelectMenus } from './select-menu.js';
 import { tabletDoseChoices } from './tablet-doses.js';
+import { createPatientPickers } from './patient-picker.js';
 
 const $ = (q, root = document) => root.querySelector(q);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -87,6 +88,10 @@ let latest = null, latestText = '', deferredInstall = null, swRegistration = nul
 let offlineReady = false, requestedUpdate = false;
 const field = (id, label, value, placeholder, unit = '', extra = '') => `<div class="field"><label for="${id}">${label}</label><div class="input-unit"><input id="${id}" data-field="${id}" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(value)}" placeholder="${esc(placeholder)}" ${extra}>${unit ? `<span>${unit}</span>` : ''}</div></div>`;
 const isVeterinary = () => state.specialty === 'veterinary';
+const patientPickers = createPatientPickers({ icon, beforeOpen:() => selectMenus.close(), getContext:() => ({
+  veterinary:isVeterinary(), species:state.species, patientType:state.patientType,
+  ageUnit:isVeterinary() ? state.vetAgeUnit : state.humanAgeUnit,
+}) });
 const getAnimal = () => ANIMALS.find(a => a.id === state.species);
 const getSpeciesCatalogue = () => availableDrugs(DRUGS, state.specialty, state.species);
 const getCatalogue = () => availableDrugs(DRUGS, state.specialty, state.species, state.routeFilter);
@@ -251,15 +256,15 @@ function sourceRegimenPicker() {
 
 function ageFields(required = false) {
   const label = required ? 'Wiek pacjenta' : 'Wiek (opcjonalnie)';
-  if (!isVeterinary()) return `<div class="field age-field"><label for="age">${label}</label><div class="age-input-group"><input id="age" data-field="age" type="text" inputmode="decimal" autocomplete="off" value="${esc(state.age)}" placeholder="${state.patientType === 'child' ? 'Wiek dziecka' : 'np. 35'}" ${required ? 'required' : ''}><select id="humanAgeUnit" data-field="humanAgeUnit" aria-label="Jednostka wieku">${[['years','lat'],['months','mies.'],['days','dni']].map(([v,l]) => `<option value="${v}" ${state.humanAgeUnit === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`;
-  return `<div class="field age-field"><label for="age">${label}</label><div class="age-input-group"><input id="age" data-field="age" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(state.age)}" placeholder="Wiek" ${required ? 'required' : ''}><select id="vetAgeUnit" data-field="vetAgeUnit" aria-label="Jednostka wieku">${[['years','lat'],['months','mies.'],['weeks','tyg.'],['days','dni']].map(([v,l]) => `<option value="${v}" ${state.vetAgeUnit === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`;
+  if (!isVeterinary()) return `<div class="field age-field"><label for="age">${label}</label><div class="age-input-group"><input id="age" data-field="age" data-patient-picker type="text" inputmode="decimal" autocomplete="off" value="${esc(state.age)}" placeholder="${state.patientType === 'child' ? 'Wiek dziecka' : 'np. 35'}" ${required ? 'required' : ''}><select id="humanAgeUnit" data-field="humanAgeUnit" aria-label="Jednostka wieku">${[['years','lat'],['months','mies.'],['days','dni']].map(([v,l]) => `<option value="${v}" ${state.humanAgeUnit === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`;
+  return `<div class="field age-field"><label for="age">${label}</label><div class="age-input-group"><input id="age" data-field="age" data-patient-picker type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(state.age)}" placeholder="Wiek" ${required ? 'required' : ''}><select id="vetAgeUnit" data-field="vetAgeUnit" aria-label="Jednostka wieku">${[['years','lat'],['months','mies.'],['weeks','tyg.'],['days','dni']].map(([v,l]) => `<option value="${v}" ${state.vetAgeUnit === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`;
 }
 function patientPanel(f) {
   if (!productReady() || isReference(f)) return '';
   const source = getSourceRegimen();
   const needs = patientFieldsFor({ ...state, form:f, source });
   const cardio = state.specialty === 'cardio';
-  const weight = required => field('weight', required ? 'Masa ciała' : 'Masa (opcjonalnie)', state.weight, isVeterinary() ? getAnimal()?.weight || 'kg' : state.patientType === 'child' ? 'np. 24' : 'np. 70', 'kg', required ? 'required' : '');
+  const weight = required => field('weight', required ? 'Masa ciała' : 'Masa (opcjonalnie)', state.weight, isVeterinary() ? getAnimal()?.weight || 'kg' : state.patientType === 'child' ? 'np. 24' : 'np. 70', 'kg', `data-patient-picker ${required ? 'required' : ''}`);
   const renalRelevant = !isVeterinary() && (source?.renalPolicy || source?.minCrCl != null || source?.requireCrCl);
   const renal = renalRelevant ? field('humanCrCl', source.requireCrCl ? 'CrCl ustalony klinicznie' : 'Znany CrCl (opcjonalnie)', state.humanCrCl, 'Wartość CrCl', 'ml/min', source.requireCrCl ? 'required' : '') : '';
   const renalImpairment = !isVeterinary() && source?.renalPolicy ? `<div class="field renal-details-field"><label class="renal-impairment-option" for="renalImpairment"><input id="renalImpairment" type="checkbox" ${state.renalStatus === 'impaired' ? 'checked' : ''}><span>Rozpoznane zaburzenia czynności nerek</span></label><small>Opcjonalnie, jeśli dotyczy pacjenta. CrCl podawaj w ml/min, nie jako eGFR na 1,73 m².</small></div>` : '';
@@ -300,7 +305,8 @@ function specialtyPicker() {
 function render() {
   const previousFocus = document.activeElement;
   const focusId = previousFocus?.id;
-  const focusField = previousFocus?.dataset?.selectId || focusId;
+  const focusField = previousFocus?.dataset?.pickerId || previousFocus?.dataset?.selectId || focusId;
+  patientPickers.close(false);
   selectMenus.close();
   const focusAction = previousFocus?.dataset?.action, focusValue = previousFocus?.dataset?.value;
   const vet = isVeterinary(), f = getForm();
@@ -311,6 +317,7 @@ function render() {
       <main id="main"><div id="update-slot"></div><section class="context-bar" aria-label="Profil pracy"><div class="context-heading"><h1>Kalkulator dawkowania</h1><span>${icon('lock')} Dane pacjenta pozostają w tej karcie</span></div><div class="context-selectors">${specialtyPicker()}${vet ? `<div class="field"><label for="species">Gatunek zwierzęcia</label><select id="species" data-field="species" required><option value="">Wybierz gatunek</option>${ANIMALS.map(a => `<option value="${a.id}" ${state.species === a.id ? 'selected' : ''}>${a.label}</option>`).join('')}</select></div>` : state.specialty === 'dental' ? `<div class="patient-type"><div class="field-label">Grupa pacjenta</div><div class="segmented patient-segmented" data-patient-type="${state.patientType}" role="group" aria-label="Grupa pacjenta"><span class="patient-type-thumb" aria-hidden="true"></span><button data-action="patient-type" data-value="adult" class="${state.patientType === 'adult' ? 'active' : ''}" aria-pressed="${state.patientType === 'adult'}">Dorosły</button><button data-action="patient-type" data-value="child" class="${state.patientType === 'child' ? 'active' : ''}" aria-pressed="${state.patientType === 'child'}">Dziecko</button></div></div>` : ''}</div></section><div class="clinical-note">${icon('info')}<span>${state.demo ? '<strong>Przykład arytmetyczny.</strong> Dane demonstracyjne; kopiowanie wyłączone.' : vet ? 'Wskazanie i schemat potwierdza lekarz weterynarii w aktualnej dokumentacji.' : 'Schemat ustala lekarz. Potwierdź go w aktualnej ChPL.'}</span><button data-action="about">Zakres kalkulatora</button></div>
       <div class="calculator-grid"><div class="left-stack"><section class="panel product-panel" aria-labelledby="drug-title"><div class="section-heading"><span class="step-number">01</span><h2 id="drug-title">${ui.productChosen ? 'Wybrany preparat' : 'Wybierz preparat'}</h2><span class="trailing">${vet && !state.species ? '' : `${getSpeciesCatalogue().length} w katalogu`}</span></div>${productPicker(f)}</section>${regimenPanel(f)}${productReady() ? `<div class="source-row">${icon('book')}<span>${f.sourceUrl ? `<a href="${esc(f.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(f.sourceLabel)} ↗</a> · ` : ''}<button data-action="source" class="text-button">Uwagi do preparatu</button><br>${state.custom ? 'Dane preparatu wprowadzone ręcznie.' : `Dane katalogowe: ${esc(f.sourceCheckedAt || CATALOGUE_META.sourceCheckedAt)}.`}</span></div>` : ''}</div>${resultPanel(f)}</div><footer class="page-footer"><span>RxCalc · podręczny kalkulator dawkowania</span><div class="footer-links">${!vet ? '<button data-action="example">Przykład obliczenia</button>' : ''}<button data-action="favorites">Ulubione</button><button data-action="install">Zainstaluj</button><button data-action="about">O aplikacji</button></div></footer></main></div><div class="mobile-action-bar" id="mobile-action-bar" ${!productReady() || isReference(f) ? 'hidden' : ''}><button class="mobile-action-summary" data-action="result" aria-label="Przejdź do podsumowania obliczenia"><small id="mobile-action-label">Sprawdź wynik</small><strong id="mobile-action-value">Uzupełnij dane</strong></button><button class="copy-button" id="mobile-copy" data-action="copy" disabled>${icon('copy')}Kopiuj</button></div>`;
   selectMenus.enhance($('#app'));
+  patientPickers.enhance($('#app'));
   renderDrugs(); updateResult(); updateConnection(); showUpdate();
   copyObserver?.disconnect();
   if ('IntersectionObserver' in window && $('#copy-button')) {
@@ -519,7 +526,7 @@ function updateInstructionResult(check) {
 }
 
 function updateResult() {
-  try { updateResultContent(); } finally { selectMenus.refresh();updateTabletDoseButtons(); }
+  try { updateResultContent(); } finally { selectMenus.refresh();patientPickers.refresh();updateTabletDoseButtons(); }
 }
 function updateResultContent() {
   if(!productReady() || !$('#dose-value')) {
@@ -619,6 +626,7 @@ function prescription(r,f,input) {
 function dirty() { state.confirmed=false; }
 function toast(message) { clearTimeout(toastTimer); const el=$('#toast');el.textContent=message;el.classList.add('show');toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
 function openDialog(title,content) {
+  patientPickers.close(false);
   selectMenus.close();
   const dialog=$('#dialog');dialog.innerHTML=`<div class="dialog-inner"><div class="dialog-header"><h2 id="dialog-title">${title}</h2><button class="icon-button" data-action="close-dialog" aria-label="Zamknij">${icon('close')}</button></div><div class="dialog-content">${content}</div></div>`;
   selectMenus.enhance(dialog);
