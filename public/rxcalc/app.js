@@ -76,6 +76,11 @@ let theme = readPreference('theme', 'light');
 document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
 let latest = null, latestText = '', deferredInstall = null, swRegistration = null, toastTimer = null, copyObserver = null;
 let offlineReady = false, requestedUpdate = false;
+let keyboardNavigation = false;
+document.addEventListener('pointerdown', () => { keyboardNavigation = false; }, true);
+document.addEventListener('keydown', event => {
+  if (!['Alt', 'Control', 'Meta', 'Shift'].includes(event.key)) keyboardNavigation = true;
+}, true);
 const field = (id, label, value, placeholder, unit = '', extra = '') => `<div class="field"><label for="${id}">${label}</label><div class="input-unit"><input id="${id}" data-field="${id}" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(value)}" placeholder="${esc(placeholder)}" ${extra}>${unit ? `<span>${unit}</span>` : ''}</div></div>`;
 const isVeterinary = () => state.specialty === 'veterinary';
 const getAnimal = () => ANIMALS.find(a => a.id === state.species);
@@ -268,8 +273,11 @@ function render() {
   let nextFocus = focusId ? document.getElementById(focusId) : null;
   if(!nextFocus && focusAction) nextFocus = [...$('#app').querySelectorAll('[data-action]')].find(el => el.dataset.action === focusAction && el.dataset.value === focusValue);
   if(!nextFocus && ['drug','form','favorite-select'].includes(focusAction)) nextFocus = $('[data-action="edit-product"]');
+  if(!nextFocus && focusId === 'formId') nextFocus = $('[data-action="edit-product"]');
   if(!nextFocus && focusId === 'regimenId') nextFocus = $('[data-action="edit-regimen"]');
-  if(nextFocus && previousFocus !== document.body) nextFocus.focus({preventScroll:true});
+  // Refocusing a replacement native select can reopen the iOS picker after a tap.
+  // Retain focus for keyboard navigation; let pointer selections close normally.
+  if(nextFocus && previousFocus !== document.body && (nextFocus.tagName !== 'SELECT' || keyboardNavigation)) nextFocus.focus({preventScroll:true});
 }
 
 function productPicker(f) {
