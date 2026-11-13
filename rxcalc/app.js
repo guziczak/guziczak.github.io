@@ -327,6 +327,7 @@ function render() {
     if(nextFocus.tagName === 'SELECT') selectMenus.focus(nextFocus.id);
     else nextFocus.focus({preventScroll:true});
   }
+  updateKeyboardState();
 }
 
 function productPicker(f) {
@@ -694,15 +695,40 @@ $('#app').addEventListener('change',e=>{
   else if(key==='customForm'){state.customStrength='';state.customConcentration='';state.customPack='';state.customDrops='';state.customFractions='1';state.customContainers='1';state.vetRoute='';state.roundingStep='';state.doseMode=isVeterinary()&&!['spray','gel'].includes(state.customForm)?'perKgDose':'units';resetRegimen();render();}
   else updateResult();
 });
+const mobileKeyboardLayout=window.matchMedia('(max-width:780px) and (any-pointer:coarse)');
+let keyboardViewportWidth=window.innerWidth;
+let keyboardViewportHeight=window.innerHeight;
 function updateKeyboardState(){
-  const el=document.activeElement;
-  const editing=el?.tagName==='TEXTAREA'||el?.tagName==='INPUT'&&!['checkbox','radio','button','submit'].includes(el.type);
-  const keyboardViewport=window.visualViewport&&window.innerHeight-window.visualViewport.height>150;
-  document.body.classList.toggle('keyboard-open',!!editing||!!keyboardViewport);
+  const el=document.activeElement,viewport=window.visualViewport;
+  const editing=!!el&&!el.readOnly&&!el.disabled&&el.inputMode!=='none'&&(
+    el.tagName==='TEXTAREA'||el.isContentEditable||
+    el.tagName==='INPUT'&&/^(text|search|email|url|tel|password|number)$/.test(el.type)
+  );
+  const root=document.documentElement;
+  const wasOpen=root.classList.contains('keyboard-open');
+  const zoomed=!!viewport&&Math.abs(viewport.scale-1)>0.05;
+  const widthChanged=Math.abs(window.innerWidth-keyboardViewportWidth)>1;
+  if(widthChanged||!mobileKeyboardLayout.matches){
+    keyboardViewportWidth=window.innerWidth;
+    keyboardViewportHeight=window.innerHeight;
+  }
+  // The saved height also covers WebViews that resize both viewports for the keyboard.
+  const lostHeight=Math.max(keyboardViewportHeight,window.innerHeight)-(viewport?.height??window.innerHeight);
+  const open=mobileKeyboardLayout.matches&&!zoomed&&(editing||wasOpen)&&lostHeight>150;
+  if(!open&&!zoomed&&!editing)keyboardViewportHeight=window.innerHeight;
+  root.classList.toggle('keyboard-open',open);
+  const header=$('.topbar');
+  if(header){
+    header.inert=open;
+    if(open)header.setAttribute('aria-hidden','true');
+    else header.removeAttribute('aria-hidden');
+  }
 }
 document.addEventListener('focusin',updateKeyboardState);
 document.addEventListener('focusout',()=>requestAnimationFrame(updateKeyboardState));
 window.visualViewport?.addEventListener('resize',updateKeyboardState);
+window.addEventListener('resize',updateKeyboardState);
+mobileKeyboardLayout.addEventListener('change',updateKeyboardState);
 $('#dialog').addEventListener('input',updateTool);$('#dialog').addEventListener('change',updateTool);
 $('#dialog').addEventListener('click',e=>{if(e.target===$('#dialog'))$('#dialog').close();});
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();ui.productExpanded=true;render();if($('#search'))$('#search').focus();else selectMenus.focus('species');}if(e.key==='Escape' && $('#search')===document.activeElement){state.search='';$('#search').value='';renderDrugs();}});

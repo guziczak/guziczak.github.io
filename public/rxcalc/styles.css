@@ -521,7 +521,13 @@ dl.result-review{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2f
 html{scroll-padding-top:calc(var(--pinned-header-offset) + 12px)}
 .topbar{--bar-height:var(--pinned-bar-height);position:sticky;top:0;z-index:30;box-shadow:0 3px 12px #10251c08}
 @media(min-width:781px){.result-column{top:calc(var(--pinned-header-offset) + 16px)}}
-@media(max-width:780px){:root{--pinned-bar-height:62px}}
+@media(max-width:780px){
+  :root{--pinned-bar-height:62px}
+  .topbar{transition:transform 180ms ease,visibility 0s linear}
+  html.keyboard-open{scroll-padding-top:12px;scroll-padding-bottom:16px}
+  .keyboard-open .topbar{transform:translateY(-100%);visibility:hidden;pointer-events:none;transition:transform 180ms ease,visibility 0s linear 180ms}
+}
+@media(max-width:780px) and (prefers-reduced-motion:reduce){.topbar,.keyboard-open .topbar{transition:none}}
 
 /* Match emphasis uses the original catalogue text, never generated clinical keywords. */
 .product-hit .drug-name{font-weight:550}
