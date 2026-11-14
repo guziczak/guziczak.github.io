@@ -9,6 +9,7 @@
 .patient-wheel-trigger[aria-expanded="true"] .patient-wheel-chevron{transform:translateY(-50%) rotate(180deg)}
 .input-unit>.patient-wheel-trigger{padding-right:66px}
 .input-unit>.patient-wheel-trigger[data-picker-id="humanCrCl"]{padding-right:96px}
+.input-unit>.patient-wheel-trigger[data-picker-id="dose"]{min-height:47px;padding-right:112px;font-size:19px;font-weight:550;letter-spacing:-.5px}
 .input-unit>.patient-wheel-trigger~span{right:36px}
 .age-input-group>.patient-wheel-trigger{height:100%;padding-left:10px;padding-right:30px}
 .age-input-group>.patient-wheel-trigger .patient-wheel-chevron{right:8px}
@@ -31,6 +32,18 @@ html.patient-picker-open{overflow:hidden}
 .patient-picker-mode{display:flex;gap:3px;padding:3px;margin:12px 0 10px;border-radius:9px;background:var(--soft)}
 .patient-picker-mode button{flex:1;min-width:0;min-height:34px;padding:6px 12px;border:0;border-radius:6px;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:550;line-height:1.4;transition:background 140ms,color 140ms,box-shadow 140ms}
 .patient-picker-mode button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px #10251c12}
+.dose-picker-steps{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}
+.dose-picker-step-label{flex:0 0 100%;margin-bottom:2px;color:var(--muted);font-size:12px;font-weight:550;line-height:1.4}
+.dose-picker-step{flex:1;min-width:0;min-height:40px;padding:8px 6px;border:1px solid var(--border);border-radius:8px;background:var(--surface-soft);color:var(--muted);font:inherit;font-size:13px;font-weight:550;line-height:1.4;white-space:nowrap;transition:background 140ms,border-color 140ms,color 140ms}
+.dose-picker-step:hover{border-color:var(--accent);color:var(--accent)}
+.dose-picker-step[aria-pressed="true"]{border-color:var(--accent);background:var(--mint);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.dose-picker-step:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dose-picker .patient-picker-caption{margin:4px 0 8px}
+.dose-picker .patient-picker-column{max-width:240px}
+.dose-picker .patient-picker-row{font-size:24px}
+.dose-picker .patient-picker-row.is-selected{font-size:30px}
+.dose-picker .patient-picker-unit{font-size:15px}
+.dose-picker .patient-picker-manual-unit input{padding-right:120px}
 .patient-picker-wheels{--wheel-height:220px;--wheel-row:44px;--wheel-label:24px;position:relative;display:flex;align-items:flex-start;justify-content:center;gap:4px;width:100%;min-width:0;isolation:isolate;margin:10px 0 4px}
 .patient-picker-selection{position:absolute;top:calc(var(--wheel-label) + (var(--wheel-height) - var(--wheel-row))/2);right:0;left:0;height:var(--wheel-row);border:1px solid var(--border);border-radius:10px;background:var(--mint);pointer-events:none;z-index:-1}
 .patient-picker-column{position:relative;flex:1 1 0;min-width:0;max-width:200px}
@@ -65,12 +78,14 @@ html.patient-picker-open{overflow:hidden}
 @media(max-width:780px){
   .patient-wheel-trigger{min-height:46px;font-size:16px;padding-top:10px;padding-bottom:10px}
   .patient-wheel-value.is-placeholder{font-size:14px}
+  .input-unit>.patient-wheel-trigger[data-picker-id="dose"]{min-height:49px;font-size:22px}
   .patient-picker{border-radius:22px 22px 0 0;border-bottom:0;box-shadow:0 -12px 48px #102b2533;animation-name:patient-picker-sheet-in}
   .patient-picker-panel{padding:15px max(20px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
   .patient-picker-header h2{font-size:19px}
   .patient-picker-sound{width:44px;height:44px}
   .patient-picker-cancel,.patient-picker-clear{min-height:44px;font-size:14px}
   .patient-picker-mode button{min-height:36px;font-size:13px}
+  .dose-picker-step{min-height:44px}
   .patient-picker-done{min-height:48px;font-size:15px}
 }
 @keyframes patient-picker-sheet-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
@@ -79,13 +94,15 @@ html.patient-picker-open{overflow:hidden}
   .patient-picker-header{min-height:30px}
   .patient-picker-mode{margin:4px 0}
   .patient-picker-caption{margin-bottom:5px}
+  .dose-picker-steps{margin-top:6px;gap:4px}
+  .dose-picker-step{min-height:34px;padding-block:5px}
   .patient-picker-wheels{--wheel-height:132px;margin:4px 0 0}
   .patient-picker-preview{margin:3px 0 7px;font-size:16px}
   .patient-picker-footer{padding-top:7px}
 }
 @media(prefers-reduced-motion:reduce){
   .patient-picker{animation:none}
-  .patient-wheel-trigger,.patient-wheel-chevron,.patient-picker-mode button,.patient-picker-row,.patient-picker-done{transition:none}
+  .patient-wheel-trigger,.patient-wheel-chevron,.patient-picker-mode button,.patient-picker-row,.patient-picker-done,.dose-picker-step{transition:none}
   .patient-picker-wheel{scroll-behavior:auto}
 }
 @media print{.patient-picker{display:none!important}}

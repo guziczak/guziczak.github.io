@@ -177,6 +177,7 @@ export function createWheelMotion(node, { rowHeight = 44 } = {}) {
 
   return {
     stop, finish, setIndex,
+    isMoving:() => !!(drag || animation || settling),
     isClickSuppressed:() => now() < suppressUntil,
     destroy:() => { stop(); destroyed = true; controller.abort(); },
   };

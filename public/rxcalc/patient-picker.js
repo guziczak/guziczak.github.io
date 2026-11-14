@@ -1,4 +1,5 @@
 import { createPatientPickerModel, parsePickerValue, formatWheelValue } from './patient-picker-model.js';
+import { createDosePickerModel, parseDosePickerValue, createDoseWheel } from './dose-picker-model.js';
 import { createWheelMotion } from './wheel-motion.js';
 import { createWheelFeedback } from './wheel-feedback.js';
 
@@ -24,6 +25,34 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     return node;
   };
   const display = value => String(value).replace('.', ',');
+  const parseValue = (session, value) => session.isDose ? parseDosePickerValue(value) : parsePickerValue(value, session.model);
+  const primaryWheel = session => session.wheels.dose || session.wheels.whole;
+
+  function clearDoseIdle(session) {
+    if (session.doseIdleTimer) window.clearTimeout(session.doseIdleTimer);
+    session.doseIdleTimer = 0;
+  }
+
+  function scheduleDoseWindow(session) {
+    clearDoseIdle(session);
+    if (!session.isDose || active !== session || session.mode !== 'wheels') return;
+    session.doseIdleTimer = window.setTimeout(() => {
+      session.doseIdleTimer = 0;
+      if (active !== session || session.mode !== 'wheels') return;
+      const wheel = session.wheels.dose;
+      if (!wheel) return;
+      if (wheel.pointerDown || wheel.motion.isMoving()) { scheduleDoseWindow(session); return; }
+      if (readWheel(session, 'dose')) updatePreview(session);
+      if (wheel.index > 40 && wheel.index < wheel.max - 40) return;
+      const next = createDoseWheel(session.doseValue, session.model.step);
+      if (next.values.length === wheel.values.length
+        && next.values[0] === wheel.values[0] && next.values.at(-1) === wheel.values.at(-1)) return;
+      const focused = document.activeElement === wheel.node;
+      renderWheels(session, next);
+      alignWheels(session);
+      if (focused) session.wheels.dose.node.focus({ preventScroll:true });
+    }, 240);
+  }
 
   function updateSoundButton(node) {
     node.setAttribute('aria-label', 'Dźwięk bębna');
@@ -48,6 +77,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     const session = active;
     if (!session) return;
     active = null;
+    clearDoseIdle(session);
     feedback.stop();
     for (const wheel of Object.values(session.wheels)) wheel.motion.destroy();
     session.record.trigger.setAttribute('aria-expanded', 'false');
@@ -80,13 +110,14 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
 
   function currentDisplay(session) {
     return session.mode === 'manual' ? session.manualInput.value
+      : session.isDose ? session.doseValue
       : session.unset ? '' : formatWheelValue(session.whole, session.fraction, session.model.precision);
   }
 
   function updatePreview(session) {
     if (active !== session) return;
     const raw = currentDisplay(session);
-    const result = parsePickerValue(raw, session.model);
+    const result = parseValue(session, raw);
     session.error.textContent = result.error;
     session.done.disabled = !result.valid;
     session.preview.textContent = result.valid && result.value !== ''
@@ -99,19 +130,23 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     const wheel = session.wheels[part];
     const index = Math.max(0, Math.min(wheel.max, Math.round(wheel.node.scrollTop / ROW)));
     const changed = wheel.index !== index;
+    const value = wheel.values ? wheel.values[index] : index;
+    if (part === 'dose') { session.doseValue = value; session.unset = value === ''; }
+    else session[part] = index;
     if (wheel.index === index && wheel.node.hasAttribute('aria-valuetext')) {
-      session[part] = index;
       return false;
     }
     wheel.rows[wheel.index]?.classList.remove('is-selected');
     wheel.index = index;
     wheel.rows[index].classList.add('is-selected');
-    wheel.node.setAttribute('aria-valuenow', String(index));
-    wheel.node.setAttribute('aria-valuetext', part === 'fraction'
+    if (value === '') wheel.node.removeAttribute('aria-valuenow');
+    else wheel.node.setAttribute('aria-valuenow', String(value));
+    wheel.node.setAttribute('aria-valuetext', part === 'dose'
+      ? value === '' ? 'Brak wartości' : `${display(value)} ${session.model.unit}`
+      : part === 'fraction'
       ? `0,${String(index).padStart(session.model.precision, '0')} ${session.model.unit}`
       : `${index} ${session.model.unit}`);
-    session[part] = index;
-    if (changed && !session.positioning) session.unset = false;
+    if (part !== 'dose' && changed && !session.positioning) session.unset = false;
     if (changed && session.feedbackArmed && !session.positioning) feedback.tick({ sound:soundEnabled });
     return true;
   }
@@ -122,9 +157,10 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     wheel.motion.setIndex(Math.max(0, Math.min(wheel.max, index)));
     readWheel(session, part);
     updatePreview(session);
+    if (part === 'dose') scheduleDoseWindow(session);
   }
 
-  function makeWheel(session, part, max, initial, label) {
+  function makeWheel(session, part, max, initial, label, values = null) {
     const column = element('div', 'patient-picker-column');
     column.dataset.part = part;
     column.append(element('div', 'patient-picker-column-label', label));
@@ -133,10 +169,11 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     node.setAttribute('role', 'spinbutton');
     node.setAttribute('aria-label', part === 'fraction' ? session.model.fractionLabel || 'Część dziesiętna masy' : session.model.title);
     node.setAttribute('aria-valuemin', '0');
-    node.setAttribute('aria-valuemax', String(max));
-    node.setAttribute('aria-valuenow', String(initial));
+    node.setAttribute('aria-valuemax', String(values ? session.model.max : max));
+    if (!values || values[initial] !== '') node.setAttribute('aria-valuenow', String(values ? values[initial] : initial));
     const rows = Array.from({ length:max + 1 }, (_, index) => {
-      const row = element('div', 'patient-picker-row', part === 'fraction' ? String(index).padStart(session.model.precision, '0') : index);
+      const row = element('div', 'patient-picker-row', values ? values[index] === '' ? '—' : display(values[index])
+        : part === 'fraction' ? String(index).padStart(session.model.precision, '0') : index);
       row.dataset.index = String(index);
       row.setAttribute('aria-hidden', 'true');
       if (index === initial) row.classList.add('is-selected');
@@ -144,14 +181,26 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       return row;
     });
     const motion = createWheelMotion(node, { rowHeight:ROW });
-    session.wheels[part] = { node, rows, max, index:initial, motion };
+    const wheel = { node, rows, max, index:initial, motion, values, pointerDown:false };
+    session.wheels[part] = wheel;
     node.addEventListener('pointerdown', () => armFeedback(session), { passive:true });
     node.addEventListener('pointerup', () => armFeedback(session), { passive:true });
     node.addEventListener('wheel', event => { if (!event.ctrlKey) armFeedback(session); }, { passive:true });
     node.addEventListener('scroll', () => {
       if (active !== session || session.mode !== 'wheels' || session.positioning) return;
       if (readWheel(session, part)) updatePreview(session);
+      if (part === 'dose') scheduleDoseWindow(session);
     }, { passive:true });
+    if (part === 'dose') {
+      node.addEventListener('wheel', event => { if (!event.ctrlKey) scheduleDoseWindow(session); }, { passive:true });
+      node.addEventListener('pointerdown', event => {
+        if (event.isPrimary && event.button === 0) { wheel.pointerDown = true; clearDoseIdle(session); }
+      }, { passive:true });
+      const released = () => { wheel.pointerDown = false; scheduleDoseWindow(session); };
+      node.addEventListener('pointerup', released, { passive:true });
+      node.addEventListener('pointercancel', released, { passive:true });
+      node.addEventListener('lostpointercapture', event => { if (event.target === node) released(); }, { passive:true });
+    }
     node.addEventListener('click', event => {
       if (motion.isClickSuppressed()) return;
       const row = event.target.closest('.patient-picker-row');
@@ -163,7 +212,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       if (Object.hasOwn(steps, event.key) || ['Home','End'].includes(event.key)) {
         event.preventDefault();
         armFeedback(session);
-        chooseIndex(session, part, event.key === 'Home' ? 0 : event.key === 'End' ? max : session[part] + steps[event.key]);
+        chooseIndex(session, part, event.key === 'Home' ? 0 : event.key === 'End' ? max : wheel.index + steps[event.key]);
       }
       if (['ArrowLeft','ArrowRight'].includes(event.key)) {
         const other = session.wheels[part === 'whole' ? 'fraction' : 'whole'];
@@ -174,12 +223,20 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     return column;
   }
 
-  function renderWheels(session) {
+  function renderWheels(session, doseWindow = null) {
+    clearDoseIdle(session);
     for (const wheel of Object.values(session.wheels)) wheel.motion.destroy();
     session.wheels = {};
     session.wheelsBox.replaceChildren();
+    if (session.isDose && session.model.manualRequired) return;
     const band = element('div', 'patient-picker-selection');
     band.setAttribute('aria-hidden', 'true');
+    if (session.isDose) {
+      const next = doseWindow || createDoseWheel(session.doseValue, session.model.step);
+      session.wheelsBox.append(band, makeWheel(session, 'dose', next.values.length - 1, next.index, '', next.values),
+        element('span', 'patient-picker-unit', session.model.unit));
+      return;
+    }
     session.wheelsBox.append(band, makeWheel(session, 'whole', session.model.maxWhole, session.whole, session.model.precision ? 'Całe' : ''));
     if (session.model.precision) {
       const separator = element('span', 'patient-picker-separator', ',');
@@ -192,13 +249,36 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
   function alignWheels(session) {
     session.positioning = true;
     for (const part of Object.keys(session.wheels)) {
-      session.wheels[part].motion.setIndex(session[part]);
+      session.wheels[part].motion.setIndex(part === 'dose' ? session.wheels[part].index : session[part]);
       readWheel(session, part);
     }
     session.positioning = false;
   }
 
+  function renderDoseSteps(session) {
+    if (!session.isDose) return;
+    session.stepControls.replaceChildren(element('span', 'dose-picker-step-label', 'Krok zmiany'));
+    for (const step of session.model.steps) {
+      const choice = button('dose-picker-step', `${display(step)} ${session.model.unit}`, () => {
+        if (active !== session || session.mode !== 'wheels' || session.model.step === step) return;
+        clearDoseIdle(session);
+        const wheel = session.wheels.dose;
+        wheel.motion.finish();
+        readWheel(session, 'dose');
+        session.model = createDosePickerModel({ ...session.context, value:session.doseValue, step });
+        renderWheels(session);
+        alignWheels(session);
+        renderDoseSteps(session);
+        updatePreview(session); position();
+        session.stepControls.querySelector('[aria-pressed="true"]')?.focus({ preventScroll:true });
+      });
+      choice.setAttribute('aria-pressed', String(session.model.step === step));
+      session.stepControls.append(choice);
+    }
+  }
+
   function setMode(session, mode, focus = true) {
+    clearDoseIdle(session);
     if (mode === 'manual' && session.mode === 'wheels') {
       for (const part of Object.keys(session.wheels)) {
         session.wheels[part].motion.finish();
@@ -207,23 +287,27 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       session.manualInput.value = display(currentDisplay(session));
     }
     if (mode === 'wheels' && session.mode === 'manual') {
-      const result = parsePickerValue(session.manualInput.value, session.model);
+      const result = parseValue(session, session.manualInput.value);
       if (!result.valid) { updatePreview(session); return; }
-      const model = createPatientPickerModel(session.record.input.id, { ...session.context, value:result.value });
+      const model = session.isDose ? createDosePickerModel({ ...session.context, value:result.value, step:session.model.step })
+        : createPatientPickerModel(session.record.input.id, { ...session.context, value:result.value });
       if (model.manualRequired) {
         session.error.textContent = 'Tę dokładną wartość możesz zatwierdzić w trybie wpisywania.';
         return;
       }
       session.model = model;
       session.unset = model.emptyDraft === true;
-      session.whole = model.whole; session.fraction = model.fraction;
+      if (session.isDose) { session.doseValue = result.value; renderDoseSteps(session); }
+      else { session.whole = model.whole; session.fraction = model.fraction; }
       renderWheels(session);
     }
+    clearDoseIdle(session);
     session.feedbackArmed = false;
     if (mode === 'wheels') feedback.unlock();
     else feedback.stop();
     session.mode = mode;
     session.wheelsBox.hidden = mode !== 'wheels';
+    if (session.isDose) session.stepControls.hidden = mode !== 'wheels';
     session.manualBox.hidden = mode !== 'manual';
     session.wheelsButton.setAttribute('aria-pressed', String(mode === 'wheels'));
     session.manualButton.setAttribute('aria-pressed', String(mode === 'manual'));
@@ -231,7 +315,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     updatePreview(session); position();
     if (focus) {
       if (mode === 'manual') { session.manualInput.focus({ preventScroll:true }); session.manualInput.select(); }
-      else session.wheels.whole.node.focus({ preventScroll:true });
+      else primaryWheel(session).node.focus({ preventScroll:true });
     }
   }
 
@@ -241,7 +325,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       session.wheels[part].motion.finish();
       readWheel(session, part);
     }
-    const result = parsePickerValue(currentDisplay(session), session.model);
+    const result = parseValue(session, currentDisplay(session));
     if (!result.valid) { updatePreview(session); return; }
     const { input, trigger } = session.record;
     const changed = input.value !== result.value;
@@ -256,13 +340,14 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     if (record.trigger.disabled || !record.input.isConnected) return;
     close(false); beforeOpen();
     const context = { ...getContext(record.input.id), value:record.input.value };
-    const model = createPatientPickerModel(record.input.id, context);
-    const dialog = element('dialog', 'patient-picker');
+    const isDose = record.input.id === 'dose';
+    const model = isDose ? createDosePickerModel(context) : createPatientPickerModel(record.input.id, context);
+    const dialog = element('dialog', `patient-picker${isDose ? ' dose-picker' : ''}`);
     dialog.id = `${record.input.id}-picker`;
     dialog.setAttribute('aria-labelledby', `${dialog.id}-title`);
     const panel = element('div', 'patient-picker-panel');
     const header = element('div', 'patient-picker-header');
-    const heading = element('h2', '', model.title);
+    const heading = element('h2', '', isDose ? 'Dawka' : model.title);
     heading.id = `${dialog.id}-title`;
     const headerActions = element('div', 'patient-picker-header-actions');
     const soundButton = button('patient-picker-sound', '', () => {
@@ -276,7 +361,9 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     headerActions.append(soundButton, button('patient-picker-cancel', 'Anuluj', () => close()));
     header.append(heading, headerActions);
     const modes = element('div', 'patient-picker-mode');
-    const wheelsBox = element('div', 'patient-picker-wheels');
+    const wheelsBox = element('div', `patient-picker-wheels${isDose ? ' dose-picker-wheels' : ''}`);
+    const stepControls = isDose ? element('div', 'dose-picker-steps') : null;
+    if (stepControls) { stepControls.setAttribute('role', 'group'); stepControls.setAttribute('aria-label', 'Krok zmiany dawki'); }
     const manualBox = element('div', 'patient-picker-manual');
     const manualInput = element('input');
     manualInput.id = `${dialog.id}-manual`;
@@ -295,6 +382,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     preview.setAttribute('aria-live', 'polite'); preview.setAttribute('aria-atomic', 'true');
     const footer = element('div', 'patient-picker-footer');
     const session = { record, context, model, dialog, wheelsBox, manualBox, manualInput, error, preview,
+      isDose, stepControls, doseValue:isDose ? model.initialDisplay : '', doseIdleTimer:0,
       whole:model.whole, fraction:model.fraction, unset:model.emptyDraft === true,
       mode:null, wheels:{}, positioning:false, feedbackArmed:false };
     session.wheelsButton = button('', 'Przewijaj', () => setMode(session, 'wheels'));
@@ -306,7 +394,13 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       session.manualInput.value = '';
       updatePreview(session);
     }), session.done);
-    panel.append(header, modes, wheelsBox, manualBox, preview, error, footer);
+    panel.append(header);
+    if (isDose && model.title !== 'Dawka') panel.append(element('p', 'patient-picker-caption', model.title));
+    if (isDose && context.range) panel.append(element('p', 'patient-picker-caption',
+      `Zakres schematu: ${display(context.range.min)}–${display(context.range.max)} ${model.unit}.`));
+    panel.append(modes);
+    if (isDose) { panel.append(stepControls); renderDoseSteps(session); }
+    panel.append(wheelsBox, manualBox, preview, error, footer);
     dialog.append(panel); document.body.append(dialog);
     active = session;
     record.trigger.setAttribute('aria-controls', dialog.id);
@@ -328,14 +422,14 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     dialog.style.maxHeight = `${Math.max(160, (viewport?.height || window.innerHeight) - 24)}px`;
     dialog.showModal();
     setMode(session, model.manualRequired ? 'manual' : 'wheels');
-    requestAnimationFrame(() => { if (active === session) { alignWheels(session); position(); } });
+    requestAnimationFrame(() => { if (active === session) { if (session.mode === 'wheels') alignWheels(session); position(); } });
   }
 
   function enhance(root) {
     for (const record of records) if (!record.input.isConnected) records.delete(record);
     root.querySelectorAll('input[data-patient-picker]').forEach(input => {
       if (byInput.has(input)) return;
-      const trigger = element('button', 'patient-wheel-trigger');
+      const trigger = element('button', `patient-wheel-trigger${input.id === 'dose' ? ' dose-picker-trigger' : ''}`);
       trigger.type = 'button'; trigger.id = `${input.id}-wheel-trigger`;
       trigger.dataset.pickerId = input.id;
       trigger.setAttribute('aria-haspopup', 'dialog'); trigger.setAttribute('aria-expanded', 'false');
