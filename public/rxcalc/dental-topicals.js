@@ -18,9 +18,6 @@ const SOURCE = Object.freeze({
   metronidazole: rpl(11440),
   ligosan: 'https://kulzer.pl/media/product-downloads/pl/ligosan/kulzer-ulotka-ligosan-pl.pdf',
   chlosite: 'https://www.ghimas.com/en/chlosite1',
-  triamcinolone: 'https://dailymed.nlm.nih.gov/dailymed/lookup.cfm?setid=b353c8b1-9088-4969-8199-37876f2461cc',
-  arestin: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=8515df41-1936-4f3b-86ba-d2bb2a8441fb',
-  atridox: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=2550dbc0-8bdd-4bca-81d5-eec77ee6fbd5',
   dentomycin: 'https://www.hpra.ie/find-a-medicine/for-human-use/withdrawn-medicines/details/25737',
   dentomycinSmPC: 'https://assets.hpra.ie/products/Human/25737/Licence_PA1321-001-001_04122018114740.pdf',
 });
@@ -137,42 +134,6 @@ export const DENTAL_TOPICAL_DRUGS = [
         ],
       })),
   ], ['chlosite', 'chlo-site', 'chlorheksydyna', 'ksantan', 'kieszonki', 'przyzębie']),
-
-  drug('triamcinolone-dental-reference', 'Triamcynolon · pasta stomatologiczna', 'Triamcynolonu acetonid', [
-    instructionForm('triamcinolone-dental-paste-us', 'Triamcinolone Acetonide Dental Paste · 0,1%', 'medicine', SOURCE.triamcinolone,
-      [pack('5g', 'tuba 5 g · dokumentacja USA'), pack('75g', 'tuba 7,5 g · dokumentacja USA')], {
-        ...foreign, sourceDocumentDate: '2025-09', sourceLabel: 'DailyMed · amerykańska dokumentacja produktu Sun Pharma',
-        routeLabel: 'na zmiany w jamie ustnej',
-        notes: [
-          'Karta zagranicznej pasty adhezyjnej: 0,1% = 1 mg/g. Nie oznacza potwierdzenia rejestracji lub sprzedaży w Polsce.',
-          'Nie zastępować pasty stomatologicznej zwykłą maścią steroidową do stosowania na skórę.',
-          'Bez automatycznego dawkowania; należy zweryfikować konkretny produkt i przeciwwskazania, w tym zakażenia jamy ustnej.',
-        ],
-      }),
-  ], ['triamcynolon', 'triamcinolone', 'tramcynolon', 'steroid', 'pasta', 'adhezyjna', 'oral paste']),
-
-  drug('arestin-reference', 'Arestin', 'Minocyklina', [
-    instructionForm('arestin-microspheres-us', 'Arestin · 1 mg, mikrosfery', 'medicine', SOURCE.arestin,
-      [pack('1', '1 wkład jednodawkowy · USA'), pack('24', '24 wkłady (2 saszetki × 12) · USA')], {
-        ...foreign, professionalUse: true, sourceDocumentDate: '2024-05', sourceLabel: 'DailyMed · dokumentacja USA',
-        routeLabel: 'profesjonalnie poddziąsłowo',
-        notes: ['1 mg oznacza minocyklinę w jednym wkładzie. Dobór ilości zależy od leczonych kieszonek; brak automatycznego schematu dla polskiego rynku.'],
-      }),
-  ], ['arestin', 'minocyklina', 'minocycline', 'mikrosfery', 'kieszonki']),
-
-  drug('atridox-reference', 'Atridox', 'Hyklan doksycykliny', [
-    instructionForm('atridox-system-us', 'Atridox · hyklan doksycykliny 10%, system do mieszania', 'medicine', SOURCE.atridox,
-      [pack('2kits', '2 zestawy · próbka profesjonalna USA'), pack('6kits', '6 zestawów · dokumentacja USA')], {
-        ...foreign, professionalUse: true, sourceDocumentDate: '2016-10', sourceLabel: 'DailyMed · archiwalny rekord USA',
-        marketStatusLabel: 'USA: rekord opakowań zakończony 2021-12-31 · status w Polsce niepotwierdzony',
-        routeLabel: 'profesjonalnie poddziąsłowo po przygotowaniu',
-        notes: [
-          'Zestaw: strzykawka 450 mg nośnika i 50 mg hyklanu doksycykliny; po zmieszaniu 500 mg formulacji, 10% hyklanu.',
-          'Nie utożsamiać 10% hyklanu z 10% doksycykliny. Ta etykieta opisuje 42,5 mg doksycykliny w 50 mg hyklanu.',
-          'Data zakończenia obrotu dotyczy wskazanego rekordu USA i nie przesądza o statusie na innych rynkach.',
-        ],
-      }),
-  ], ['atridox', 'doksycyklina', 'doxycycline', 'hyklan', 'kieszonki']),
 
   drug('dentomycin-reference', 'Dentomycin', 'Minocyklina', [
     instructionForm('dentomycin-gel-ie', 'Dentomycin · 2% m/m, żel okołozębowy', 'medicine', SOURCE.dentomycin,
