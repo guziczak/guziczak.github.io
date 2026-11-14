@@ -1,4 +1,4 @@
-import { calculate, calculateCrCl, formatNumber as n } from './engine.js';
+import { calculate, formatNumber as n } from './engine.js';
 import { DRUGS, CATEGORIES, CATALOGUE_META } from './catalogue.js';
 import { availableDrugs } from './catalogue-selection.js';
 import { REGIMENS } from './regimens.js';
@@ -7,7 +7,7 @@ import { patientFieldsFor } from './workflow.js';
 import { HUMAN_REGIMENS } from './human-regimens.js';
 import { availableHumanRegimens, resolveHumanRegimen } from './human-regimen-engine.js';
 import { catalogueProducts, searchProducts, highlightSegments, searchMatchDetails } from './product-search.js';
-import { humanDosingText, instructionDosingText } from './dental-output.js';
+import { humanDosingText, instructionDosingText, prescriptionText } from './dental-output.js';
 import { createSelectMenus } from './select-menu.js';
 import { tabletDoseChoices } from './tablet-doses.js';
 import { createPatientPickers } from './patient-picker.js';
@@ -22,7 +22,6 @@ const savePreference = (key, value) => { try { localStorage.setItem(`rxcalc.${ke
 const paths = {
   calc: '<rect x="5" y="3" width="14" height="18" rx="3"/><path d="M8 7h8M8 11h1m3 0h1m3 0h.01M8 15h1m3 0h1m3 0h.01M8 18h1m3 0h1m3 0h.01"/>',
   star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z"/>',
-  tools: '<path d="M10 3v4l-5 9a3 3 0 0 0 2.6 4.5h8.8A3 3 0 0 0 19 16l-5-9V3M8 3h8M8 13h8"/>',
   phone: '<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4M11 18h2"/>',
   arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
   down: '<path d="m7 10 5 5 5-5"/>',
@@ -63,7 +62,7 @@ if (!Array.isArray(favoriteIds)) favoriteIds = [];
 favoriteIds = favoriteIds.filter(id => DRUGS.some(d => d.id === id));
 const state = {
   specialty, category: 'all', routeFilter: 'all', search: '', drugId: '', formId: '', packageId: '',
-  patientType: 'adult', age: '', weight: '', sex: '', creatinine: '', species: '', vetAgeUnit: 'years', vetRoute: '', foodChainStatus: 'unknown',
+  patientType: 'adult', age: '', weight: '', species: '', vetAgeUnit: 'years', vetRoute: '', foodChainStatus: 'unknown',
   humanAgeUnit: 'years', renalStatus: 'unknown', humanCrCl: '', instructionPacks: '',
   doseMode: 'fixed', dose: '', frequency: '', days: '', roundingStep: '', manualMax: '', regimenId: '',
   extraInstructions: '', confirmed: false, rxMode: 'full', custom: false,
@@ -126,7 +125,7 @@ function chooseDrug(id) {
   return true;
 }
 function resetRegimen() {
-  if (state.demo) Object.assign(state, { age: '', weight: '', sex: '', creatinine: '' });
+  if (state.demo) Object.assign(state, { age: '', weight: '' });
   Object.assign(state, { dose: '', frequency: '', days: '', manualMax: '', extraInstructions: '', instructionPacks: '', confirmed: false, demo: false, regimenId: '' });
   ui.manualRegimen = false; ui.regimenExpanded = false; ui.sourceDetailsOpen = false;
 }
@@ -224,7 +223,7 @@ function clearCustomProduct() {
   Object.assign(state,{customName:'',customForm:'tablet',customStrength:'',customConcentration:'',customVolume:'5',customPack:'',customFractions:'1',customDrops:'',customContainers:'1',vetRoute:''});
 }
 function clearPatientContext() {
-  Object.assign(state,{age:'',weight:'',sex:'',creatinine:'',patientType:'adult',species:'',vetAgeUnit:'years',foodChainStatus:'unknown',humanAgeUnit:'years',renalStatus:'unknown',humanCrCl:''});
+  Object.assign(state,{age:'',weight:'',patientType:'adult',species:'',vetAgeUnit:'years',foodChainStatus:'unknown',humanAgeUnit:'years',renalStatus:'unknown',humanCrCl:''});
   resetRegimen();
 }
 function startVeterinary() {
@@ -265,14 +264,13 @@ function patientPanel(f) {
   if (!productReady() || isReference(f)) return '';
   const source = getSourceRegimen();
   const needs = patientFieldsFor({ ...state, form:f, source });
-  const cardio = state.specialty === 'cardio';
   const weight = required => field('weight', required ? 'Masa ciała' : 'Masa (opcjonalnie)', state.weight, isVeterinary() ? getAnimal()?.weight || 'kg' : state.patientType === 'child' ? 'np. 24' : 'np. 70', 'kg', `data-patient-picker ${required ? 'required' : ''}`);
   const renalRelevant = !isVeterinary() && (source?.renalPolicy || source?.minCrCl != null || source?.requireCrCl);
   const renal = renalRelevant ? field('humanCrCl', source.requireCrCl ? 'CrCl ustalony klinicznie' : 'Znany CrCl (opcjonalnie)', state.humanCrCl, 'Wartość CrCl', 'ml/min', `data-patient-picker ${source.requireCrCl ? 'required' : ''}`) : '';
   const renalImpairment = !isVeterinary() && source?.renalPolicy ? `<div class="field renal-details-field"><label class="renal-impairment-option" for="renalImpairment"><input id="renalImpairment" type="checkbox" ${state.renalStatus === 'impaired' ? 'checked' : ''}><span>Rozpoznane zaburzenia czynności nerek</span></label><small>Opcjonalnie, jeśli dotyczy pacjenta. CrCl podawaj w ml/min, nie jako eGFR na 1,73 m².</small></div>` : '';
   const essential = `${needs.weight ? weight(true) : ''}${needs.age ? ageFields(true) : ''}${needs.foodChain ? foodChainField() : ''}${source?.requireCrCl ? renal : ''}`;
-  const additional = `${!needs.age ? ageFields() : ''}${!needs.weight ? weight(false) : ''}${!source?.requireCrCl ? renal : ''}${renalImpairment}${cardio ? `<div class="field"><label for="sex">Płeć do wzoru CrCl</label><select id="sex" data-field="sex"><option value="">Wybierz</option><option value="female" ${state.sex === 'female' ? 'selected' : ''}>Kobieta</option><option value="male" ${state.sex === 'male' ? 'selected' : ''}>Mężczyzna</option></select></div>${field('creatinine','Kreatynina',state.creatinine,'np. 1,0','mg/dl')}` : ''}`;
-  return `<section class="patient-card embedded-context" aria-labelledby="patient-title"><div class="section-heading"><h3 id="patient-title">Dane pacjenta</h3><span class="trailing">${icon('lock')} Tylko na ten czas</span></div>${essential ? `<div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${essential}</div>` : '<p class="small-help">Wybrane przeliczenie nie wymaga dodatkowych parametrów pacjenta.</p>'}${isVeterinary() ? '<p class="small-help">Masę wpisz w kg: 100 g = 0,1 kg.</p>' : ''}${additional ? `<details class="context-details" data-disclosure="patientDetailsOpen" ${ui.patientDetailsOpen ? 'open' : ''}><summary>${cardio ? 'Czynność nerek · pomocniczy CrCl' : 'Dodatkowe parametry pacjenta'}</summary><div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${additional}</div>${cardio ? '<div id="renal-inline" class="renal-output"></div><p class="small-help">CrCl jest pomocniczym oszacowaniem. Nie dobiera dawki leku.</p>' : ''}</details>` : ''}</section>`;
+  const additional = `${!needs.age ? ageFields() : ''}${!needs.weight ? weight(false) : ''}${!source?.requireCrCl ? renal : ''}${renalImpairment}`;
+  return `<section class="patient-card embedded-context" aria-labelledby="patient-title"><div class="section-heading"><h3 id="patient-title">Dane pacjenta</h3><span class="trailing">${icon('lock')} Tylko na ten czas</span></div>${essential ? `<div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${essential}</div>` : '<p class="small-help">Wybrane przeliczenie nie wymaga dodatkowych parametrów pacjenta.</p>'}${isVeterinary() ? '<p class="small-help">Masę wpisz w kg: 100 g = 0,1 kg.</p>' : ''}${additional ? `<details class="context-details" data-disclosure="patientDetailsOpen" ${ui.patientDetailsOpen ? 'open' : ''}><summary>Dodatkowe parametry pacjenta</summary><div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${additional}</div></details>` : ''}</section>`;
 }
 
 function humanRegimenPanel(f) {
@@ -314,8 +312,8 @@ function render() {
   const vet = isVeterinary(), f = getForm();
   syncSourceRegimen();
   $('#app').innerHTML = `
-    <aside class="sidebar" aria-label="Nawigacja główna"><a class="brand" href="./" aria-label="RxCalc — strona główna"><span class="brand-mark">Rx</span><span class="brand-word">RxCalc<span class="pro">BETA</span></span></a><p class="nav-label">TWÓJ GABINET</p><nav class="nav"><button class="active" data-action="calculator">${icon('calc')}<span>Kalkulator</span></button><button data-action="favorites">${icon('star')}<span>Ulubione</span><span class="nav-count">${visibleFavorites().length}</span></button><button data-action="tools">${icon('tools')}<span>Narzędzia</span></button></nav><div class="sidebar-bottom"><div class="install-card"><span class="icon-holder">${icon('phone')}</span><h3>Pod ręką.<br>Także offline.</h3><p>Dodaj RxCalc do ekranu głównego telefonu.</p><button data-action="install">Dodaj aplikację ${icon('arrow')}</button></div><div class="sidebar-meta"><span class="dot"></span>RxCalc <span style="margin-left:auto">v1.0 beta</span></div></div></aside>
-    <div class="workspace"><header class="topbar"><div class="topbar-title">Twój gabinet ${icon('arrow')} <strong>Kalkulator dawkowania</strong></div><a href="./" class="brand mobile-brand" aria-label="RxCalc — strona główna"><span class="brand-mark">Rx</span><span class="brand-word">RxCalc</span></a><div class="topbar-actions"><span class="online-status" id="online-status"><span class="dot"></span><span id="connection-text">Obliczenia na urządzeniu</span></span><button class="icon-button mobile-tools" data-action="tools" aria-label="Narzędzia" title="Narzędzia">${icon('tools')}</button><button class="icon-button" data-action="theme" aria-label="Zmień motyw" title="Zmień motyw">${icon(theme === 'dark' ? 'sun' : 'moon')}</button><button class="new-patient" data-action="reset" aria-label="Nowy pacjent — wyczyść parametry i schemat" title="Nowy pacjent — wyczyść parametry i schemat">${icon('plus')}<span>Nowy pacjent</span></button></div></header>
+    <aside class="sidebar" aria-label="Nawigacja główna"><a class="brand" href="./" aria-label="RxCalc — strona główna"><span class="brand-mark">Rx</span><span class="brand-word">RxCalc<span class="pro">BETA</span></span></a><p class="nav-label">TWÓJ GABINET</p><nav class="nav"><button class="active" data-action="calculator">${icon('calc')}<span>Kalkulator</span></button><button data-action="favorites">${icon('star')}<span>Ulubione</span><span class="nav-count">${visibleFavorites().length}</span></button></nav><div class="sidebar-bottom"><div class="install-card"><span class="icon-holder">${icon('phone')}</span><h3>Pod ręką.<br>Także offline.</h3><p>Dodaj RxCalc do ekranu głównego telefonu.</p><button data-action="install">Dodaj aplikację ${icon('arrow')}</button></div><div class="sidebar-meta"><span class="dot"></span>RxCalc <span style="margin-left:auto">v1.0 beta</span></div></div></aside>
+    <div class="workspace"><header class="topbar"><div class="topbar-title">Twój gabinet ${icon('arrow')} <strong>Kalkulator dawkowania</strong></div><a href="./" class="brand mobile-brand" aria-label="RxCalc — strona główna"><span class="brand-mark">Rx</span><span class="brand-word">RxCalc</span></a><div class="topbar-actions"><span class="online-status" id="online-status"><span class="dot"></span><span id="connection-text">Obliczenia na urządzeniu</span></span><button class="icon-button" data-action="theme" aria-label="Zmień motyw" title="Zmień motyw">${icon(theme === 'dark' ? 'sun' : 'moon')}</button><button class="new-patient" data-action="reset" aria-label="Nowy pacjent — wyczyść parametry i schemat" title="Nowy pacjent — wyczyść parametry i schemat">${icon('plus')}<span>Nowy pacjent</span></button></div></header>
       <main id="main"><div id="update-slot"></div><section class="context-bar" aria-label="Profil pracy"><div class="context-heading"><h1>Kalkulator dawkowania</h1><span>${icon('lock')} Dane pacjenta pozostają w tej karcie</span></div><div class="context-selectors">${specialtyPicker()}${vet ? `<div class="field"><label for="species">Gatunek zwierzęcia</label><select id="species" data-field="species" required><option value="">Wybierz gatunek</option>${ANIMALS.map(a => `<option value="${a.id}" ${state.species === a.id ? 'selected' : ''}>${a.label}</option>`).join('')}</select></div>` : state.specialty === 'dental' ? `<div class="patient-type"><div class="field-label">Grupa pacjenta</div><div class="segmented patient-segmented" data-patient-type="${state.patientType}" role="group" aria-label="Grupa pacjenta"><span class="patient-type-thumb" aria-hidden="true"></span><button data-action="patient-type" data-value="adult" class="${state.patientType === 'adult' ? 'active' : ''}" aria-pressed="${state.patientType === 'adult'}">Dorosły</button><button data-action="patient-type" data-value="child" class="${state.patientType === 'child' ? 'active' : ''}" aria-pressed="${state.patientType === 'child'}">Dziecko</button></div></div>` : ''}</div></section><div class="clinical-note">${icon('info')}<span>${state.demo ? '<strong>Przykład arytmetyczny.</strong> Dane demonstracyjne; kopiowanie wyłączone.' : vet ? 'Wskazanie i schemat potwierdza lekarz weterynarii w aktualnej dokumentacji.' : 'Schemat ustala lekarz. Potwierdź go w aktualnej ChPL.'}</span><button data-action="about">Zakres kalkulatora</button></div>
       <div class="calculator-grid"><div class="left-stack"><section class="panel product-panel" aria-labelledby="drug-title"><div class="section-heading"><span class="step-number">01</span><h2 id="drug-title">${ui.productChosen ? 'Wybrany preparat' : 'Wybierz preparat'}</h2><span class="trailing">${vet && !state.species ? '' : `${getSpeciesCatalogue().length} w katalogu`}</span></div>${productPicker(f)}</section>${regimenPanel(f)}${productReady() ? `<div class="source-row">${icon('book')}<span>${f.sourceUrl ? `<a href="${esc(f.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(f.sourceLabel)} ↗</a> · ` : ''}<button data-action="source" class="text-button">Uwagi do preparatu</button><br>${state.custom ? 'Dane preparatu wprowadzone ręcznie.' : `Dane katalogowe: ${esc(f.sourceCheckedAt || CATALOGUE_META.sourceCheckedAt)}.`}</span></div>` : ''}</div>${resultPanel(f)}</div><footer class="page-footer"><span>RxCalc · podręczny kalkulator dawkowania</span><div class="footer-links">${!vet ? '<button data-action="example">Przykład obliczenia</button>' : ''}<button data-action="favorites">Ulubione</button><button data-action="install">Zainstaluj</button><button data-action="about">O aplikacji</button></div></footer></main></div><div class="mobile-action-bar" id="mobile-action-bar" ${!productReady() || isReference(f) ? 'hidden' : ''}><button class="mobile-action-summary" data-action="result" aria-label="Przejdź do podsumowania obliczenia"><small id="mobile-action-label">Sprawdź wynik</small><strong id="mobile-action-value">Uzupełnij dane</strong></button><button class="copy-button" id="mobile-copy" data-action="copy" disabled>${icon('copy')}Kopiuj</button></div>`;
   selectMenus.enhance($('#app'));
@@ -374,7 +372,11 @@ function modeOptions(f) {
   const opts = [['fixed','Dawka jednorazowa · mg'],['perKgDay','Według masy · mg/kg/dobę'],['perKgDose','Według masy · mg/kg/podanie'],['units',`Ilość preparatu · ${f.unitLabel}/podanie`]];
   return opts.filter(([id]) => (!f.unitOnly && !['spray','gel'].includes(f.form)) || id === 'units').map(([id,label]) => `<option value="${id}" ${state.doseMode === id ? 'selected' : ''}>${esc(label)}</option>`).join('');
 }
-const doseLabel = () => ({ fixed:'Dawka jednorazowa', perKgDay:'Dawka na kg / dobę', perKgDose:'Dawka na kg / podanie', units:'Ilość na podanie' }[state.doseMode]);
+const doseLabel = () => {
+  const form=getForm();
+  const ingredient=form?.doseBasisIngredient&&(form.ingredients?.length>1||form.activeIngredients?.length>1)?form.doseBasisIngredient:'';
+  return ({fixed:ingredient?`Dawka ${ingredient} na podanie`:'Dawka jednorazowa',perKgDay:ingredient?`Dawka ${ingredient} na kg / dobę`:'Dawka na kg / dobę',perKgDose:ingredient?`Dawka ${ingredient} na kg / podanie`:'Dawka na kg / podanie',units:'Ilość na podanie'})[state.doseMode];
+};
 const doseUnit = () => ({ fixed:'mg', perKgDay:'mg/kg/d', perKgDose:'mg/kg', units:getForm().unitLabel }[state.doseMode]);
 
 function currentTabletDoseChoices() {
@@ -403,6 +405,7 @@ function tabletAmountIcon(tablets, splittable=tabletCanSplitInHalf()) {
   return `<svg class="tablet-dose-icon" data-splittable="${splittable}" viewBox="0 0 48 32" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shape}</svg>`;
 }
 function tabletChoiceReason(choice) {
+  if(choice.reason==='Brak podziału na połowy'&&getForm()?.unitLabel==='kaps.')return 'Kapsułki stosuje się w całości';
   const range=getSourceRegimen()?.doseRange;
   if(choice.reason!=='Poza zakresem schematu'||!range)return choice.reason;
   const above=choice.value>range.max;
@@ -413,7 +416,7 @@ function tabletDoseButtons() {
 }
 function tabletDoseChoicesMarkup(choices) {
   if(!choices.length)return '';
-  return `<div class="tablet-dose-choices" role="group" aria-label="Dawka jednorazowa według liczby tabletek">${choices.map(choice=>`<button type="button" class="tablet-dose-choice ${tabletChoiceSelected(choice)?'active':''}" data-action="tablet-dose" data-value="${choice.tablets}" aria-pressed="${tabletChoiceSelected(choice)}" ${choice.allowed?'':'disabled'} title="${esc(tabletChoiceReason(choice)||`${tabletChoiceLabel(choice)} = ${n(choice.mg,6)} mg`)}">${tabletAmountIcon(choice.tablets)}<strong><span class="tablet-dose-amount">${n(choice.mg,6)}</span> <small>mg</small></strong><span>${esc(tabletChoiceLabel(choice))}</span><small class="tablet-dose-reason">${esc(tabletChoiceReason(choice))}</small></button>`).join('')}</div>`;
+  return `<div class="tablet-dose-choices" role="group" aria-label="Dawka jednorazowa według liczby ${getForm()?.unitLabel==='kaps.'?'kapsułek':'tabletek'}">${choices.map(choice=>`<button type="button" class="tablet-dose-choice ${tabletChoiceSelected(choice)?'active':''}" data-action="tablet-dose" data-value="${choice.tablets}" aria-pressed="${tabletChoiceSelected(choice)}" ${choice.allowed?'':'disabled'} title="${esc(tabletChoiceReason(choice)||`${tabletChoiceLabel(choice)} = ${n(choice.mg,6)} mg`)}">${tabletAmountIcon(choice.tablets)}<strong><span class="tablet-dose-amount">${n(choice.mg,6)}</span> <small>mg</small></strong><span>${esc(tabletChoiceLabel(choice))}</span><small class="tablet-dose-reason">${esc(tabletChoiceReason(choice))}</small></button>`).join('')}</div>`;
 }
 function updateTabletDoseButtons() {
   const slot=document.querySelector('.tablet-dose-slot');
@@ -497,8 +500,7 @@ function updateInstructionResult(check) {
   r.status=r.valid?'warning':'incomplete';
   latest=r;
   const ds=source?instructionDosingText({source,frequency:num(state.frequency),days:num(state.days),extraInstructions:state.extraInstructions}):'';
-  const context=source?`Wskazanie: ${source.indication}.\n`:'';
-  latestText=r.valid?(state.rxMode==='ds'?context+ds:`${context}Preparat: ${f.label}\n${productKindLabel(f)}\nOpakowanie: ${pack.label}${count!==null?`\nIlość: ${n(count)} op. — ustalona przez lekarza`:''}\n${ds}`):'';
+  latestText=r.valid?prescriptionText({mode:state.rxMode,source,dosing:ds,header:`Preparat: ${f.label}\n${productKindLabel(f)}\nOpakowanie: ${pack.label}${count!==null?`\nIlość: ${n(count)} op. — ustalona przez lekarza`:''}`}):'';
   $('#dose-value').textContent=source?'Instrukcja':'—';
   $('#dose-value').classList.add('instruction-number');
   $('#dose-unit').textContent='';
@@ -606,10 +608,7 @@ function updateResultContent() {
   if($('#mobile-copy'))$('#mobile-copy').disabled=!r.valid||!state.confirmed||state.demo;
   if($('#mobile-action-value'))$('#mobile-action-value').textContent=hasResult?`${n(divisions??r.singleUnits,isVeterinary()?10:6)} ${divisions!==null?divisionUnit(divisions):f.unitLabel}`:r.status==='critical'?'Sprawdź schemat':'Uzupełnij dane';
   if($('#mobile-action-label'))$('#mobile-action-label').textContent=r.valid&&!state.confirmed?'Sprawdź i potwierdź':r.valid?'Zobacz podsumowanie':'Przejdź do wyniku';
-  if($('#renal-inline')) {
-    const crcl=calculateCrCl({age:humanAgeYears(),sex:state.sex,weight:num(state.weight),creatinine:num(state.creatinine)});
-    $('#renal-inline').innerHTML=crcl===null?`${icon('info')}Uzupełnij parametry dorosłego pacjenta, aby oszacować CrCl.`:`${icon('tools')}CrCl (Cockcroft–Gault): <strong>${n(crcl,1)} ml/min</strong><span>· nie dobiera dawki leku</span>`;
-  }
+
 }
 function prescription(r,f,input) {
   const unit=f.unitLabel==='rozp.'?'rozpyleń':f.unitLabel;
@@ -620,11 +619,11 @@ function prescription(r,f,input) {
   if(divisions!==null && f.doseStepLabel) ds+=` Kalibracja: ${f.doseStepLabel}.`;
   if(isVeterinary()&&source?.administration) ds+=' '+source.administration;
   if(isVeterinary()&&state.extraInstructions.trim()) ds+=' '+state.extraInstructions.trim();
-  const context=(isVeterinary()?`Gatunek: ${getAnimal()?.label || '—'}. Masa ciała: ${n(input.weight,6)} kg.${f.requiresFoodChainExclusion?' Status w paszporcie: wykluczony z uboju do spożycia przez ludzi.':''}\n`:'')+(source?`Wskazanie: ${source.indication}.\n${source.phaseLabel?`Schemat: ${source.phaseLabel}.\n`:''}`:'');
-  if(state.rxMode==='ds')return context+ds;
+  const veterinaryContext=isVeterinary()?`Gatunek: ${getAnimal()?.label || '—'}. Masa ciała: ${n(input.weight,6)} kg.${f.requiresFoodChainExclusion?' Status w paszporcie: wykluczony z uboju do spożycia przez ludzi.':''}`:'';
   const name=state.custom?state.customName.trim():`${getDrug().substance}\n${f.label}`;
   const pack=f.packOptions.find(p=>p.id===state.packageId)||f.packOptions[0];
-  return `${context}${isVeterinary()||['device','cosmetic'].includes(f.productKind)?'Preparat:':'Rp.'} ${name}\n${n(r.packages)} op. po ${pack.label}${source?.asNeeded?'\nZapas odpowiada maksymalnemu planowanemu zużyciu doraźnemu.':''}${supplyNote(r,f)?'\nZapas: '+supplyNote(r,f):''}\n${ds}`;
+  const header=`${isVeterinary()||['device','cosmetic'].includes(f.productKind)?'Preparat:':'Rp.'} ${name}\n${n(r.packages)} op. po ${pack.label}${source?.asNeeded?'\nZapas odpowiada maksymalnemu planowanemu zużyciu doraźnemu.':''}${supplyNote(r,f)?'\nZapas: '+supplyNote(r,f):''}`;
+  return prescriptionText({mode:state.rxMode,header,dosing:ds,source,veterinaryContext});
 }
 function dirty() { state.confirmed=false; }
 function toast(message) { clearTimeout(toastTimer); const el=$('#toast');el.textContent=message;el.classList.add('show');toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
@@ -646,16 +645,6 @@ function favoritesDialog() {
   if(isVeterinary()&&!state.species){openDialog('Ulubione w weterynarii','<p>Najpierw wybierz gatunek zwierzęcia. Pokażemy ulubione preparaty przypisane do tego gatunku.</p>');return;}
   const list=visibleFavorites();
   openDialog('Twoje ulubione',list.length?`<p>${isVeterinary()?`Preparaty przypisane do gatunku: <strong>${esc(getAnimal()?.label)}</strong>. `:''}Parametry pacjentów i schematy nie są zapamiętywane.</p><div class="dialog-drug-list">${list.map(d=>`<button data-action="favorite-select" data-value="${d.id}">${esc(d.name)}<small>${esc(d.forms[0].label)}</small></button>`).join('')}</div>`:`<p>${isVeterinary()?'Brak ulubionych preparatów dla tego gatunku. ':''}Dodaj preparat przyciskiem <strong>☆ Zapisz</strong> przy wybranym preparacie. Będzie dostępny na głównym ekranie dla tej specjalizacji i gatunku.</p>`);
-}
-function toolsDialog() {
-  if(isVeterinary()){openDialog('Narzędzia weterynaryjne',`<p>Wybierz gatunek, wpisz masę w kg i wybierz preparat. W sekcji schematu wybierz wskazanie i etap ze źródła albo wprowadź własny schemat.</p><p><strong>Jednostki masy:</strong> 100 g = 0,1 kg; 500 g = 0,5 kg.</p><p>Przeliczenia mg/kg na podanie i mg/kg na dobę są dostępne w polu „Sposób przeliczenia”.</p><p><a href="${VET_SOURCE}" target="_blank" rel="noopener noreferrer">Baza produktów weterynaryjnych UPD ↗</a></p>`);return;}
-  openDialog('Klirens kreatyniny',`<p><strong>Cockcroft–Gault · CrCl, ml/min</strong><br>Oszacowanie dla dorosłych. Wynik nie jest eGFR i nie ustala dawki leku.</p><div class="tools-grid">${field('toolAge','Wiek',humanAgeYears() ?? '','np. 65','lat')}${field('toolWeight','Masa do wzoru',state.weight,'np. 70','kg')}<div class="field"><label for="toolSex">Płeć uwzględniana we wzorze</label><select id="toolSex"><option value="">Wybierz</option><option value="female" ${state.sex==='female'?'selected':''}>Kobieta</option><option value="male" ${state.sex==='male'?'selected':''}>Mężczyzna</option></select></div>${field('toolCreatinine','Kreatynina',state.creatinine,'np. 1,0')}<div class="field"><label for="toolUnit">Jednostka kreatyniny</label><select id="toolUnit"><option value="mg/dl">mg/dl</option><option value="µmol/l">µmol/l</option></select></div></div><div id="tool-result" class="tool-result">— ml/min</div><p>Użyj masy właściwej dla tego pacjenta i wzoru. Skrajna budowa ciała oraz niestabilna czynność nerek wymagają odrębnej oceny. Nie stosuj automatycznie do doboru dawek.</p><p><a href="https://www.gov.uk/drug-safety-update/prescribing-medicines-in-renal-impairment-using-the-appropriate-estimate-of-renal-function-to-avoid-the-risk-of-adverse-drug-reactions" target="_blank" rel="noopener noreferrer">Źródło: MHRA — ocena czynności nerek ↗</a></p>`);
-  updateTool();
-}
-function updateTool() {
-  if(!$('#tool-result'))return;
-  const result=calculateCrCl({age:num($('#toolAge').value),weight:num($('#toolWeight').value),sex:$('#toolSex').value,creatinine:num($('#toolCreatinine').value),creatinineUnit:$('#toolUnit').value});
-  $('#tool-result').textContent=result===null?'Uzupełnij poprawne dane dorosłego pacjenta':`${n(result,1)} ml/min`;
 }
 async function installApp() {
   if(window.matchMedia('(display-mode: standalone)').matches){toast('RxCalc jest już uruchomiony jako aplikacja.');return;}
@@ -740,7 +729,6 @@ document.addEventListener('click',e=>{
     case 'install':installApp();break;
     case 'about':aboutDialog();break;
     case 'source':if(productReady())sourceDialog();break;
-    case 'tools':toolsDialog();break;
     case 'close-dialog':$('#dialog').close();break;
     case 'calculator':viewportLayout.showStart();break;
     case 'result':$('#result')?.scrollIntoView({behavior:'smooth',block:'start'});break;
@@ -809,7 +797,6 @@ window.visualViewport?.addEventListener('scroll',updateKeyboardState);
 window.addEventListener('resize',updateKeyboardState);
 window.addEventListener('pageshow',updateKeyboardState);
 mobileKeyboardLayout.addEventListener('change',updateKeyboardState);
-$('#dialog').addEventListener('input',updateTool);$('#dialog').addEventListener('change',updateTool);
 $('#dialog').addEventListener('click',e=>{if(e.target===$('#dialog'))$('#dialog').close();});
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();ui.productExpanded=true;render();if($('#search'))$('#search').focus();else selectMenus.focus('species');}if(e.key==='Escape' && $('#search')===document.activeElement){state.search='';$('#search').value='';renderDrugs();}});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});

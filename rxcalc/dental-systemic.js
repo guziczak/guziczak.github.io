@@ -1,6 +1,7 @@
 /**
  * Product-specific dental systemic schemes, checked against Polish RPL documents
- * on 2026-11-13. Numeric ranges are choices for the clinician, never defaults.
+ * on the date attached to each record. Numeric ranges are choices for the
+ * clinician, never defaults; fixed source doses require explicit selection.
  * Regimen ceilings are scoped to the selected indication and population; they
  * are not universal maximum doses of an active substance.
  *
@@ -8,9 +9,14 @@
  * No antibiotic duration is inferred from pack size or assigned automatically.
  */
 const CHECKED_AT = '2026-11-13';
+const SOLID_ANTIBIOTICS_CHECKED_AT = '2026-11-14';
 const rpl = id => `https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/${id}/characteristic`;
 const SOURCE = Object.freeze({
   augmentin: rpl(8695),
+  augmentinTablet500: rpl(830),
+  augmentinTablet875: rpl(7496),
+  dalacin150: rpl(1692),
+  dalacin300: rpl(1693),
   ospamoxSuspension: rpl(22744),
   ospamoxTablet: rpl(22646),
   ibuprom: rpl(19798),
@@ -27,6 +33,80 @@ const commonSource = (sourceUrl, sourceLabel) => ({
 const renalNormal = {
   renalPolicy: 'normal-only', minCrCl: 30, minCrClExclusive: true,
 };
+
+const solidAntibioticSource = (sourceUrl, sourceLabel, sourceDocumentDate) => ({
+  ...commonSource(sourceUrl, sourceLabel),
+  sourceCheckedAt: SOLID_ANTIBIOTICS_CHECKED_AT,
+  sourceDocumentDate,
+});
+const solidAntibioticForm = (id, label, strengthMg, sizes, sourceUrl, sourceLabel, sourceDocumentDate, options = {}) => ({
+  id, label, form: 'tablet', unitLabel: 'tabl.', strengthMg,
+  concentrationMg: null, concentrationMl: null,
+  maxDailyMg: null, maxSingleMg: null, minAge: null, shelfLifeDays: null,
+  defaultDose: null, defaultFrequency: null, defaultDays: null,
+  defaultMode: 'fixed', allowedFractions: [1], routeLabel: 'doustnie',
+  packOptions: packageOptions(sizes),
+  ...solidAntibioticSource(sourceUrl, sourceLabel, sourceDocumentDate),
+  sourceSection: '2–3, 4.1–4.4, 6.5',
+  packageScope: 'Wybrane wielkości z ChPL; dostępność w sprzedaży nie została sprawdzona.',
+  ...options,
+});
+const augmentinTablet = strengthMg => solidAntibioticForm(
+  `augmentin-tablet-${strengthMg}-125`, `Augmentin · ${strengthMg} + 125 mg · tabletki powlekane`,
+  strengthMg, strengthMg === 500 ? [14, 21] : [14],
+  SOURCE[`augmentinTablet${strengthMg}`], `ChPL Augmentin ${strengthMg} mg + 125 mg · RPL`, '2026-09-09', {
+    doseBasisIngredient: 'amoksycyliny',
+    activeIngredients: [
+      { substanceLabel: 'Amoksycylina', strengthMg },
+      { substanceLabel: 'Kwas klawulanowy', strengthMg: 125 },
+    ],
+    notes: [
+      `Wynik w mg dotyczy amoksycyliny. Każda tabletka zawiera ${strengthMg} mg amoksycyliny oraz 125 mg kwasu klawulanowego; wynik uwzględnia oba składniki.`,
+      'Linia podziału służy tylko ułatwieniu połknięcia. Nie potwierdza podziału na równe dawki; przeliczenie obejmuje całe tabletki.',
+      'Wskazanie stomatologiczne w ChPL: ciężki ropień okołozębowy z szerzącym się zapaleniem tkanki łącznej. Aplikacja udostępnia standardowy schemat dla masy co najmniej 40 kg.',
+      strengthMg === 500
+        ? 'Standard dla masy ≥40 kg: 500 mg + 125 mg na podanie, 3 razy na dobę. Zmniejszona czynność nerek wymaga odrębnego schematu; nie zastosowano go automatycznie.'
+        : 'Standard dla masy ≥40 kg: 875 mg + 125 mg na podanie, 2 razy na dobę. Większej częstości opisanej w ChPL nie przypisano automatycznie do zakażenia stomatologicznego. Przy CrCl <30 ml/min postać 7:1 nie jest zalecana.',
+      'Podawać z posiłkiem. Czas kuracji ustala lekarz; powyżej 14 dni potrzebna jest ponowna ocena pacjenta.',
+      strengthMg === 500
+        ? 'Wybrano opakowania 14 i 21 tabletek z ChPL, w tym wariant 21 tabletek w torebce aluminiowej. Po pierwszym otwarciu takiej torebki okres ważności wynosi 30 dni; sprawdź opakowanie. Dostępność handlowa nie została potwierdzona.'
+        : 'Wybrano opakowanie 14 tabletek z ChPL. Wariant w torebce aluminiowej ma okres ważności 30 dni po jej pierwszym otwarciu; sprawdź opakowanie. Dostępność handlowa nie została potwierdzona.',
+    ],
+  },
+);
+
+// Informational source flags, displayed through screening/notes as well. They
+// must not be treated as an automatic diagnosis or a blanket renal exclusion.
+const clindamycinClinicalFlags = [
+  { id: 'severe-bacterial-infection', level: 'warning', sourceSection: '4.1', message: 'ChPL ogranicza stosowanie do ciężkich zakażeń bakteryjnych wywołanych przez wrażliwe drobnoustroje.' },
+  { id: 'clostridioides-difficile', level: 'warning', sourceSection: '4.1, 4.4', message: 'Oceń ryzyko biegunki i zapalenia okrężnicy związanego z Clostridioides difficile, także po zakończeniu antybiotykoterapii.' },
+  { id: 'advanced-organ-impairment', level: 'warning', sourceSection: '4.2', message: 'Ciężka niewydolność nerek lub bezmocz oraz zaawansowana niewydolność wątroby wymagają monitorowania i możliwej indywidualnej korekty.' },
+];
+const dalacinCapsule = strengthMg => solidAntibioticForm(
+  `dalacin-c-${strengthMg}`, `Dalacin C · ${strengthMg} mg · kapsułki`, strengthMg, [16, 20],
+  SOURCE[`dalacin${strengthMg}`], `ChPL Dalacin C ${strengthMg} mg, kapsułki · RPL`, '2026-07-10', {
+    shortFormLabel: 'kapsułki', unitLabel: 'kaps.', packOptions: packageOptions([16, 20], 'kaps.'),
+    doseBasisIngredient: 'klindamycyny', clinicalFlags: clindamycinClinicalFlags,
+    notes: [
+      `Każda kapsułka zawiera ${strengthMg} mg klindamycyny. Przyjmować w całości; zawartość kapsułki nie służy do odmierzania ułamkowej dawki.`,
+      'Źródłowe podpowiedzi aplikacji dotyczą dorosłych i młodzieży powyżej 14 lat: 600–1800 mg/dobę w 3 lub 4 dawkach. Konkretną dawkę, liczbę podań i czas leczenia wybiera lekarz.',
+      'Zakażenia zębów i jamy ustnej są wymienione w ChPL. Lek stosować wyłącznie w ciężkich zakażeniach bakteryjnych, z uwzględnieniem wrażliwości drobnoustrojów i ryzyka biegunki lub zapalenia okrężnicy związanego z C. difficile.',
+      'Popijać pełną szklanką wody i przyjmować co najmniej 30 minut przed położeniem się, aby zmniejszyć ryzyko podrażnienia przełyku.',
+      'Nie wprowadzono automatycznej redukcji nerkowej. Ciężka niewydolność nerek lub bezmocz oraz zaawansowana niewydolność wątroby wymagają monitorowania i możliwej zmiany dawki lub odstępów; hemodializa nie wymaga dawki dodatkowej.',
+      'Schematy dziecięce do 14 lat wymagają osobnej oceny masy i możliwości dokładnego podania dawki. Nie są automatycznie wyliczane dla tych kapsułek.',
+      'Opakowania 16 i 20 kapsułek pochodzą z ChPL; bieżąca dostępność handlowa nie została potwierdzona. Opakowanie nie określa długości leczenia.',
+    ],
+  },
+);
+
+export const DENTAL_SYSTEMIC_DRUG_ADDITIONS = [
+  {
+    id: 'clindamycin', name: 'Klindamycyna', substance: 'Clindamycinum', substanceLabel: 'Klindamycyna',
+    category: 'antibiotics', specialties: ['dental'],
+    searchTerms: ['dalacin', 'dalacin c', 'klindamycyna', 'clindamycin', 'antybiotyk', 'zakażenie', 'zęby', 'jama ustna'],
+    forms: [dalacinCapsule(150), dalacinCapsule(300)],
+  },
+];
 
 const tabletForm = (strengthMg, sizes) => ({
   id: `ospamox-tablet-${strengthMg}`,
@@ -52,6 +132,8 @@ const tabletForm = (strengthMg, sizes) => ({
 export const DENTAL_SYSTEMIC_FORM_ADDITIONS = [
   { drugId: 'amoxicillin', form: tabletForm(500, [14, 16, 20]) },
   { drugId: 'amoxicillin', form: tabletForm(1000, [14, 16, 20]) },
+  { drugId: 'amoxicillin-clavulanate', form: augmentinTablet(500) },
+  { drugId: 'amoxicillin-clavulanate', form: augmentinTablet(875) },
 ];
 
 export const DENTAL_SYSTEMIC_FORM_PATCHES = [
@@ -120,6 +202,55 @@ export const DENTAL_SYSTEMIC_FORM_PATCHES = [
 const dentalAbscess = 'Ropień okołozębowy z szerzącym się zapaleniem tkanki łącznej';
 const antibioticScreening = 'Dobór leczenia uwzględnia wskazanie, wrażliwość przewidywanych patogenów, przeciwwskazania i interakcje. Zakresy nie obejmują schematów dla niewydolności nerek.';
 
+const adultAugmentinTablet = strengthMg => ({
+  id: `dental-augmentin-tablet-${strengthMg}-125-ge40`, formIds: [`augmentin-tablet-${strengthMg}-125`],
+  specialties: ['dental'],
+  label: `Ciężki ropień z szerzącym się zapaleniem · ≥40 kg · ${strengthMg === 500 ? 'co 8 h' : 'co 12 h'}`,
+  indication: 'Ciężki ropień okołozębowy z szerzącym się zapaleniem tkanki łącznej',
+  phaseLabel: `${strengthMg} mg + 125 mg na podanie, ${strengthMg === 500 ? 3 : 2} razy/dobę`,
+  doseMode: 'fixed', dose: strengthMg, frequency: strengthMg === 500 ? 3 : 2,
+  minWeight: 40, maxSingleMg: strengthMg, maxDailyMg: strengthMg * (strengthMg === 500 ? 3 : 2),
+  reviewAfterDays: 14, ...renalNormal,
+  ...solidAntibioticSource(SOURCE[`augmentinTablet${strengthMg}`], `ChPL Augmentin ${strengthMg} mg + 125 mg · RPL`, '2026-09-09'),
+  sourceSection: '4.1–4.4 (standardowy schemat dla masy ≥40 kg)',
+  limitLabel: 'Dawka dobowa amoksycyliny w wybranym standardowym schemacie z ChPL; nie jest uniwersalną dawką maksymalną',
+  screening: `${antibioticScreening} Wyklucz nadwrażliwość na beta-laktamy oraz wcześniejszą żółtaczkę lub zaburzenia wątroby związane z amoksycyliną/klawulanianem.`,
+  administration: 'Doustnie, z posiłkiem. Przyjmować całą dawkę tabletki; kreska nie służy do podziału na równe dawki.',
+  notes: [
+    `Dawka stała wybranego schematu to jedna tabletka ${strengthMg} mg + 125 mg na podanie. Liczba mg w polu dawki oznacza amoksycylinę; wynik pokazuje również kwas klawulanowy.`,
+    'Schemat dotyczy masy co najmniej 40 kg. Nie zastępuje oceny wskazania, przeciwwskazań, interakcji ani wrażliwości przewidywanych patogenów.',
+    strengthMg === 500
+      ? 'Przy CrCl 10–30 ml/min ChPL podaje osobny wariant 500 mg + 125 mg 2 razy na dobę, a poniżej 10 ml/min raz na dobę. Te warianty i hemodializa nie są częścią wybranego schematu standardowego.'
+      : 'Przy CrCl <30 ml/min postać 7:1 nie jest zalecana. Przy wartości granicznej 30 ml/min wymagany jest odrębny dobór; nie zastosowano automatycznej korekty.',
+    'Nie ustawiono czasu kuracji. Powyżej 14 dni konieczna jest ponowna ocena pacjenta; nie jest to domyślna ani obowiązkowa długość leczenia.',
+  ],
+});
+
+const adultDalacinCapsule = (strengthMg, frequency) => ({
+  id: `dental-dalacin-c-${strengthMg}-over14-${frequency === 3 ? 'tid' : 'qid'}`,
+  formIds: [`dalacin-c-${strengthMg}`], specialties: ['dental'],
+  label: `Ciężkie zakażenie zębów lub jamy ustnej · >14 lat · ${frequency} podania`,
+  indication: 'Ciężkie zakażenie bakteryjne zębów lub jamy ustnej wywołane przez drobnoustroje wrażliwe na klindamycynę',
+  phaseLabel: `600–1800 mg/dobę w ${frequency} dawkach (${600 / frequency}–${1800 / frequency} mg na podanie)`,
+  doseMode: 'fixed', doseRange: { min: 600 / frequency, max: 1800 / frequency }, frequency,
+  minAgeMonths: 168, minAgeExclusive: true,
+  maxSingleMg: 1800 / frequency, maxDailyMg: 1800,
+  ...solidAntibioticSource(SOURCE[`dalacin${strengthMg}`], `ChPL Dalacin C ${strengthMg} mg, kapsułki · RPL`, '2026-07-10'),
+  sourceSection: '4.1–4.4 (dorośli i młodzież powyżej 14 lat)',
+  limitLabel: 'Górna granica zakresu z ChPL dla wieku >14 lat: 1800 mg klindamycyny/dobę w wybranej liczbie podań',
+  clinicalFlags: clindamycinClinicalFlags,
+  screening: 'Dobór wymaga oceny ciężkości zakażenia, wrażliwości drobnoustrojów, nadwrażliwości na klindamycynę lub linkomycynę, interakcji i ryzyka biegunki lub zapalenia okrężnicy związanego z C. difficile. Ciężka niewydolność nerek, bezmocz lub zaawansowana niewydolność wątroby wymagają monitorowania i możliwej indywidualnej korekty.',
+  administration: 'Doustnie; kapsułki przyjmować w całości, popijając pełną szklanką wody, co najmniej 30 minut przed położeniem się.',
+  notes: [
+    `ChPL podaje 600–1800 mg na całą dobę w 3 lub 4 dawkach. Dla wybranych ${frequency} podań zakres na jedno podanie wynosi ${600 / frequency}–${1800 / frequency} mg; nie jest to 600–1800 mg na każde podanie.`,
+    `Lekarz wybiera dawkę z zakresu. Musi być wykonalna jako całkowita liczba kapsułek po ${strengthMg} mg; niewykonalne części kapsułki nie są automatycznie zaokrąglane.`,
+    'Podpowiedź obejmuje wyłącznie wiek powyżej 14 lat. Dawkowanie dla młodszych pacjentów wymaga osobnego schematu i postaci pozwalającej dokładnie podać dawkę.',
+    'Niewydolność nerek nie stanowi automatycznej blokady tego przeliczenia ani uniwersalnego wskazania do zmniejszenia dawki. ChPL przy podawaniu co 8 godzin nie wymaga rutynowej redukcji; ciężka niewydolność lub bezmocz wymagają monitorowania i możliwej zmiany dawki lub odstępów. Hemodializa nie wymaga dawki dodatkowej.',
+    'Zaawansowana niewydolność wątroby wymaga monitorowania stężenia leku i ewentualnej zmiany dawki lub odstępów. Przeliczenie nie wykonuje takiej korekty.',
+    'Czas leczenia ustala lekarz. Minimum 10 dni w ChPL dotyczy zakażeń wywołanych przez paciorkowce beta-hemolizujące; nie ustawiono go jako ogólnego minimum ani domyślnej kuracji stomatologicznej.',
+  ],
+});
+
 const adultAmoxicillin = (family, formIds, sourceUrl) => [
   {
     id: `dental-ospamox-${family}-ge40-q8`, formIds,
@@ -171,6 +302,9 @@ const analgesicSource = (sourceUrl, sourceLabel) => ({
 export const DENTAL_SYSTEMIC_REGIMENS = [
   ...adultAmoxicillin('suspension', ['ospamox-250', 'ospamox-500'], SOURCE.ospamoxSuspension),
   ...adultAmoxicillin('tablet', ['ospamox-tablet-500', 'ospamox-tablet-1000'], SOURCE.ospamoxTablet),
+  adultAugmentinTablet(500),
+  adultAugmentinTablet(875),
+  ...[150, 300].flatMap(strengthMg => [3, 4].map(frequency => adultDalacinCapsule(strengthMg, frequency))),
   {
     id: 'dental-ospamox-child-tid', formIds: ['ospamox-250', 'ospamox-500'],
     specialties: ['dental'], patientTypes: ['child'],
@@ -283,8 +417,13 @@ export const DENTAL_SYSTEMIC_REGIMENS = [
 
 export const DENTAL_SYSTEMIC_RESEARCH_NOTES = {
   checkedAt: CHECKED_AT,
+  solidAntibioticsCheckedAt: SOLID_ANTIBIOTICS_CHECKED_AT,
   packageEvidence: [
     { formIds: ['augmentin-400-57'], sizes: [35, 70, 140], unit: 'ml', sourceUrl: SOURCE.augmentin, section: '6.5' },
+    { formIds: ['augmentin-tablet-500-125'], sizes: [4, 10, 12, 14, 16, 20, 21, 24, 30, 100, 500], selectedSizes: [14, 21], unit: 'tabl.', sourceUrl: SOURCE.augmentinTablet500, section: '6.5', sourceCheckedAt: SOLID_ANTIBIOTICS_CHECKED_AT },
+    { formIds: ['augmentin-tablet-875-125'], sizes: [2, 4, 10, 12, 14, 16, 20, 24, 30, 100, 500], selectedSizes: [14], unit: 'tabl.', sourceUrl: SOURCE.augmentinTablet875, section: '6.5', sourceCheckedAt: SOLID_ANTIBIOTICS_CHECKED_AT },
+    { formIds: ['dalacin-c-150'], sizes: [16, 20, 100], selectedSizes: [16, 20], unit: 'kaps.', sourceUrl: SOURCE.dalacin150, section: '6.5', sourceCheckedAt: SOLID_ANTIBIOTICS_CHECKED_AT },
+    { formIds: ['dalacin-c-300'], sizes: [16, 20], selectedSizes: [16, 20], unit: 'kaps.', sourceUrl: SOURCE.dalacin300, section: '6.5', sourceCheckedAt: SOLID_ANTIBIOTICS_CHECKED_AT },
     { formIds: ['ospamox-250', 'ospamox-500'], sizes: [60, 100], unit: 'ml', sourceUrl: SOURCE.ospamoxSuspension, section: '6.5' },
     { formIds: ['ospamox-tablet-500'], sizes: [7, 10, 14, 16, 20, 28, 100, 500, 1000], selectedSizes: [14, 16, 20], unit: 'tabl.', sourceUrl: SOURCE.ospamoxTablet, section: '6.5' },
     { formIds: ['ospamox-tablet-1000'], sizes: [7, 10, 12, 14, 16, 20, 28, 30, 50], selectedSizes: [14, 16, 20], unit: 'tabl.', sourceUrl: SOURCE.ospamoxTablet, section: '6.5' },
@@ -295,7 +434,10 @@ export const DENTAL_SYSTEMIC_RESEARCH_NOTES = {
     'Ospamox tablet data uses the family with permits 16801/16802/16687; the legacy Ospamox permit family has different pack metadata and was not merged.',
     'No 4000 mg/day universal amoxicillin maximum, no antibiotic dose or duration default, no automatic higher-dose dental Augmentin regimen.',
     'Amoxicillin dental regimen maxima are computed upper bounds of the selected source range and frequency. Labels must retain that scope.',
-    'Optional renal context does not gate arithmetic: missing data remains unknown. Explicit impairment or known CrCl at or below 30 ml/min rejects standard antibiotic suggestions; renal impairment/dialysis regimens are outside this module.',
+    'Optional renal context does not gate arithmetic: missing data remains unknown. Explicit impairment or known CrCl at or below 30 ml/min rejects standard amoxicillin-based suggestions; renal impairment/dialysis regimens are outside this module.',
+    'Augmentin tablets are whole-dose only: the score facilitates swallowing, not equal-dose subdivision. The mg field is amoxicillin; clavulanic acid is retained as a separate per-tablet active ingredient.',
+    'Dalacin C suggestions cover only age above 14 years. Source daily range 600–1800 mg is divided into separate TID and QID per-dose ranges; formulation arithmetic must reject incomplete capsules.',
+    'Clindamycin does not inherit the amoxicillin renal gate. Advanced renal/hepatic impairment is a monitoring and individualized-adjustment flag; no numeric CrCl cutoff was invented.',
     'Pediatric Ospamox suggestions deliberately exclude newborns and the conditional BID option. This is application coverage, not a new drug contraindication.',
     'Metafen low-weight wording requires separate clinical interpretation. No broad low-weight numerical suggestion was created from the narrow 12-year-old passage.',
     'PRN frequency represents a clinician-selected daily administration ceiling. Export must retain as-needed wording, minimum intervals and the daily limit.',

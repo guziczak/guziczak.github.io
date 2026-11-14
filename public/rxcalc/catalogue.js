@@ -7,11 +7,11 @@
 
 import { EQUINE_NSAID_DRUGS } from './equine-nsaids.js';
 import { EQUINE_ANTIPARASITIC_DRUGS } from './equine-antiparasitics.js';
-import { DENTAL_SYSTEMIC_FORM_ADDITIONS, DENTAL_SYSTEMIC_FORM_PATCHES } from './dental-systemic.js';
+import { DENTAL_SYSTEMIC_FORM_ADDITIONS, DENTAL_SYSTEMIC_FORM_PATCHES, DENTAL_SYSTEMIC_DRUG_ADDITIONS } from './dental-systemic.js';
 import { DENTAL_TOPICAL_DRUGS, DENTAL_TOPICAL_FORM_PATCHES } from './dental-topicals.js';
 
 export const CATALOGUE_META = Object.freeze({
-  version: '2026.11.14.dental.2',
+  version: '2026.11.14.dental.3',
   updatedAt: '2026-11-14',
   sourceCheckedAt: '2026-11-12',
   status: 'Wersja do weryfikacji',
@@ -402,6 +402,7 @@ const BASE_DRUGS = [
   ...VETERINARY_DRUGS,
   ...EQUINE_NSAID_DRUGS,
   ...EQUINE_ANTIPARASITIC_DRUGS,
+  ...DENTAL_SYSTEMIC_DRUG_ADDITIONS,
   ...DENTAL_TOPICAL_DRUGS,
 ];
 

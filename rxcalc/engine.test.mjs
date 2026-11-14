@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 // Works both with and without a package.json declaring type: module.
 const source = await readFile(new URL('./engine.js', import.meta.url), 'utf8');
-const { calculate, calculateCrCl, formatNumber } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const { calculate, formatNumber } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const base = { form: 'suspension', doseMode: 'units', dose: 6.5, frequency: 2, days: 7, concentrationMg: 400, concentrationMl: 5, packageSize: 70, unitLabel: 'ml' };
 
 test('91 ml regimen: quantities, mg and packages share the same dose', () => {
@@ -134,14 +134,6 @@ test('invalid optional parameters are not silently discarded', () => {
     assert.equal(calculate({ ...base, ...fields }).valid, false);
   }
 });
-test('Cockcroft–Gault uses adult age, sex and creatinine units explicitly', () => {
-  assert.ok(Math.abs(calculateCrCl({ age: 60, sex: 'male', weight: 72, creatinine: 1 }) - 80) < 1e-10);
-  assert.ok(Math.abs(calculateCrCl({ age: 60, sex: 'female', weight: 72, creatinine: 1 }) - 68) < 1e-10);
-  assert.equal(calculateCrCl({ age: 60, sex: 'male', weight: 72, creatinine: 88.4, creatinineUnit: 'µmol/l' }), 80);
-  for (const fields of [{ age: 17 }, { creatinine: 0 }, { sex: undefined }, { weight: '' }, { creatinineUnit: 'mg/l' }]) {
-    assert.equal(calculateCrCl({ age: 60, sex: 'male', weight: 72, creatinine: 1, ...fields }), null);
-  }
-});
 test('Polish formatter never displays NaN or Infinity', () => {
   assert.equal(formatNumber(6.5), '6,5');
   assert.equal(formatNumber(null), '—');
@@ -262,7 +254,6 @@ test('technical veterinary weight range does not expand the human range', () => 
   assert.equal(calculate({...base, patientKind: 'human', weight: 700}).valid, false);
   assert.equal(calculate({...animalArithmetic, species: 'horse', weight: 2000}).valid, true);
   assert.equal(calculate({...animalArithmetic, species: 'horse', weight: 2000.01}).valid, false);
-  assert.equal(calculateCrCl({age: 60, sex: 'male', weight: 700, creatinine: 1}), null);
 });
 test('invalid patient kind cannot silently bypass human validation', () => {
   for (const patientKind of ['', null, false, 'veterinary', ['animal'], {}]) {

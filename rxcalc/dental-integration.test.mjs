@@ -6,7 +6,7 @@ import { HUMAN_REGIMENS } from './human-regimens.js';
 import { resolveHumanRegimen } from './human-regimen-engine.js';
 import { searchProducts } from './product-search.js';
 import { calculate } from './engine.js';
-import { humanDosingText } from './dental-output.js';
+import { humanDosingText, prescriptionText } from './dental-output.js';
 
 const dental=DRUGS.filter(drug=>drug.specialties.includes('dental'));
 function run(formId,regimenId,context,packageId) {
@@ -50,6 +50,33 @@ test('adult source does not override physical tablet subdivision after choosing 
   const half=run('ospamox-tablet-500','dental-ospamox-tablet-ge40-q12',{weight:70,dose:750,days:7},'14');
   assert.equal(half.result.valid,true);
   assert.equal(half.result.singleUnits,1.5);
+});
+
+test('new solid antibiotics are searchable and feed real catalogue forms into calculation and clean prescription output', () => {
+  for (const item of [
+    { query:'Augmentin 875 125 14', formId:'augmentin-tablet-875-125', regimenId:'dental-augmentin-tablet-875-125-ge40', dose:875, frequency:2, unit:'tabl.', total:14, packages:1 },
+    { query:'klindamycyna 300 16', formId:'dalacin-c-300', regimenId:'dental-dalacin-c-300-over14-tid', dose:300, frequency:3, unit:'kaps.', total:21, packages:2 },
+  ]) {
+    const rows=searchProducts(dental,item.query);
+    assert.equal(rows.length,1,item.query);
+    assert.equal(rows[0].form.id,item.formId);
+    const {resolved,result,form}=run(item.formId,item.regimenId,{age:35,weight:70,dose:item.dose,days:7},rows[0].pack.id);
+    assert.equal(resolved.valid,true);
+    assert.equal(result.valid,true);
+    assert.equal(result.singleUnits,1);
+    assert.equal(result.unitLabel,item.unit);
+    assert.equal(result.totalUnits,item.total);
+    assert.equal(result.packages,item.packages);
+    const source=HUMAN_REGIMENS.find(source=>source.id===item.regimenId);
+    const dosing=humanDosingText({source,amount:`1 ${item.unit}`,route:form.routeLabel,frequency:item.frequency,days:7});
+    const header=`Rp. ${rows[0].drug.substance}\n${form.label}\n${result.packages} op. po ${rows[0].pack.label}`;
+    const output=prescriptionText({header,dosing,source});
+    assert.equal(output,`${header}\n${dosing}`);
+    assert.ok(output.startsWith('Rp. '));
+    assert.ok(!output.includes('Wskazanie:'));
+    assert.ok(!output.includes('Schemat:'));
+    assert.equal(prescriptionText({mode:'ds',header,dosing,source}),dosing);
+  }
 });
 
 test('Ospamox calculation and dosing text are available without a separate renal confirmation', () => {

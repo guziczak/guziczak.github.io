@@ -77,7 +77,7 @@ test('Ibuprom shortest interval does not override its formulation-specific daily
 });
 
 test('a documented antibiotic range never becomes an invented default dose or seven-day course', () => {
-  for (const record of regimens.filter(value => /ospamox|augmentin/.test(value.id))) {
+  for (const record of regimens.filter(value => /ospamox|augmentin/.test(value.id) && value.doseRange)) {
     assert.ok(record.doseRange);
     assert.equal(record.dose, undefined);
     assert.equal(record.fixedDays, undefined);

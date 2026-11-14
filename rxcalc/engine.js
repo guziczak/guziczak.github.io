@@ -27,21 +27,6 @@ export function formatNumber(value, maxDecimals = 2) {
   return new Intl.NumberFormat('pl-PL', { maximumFractionDigits: digits, useGrouping: false }).format(value);
 }
 
-/** Adult Cockcroft–Gault estimate. Output: ml/min; null means insufficient/invalid data. */
-export function calculateCrCl({ age, sex, weight, creatinine, creatinineUnit = 'mg/dl' } = {}) {
-  if (![age, weight, creatinine].every(finite)) return null;
-  if (age < 18 || age > 130 || weight <= 0 || weight > 500 || creatinine <= 0) return null;
-  if (!['male', 'female'].includes(sex)) return null;
-  if (typeof creatinineUnit !== 'string') return null;
-  let scr;
-  if (creatinineUnit.toLowerCase() === 'mg/dl') scr = creatinine;
-  else if (['µmol/l', 'μmol/l', 'umol/l'].includes(creatinineUnit.toLowerCase())) scr = creatinine / 88.4;
-  else return null;
-  if (!finite(scr) || scr <= 0 || scr > 50) return null;
-  const result = ((140 - age) * weight * (sex === 'female' ? 0.85 : 1)) / (72 * scr);
-  return finite(result) && result > 0 ? clean(result) : null;
-}
-
 export function calculate(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) input = {};
   const result = {
@@ -170,16 +155,18 @@ export function calculate(input = {}) {
     }
   }
 
+  const solidUnit = result.unitLabel === 'kaps.' ? 'kapsułki' : 'tabletki';
+  const solidUnits = result.unitLabel === 'kaps.' ? 'kapsułek' : 'tabletek';
   let allowedFractions = null;
   if (!empty(input.allowedFractions)) {
     if (!Array.isArray(input.allowedFractions) || input.allowedFractions.some(v => !finite(v) || v < 0 || v > 1)) {
-      invalid.push('Nieprawidłowe dane o podzielności tabletki.');
+      invalid.push(`Nieprawidłowe dane o podzielności ${solidUnit}.`);
     } else allowedFractions = input.allowedFractions;
   }
 
   let mgPerUnit = null;
   if (input.form === 'tablet') {
-    mgPerUnit = number('strengthMg', 'moc tabletki w mg', { required: input.doseMode !== 'units' });
+    mgPerUnit = number('strengthMg', `moc ${solidUnit} w mg`, { required: input.doseMode !== 'units' });
   } else if (MASS_FORMS.has(input.form)) {
     // Do not infer product mass from active mg or borrow a liquid mg/ml ratio.
     mgPerUnit = number('strengthMg', 'ilość substancji czynnej w 1 g preparatu (mg/g)', { required: input.doseMode !== 'units' });
@@ -263,12 +250,12 @@ export function calculate(input = {}) {
     if (!near(fraction, 0) && !near(fraction, 1)) {
       if (allowedFractions === null) {
         incomplete = true;
-        result.errors.push('Brak potwierdzenia podzielności tej tabletki. Wybierz inną moc lub potwierdzoną postać.');
+        result.errors.push(`Brak potwierdzenia podzielności tej ${solidUnit}. Wybierz inną moc lub potwierdzoną postać.`);
       } else if (!allowedFractions.some(v => near(v, fraction))) {
         critical = true;
-        result.errors.push('Wyliczona część tabletki nie odpowiada potwierdzonej podzielności produktu. Zmień moc, postać lub schemat.');
-      } else result.checks.push('Część tabletki zgodna z wprowadzonymi danymi o podzielności.');
-    } else result.checks.push('Dawka odpowiada całkowitej liczbie tabletek.');
+        result.errors.push(`Wyliczona część ${solidUnit} nie odpowiada potwierdzonej podzielności produktu. Zmień moc, postać lub schemat.`);
+      } else result.checks.push(`Część ${solidUnit} zgodna z wprowadzonymi danymi o podzielności.`);
+    } else result.checks.push(`Dawka odpowiada całkowitej liczbie ${solidUnits}.`);
   }
   if (['spray', 'drops'].includes(input.form) && !near(result.singleUnits, Math.round(result.singleUnits))) {
     critical = true;
