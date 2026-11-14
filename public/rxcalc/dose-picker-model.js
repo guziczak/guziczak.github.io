@@ -45,7 +45,7 @@ function exceeds(value,max) {
 function stepOptions(unit,allowedFractions) {
   const key=unit.toLowerCase().replace(/\s+/g,'');
   // Dose units take precedence over the preparation's form: mg of a tablet is mg.
-  if(key==='mg')return {steps:['1','10','100'],step:'10'};
+  if(key==='mg')return {steps:['10','100','1000'],step:'10'};
   if(key.startsWith('mg/kg'))return {steps:['0.1','1','5'],step:'1'};
   if(key==='ml'||key==='g')return {steps:['0.1','0.5','1'],step:'0.5'};
   if(['tabl.','tabl','tabletka','tabletki','tabletek'].includes(key)) {

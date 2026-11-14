@@ -216,6 +216,28 @@ main{padding-top:24px}
 .regimen-facts dd,.regimen-facts strong,.regimen-facts .fact-value{font-size:13px;line-height:1.5;color:var(--ink);margin:0;font-weight:550;overflow-wrap:anywhere}
 .regimen-fields{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
 .duration-field{margin-top:16px;min-width:0}
+.daily-dose-note{margin:16px 0 0;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface-soft);min-width:0;font-size:11px;line-height:1.65;overflow-wrap:anywhere}
+.daily-dose-heading{display:flex;align-items:center;flex-wrap:wrap;gap:7px;color:var(--muted)}
+.daily-dose-heading>svg{width:15px;height:15px;color:var(--accent)}
+.daily-dose-heading h3{margin:0;color:var(--ink);font:inherit;font-weight:650}
+.daily-dose-heading>span{margin-left:auto;font-size:10px}
+.daily-dose-note dl{margin:9px 0 0}
+.daily-dose-line{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:8px;padding:7px 0}
+.daily-dose-line+.daily-dose-line{border-top:1px solid var(--border)}
+.daily-dose-line dt{color:var(--ink);text-transform:none}
+.daily-dose-line dt::first-letter{text-transform:uppercase}
+.daily-dose-line dd{margin:0;text-align:right;min-width:0}
+.daily-dose-line strong{display:block;color:var(--ink);font-size:14px;font-weight:650;font-variant-numeric:tabular-nums}
+.daily-dose-line strong span{font-size:11px;font-weight:500}
+.daily-dose-line small{display:block;color:var(--muted);font-size:10px}
+.daily-dose-line .daily-dose-ceiling{margin-top:3px;color:var(--accent)}
+.daily-dose-note p{margin:9px 0 0;color:var(--muted)}
+.daily-dose-note .daily-dose-scope,.daily-dose-note .daily-dose-context{padding-top:9px;border-top:1px solid var(--border)}
+.daily-dose-note .daily-dose-exceeded{display:flex;align-items:flex-start;gap:6px;color:var(--red);font-weight:600}
+.daily-dose-exceeded svg{width:15px;height:15px;margin-top:2px}
+.daily-dose-source{display:inline-block;margin-top:8px;text-underline-offset:3px}
+@media(max-width:780px){.daily-dose-note{font-size:12px;padding:13px}.daily-dose-heading>span,.daily-dose-line small{font-size:11px}.daily-dose-line strong{font-size:16px}.daily-dose-line strong span{font-size:12px}.daily-dose-source{padding:7px 0;margin-top:3px}}
+@media(max-width:370px){.daily-dose-line{grid-template-columns:minmax(0,1fr)}.daily-dose-line dd{text-align:left}}
 .duration-field>.field{max-width:220px}
 .duration-field .quick-days{justify-content:flex-start}
 .source-regimen-picker{margin-bottom:16px}

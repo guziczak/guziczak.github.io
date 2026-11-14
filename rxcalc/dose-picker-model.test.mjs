@@ -4,7 +4,7 @@ import {createDosePickerModel,parseDosePickerValue,createDoseWheel} from './dose
 
 test('opening an empty dose or changing its step never supplies a dose',()=>{
   const context=Object.freeze({value:'',unit:'mg',title:'Dawka amoksycyliny na podanie'});
-  for(const step of ['1','10','100']) {
+  for(const step of ['10','100','1000']) {
     const model=createDosePickerModel({...context,step});
     assert.equal(model.title,context.title);
     assert.equal(model.initialDisplay,'');
@@ -22,7 +22,7 @@ test('opening an empty dose or changing its step never supplies a dose',()=>{
 
 test('units choose visible steps independently of the medicine or tablet strength',()=>{
   for(const [context,steps,step] of [
-    [{unit:'mg',form:'tablet',allowedFractions:[1,0.25]},['1','10','100'],'10'],
+    [{unit:'mg',form:'tablet',allowedFractions:[1,0.25]},['10','100','1000'],'10'],
     [{unit:'mg/kg'},['0.1','1','5'],'1'],
     [{unit:'mg/kg/d'},['0.1','1','5'],'1'],
     [{unit:'ml'},['0.1','0.5','1'],'0.5'],
@@ -42,16 +42,16 @@ test('units choose visible steps independently of the medicine or tablet strengt
     assert.deepEqual(context,before);
   }
   assert.equal(createDosePickerModel({unit:'ml',step:'0,10'}).step,'0.1');
-  assert.equal(createDosePickerModel({unit:'mg',step:'1000'}).step,'10');
+  assert.equal(createDosePickerModel({unit:'mg',step:'1'}).step,'10');
 });
 
 test('changing step and returning from manual entry preserves an off-grid dose exactly',()=>{
   let display='125,25';
-  for(const step of ['1','100','10','100','1']) {
+  for(const step of ['10','1000','100','1000','10']) {
     const model=createDosePickerModel({value:display,unit:'mg',step});
     const wheel=createDoseWheel(model.initialDisplay,model.step);
     assert.equal(wheel.values[wheel.index],'125.25');
-    assert.equal(wheel.values[wheel.index+1],step==='100'?'225.25':step==='10'?'135.25':'126.25');
+    assert.equal(wheel.values[wheel.index+1],step==='1000'?'1125.25':step==='100'?'225.25':'135.25');
     display=parseDosePickerValue(wheel.values[wheel.index]).value;
   }
   const hundreds=createDoseWheel('125','100');
