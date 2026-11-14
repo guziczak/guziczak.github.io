@@ -11,6 +11,7 @@ import { humanDosingText, instructionDosingText } from './dental-output.js';
 import { createSelectMenus } from './select-menu.js';
 import { tabletDoseChoices } from './tablet-doses.js';
 import { createPatientPickers } from './patient-picker.js';
+import { createViewportLayout } from './viewport-layout.js';
 
 const $ = (q, root = document) => root.querySelector(q);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -50,6 +51,7 @@ const paths = {
 };
 const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.pill}</svg>`;
 const selectMenus = createSelectMenus({ icon });
+const viewportLayout = createViewportLayout();
 const forms = { tablet: ['Tabletki', 'tabl.'], capsule: ['Kapsułki', 'kaps.'], suspension: ['Zawiesina doustna', 'ml'], oralPaste: ['Pasta doustna', 'g'], oralGel: ['Żel doustny', 'g'], oralPowder: ['Granulat / proszek doustny', 'g'], spray: ['Aerozol', 'rozp.'], gel: ['Żel / maść', 'g'], drops: ['Krople', 'kropli'], solution: ['Roztwór', 'ml'], injection: ['Iniekcja · pojemniki jednorazowe', 'ml'] };
 const SPECIALTIES = [{id:'dental',label:'Stomatologia',icon:'tooth'},{id:'cardio',label:'Kardiologia',icon:'heart'},{id:'veterinary',label:'Weterynaria',icon:'paw'}];
 const ANIMALS = [{id:'dog',label:'Pies',weight:'np. 12'},{id:'cat',label:'Kot',weight:'np. 4'},{id:'horse',label:'Koń',weight:'np. 550'},{id:'hamster',label:'Chomik',weight:'np. 0,08'},{id:'rat',label:'Szczur',weight:'np. 0,3'}];
@@ -337,6 +339,7 @@ function render() {
     else nextFocus.focus({preventScroll:true});
   }
   updateKeyboardState();
+  viewportLayout.refresh();
 }
 
 function productPicker(f) {
@@ -669,7 +672,7 @@ function resetPatient() {
   clearPatientContext();
   clearCustomProduct();state.search='';state.category='all';state.routeFilter='all';
   if(isVeterinary())startVeterinary();else{state.custom=false;chooseDrug(getSpeciesCatalogue()[0].id);resetProductView();}
-  render();window.scrollTo({top:0,behavior:'auto'});toast('Nowy pacjent — parametry i schemat wyczyszczone.');
+  render();viewportLayout.showStart();toast('Nowy pacjent — parametry i schemat wyczyszczone.');
 }
 function example() {
   if(isVeterinary())return;
@@ -739,7 +742,7 @@ document.addEventListener('click',e=>{
     case 'source':if(productReady())sourceDialog();break;
     case 'tools':toolsDialog();break;
     case 'close-dialog':$('#dialog').close();break;
-    case 'calculator':window.scrollTo({top:0,behavior:'smooth'});break;
+    case 'calculator':viewportLayout.showStart();break;
     case 'result':$('#result')?.scrollIntoView({behavior:'smooth',block:'start'});break;
     case 'example':example();break;
     case 'update':if(swRegistration?.waiting){requestedUpdate=true;swRegistration.waiting.postMessage({type:'SKIP_WAITING'});}break;
@@ -757,7 +760,7 @@ $('#app').addEventListener('change',e=>{
   const key=e.target.dataset.field;if(!key||e.target.tagName!=='SELECT')return;
   if(key==='productVariant'){if(e.target.value)chooseProduct(e.target.value);else{resetRegimen();ui.formChosen=false;}render();return;}
   if(!Object.hasOwn(state,key))return;
-  if(key==='specialty'){switchSpecialty(e.target.value);render();window.scrollTo({top:0,behavior:'auto'});return;}
+  if(key==='specialty'){switchSpecialty(e.target.value);render();viewportLayout.showStart();return;}
   if(key==='formId'){if(e.target.value){selectForm(e.target.value);ui.productExpanded=false;}else{resetRegimen();ui.formChosen=false;}render();return;}
   if(key==='regimenId'){chooseSourceRegimen(e.target.value);render();return;}
   if(state.regimenId&&(['doseMode','roundingStep'].includes(key)||(key==='frequency'&&(isVeterinary()||!getSourceRegimen()?.frequencyOptions)))){e.target.value=state[key];return;}
@@ -791,6 +794,7 @@ function updateKeyboardState(){
   const open=mobileKeyboardLayout.matches&&!zoomed&&(editing||wasOpen)&&lostHeight>150;
   if(!open&&!zoomed&&!editing)keyboardViewportHeight=window.innerHeight;
   root.classList.toggle('keyboard-open',open);
+  if(wasOpen!==open)viewportLayout.keyboardChanged(open);
   const header=$('.topbar');
   if(header){
     header.inert=open;
@@ -801,7 +805,9 @@ function updateKeyboardState(){
 document.addEventListener('focusin',updateKeyboardState);
 document.addEventListener('focusout',()=>requestAnimationFrame(updateKeyboardState));
 window.visualViewport?.addEventListener('resize',updateKeyboardState);
+window.visualViewport?.addEventListener('scroll',updateKeyboardState);
 window.addEventListener('resize',updateKeyboardState);
+window.addEventListener('pageshow',updateKeyboardState);
 mobileKeyboardLayout.addEventListener('change',updateKeyboardState);
 $('#dialog').addEventListener('input',updateTool);$('#dialog').addEventListener('change',updateTool);
 $('#dialog').addEventListener('click',e=>{if(e.target===$('#dialog'))$('#dialog').close();});
@@ -812,6 +818,8 @@ function updateConnection(){const el=$('#connection-text');if(el)el.textContent=
 window.addEventListener('online',updateConnection);window.addEventListener('offline',updateConnection);
 function showUpdate(){if($('#update-slot'))$('#update-slot').innerHTML=swRegistration?.waiting?'<div class="update-banner"><span>Dostępna nowa wersja. Aktualizacja wyczyści bieżące obliczenie.</span><button data-action="update">Zaktualizuj</button></div>':'';}
 render();
+// A fresh load starts a new calculation; it must not inherit an old form's scroll.
+viewportLayout.showStart();
 if('serviceWorker' in navigator && window.isSecureContext){
   navigator.serviceWorker.register(new URL('./sw.js',import.meta.url),{scope:'./',updateViaCache:'none'}).then(reg=>{
     swRegistration=reg;showUpdate();
