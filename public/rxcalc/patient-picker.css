@@ -29,7 +29,7 @@ html.patient-picker-open{overflow:hidden}
 .patient-picker-column{position:relative;flex:1 1 0;min-width:0;max-width:200px}
 .patient-picker-column[data-part="fraction"],.patient-picker-column.is-fraction{flex:.7 1 0;max-width:140px}
 .patient-picker-column-label{display:flex;justify-content:center;align-items:center;height:var(--wheel-label);margin:0;overflow:hidden;color:var(--muted);font-size:11px;font-weight:500;line-height:1.3;text-align:center;white-space:nowrap}
-.patient-picker-wheel{height:var(--wheel-height);padding-block:calc((var(--wheel-height) - var(--wheel-row))/2);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scroll-snap-type:y mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;mask-image:linear-gradient(to bottom,transparent,#000 34%,#000 66%,transparent);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 34%,#000 66%,transparent);outline-offset:-4px;cursor:ns-resize}
+.patient-picker-wheel{height:var(--wheel-height);padding-block:calc((var(--wheel-height) - var(--wheel-row))/2);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-x pinch-zoom;scroll-snap-type:none;scrollbar-width:none;-webkit-overflow-scrolling:touch;mask-image:linear-gradient(to bottom,transparent,#000 34%,#000 66%,transparent);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 34%,#000 66%,transparent);outline-offset:-4px;cursor:ns-resize}
 .patient-picker-wheel::-webkit-scrollbar{display:none}
 .patient-picker-wheel{scroll-behavior:auto}
 .patient-picker-wheel:focus-visible{outline:2px solid var(--accent);border-radius:10px}

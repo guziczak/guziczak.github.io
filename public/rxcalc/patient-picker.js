@@ -1,4 +1,5 @@
 import { createPatientPickerModel, parsePickerValue, formatWheelValue } from './patient-picker-model.js';
+import { createWheelMotion } from './wheel-motion.js';
 
 /** Patient values are committed once, on Done. The wheels only edit an ephemeral draft. */
 export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }) {
@@ -29,6 +30,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     const session = active;
     if (!session) return;
     active = null;
+    for (const wheel of Object.values(session.wheels)) wheel.motion.destroy();
     session.record.trigger.setAttribute('aria-expanded', 'false');
     session.record.trigger.removeAttribute('aria-controls');
     session.dialog.close();
@@ -77,6 +79,10 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
   function readWheel(session, part) {
     const wheel = session.wheels[part];
     const index = Math.max(0, Math.min(wheel.max, Math.round(wheel.node.scrollTop / ROW)));
+    if (wheel.index === index && wheel.node.hasAttribute('aria-valuetext')) {
+      session[part] = index;
+      return false;
+    }
     wheel.rows[wheel.index]?.classList.remove('is-selected');
     wheel.index = index;
     wheel.rows[index].classList.add('is-selected');
@@ -85,11 +91,12 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       ? `0,${String(index).padStart(session.model.precision, '0')} ${session.model.unit}`
       : `${index} ${session.model.unit}`);
     session[part] = index;
+    return true;
   }
 
   function chooseIndex(session, part, index) {
     const wheel = session.wheels[part];
-    wheel.node.scrollTop = Math.max(0, Math.min(wheel.max, index)) * ROW;
+    wheel.motion.setIndex(Math.max(0, Math.min(wheel.max, index)));
     readWheel(session, part);
     updatePreview(session);
   }
@@ -113,13 +120,14 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       node.append(row);
       return row;
     });
-    session.wheels[part] = { node, rows, max, index:initial };
+    const motion = createWheelMotion(node, { rowHeight:ROW });
+    session.wheels[part] = { node, rows, max, index:initial, motion };
     node.addEventListener('scroll', () => {
       if (active !== session || session.mode !== 'wheels' || session.positioning) return;
-      readWheel(session, part);
-      updatePreview(session);
+      if (readWheel(session, part)) updatePreview(session);
     }, { passive:true });
     node.addEventListener('click', event => {
+      if (motion.isClickSuppressed()) return;
       const row = event.target.closest('.patient-picker-row');
       if (row) chooseIndex(session, part, Number(row.dataset.index));
     });
@@ -140,6 +148,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
   }
 
   function renderWheels(session) {
+    for (const wheel of Object.values(session.wheels)) wheel.motion.destroy();
     session.wheels = {};
     session.wheelsBox.replaceChildren();
     const band = element('div', 'patient-picker-selection');
@@ -156,14 +165,17 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
   function alignWheels(session) {
     session.positioning = true;
     for (const part of Object.keys(session.wheels)) {
-      session.wheels[part].node.scrollTop = session[part] * ROW;
+      session.wheels[part].motion.setIndex(session[part]);
     }
     session.positioning = false;
   }
 
   function setMode(session, mode, focus = true) {
     if (mode === 'manual' && session.mode === 'wheels') {
-      for (const part of Object.keys(session.wheels)) readWheel(session, part);
+      for (const part of Object.keys(session.wheels)) {
+        session.wheels[part].motion.finish();
+        readWheel(session, part);
+      }
       session.manualInput.value = display(currentDisplay(session));
     }
     if (mode === 'wheels' && session.mode === 'manual') {
@@ -193,7 +205,10 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
 
   function commit(session) {
     if (active !== session) return;
-    if (session.mode === 'wheels') for (const part of Object.keys(session.wheels)) readWheel(session, part);
+    if (session.mode === 'wheels') for (const part of Object.keys(session.wheels)) {
+      session.wheels[part].motion.finish();
+      readWheel(session, part);
+    }
     const result = parsePickerValue(currentDisplay(session), session.model);
     if (!result.valid) { updatePreview(session); return; }
     const { input, trigger } = session.record;
