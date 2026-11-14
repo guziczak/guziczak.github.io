@@ -54,19 +54,21 @@ test('frame rate does not change the path or final value', () => {
 
 function fixture() {
   let clock=0,serial=0;
-  const frames=new Map(),timers=new Map(),media=new EventTarget();
+  const frames=new Map(),timers=new Map(),media=new EventTarget(),captures=new Set();
   media.matches=false;
   const win={ performance:{now:()=>clock}, matchMedia:()=>media,
     requestAnimationFrame:fn=>{frames.set(++serial,fn);return serial;},cancelAnimationFrame:id=>frames.delete(id),
     setTimeout:(fn,delay)=>{timers.set(++serial,{fn,at:clock+delay});return serial;},clearTimeout:id=>timers.delete(id) };
   const node=new EventTarget();
   Object.assign(node,{ownerDocument:{defaultView:win},scrollTop:0,scrollHeight:4620,clientHeight:220,
-    setPointerCapture(){},releasePointerCapture(){},hasPointerCapture(){return false;}});
+    setPointerCapture(id){captures.add(id);},
+    releasePointerCapture(pointerId){captures.delete(pointerId);send('lostpointercapture',{pointerId});},
+    hasPointerCapture:id=>captures.has(id)});
   const send=(type,values={})=>{const event=new Event(type,{cancelable:true});Object.assign(event,values);node.dispatchEvent(event);return event;};
   const tick=time=>{clock=time;for(const [id,fn] of [...frames]){frames.delete(id);fn(time);}};
   const runTimers=time=>{clock=time;for(const [id,timer] of [...timers])if(timer.at<=time){timers.delete(id);timer.fn();}};
-  const pointer=(type,y)=>send(type,{isPrimary:true,button:0,pointerId:1,clientY:y});
-  return {node,win,frames,timers,send,tick,runTimers,pointer,setTime:time=>{clock=time;}};
+  const pointer=(type,y,pointerType='touch')=>send(type,{isPrimary:true,button:0,pointerId:1,clientY:y,pointerType});
+  return {node,win,frames,timers,captures,send,tick,runTimers,pointer,setTime:time=>{clock=time;}};
 }
 
 test('Done interrupts momentum at the currently visible row, and close cancels later frames', () => {
@@ -120,5 +122,63 @@ test('desktop wheel interrupts custom inertia, preserves native scrolling and zo
   assert.equal(zoom.defaultPrevented,false);
   assert.equal(f.node.scrollTop,132);
   assert.equal(f.frames.size,0);assert.equal(f.timers.size,0);
+  motion.destroy();
+});
+
+test('a left mouse click during inertia remains selectable, including slight pointer jitter', () => {
+  const f=fixture(), motion=createWheelMotion(f.node);
+  f.pointer('pointerdown',200);f.setTime(50);f.pointer('pointermove',150);f.setTime(100);f.pointer('pointermove',100);f.pointer('pointerup',100);
+  f.tick(200);assert.equal(f.frames.size,1);
+  const interrupted=f.node.scrollTop;
+  f.pointer('pointerdown',100,'mouse');
+  assert.equal(f.frames.size,0);
+  f.setTime(210);const move=f.pointer('pointermove',95,'mouse');
+  const up=f.pointer('pointerup',95,'mouse');
+  assert.equal(move.defaultPrevented,false);assert.equal(up.defaultPrevented,false);
+  assert.equal(f.captures.size,0);
+  assert.equal(motion.isClickSuppressed(),false);
+  assert.equal(f.node.scrollTop,interrupted);
+  motion.setIndex(12);f.tick(2000);
+  assert.equal(f.node.scrollTop,528);
+  motion.destroy();
+});
+
+test('left mouse clicks remain selectable while native scrolling waits or animates its final snap', () => {
+  for (const snapping of [false,true]) {
+    const f=fixture(), motion=createWheelMotion(f.node);
+    f.send('wheel',{deltaY:145,deltaMode:0});f.node.scrollTop=145;f.send('scroll');
+    if (snapping) {f.runTimers(180);f.tick(200);assert.equal(f.frames.size,1);}
+    else assert.equal(f.timers.size,1);
+    f.setTime(210);f.pointer('pointerdown',100,'mouse');f.pointer('pointerup',100,'mouse');
+    assert.equal(motion.isClickSuppressed(),false);
+    assert.equal(f.frames.size,0);assert.equal(f.timers.size,0);assert.equal(f.captures.size,0);
+    motion.setIndex(4);f.runTimers(1000);f.tick(2000);
+    assert.equal(f.node.scrollTop,176);
+    motion.destroy();
+  }
+});
+
+test('a real mouse drag captures the pointer and suppresses its ghost click', () => {
+  const f=fixture(), motion=createWheelMotion(f.node);
+  f.pointer('pointerdown',200,'mouse');f.setTime(30);f.pointer('pointermove',188,'mouse');
+  assert.equal(f.captures.size,1);
+  f.setTime(60);f.pointer('pointermove',170,'mouse');
+  const up=f.pointer('pointerup',170,'mouse');
+  assert.equal(up.defaultPrevented,true);
+  assert.equal(f.captures.size,0);
+  assert.equal(motion.isClickSuppressed(),true);
+  assert.equal(f.frames.size,1);
+  motion.destroy();
+});
+
+test('a touch tap during a coast still stops the wheel before a second tap selects', () => {
+  const f=fixture(), motion=createWheelMotion(f.node);
+  f.pointer('pointerdown',200);f.setTime(50);f.pointer('pointermove',150);f.setTime(100);f.pointer('pointermove',100);f.pointer('pointerup',100);
+  f.tick(200);
+  f.pointer('pointerdown',100);f.pointer('pointerup',100);
+  assert.equal(motion.isClickSuppressed(),true);
+  f.tick(400);
+  f.pointer('pointerdown',100);f.pointer('pointerup',100);
+  assert.equal(motion.isClickSuppressed(),false);
   motion.destroy();
 });

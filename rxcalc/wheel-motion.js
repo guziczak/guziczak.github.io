@@ -96,19 +96,20 @@ export function createWheelMotion(node, { rowHeight = 44 } = {}) {
     // A second finger belongs to browser pinch zoom, not another number wheel drag.
     if (!event.isPrimary) { finish(); return; }
     if (event.button !== 0) return;
-    const moving = !!animation || !!settling;
+    const mouse = event.pointerType === 'mouse';
+    const stoppedCoast = !mouse && (!!animation || !!settling);
     stop();
     const time = now();
-    // A fresh, intentional tap can select immediately after a completed drag;
-    // only the old gesture's synthetic click (or a tap stopping a coast) is ignored.
-    suppressUntil = moving ? time + 500 : 0;
+    // A mouse click selects its row even while stopping a coast. A touch tap
+    // first stops the moving wheel; an actual drag always suppresses its click.
+    suppressUntil = stoppedCoast ? time + 500 : 0;
     drag = { id:event.pointerId, y:event.clientY, start:node.scrollTop, moved:false,
-      stoppedCoast:moving, samples:[{ position:node.scrollTop, time }] };
+      slop:mouse ? 6 : 4, stoppedCoast, samples:[{ position:node.scrollTop, time }] };
   }, options);
   node.addEventListener('pointermove', event => {
     if (!drag || event.pointerId !== drag.id) return;
     const distance = drag.y - event.clientY;
-    if (!drag.moved && Math.abs(distance) < 4) return;
+    if (!drag.moved && Math.abs(distance) < drag.slop) return;
     if (!drag.moved) {
       drag.moved = true;
       node.setPointerCapture(event.pointerId);
