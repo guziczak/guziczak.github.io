@@ -14,9 +14,9 @@
 .age-input-group>.patient-wheel-trigger{height:100%;padding-left:10px;padding-right:30px}
 .age-input-group>.patient-wheel-trigger .patient-wheel-chevron{right:8px}
 
-html.patient-picker-open{overflow:hidden}
+/* Non-modal panel: ordinary document scrolling stays available. */
 .patient-picker{position:fixed;inset:auto;margin:0;z-index:160;max-width:none;min-width:0;padding:0;overflow:auto;overscroll-behavior:contain;border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--ink);box-shadow:0 20px 60px #102b2533,0 4px 12px #102b2514;animation:patient-picker-in 160ms cubic-bezier(.22,1,.36,1)}
-.patient-picker::backdrop{background:#10251d38;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.patient-picker::backdrop{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}
 .patient-picker-panel{padding:18px;min-width:0}
 .patient-picker-header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px}
 .patient-picker-header h2{margin:0;font-size:18px;font-weight:650;line-height:1.3;letter-spacing:-.3px}
@@ -73,7 +73,6 @@ html.patient-picker-open{overflow:hidden}
 .patient-picker-done:hover:not(:disabled){background:var(--accent-hover)}
 .patient-picker-done:disabled{opacity:.45}
 [data-theme="dark"] .patient-picker{box-shadow:0 20px 60px #0006,0 3px 12px #0004}
-[data-theme="dark"] .patient-picker::backdrop{background:#07130f66}
 @keyframes patient-picker-in{from{opacity:0;transform:translateY(6px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:780px){
   .patient-wheel-trigger{min-height:46px;font-size:16px;padding-top:10px;padding-bottom:10px}

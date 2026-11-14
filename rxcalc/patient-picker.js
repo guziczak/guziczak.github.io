@@ -3,6 +3,46 @@ import { createDosePickerModel, parseDosePickerValue, createDoseWheel } from './
 import { createWheelMotion } from './wheel-motion.js';
 import { createWheelFeedback } from './wheel-feedback.js';
 
+/** Non-modal dismissal never consumes a page scroll or commits a draft.
+ * Bind per opening so closing/removing the picker leaves no document listeners.
+ */
+export function bindPickerDismissal({ dialog, trigger, dismiss, doc = document }) {
+  const Controller = doc.defaultView?.AbortController || AbortController;
+  const controller = new Controller();
+  const options = { capture:true, signal:controller.signal };
+  const inside = target => dialog.contains(target) || trigger.contains(target);
+  let pointer = null;
+  doc.addEventListener('pointerdown', event => {
+    pointer = { id:event.pointerId, outside:!inside(event.target),
+      x:event.clientX, y:event.clientY, moved:!event.isPrimary || event.button !== 0 };
+  }, { ...options, passive:true });
+  doc.addEventListener('pointermove', event => {
+    if (pointer?.id === event.pointerId &&
+      Math.hypot(event.clientX - pointer.x, event.clientY - pointer.y) > 8) pointer.moved = true;
+  }, { ...options, passive:true });
+  doc.addEventListener('pointercancel', event => {
+    if (pointer?.id === event.pointerId) pointer.moved = true;
+  }, { ...options, passive:true });
+  doc.addEventListener('scroll', event => {
+    if (pointer && !dialog.contains(event.target)) pointer.moved = true;
+  }, { ...options, passive:true });
+  doc.addEventListener('click', event => {
+    if (inside(event.target)) return;
+    // A release after a touch drag or a wheel drag is not an outside click.
+    if (event.detail !== 0 && (!pointer?.outside || pointer.moved)) return;
+    dismiss(false);
+  }, options);
+  doc.addEventListener('focusin', event => {
+    // Tab and another field remain available; never trap focus in this panel.
+    if (!inside(event.target)) dismiss(false);
+  }, options);
+  doc.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || event.isComposing) return;
+    event.preventDefault(); event.stopPropagation(); dismiss(true);
+  }, options);
+  return () => controller.abort();
+}
+
 /** Patient values are committed once, on Done. The wheels only edit an ephemeral draft. */
 export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }) {
   const records = new Set(), byInput = new WeakMap();
@@ -77,6 +117,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     const session = active;
     if (!session) return;
     active = null;
+    session.unbindDismissal?.();
     clearDoseIdle(session);
     feedback.stop();
     for (const wheel of Object.values(session.wheels)) wheel.motion.destroy();
@@ -84,7 +125,6 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     session.record.trigger.removeAttribute('aria-controls');
     session.dialog.close();
     session.dialog.remove();
-    document.documentElement.classList.remove('patient-picker-open');
     if (restoreFocus && session.record.trigger.isConnected) session.record.trigger.focus({ preventScroll:true });
   }
 
@@ -98,7 +138,9 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     const dialog = session.dialog;
     dialog.style.width = `${mobile ? width : Math.min(370, width - 24)}px`;
     dialog.style.maxHeight = `${Math.max(160, height - (mobile ? 8 : 24))}px`;
-    const rect = session.record.trigger.getBoundingClientRect();
+    // Keep a fixed on-screen anchor for this opening. Scrolling the document
+    // must not move the editor underneath the pointer and capture a wheel tail.
+    const rect = session.anchorRect;
     const size = dialog.getBoundingClientRect();
     const x = mobile ? left : Math.max(left + 12, Math.min(rect.left, left + width - size.width - 12));
     const y = mobile ? top + height - size.height
@@ -345,6 +387,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     const dialog = element('dialog', `patient-picker${isDose ? ' dose-picker' : ''}`);
     dialog.id = `${record.input.id}-picker`;
     dialog.setAttribute('aria-labelledby', `${dialog.id}-title`);
+    dialog.setAttribute('aria-modal', 'false');
     const panel = element('div', 'patient-picker-panel');
     const header = element('div', 'patient-picker-header');
     const heading = element('h2', '', isDose ? 'Dawka' : model.title);
@@ -382,6 +425,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     preview.setAttribute('aria-live', 'polite'); preview.setAttribute('aria-atomic', 'true');
     const footer = element('div', 'patient-picker-footer');
     const session = { record, context, model, dialog, wheelsBox, manualBox, manualInput, error, preview,
+      anchorRect:record.trigger.getBoundingClientRect(), unbindDismissal:null,
       isDose, stepControls, doseValue:isDose ? model.initialDisplay : '', doseIdleTimer:0,
       whole:model.whole, fraction:model.fraction, unset:model.emptyDraft === true,
       mode:null, wheels:{}, positioning:false, feedbackArmed:false };
@@ -405,22 +449,22 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     active = session;
     record.trigger.setAttribute('aria-controls', dialog.id);
     record.trigger.setAttribute('aria-expanded', 'true');
-    document.documentElement.classList.add('patient-picker-open');
     renderWheels(session);
     manualInput.addEventListener('input', () => updatePreview(session));
     manualInput.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); commit(session); } });
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
-    let backdropStart = false;
-    dialog.addEventListener('pointerdown', event => { backdropStart = event.target === dialog; });
-    dialog.addEventListener('click', event => { if (backdropStart && event.target === dialog) close(); });
-    // Give native dialog autofocus an on-screen position before showModal.
+    dialog.addEventListener('close', () => { if (active === session) close(false); });
+    session.unbindDismissal = bindPickerDismissal({ dialog, trigger:record.trigger,
+      dismiss:restoreFocus => { if (active === session) close(restoreFocus); } });
+    // Give native dialog autofocus an on-screen position before show().
     // Its static position at the end of body would otherwise scroll the page.
     const viewport = window.visualViewport;
     dialog.style.left = `${(viewport?.offsetLeft || 0) + 12}px`;
     dialog.style.top = `${(viewport?.offsetTop || 0) + 12}px`;
     dialog.style.width = `${Math.min(370, (viewport?.width || window.innerWidth) - 24)}px`;
     dialog.style.maxHeight = `${Math.max(160, (viewport?.height || window.innerHeight) - 24)}px`;
-    dialog.showModal();
+    // Non-modal: no backdrop, inert page, focus trap or document scroll lock.
+    dialog.show();
     setMode(session, model.manualRequired ? 'manual' : 'wheels');
     requestAnimationFrame(() => { if (active === session) { if (session.mode === 'wheels') alignWheels(session); position(); } });
   }
@@ -444,7 +488,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       input.after(trigger);
       const record = { input, trigger, value };
       records.add(record); byInput.set(input, record);
-      trigger.addEventListener('click', () => open(record));
+      trigger.addEventListener('click', () => active?.record === record ? close() : open(record));
       trigger.addEventListener('keydown', event => {
         if (['ArrowDown','ArrowUp'].includes(event.key)) { event.preventDefault(); open(record); }
       });
