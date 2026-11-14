@@ -23,7 +23,6 @@ const SOURCE = Object.freeze({
   atridox: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=2550dbc0-8bdd-4bca-81d5-eec77ee6fbd5',
   dentomycin: 'https://www.hpra.ie/find-a-medicine/for-human-use/withdrawn-medicines/details/25737',
   dentomycinSmPC: 'https://assets.hpra.ie/products/Human/25737/Licence_PA1321-001-001_04122018114740.pdf',
-  actisite: 'https://www.accessdata.fda.gov/drugsatfda_docs/nda/2014/205931Orig1s000NameR.pdf',
 });
 
 const baseForm = {
@@ -184,16 +183,6 @@ export const DENTAL_TOPICAL_DRUGS = [
         notes: ['HPRA oznacza ten irlandzki produkt jako niebędący w obrocie. Informacja nie jest oceną dostępności we wszystkich krajach. Opakowanie z archiwalnej ChPL 2018.'],
       }),
   ], ['dentomycin', 'minocyklina', 'minocycline', 'przyzębie', 'kieszonki']),
-
-  drug('actisite-reference', 'Actisite', 'Tetracyklina', [
-    instructionForm('actisite-fibre-reference', 'Actisite · 12,7 mg, włókno okołozębowe', 'medicine', SOURCE.actisite,
-      [pack('unverified', 'Opakowanie handlowe niepotwierdzone', { packageUnverified: true })], {
-        ...foreign, professionalUse: true, sourceLabel: 'FDA · historyczny dokument przeglądu nazw, 2014',
-        marketStatusLabel: 'Produkt historyczny USA · brak potwierdzonego aktualnego opakowania i statusu w Polsce',
-        routeLabel: 'profesjonalnie okołozębowo',
-        notes: ['Historyczny dokument FDA wymienia włókno z tetracykliną 12,7 mg jako produkt już nieobecny na rynku. Nie jest aktualną ChPL ani instrukcją terapii.'],
-      }),
-  ], ['actisite', 'tetracyklina', 'tetracycline', 'włókno', 'przyzębie']),
 ];
 
 export const DENTAL_TOPICAL_FORM_PATCHES = [

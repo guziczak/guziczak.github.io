@@ -44,7 +44,6 @@ test('foreign, historical and insufficiently current references expose no execut
     assert.equal(DENTAL_TOPICAL_REGIMENS.some(regimen => regimen.formIds.includes(form.id)), false, form.id);
     assert.match(form.marketStatusLabel, /niepotwierdz|do potwierdzenia|historyczn/);
   }
-  assert.equal(formById('actisite-fibre-reference').packOptions[0].packageUnverified, true);
   assert.match(formById('dentomycin-gel-ie').marketStatusLabel, /Irlandia.*2022-12-07/);
 });
 

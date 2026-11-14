@@ -5,6 +5,7 @@ export function createViewportLayout(win = window) {
   let header = null, observer = null, frame = 0, destroyed = false;
   let interacted = false, startRequested = false, startUntil = 0, startTimer = 0;
   let keyboardOpen = false, keyboardField = null, repair = null, repairTimer = 0;
+  let sectionTarget = null;
   const now = () => win.performance?.now() ?? Date.now();
   const listen = (target, event, callback, options) => {
     target?.addEventListener(event, callback, options);
@@ -65,6 +66,20 @@ export function createViewportLayout(win = window) {
     if (startUntil && now() < startUntil && canAdjust() && win.scrollY > 0.5) {
       win.scrollTo({ top:0, behavior:'auto' });
     }
+    if (sectionTarget && !keyboardOpen) {
+      const target = sectionTarget;
+      sectionTarget = null;
+      if (target.isConnected && canAdjust()) {
+        const bounds = target.getBoundingClientRect();
+        // Reserve the full header even while it is sliding back after the keyboard.
+        const visibleTop = Math.max(viewport?.offsetTop || 0, header?.getBoundingClientRect().height || 0) + 12;
+        const position = Math.max(0, win.scrollY + bounds.top - visibleTop);
+        if (bounds.width > 0 && bounds.height > 0 && Math.abs(position - win.scrollY) > 0.5) {
+          const reducedMotion = win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+          win.scrollTo({ top:position, behavior:reducedMotion ? 'instant' : 'smooth' });
+        }
+      }
+    }
     if (repair?.requested) {
       repair.requested = false;
       revealCoveredField();
@@ -93,10 +108,19 @@ export function createViewportLayout(win = window) {
   function showStart() {
     if (destroyed) return;
     cancelStart(); cancelRepair();
+    sectionTarget = null;
     startRequested = true;
     startUntil = now() + 600;
     if (canAdjust() && win.scrollY > 0.5) win.scrollTo({ top:0, behavior:'auto' });
     startTimer = win.setTimeout(cancelStart, 600);
+    refresh();
+  }
+
+  function showSection(target) {
+    if (destroyed || !target?.isConnected) return;
+    cancelStart(); cancelRepair();
+    sectionTarget = target;
+    // Measure after the catalogue has collapsed; defer while a search keyboard closes.
     refresh();
   }
 
@@ -107,6 +131,11 @@ export function createViewportLayout(win = window) {
     if (open) {
       cancelStart();
       keyboardField = remember(doc.activeElement);
+      return;
+    }
+    if (sectionTarget) {
+      keyboardField = null;
+      schedule();
       return;
     }
     repair = { field:remember(doc.activeElement) || keyboardField, requested:true, final:false };
@@ -120,7 +149,7 @@ export function createViewportLayout(win = window) {
     }, 200);
   }
 
-  const onInteraction = () => { interacted = true; cancelStart(); cancelRepair(); };
+  const onInteraction = () => { interacted = true; cancelStart(); cancelRepair(); sectionTarget = null; };
   for (const type of ['pointerdown', 'touchstart', 'wheel', 'keydown']) {
     listen(win, type, onInteraction, { capture:true, passive:true });
   }
@@ -131,7 +160,7 @@ export function createViewportLayout(win = window) {
   // start request gets this brief correction window; normal scrolling is free.
   listen(win, 'scroll', () => { if (startUntil) schedule(); }, { passive:true });
   listen(win, 'pageshow', event => {
-    if (event.persisted) { cancelStart(); cancelRepair(); }
+    if (event.persisted) { cancelStart(); cancelRepair(); sectionTarget = null; }
     else if (startRequested && !interacted) showStart();
     refresh();
   });
@@ -140,11 +169,12 @@ export function createViewportLayout(win = window) {
     if (destroyed) return;
     destroyed = true;
     cancelStart(); cancelRepair();
+    sectionTarget = null;
     if (frame) win.cancelAnimationFrame(frame);
     frame = 0;
     observer?.disconnect();
     for (const remove of listeners) remove();
   }
 
-  return { refresh, showStart, keyboardChanged, destroy };
+  return { refresh, showStart, showSection, keyboardChanged, destroy };
 }

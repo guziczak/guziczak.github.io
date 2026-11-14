@@ -340,6 +340,11 @@ function render() {
   viewportLayout.refresh();
 }
 
+function renderProductSelection() {
+  render();
+  viewportLayout.showSection($('.product-panel'));
+}
+
 function productPicker(f) {
   const vet = isVeterinary(), catalogue = getCatalogue();
   if (vet && !state.species) return `<div class="empty-search">${icon('paw')}<p>Wybierz gatunek zwierzęcia powyżej.<br>Pokażemy preparaty przypisane do tego gatunku.</p></div>`;
@@ -688,9 +693,9 @@ document.addEventListener('click',e=>{
       }
       break;
     }
-    case 'drug':if(chooseDrug(value))render();break;
-    case 'product':if(chooseProduct(value))render();break;
-    case 'form':if(selectForm(value)){ui.productExpanded=false;render();}break;
+    case 'drug':if(chooseDrug(value))renderProductSelection();break;
+    case 'product':if(chooseProduct(value))renderProductSelection();break;
+    case 'form':if(selectForm(value)){ui.productExpanded=false;renderProductSelection();}break;
     case 'edit-product':ui.productExpanded=!ui.productExpanded;render();break;
     case 'filters':ui.filtersOpen=!ui.filtersOpen;render();break;
     case 'browse-catalogue':ui.showAll=!ui.showAll;renderDrugs();break;
@@ -708,13 +713,13 @@ document.addEventListener('click',e=>{
     case 'custom':{
       if(state.custom && ui.productChosen){clearCustomProduct();state.custom=false;const d=getSpeciesCatalogue()[0];state.routeFilter='all';state.category='all';state.search='';if(d)chooseDrug(d.id);resetProductView();}
       else{const preparedSolution=ui.productChosen&&getForm()?.calculationBlocked;clearCustomProduct();if(preparedSolution){state.customForm='solution';state.customVolume='';}state.custom=true;state.doseMode=isVeterinary()?'perKgDose':'units';state.roundingStep='';state.packageId='custom';resetRegimen();Object.assign(ui,{productChosen:true,formChosen:true,productExpanded:false,manualRegimen:true});}
-      render();break;
+      renderProductSelection();break;
     }
     case 'favorite':if(!getDrug())break;favoriteIds=favoriteIds.includes(state.drugId)?favoriteIds.filter(x=>x!==state.drugId):[...favoriteIds,state.drugId];savePreference('favorites',favoriteIds);render();break;
     case 'favorites':favoritesDialog();break;
     case 'favorite-select':{
       const d=visibleFavorites().find(x=>x.id===value);if(!d)break;
-      state.category='all';state.search='';state.routeFilter='all';chooseDrug(value);$('#dialog').close();render();break;
+      state.category='all';state.search='';state.routeFilter='all';chooseDrug(value);$('#dialog').close();renderProductSelection();break;
     }
     case 'rx-mode':state.rxMode=value;document.querySelectorAll('[data-action=rx-mode]').forEach(x=>{x.classList.toggle('active',x.dataset.value===value);x.setAttribute('aria-pressed',String(x.dataset.value===value));});updateResult();break;
     case 'best-package':state.packageId=value;dirty();if($('#packageId'))$('#packageId').value=value;updateResult();break;
@@ -746,10 +751,10 @@ $('#app').addEventListener('change',e=>{
   if(e.target.id==='confirmed'){state.confirmed=e.target.checked&&!!latest?.valid&&productReady()&&!state.demo;updateResult();return;}
   if(e.target.id==='renalImpairment'){state.renalStatus=e.target.checked?'impaired':'unknown';dirty();updateResult();return;}
   const key=e.target.dataset.field;if(!key||e.target.tagName!=='SELECT')return;
-  if(key==='productVariant'){if(e.target.value)chooseProduct(e.target.value);else{resetRegimen();ui.formChosen=false;}render();return;}
+  if(key==='productVariant'){if(e.target.value){if(chooseProduct(e.target.value))renderProductSelection();}else{resetRegimen();ui.formChosen=false;render();}return;}
   if(!Object.hasOwn(state,key))return;
   if(key==='specialty'){switchSpecialty(e.target.value);render();viewportLayout.showStart();return;}
-  if(key==='formId'){if(e.target.value){selectForm(e.target.value);ui.productExpanded=false;}else{resetRegimen();ui.formChosen=false;}render();return;}
+  if(key==='formId'){if(e.target.value){if(selectForm(e.target.value)){ui.productExpanded=false;renderProductSelection();}}else{resetRegimen();ui.formChosen=false;render();}return;}
   if(key==='regimenId'){chooseSourceRegimen(e.target.value);render();return;}
   if(state.regimenId&&(['doseMode','roundingStep'].includes(key)||(key==='frequency'&&(isVeterinary()||!getSourceRegimen()?.frequencyOptions)))){e.target.value=state[key];return;}
   state[key]=e.target.value;dirty();

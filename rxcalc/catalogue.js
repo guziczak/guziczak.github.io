@@ -11,7 +11,7 @@ import { DENTAL_SYSTEMIC_FORM_ADDITIONS, DENTAL_SYSTEMIC_FORM_PATCHES, DENTAL_SY
 import { DENTAL_TOPICAL_DRUGS, DENTAL_TOPICAL_FORM_PATCHES } from './dental-topicals.js';
 
 export const CATALOGUE_META = Object.freeze({
-  version: '2026.11.14.dental.3',
+  version: '2026.11.14.dental.4',
   updatedAt: '2026-11-14',
   sourceCheckedAt: '2026-11-12',
   status: 'Wersja do weryfikacji',

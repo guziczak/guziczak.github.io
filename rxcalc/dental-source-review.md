@@ -1,6 +1,6 @@
 # RxCalc — stomatologia: źródła i zakres do przeglądu klinicznego
 
-**Stan katalogu:** `2026.11.14.dental.3` · **opracowanie:** 2026-11-13 · **aktualizacja zakresu:** 2026-11-14.
+**Stan katalogu:** `2026.11.14.dental.4` · **opracowanie:** 2026-11-13 · **aktualizacja zakresu:** 2026-11-14.
 
 **Status: dane i reguły nie zostały niezależnie zwalidowane klinicznie.** Dokument opisuje przygotowaną implementację i materiały dla lekarza dokonującego przeglądu. Nie potwierdza zakończenia takiego przeglądu ani gotowości do używania kalkulatora przy rzeczywistej ordynacji. Przed wdrożeniem klinicznym potrzebne jest zatwierdzenie przez lekarza właściwych wskazań, populacji, reguł i wygenerowanych zaleceń.
 
@@ -10,14 +10,14 @@ Liczby pochodzą z importu `DRUGS` z `catalogue.js` oraz `HUMAN_REGIMENS` z `hum
 
 | Zakres | Liczba |
 |---|---:|
-| Grupy preparatów/substancji w katalogu | 18 |
-| Konkretne postaci i moce | 26 |
-| Warianty preparat–moc–opakowanie, łącznie z referencjami | 49 |
+| Grupy preparatów/substancji w katalogu | 17 |
+| Konkretne postaci i moce | 25 |
+| Warianty preparat–moc–opakowanie, łącznie z referencjami | 48 |
 | Rekordy schematów lub instrukcji ze wskazanym źródłem | 30 |
 | W tym rekordy liczbowe | 23 |
 | W tym instrukcje bez liczbowej masy/objętości dawki | 7 |
 | Postaci mające co najmniej jeden taki rekord | 17 |
-| Postaci wyłącznie referencyjne, bez wykonywalnego schematu | 8 |
+| Postaci wyłącznie referencyjne, bez wykonywalnego schematu | 7 |
 | Pozostałe postaci: ręczne przeliczenie objętości | 1 — Nystatyna Teva |
 
 Wybór produktu nie ustala sam rozpoznania, dawki ani czasu antybiotykoterapii. Po jawnym wyborze schematu aplikacja uzupełnia stałe wartości źródłowe. Dla zakresu z ChPL lekarz zatwierdza wartość; aplikacja sprawdza zgodność z zakresem przypisanym do konkretnej postaci, wskazania i populacji. Puste pole dla tabletek lub kapsułek może zostać jednorazowo uzupełnione mocą **jednej całej sztuki**, jeśli mieści się w wybranym zakresie i dostępnych limitach. Algorytm nie wybiera końca zakresu; jedna sztuka może przypadkowo odpowiadać jego granicy. Nie wyznacza czasu antybiotykoterapii z rozmiaru opakowania ani nie wpisuje domyślnego okresu. Skróty dwóch, jednej i połowy sztuki uwzględniają podzielność preparatu; połówka jest wyłączona dla kapsułek Dalacin C i tabletek Augmentin. Skróty nie zastępują dawek zależnych od masy. Implementacja: `chooseSourceRegimen()` i `prefillSourceTabletDose()` w `app.js`, `tablet-doses.js`.
@@ -53,7 +53,6 @@ Opakowania w tabeli są **udokumentowane w źródłach, ale nie oznaczają potwi
 | Arestin | Minocyklina 1 mg/wkład; 1 albo 24 wkłady | Lek opisany w dokumentacji USA; referencja | [S26] |
 | Atridox | System mieszania, hyklan doksycykliny 10%; 2 albo 6 zestawów | Archiwalny rekord USA; referencja | [S27] |
 | Dentomycin | Minocyklina 2%; 5 aplikatorów × 0,5 g | Archiwalny produkt irlandzki; referencja | [S28], [S29] |
-| Actisite | Włókno z tetracykliną 12,7 mg; aktualne opakowanie niepotwierdzone | Produkt historyczny; referencja | [S30] |
 
 ## 3. Zasady wymagające szczególnego przeglądu
 
@@ -77,7 +76,7 @@ Dla ludzi funkcja `prescriptionText()` w `dental-output.js` generuje dwa wariant
 - **Tantum:** przedział 6–12 lat i grupa >12 lat są rozdzielone. Dla <6 lat brak reguły zaokrąglenia ułamka rozpylenia w źródle, więc moduł pokazuje instrukcję, nie wymyśla zaokrągleń. Około 176 rozpyleń z 30 ml to szacunek; nie gwarantowana liczba dawek użytkowych. Płyn wymaga umiejętności płukania i wypluwania. [S07], [S08]
 - **Metronidazol Chema:** ropień po odbarczeniu i wkładka do kanału są procedurami; nie przeliczamy kieszonek ani kanałów na mg/kg/dobę. Dla zapalenia przyzębia oraz wrzodziejącego zapalenia dziąseł źródłowy okres w aplikacji wynosi **7–10 dni**, z wymaganą wartością czasu. W drugim wskazaniu instrukcja zachowuje sanację po 3–5 dniach. [S22]
 - **Ligosan/Chlo-Site:** oba są referencyjne. Ligosan ma dostępną polską ChPL w materiale producenta z 2017 r.; nie potwierdzono aktualności dokumentu. Dla Chlo-Site zweryfikowano kartę producenta, ale nie aktualną polską instrukcję. Wkład Ligosan 260 mg to masa żelu, zawierająca 36,4 mg doksycykliny. [S23], [S24]
-- **Zagraniczne wpisy:** dokument USA nie potwierdza rejestracji ani sprzedaży w Polsce. Dentomycin ma irlandzki status wycofania pozwolenia 2022-12-07; Atridox wskazany rekord USA zakończył obrót opakowań 2021-12-31. Nie oznacza to automatycznie statusu we wszystkich krajach. [S25–S30]
+- **Zagraniczne wpisy:** dokument USA nie potwierdza rejestracji ani sprzedaży w Polsce. Dentomycin ma irlandzki status wycofania pozwolenia 2022-12-07; Atridox wskazany rekord USA zakończył obrót opakowań 2021-12-31. Nie oznacza to automatycznie statusu we wszystkich krajach. [S25–S29]
 
 ## 4. Przypadki odbioru: wyłącznie sztuczne dane i arytmetyka
 
@@ -143,4 +142,3 @@ Nie należy zaokrąglać 5,625 ml wyłącznie w celu otrzymania estetycznego wyn
 - **S27 — Atridox:** [DailyMed, wskazany rekord produktu](https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=2550dbc0-8bdd-4bca-81d5-eec77ee6fbd5). Dokument 10/2016; zakończenie obrotu tych opakowań w rekordzie 2021-12-31; dostęp 2026-11-13; USA.
 - **S28 — Dentomycin, status:** [HPRA, rekord irlandzki](https://www.hpra.ie/find-a-medicine/for-human-use/withdrawn-medicines/details/25737). Wycofanie pozwolenia 2022-12-07; status „Not marketed”; dostęp 2026-11-13.
 - **S29 — Dentomycin, opakowanie i postać:** [archiwalna ChPL HPRA](https://assets.hpra.ie/products/Human/25737/Licence_PA1321-001-001_04122018114740.pdf). Dokument 2018-12-04; dostęp 2026-11-13.
-- **S30 — Actisite:** [FDA, historyczny przegląd nazw z 2014 r.](https://www.accessdata.fda.gov/drugsatfda_docs/nda/2014/205931Orig1s000NameR.pdf). Wymienia produkt już nieobecny na rynku; dostęp 2026-11-13. Nie jest aktualną ChPL ani potwierdzeniem statusu w Polsce.
