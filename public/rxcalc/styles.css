@@ -551,3 +551,15 @@ html{scroll-padding-top:calc(var(--pinned-header-offset) + 12px)}
 .tablet-dose-reason{font-size:10px;line-height:1.4;overflow-wrap:anywhere}
 .tablet-dose-reason:empty{display:none}
 @media(max-width:780px){.tablet-dose-choice{min-height:76px}.tablet-dose-choice strong{font-size:17px}.tablet-dose-choice>span{font-size:12px}.tablet-dose-reason{font-size:11px}}
+
+/* Give the catalogue the workspace while browsing; retain the calculation when changing products. */
+@media screen and (min-width:781px){
+  .calculator-grid.catalogue-browsing{grid-template-columns:minmax(0,1fr)}
+  .catalogue-browsing>.result-column,
+  .catalogue-browsing>.left-stack>:not(.product-panel){display:none}
+  .catalogue-browsing .drug-list,
+  .catalogue-browsing .favorite-shortcuts{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+  .catalogue-browsing .drug-card{min-height:76px}
+  .catalogue-browsing .drug-icon{display:grid}
+  .catalogue-browsing .drug-check{top:50%;transform:translateY(-50%)}
+}
