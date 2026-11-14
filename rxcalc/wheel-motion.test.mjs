@@ -260,6 +260,62 @@ test('desktop wheel interrupts custom inertia, preserves native scrolling and zo
   motion.destroy();
 });
 
+test('a trailing trackpad event without a scroll still centres the last visible row', () => {
+  for (const tail of [{deltaY:0.01},{deltaY:0},{deltaX:1,deltaY:0}]) {
+    const f=fixture(), motion=createWheelMotion(f.node);
+    f.node.scrollTop=60*44+13;f.send('scroll');
+    f.setTime(60);
+    const event=f.send('wheel',{deltaMode:0,...tail});
+    assert.equal(event.defaultPrevented,false);
+    // Tiny or horizontal momentum tails need not change scrollTop or emit scroll.
+    f.runTimers(239);assert.equal(f.node.scrollTop,2653);
+    f.runTimers(240);f.tick(400);
+    assert.equal(f.node.scrollTop,2640);
+    assert.equal(f.frames.size,0);assert.equal(f.timers.size,0);
+    motion.destroy();
+  }
+});
+
+test('a trackpad tail that interrupts an active snap schedules another exact landing', () => {
+  const f=fixture(), motion=createWheelMotion(f.node);
+  f.node.scrollTop=2653;f.send('scroll');f.runTimers(180);f.tick(220);
+  const interrupted=f.node.scrollTop;
+  assert.ok(interrupted>2640 && interrupted<2653);
+  f.send('wheel',{deltaY:0.01,deltaMode:0});
+  assert.equal(f.node.scrollTop,interrupted);
+  f.runTimers(399);assert.equal(f.node.scrollTop,interrupted);
+  f.runTimers(400);f.tick(560);
+  assert.equal(f.node.scrollTop,2640);
+  f.send('scroll');assert.equal(f.timers.size,0);
+  motion.destroy();
+});
+
+test('native momentum after the last trackpad event extends the final snap delay', () => {
+  const f=fixture(), motion=createWheelMotion(f.node);
+  f.node.scrollTop=2653;f.send('scroll');
+  f.setTime(60);f.send('wheel',{deltaY:0.01,deltaMode:0});
+  f.setTime(150);f.node.scrollTop=2670;f.send('scroll');
+  f.runTimers(329);assert.equal(f.frames.size,0);assert.equal(f.node.scrollTop,2670);
+  f.runTimers(330);f.tick(490);
+  assert.equal(f.node.scrollTop,2684);
+  motion.destroy();
+});
+
+test('trackpad pinch zoom does not cancel a pending or active row snap', () => {
+  for (const snapping of [false,true]) {
+    const f=fixture(), motion=createWheelMotion(f.node);
+    f.node.scrollTop=2653;f.send('scroll');
+    if (snapping) {f.runTimers(180);f.tick(220);}
+    else f.setTime(60);
+    const zoom=f.send('wheel',{deltaY:-1,deltaMode:0,ctrlKey:true});
+    assert.equal(zoom.defaultPrevented,false);
+    f.runTimers(240);f.tick(400);
+    assert.equal(f.node.scrollTop,2640);
+    assert.equal(f.frames.size,0);assert.equal(f.timers.size,0);
+    motion.destroy();
+  }
+});
+
 test('a left mouse click during inertia remains selectable, including slight pointer jitter', () => {
   const f=fixture(), motion=createWheelMotion(f.node);
   f.pointer('pointerdown',200);f.setTime(50);f.pointer('pointermove',150);f.setTime(100);f.pointer('pointermove',100);f.pointer('pointerup',100);

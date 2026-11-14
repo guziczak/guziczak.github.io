@@ -101,6 +101,13 @@ export function createWheelMotion(node, { rowHeight = 44 } = {}) {
     if (destroyed || drag || animation) return;
     animate(planWheelCoast({ position:node.scrollTop, max:max(), rowHeight, reducedMotion:reduced.matches }));
   }
+  function scheduleSettle() {
+    if (destroyed || animation || drag) return;
+    if (settling) win.clearTimeout(settling);
+    settling = 0;
+    if (Math.abs(node.scrollTop - nearestWheelPosition(node.scrollTop, max(), rowHeight)) < 0.5) return;
+    settling = win.setTimeout(() => { settling = 0; settle(); }, 180);
+  }
   function addSample(position, time) {
     if (!drag || drag.samples.at(-1)?.position === position) return;
     drag.samples.push({ position, time });
@@ -158,16 +165,14 @@ export function createWheelMotion(node, { rowHeight = 44 } = {}) {
     if (event.target === node && drag?.id === event.pointerId) finish();
   }, options);
 
-  // Mouse wheels and trackpads retain native scrolling. Centre only after their
-  // scroll events have stopped; any next event cancels/restarts this idle delay.
-  node.addEventListener('wheel', () => stop(), { ...options, passive:true });
-  node.addEventListener('scroll', () => {
-    if (destroyed || animation || drag) return;
-    if (settling) win.clearTimeout(settling);
-    settling = 0;
-    if (Math.abs(node.scrollTop - nearestWheelPosition(node.scrollTop, max(), rowHeight)) < 0.5) return;
-    settling = win.setTimeout(() => { settling = 0; settle(); }, 180);
+  // Native scrolling owns wheel/trackpad momentum. Its final wheel event may
+  // not move scrollTop (e.g. a tiny tail), so it must also re-arm the idle snap.
+  node.addEventListener('wheel', event => {
+    if (event.ctrlKey) return; // Trackpad pinch zoom must not abandon an unfinished snap.
+    stop();
+    scheduleSettle();
   }, { ...options, passive:true });
+  node.addEventListener('scroll', scheduleSettle, { ...options, passive:true });
   reduced.addEventListener('change', () => { if (reduced.matches) finish(); }, options);
 
   return {
