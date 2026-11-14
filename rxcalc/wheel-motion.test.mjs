@@ -64,12 +64,61 @@ function fixture() {
     setPointerCapture(id){captures.add(id);},
     releasePointerCapture(pointerId){captures.delete(pointerId);send('lostpointercapture',{pointerId});},
     hasPointerCapture:id=>captures.has(id)});
-  const send=(type,values={})=>{const event=new Event(type,{cancelable:true});Object.assign(event,values);node.dispatchEvent(event);return event;};
+  const send=(type,values={},target=node)=>{
+    const event=new Event(type,{bubbles:true,cancelable:true});Object.assign(event,values);
+    // Node's EventTarget has no DOM bubbling; preserve the originating row when
+    // delivering an event to the wheel's listener, as a browser would do.
+    if(target!==node)Object.defineProperty(event,'target',{value:target});
+    node.dispatchEvent(event);return event;
+  };
   const tick=time=>{clock=time;for(const [id,fn] of [...frames]){frames.delete(id);fn(time);}};
   const runTimers=time=>{clock=time;for(const [id,timer] of [...timers])if(timer.at<=time){timers.delete(id);timer.fn();}};
-  const pointer=(type,y,pointerType='touch')=>send(type,{isPrimary:true,button:0,pointerId:1,clientY:y,pointerType});
+  const pointer=(type,y,pointerType='touch',target=node)=>send(type,{isPrimary:true,button:0,pointerId:1,clientY:y,pointerType},target);
   return {node,win,frames,timers,captures,send,tick,runTimers,pointer,setTime:time=>{clock=time;}};
 }
+
+test('a finger keeps dragging and coasts after implicit capture transfers from a row to the wheel', () => {
+  const f=fixture(), row=new EventTarget(), motion=createWheelMotion(f.node);
+  f.node.scrollTop=440;
+  // Touch starts with implicit capture on the row actually touched.
+  f.pointer('pointerdown',200,'touch',row);
+  f.send('gotpointercapture',{pointerId:1},row);
+  f.setTime(30);f.pointer('pointermove',170,'touch',row);
+  assert.equal(f.node.scrollTop,470);
+  assert.equal(f.captures.has(1),true);
+
+  // setPointerCapture on the wheel makes the old row lose capture. That event
+  // bubbles through the wheel before its next pointermove, but is not a cancel.
+  f.send('lostpointercapture',{pointerId:1},row);
+  f.send('gotpointercapture',{pointerId:1});
+  assert.equal(f.node.scrollTop,470);
+  assert.equal(f.captures.has(1),true);
+  f.setTime(70);const move=f.pointer('pointermove',130);
+  assert.equal(move.defaultPrevented,true);
+  assert.equal(f.node.scrollTop,510);
+
+  f.setTime(90);f.pointer('pointerup',130);
+  assert.equal(f.captures.size,0);
+  assert.equal(f.frames.size,1);
+  assert.equal(motion.isClickSuppressed(),true);
+  f.tick(220);assert.ok(f.node.scrollTop>510);
+  f.tick(1600);assert.equal(f.frames.size,0);assert.equal(f.node.scrollTop%44,0);
+  motion.destroy();
+});
+
+test('losing capture on the wheel still stops dragging without starting a coast', () => {
+  const f=fixture(), motion=createWheelMotion(f.node);
+  f.node.scrollTop=440;
+  f.pointer('pointerdown',200);f.setTime(30);f.pointer('pointermove',170);
+  assert.equal(f.node.scrollTop,470);
+  f.node.releasePointerCapture(1);
+  assert.equal(f.node.scrollTop,484);
+  assert.equal(f.captures.size,0);
+  f.setTime(70);f.pointer('pointermove',130);f.pointer('pointerup',130);
+  assert.equal(f.node.scrollTop,484);
+  assert.equal(f.frames.size,0);
+  motion.destroy();
+});
 
 test('Done interrupts momentum at the currently visible row, and close cancels later frames', () => {
   const f=fixture(), motion=createWheelMotion(f.node);

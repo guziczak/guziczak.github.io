@@ -133,7 +133,9 @@ export function createWheelMotion(node, { rowHeight = 44 } = {}) {
     if (drag?.id === event.pointerId) { suppressUntil = now() + 500; finish(); }
   }, options);
   node.addEventListener('lostpointercapture', event => {
-    if (drag?.id === event.pointerId) finish();
+    // A touched row loses its implicit capture when the wheel takes over.
+    // Its bubbling event must not cancel the finger gesture we just started.
+    if (event.target === node && drag?.id === event.pointerId) finish();
   }, options);
 
   // Mouse wheels and trackpads retain native scrolling. Centre only after their
