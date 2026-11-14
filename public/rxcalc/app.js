@@ -200,11 +200,19 @@ function syncSourceRegimen({ initialize = false } = {}) {
 function chooseSourceRegimen(id) {
   const source = getAvailableRegimens().find(r => r.id === id);
   if (id && !source) return;
+  // Liquid starter selection keeps the same context as the former source cards.
+  // In particular, changing the selector must not silently discard a lower limit.
+  const retained = source && supportsLiquidChoices(getForm(),isVeterinary())
+    ? { days:state.days, manualMax:state.manualMax, extraInstructions:state.extraInstructions } : null;
   resetRegimen();
   state.regimenId = source?.id || '';
   state.doseMode = getForm()?.defaultMode || 'perKgDose';
   state.roundingStep = '';
   if (source?.fixedDays) state.days = String(source.fixedDays);
+  if (retained) {
+    if (!source.fixedDays) state.days = retained.days;
+    state.manualMax = retained.manualMax; state.extraInstructions = retained.extraInstructions;
+  }
   if (source?.minimumAge && state.age === '') state.vetAgeUnit = source.minimumAge.unit;
   syncSourceRegimen({ initialize:true });
   prefillSourceTabletDose();

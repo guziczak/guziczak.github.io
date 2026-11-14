@@ -27,11 +27,18 @@ export const LIQUID_STARTER_REGIMENS=[{
   ],
 }];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/** Reuse the app's select enhancement; the regimen list stays closed until requested.
+ * Selection flows through the existing regimenId change handler, never a default.
+ * Detailed sources remain available before selection in one collapsed disclosure.
+ */
 export function liquidStarterMarkup(choices) {
   if(!choices.length)return '';
-  return `<div class="liquid-starters"><h3>Uzupełnij ze schematu</h3><p>Wybór uzupełni stałe wartości. Przy zakresie dawkę wybierasz sam. Pola pozostają edytowalne.</p><div class="liquid-starter-list">${choices.map(s=>{
+  const doseLabel=s=>{
     const unit=({fixed:'mg',perKgDay:'mg/kg/dobę',perKgDose:'mg/kg/podanie',units:'ml'})[s.doseMode]||'';
-    const dose=s.dose!=null?n(s.dose):`${n(s.doseRange.min)}–${n(s.doseRange.max)}`;
-    return `<div class="liquid-starter-item"><button type="button" class="liquid-starter-choice" data-action="liquid-source" data-value="${esc(s.id)}"><strong>${esc(dose)} ${unit} · ${s.frequency?`${n(s.frequency)} ×/dobę`:'wybierz częstość'}</strong><span>${esc(s.label)}</span><small>${s.starterCaution?'Przeliczenie ChPL + FDA':'Schemat ze źródła'} · ${s.doseRange?'wybierz zakres':'wpisz dawkę i częstość'} →</small></button>${s.starterCaution?`<p class="liquid-starter-caution">${esc(s.starterCaution)}</p>`:''}<details class="liquid-starter-sources"><summary>Warunki i źródła</summary><p>${esc(s.indication)}</p><p>${esc(s.screening||'Zakres i warunki schematu sprawdź w źródle.')}</p><a href="${esc(s.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(s.sourceLabel)} ↗</a>${(s.additionalSources||[]).map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">${esc(a.label)} ↗</a>`).join('')}</details></div>`;
-  }).join('')}</div><p class="liquid-dose-help">Możesz też wpisać własne wartości poniżej. Sam wybór preparatu nie ustala leczenia ani czasu kuracji.</p></div>`;
+    const dose=s.dose!=null?n(s.dose):s.doseRange?`${n(s.doseRange.min)}–${n(s.doseRange.max)}`:'Wybierz dawkę';
+    return `${dose} ${unit} · ${s.frequency?`${n(s.frequency)} ×/dobę`:'wybierz częstość'}`;
+  };
+  const options=choices.map(s=>`<option value="${esc(s.id)}">${esc(doseLabel(s))} — ${esc(s.label)}${s.starterCaution?' · Przeliczenie ChPL + FDA':''}</option>`).join('');
+  const sources=choices.map(s=>`<section><h4>${esc(doseLabel(s))} — ${esc(s.label)}</h4>${s.starterCaution?`<p class="liquid-starter-caution">${esc(s.starterCaution)}</p>`:''}<p>${esc(s.indication)}</p><p>${esc(s.screening||'Zakres i warunki schematu sprawdź w źródle.')}</p><a href="${esc(s.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(s.sourceLabel)} ↗</a>${(s.additionalSources||[]).map(a=>`<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">${esc(a.label)} ↗</a>`).join('')}</section>`).join('');
+  return `<div class="source-regimen-picker liquid-starters"><div class="field"><label for="regimenId">Uzupełnij ze schematu (opcjonalnie)</label><select id="regimenId" data-field="regimenId" aria-describedby="liquid-starter-help"><option value="">Wybierz schemat…</option>${options}</select></div><p class="small-help" id="liquid-starter-help">Wybór uzupełni stałe wartości. Dawkę z zakresu i czas ustalasz sam. Możesz też wpisać własne wartości poniżej.</p><details class="liquid-starter-sources"><summary>Warunki i źródła schematów</summary>${sources}</details></div>`;
 }

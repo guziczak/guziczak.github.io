@@ -10,13 +10,14 @@
 .liquid-dose-choice.active{border-color:var(--accent);background:var(--surface-soft);box-shadow:inset 0 0 0 1px var(--accent)}
 .liquid-dose-choice:disabled{cursor:not-allowed;opacity:.55}.liquid-dose-choice:disabled .liquid-dose-reason{color:var(--ink)}
 .liquid-dose-help{font-size:10px!important;line-height:1.6;color:var(--muted);margin:7px 0 0!important}
-.liquid-starters{margin-bottom:17px}.liquid-starters h3{margin:0;font-size:13px;color:var(--ink)}
+.liquid-starters{margin-bottom:17px}
 .liquid-starters>p{font-size:11px;line-height:1.6;color:var(--muted);margin:6px 0 9px}
-.liquid-starter-list{display:grid;gap:9px}.liquid-starter-item{border:1px solid var(--border);border-radius:9px;padding:11px;background:var(--surface-soft);min-width:0}
-.liquid-starter-choice{display:flex;flex-direction:column;align-items:flex-start;gap:5px;width:100%;padding:9px 10px;border:1px solid var(--accent);border-radius:7px;background:var(--surface);color:var(--ink);text-align:left;cursor:pointer;line-height:1.5}
-.liquid-starter-choice strong{font-size:14px}.liquid-starter-choice span{font-size:11px}.liquid-starter-choice small{font-size:10px;color:var(--accent)}
 .liquid-starter-caution{color:var(--muted);font-size:11px;line-height:1.6;margin:9px 0}
 .liquid-starter-sources{font-size:10px;line-height:1.6;margin-top:8px}.liquid-starter-sources summary{cursor:pointer;color:var(--accent);min-height:30px;display:list-item}
 .liquid-starter-sources p{color:var(--muted)}.liquid-starter-sources a{display:block;margin-top:6px;overflow-wrap:anywhere}
-.liquid-dose-choice:focus-visible,.liquid-starter-choice:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-@media(max-width:780px){.liquid-dose-heading{font-size:12px}.liquid-dose-choice{min-height:112px}.liquid-dose-choice>small,.liquid-dose-help{font-size:11px!important}.liquid-starters h3{font-size:14px}.liquid-starters>p,.liquid-starter-caution,.liquid-starter-choice span{font-size:12px}.liquid-starter-choice small,.liquid-starter-sources{font-size:11px}.liquid-starter-sources summary{min-height:40px}}
+.liquid-dose-choice:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:780px){.liquid-dose-heading{font-size:12px}.liquid-dose-choice{min-height:112px}.liquid-dose-choice>small,.liquid-dose-help{font-size:11px!important}.liquid-starters>p,.liquid-starter-caution{font-size:12px}.liquid-starter-sources{font-size:11px}.liquid-starter-sources summary{min-height:40px}}
+
+.liquid-starter-sources section{padding:9px 0;min-width:0}
+.liquid-starter-sources section+section{border-top:1px solid var(--border)}
+.liquid-starter-sources h4{font:inherit;font-weight:600;color:var(--ink);margin:0 0 6px;overflow-wrap:anywhere}
