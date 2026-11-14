@@ -4,15 +4,15 @@ import { nearestWheelPosition, wheelReleaseVelocity, planWheelCoast, wheelPositi
 
 test('release velocity follows the recent gesture and ignores a held finger', () => {
   const samples = [{ position:20, time:0 }, { position:60, time:120 }, { position:110, time:170 }, { position:140, time:200 }];
-  assert.equal(wheelReleaseVelocity(samples, 220), 1);
+  assert.equal(wheelReleaseVelocity(samples, 220), 0.75);
   assert.equal(wheelReleaseVelocity(samples, 281), 0);
   assert.equal(wheelReleaseVelocity([{ position:0, time:0 }], 10), 0);
-  assert.equal(wheelReleaseVelocity([{ position:100, time:0 }, { position:20, time:80 }], 90), -1);
+  assert.equal(wheelReleaseVelocity([{ position:100, time:0 }, { position:20, time:80 }], 90), -0.875);
   assert.equal(wheelReleaseVelocity([{ position:0, time:0 }, { position:1000, time:10 }], 10), 3.2);
 });
 
 test('normal flicks coast progressively for about a second and settle on exact rows', () => {
-  for (const velocity of [-2, -1, -0.4, 0.4, 1, 2]) {
+  for (const velocity of [-2, -1, -0.8, 0.8, 1, 2]) {
     const plan = planWheelCoast({ position:4400, velocity, max:22000 });
     assert.ok(plan.duration >= 800 && plan.duration <= 1400);
     assert.equal(plan.to % 44, 0);
@@ -52,6 +52,28 @@ test('frame rate does not change the path or final value', () => {
   assert.equal(wheelPositionAt(plan,0),plan.from);
 });
 
+test('release velocity follows a final direction change instead of the earlier movement', () => {
+  const samples=[{position:0,time:0},{position:80,time:40},{position:100,time:60},{position:90,time:80},{position:80,time:100}];
+  assert.equal(wheelReleaseVelocity(samples,100),-0.5);
+  assert.equal(wheelReleaseVelocity(samples.map(s=>({...s,position:-s.position})),100),0.5);
+});
+
+test('holding the finger still progressively removes momentum before release', () => {
+  const samples=[{position:0,time:0},{position:40,time:40},{position:80,time:80}];
+  const speeds=[80,100,120,159,160,200].map(time=>wheelReleaseVelocity(samples,time));
+  assert.equal(speeds[0],1);
+  for(let i=1;i<4;i++)assert.ok(speeds[i]<speeds[i-1]);
+  assert.ok(speeds[3]<0.02);
+  assert.equal(speeds[4],0);assert.equal(speeds[5],0);
+});
+
+test('controlled release speeds only centre the nearest row, without a sudden minimum fling', () => {
+  for(const velocity of [-0.45,-0.4,-0.2,0,0.2,0.4,0.45]) {
+    assert.equal(planWheelCoast({position:113,velocity,max:4400}).to,132);
+  }
+  assert.equal(planWheelCoast({position:440,velocity:0.46,max:4400}).to,440);
+});
+
 function fixture() {
   let clock=0,serial=0;
   const frames=new Map(),timers=new Map(),media=new EventTarget(),captures=new Set();
@@ -76,6 +98,70 @@ function fixture() {
   const pointer=(type,y,pointerType='touch',target=node)=>send(type,{isPrimary:true,button:0,pointerId:1,clientY:y,pointerType},target);
   return {node,win,frames,timers,captures,send,tick,runTimers,pointer,setTime:time=>{clock=time;}};
 }
+
+test('slow one-row touch movements follow the finger and remain one row after release', () => {
+  for(const duration of [250,500,1000])for(const direction of [-1,1]) {
+    const f=fixture(), motion=createWheelMotion(f.node);
+    f.node.scrollTop=440;f.pointer('pointerdown',200);
+    for(let step=1;step<=4;step++) {
+      f.setTime(duration*step/4);f.pointer('pointermove',200-direction*step*11);
+      assert.equal(f.node.scrollTop,440+direction*step*11);
+      f.send('scroll');assert.equal(f.timers.size,0);
+    }
+    f.pointer('pointerup',200-direction*44);f.tick(duration+1600);
+    assert.equal(f.node.scrollTop,440+direction*44,`${duration}ms, direction ${direction}`);
+    motion.destroy();
+  }
+});
+
+test('small finger corrections do not start a long spin, even when their final sample is quick', () => {
+  for(const [distance,duration] of [[7,35],[12,12]])for(const direction of [-1,1]) {
+    const f=fixture(), motion=createWheelMotion(f.node);
+    f.node.scrollTop=440;f.pointer('pointerdown',200);
+    f.setTime(duration);f.pointer('pointermove',200-direction*distance);f.pointer('pointerup',200-direction*distance);
+    f.tick(duration+1600);
+    assert.equal(f.node.scrollTop,440,`${distance}px in ${duration}ms`);
+    assert.equal(motion.isClickSuppressed(),false);
+    motion.destroy();
+  }
+});
+
+test('a short reverse correction does not restart momentum in the previous direction', () => {
+  const f=fixture(), motion=createWheelMotion(f.node);
+  f.node.scrollTop=440;f.pointer('pointerdown',200);
+  for(const [time,y] of [[20,180],[40,160],[65,165],[90,170]]) {
+    f.setTime(time);f.pointer('pointermove',y);
+  }
+  assert.equal(f.node.scrollTop,470);
+  f.pointer('pointerup',170);f.tick(1700);
+  assert.equal(f.node.scrollTop,484);
+  motion.destroy();
+});
+
+test('a moving wheel can be caught and adjusted slowly without another unintended fling', () => {
+  const f=fixture(), motion=createWheelMotion(f.node);
+  f.pointer('pointerdown',200);f.setTime(50);f.pointer('pointermove',150);f.setTime(100);f.pointer('pointermove',100);f.pointer('pointerup',100);
+  f.tick(200);assert.equal(f.frames.size,1);
+  const caught=f.node.scrollTop;
+  f.pointer('pointerdown',200);assert.equal(f.frames.size,0);
+  for(let step=1;step<=4;step++) {
+    f.setTime(200+250*step/4);f.pointer('pointermove',200-step*11);
+    assert.equal(f.node.scrollTop,caught+step*11);
+  }
+  f.pointer('pointerup',156);f.tick(2100);
+  assert.equal(f.node.scrollTop,nearestWheelPosition(caught+44,4400));
+  motion.destroy();
+});
+
+test('the final finger position at pointerup completes a slow drag across the row midpoint', () => {
+  const f=fixture(), motion=createWheelMotion(f.node);
+  f.node.scrollTop=440;f.pointer('pointerdown',200);
+  f.setTime(200);f.pointer('pointermove',180);assert.equal(f.node.scrollTop,460);
+  f.setTime(300);f.pointer('pointerup',175);
+  assert.equal(f.node.scrollTop,465);
+  f.tick(1900);assert.equal(f.node.scrollTop,484);
+  motion.destroy();
+});
 
 test('a finger keeps dragging and coasts after implicit capture transfers from a row to the wheel', () => {
   const f=fixture(), row=new EventTarget(), motion=createWheelMotion(f.node);

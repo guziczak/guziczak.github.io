@@ -7,20 +7,35 @@ export function nearestWheelPosition(position, max, rowHeight = 44) {
 }
 
 /** Samples use milliseconds and scroll coordinates, so direction matches scrollTop. */
-export function wheelReleaseVelocity(samples, releasedAt) {
+export function wheelReleaseVelocity(samples, releasedAt, { minDistance = 0 } = {}) {
   const last = samples.at(-1);
-  if (!last || releasedAt - last.time > 80) return 0;
+  if (!last) return 0;
+  const idle = Math.max(0, releasedAt - last.time);
+  if (idle >= 80) return 0;
   const recent = samples.filter(sample => sample.time >= last.time - 100);
-  const first = recent[0];
-  if (recent.length < 2 || last.time - first.time < 8) return 0;
-  return clamp((last.position - first.position) / (last.time - first.time), -3.2, 3.2);
+  let first = last, direction = 0;
+  // A correction reverses the user's intent. Do not average it with the earlier
+  // movement and send the wheel spinning back in the old direction.
+  for (let index = recent.length - 2; index >= 0; index--) {
+    const sample = recent[index];
+    const nextDirection = Math.sign(first.position - sample.position);
+    if (direction && nextDirection && nextDirection !== direction) break;
+    if (nextDirection) direction = nextDirection;
+    first = sample;
+  }
+  const distance = last.position - first.position, elapsed = last.time - first.time;
+  if (elapsed < 8 || Math.abs(distance) < minDistance) return 0;
+  return clamp(distance / elapsed, -3.2, 3.2) * (1 - idle / 80);
 }
 
 export function planWheelCoast({ position, velocity = 0, max, rowHeight = 44, reducedMotion = false }) {
   const from = clamp(position, 0, max);
   const speed = clamp(velocity, -3.2, 3.2);
-  const fling = !reducedMotion && Math.abs(speed) >= 0.15;
-  const travel = fling ? clamp(speed * 380, -26 * rowHeight, 26 * rowHeight) : 0;
+  // Fine adjustments settle nearby. Blend into momentum only for a deliberate
+  // flick, without a sudden jump to a multi-row minimum coast.
+  const ramp = reducedMotion ? 0 : clamp((Math.abs(speed) - 0.45) / 0.55, 0, 1);
+  const fling = ramp > 0;
+  const travel = fling ? clamp(speed * 380 * ramp * ramp * (3 - 2 * ramp), -26 * rowHeight, 26 * rowHeight) : 0;
   const to = nearestWheelPosition(from + travel, max, rowHeight);
   const distance = Math.abs(to - from);
   const duration = reducedMotion || distance < 0.1 ? 0
@@ -121,12 +136,17 @@ export function createWheelMotion(node, { rowHeight = 44 } = {}) {
   node.addEventListener('pointerup', event => {
     if (!drag || event.pointerId !== drag.id) return;
     const gesture = drag, time = now();
+    if (gesture.moved) {
+      // The release can contain a final movement absent from pointermove.
+      node.scrollTop = clamp(gesture.start + gesture.y - event.clientY, 0, max());
+      addSample(node.scrollTop, time);
+    }
     releaseDrag();
     if (!gesture.moved && !gesture.stoppedCoast) return;
     suppressUntil = time + 500;
     if (gesture.moved) event.preventDefault();
     animate(planWheelCoast({ position:node.scrollTop,
-      velocity:gesture.moved ? wheelReleaseVelocity(gesture.samples, time) : 0,
+      velocity:gesture.moved ? wheelReleaseVelocity(gesture.samples, time, { minDistance:rowHeight / 2 }) : 0,
       max:max(), rowHeight, reducedMotion:reduced.matches }));
   }, options);
   node.addEventListener('pointercancel', event => {
