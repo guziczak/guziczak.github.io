@@ -12,6 +12,7 @@ import { createSelectMenus } from './select-menu.js';
 import { tabletDoseChoices } from './tablet-doses.js';
 import { createPatientPickers } from './patient-picker.js';
 import { createViewportLayout } from './viewport-layout.js';
+import { createCatalogueMotion } from './catalogue-motion.js';
 
 const $ = (q, root = document) => root.querySelector(q);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -51,6 +52,7 @@ const paths = {
 const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.pill}</svg>`;
 const selectMenus = createSelectMenus({ icon });
 const viewportLayout = createViewportLayout();
+const catalogueMotion = createCatalogueMotion();
 const forms = { tablet: ['Tabletki', 'tabl.'], capsule: ['Kapsułki', 'kaps.'], suspension: ['Zawiesina doustna', 'ml'], oralPaste: ['Pasta doustna', 'g'], oralGel: ['Żel doustny', 'g'], oralPowder: ['Granulat / proszek doustny', 'g'], spray: ['Aerozol', 'rozp.'], gel: ['Żel / maść', 'g'], drops: ['Krople', 'kropli'], solution: ['Roztwór', 'ml'], injection: ['Iniekcja · pojemniki jednorazowe', 'ml'] };
 const SPECIALTIES = [{id:'dental',label:'Stomatologia',icon:'tooth'},{id:'cardio',label:'Kardiologia',icon:'heart'},{id:'veterinary',label:'Weterynaria',icon:'paw'}];
 const ANIMALS = [{id:'dog',label:'Pies',weight:'np. 12'},{id:'cat',label:'Kot',weight:'np. 4'},{id:'horse',label:'Koń',weight:'np. 550'},{id:'hamster',label:'Chomik',weight:'np. 0,08'},{id:'rat',label:'Szczur',weight:'np. 0,3'}];
@@ -304,6 +306,7 @@ function specialtyPicker() {
 }
 
 function render() {
+  catalogueMotion.cancel();
   const previousFocus = document.activeElement;
   const focusId = previousFocus?.id;
   const focusField = previousFocus?.dataset?.pickerId || previousFocus?.dataset?.selectId || focusId;
@@ -459,6 +462,7 @@ function productSearchHit(row) {
 }
 
 function renderDrugs() {
+  catalogueMotion.cancel();
   $('.calculator-grid')?.classList.toggle('catalogue-browsing', catalogueExpanded());
   const node = $('#drug-list'); if (!node) return;
   const query = normalize(state.search);
@@ -700,7 +704,7 @@ document.addEventListener('click',e=>{
     case 'form':if(selectForm(value)){ui.productExpanded=false;renderProductSelection();}break;
     case 'edit-product':ui.productExpanded=!ui.productExpanded;render();break;
     case 'filters':ui.filtersOpen=!ui.filtersOpen;render();break;
-    case 'browse-catalogue':ui.showAll=!ui.showAll;renderDrugs();break;
+    case 'browse-catalogue':ui.showAll=!ui.showAll;catalogueMotion.change(renderDrugs,b);break;
     case 'route':{
       const routes=new Set(getSpeciesCatalogue().flatMap(d=>d.forms.map(f=>f.routeCode)));
       if(value!=='all'&&!routes.has(value))break;

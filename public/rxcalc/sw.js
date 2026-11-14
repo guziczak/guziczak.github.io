@@ -1,11 +1,11 @@
 /* RxCalc only caches its static application. Patient inputs never enter this worker. */
-const CACHE_VERSION = '2026-11-14.41';
+const CACHE_VERSION = '2026-11-14.42';
 const SCOPE = new URL(self.registration.scope);
 const CACHE_PREFIX = `rxcalc:${encodeURIComponent(SCOPE.pathname)}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const SHELL_URL = new URL('index.html', SCOPE).href;
 const STATIC_PATHS = [
-  'theme-init.js', 'viewport-layout.js',
+  'theme-init.js', 'viewport-layout.js', 'catalogue-motion.js',
   'patient-picker.js', 'patient-picker-model.js', 'patient-picker.css', 'wheel-motion.js', 'wheel-feedback.js',
   'index.html', 'styles.css', 'app.js', 'select-menu.js', 'engine.js', 'catalogue.js', 'catalogue-selection.js', 'workflow.js', 'dental-systemic.js', 'dental-topicals.js', 'human-regimens.js', 'human-regimen-engine.js', 'product-search.js', 'tablet-doses.js', 'dental-output.js', 'regimens.js', 'regimen-engine.js', 'equine-nsaids.js', 'equine-antiparasitics.js',
   'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png',
