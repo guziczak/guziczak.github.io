@@ -154,5 +154,5 @@ test('new runtime module is cached and built, and the view receives explicit pat
   for(const file of ['build.mjs','sw.js'])assert.ok((await readFile(new URL(file,import.meta.url),'utf8')).includes("'dose-reference.js'"));
   const app=await readFile(new URL('app.js',import.meta.url),'utf8');
   assert.ok(app.includes('referenceContext:{formId:form.id,patientType:state.patientType'));
-  assert.ok((await readFile(new URL('sw.js',import.meta.url),'utf8')).includes('2026-11-14.46'));
+  assert.ok((await readFile(new URL('sw.js',import.meta.url),'utf8')).includes('2026-11-14.47'));
 });

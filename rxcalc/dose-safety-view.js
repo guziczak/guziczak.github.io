@@ -69,7 +69,7 @@ function meterMarkup(row, note, comparisonAllowed) {
 }
 
 /** Pure HTML renderer. No source limits are invented and no input is mutated. */
-export function dailyDoseMarkup({ note, input = {}, source = null, context = '', eligibility = null, doseProblems = [], canChooseSource = false, veterinary = false, referenceContext = null, icon = () => '' } = {}) {
+export function dailyDoseMarkup({ note, input = {}, source = null, context = '', eligibility = null, doseProblems = [], canChooseSource = false, veterinary = false, referenceContext = null, modified = false, icon = () => '' } = {}) {
   if (!note) return '';
   const comparisonAllowed = !source || eligibility?.valid === true;
   const hasCeiling = note.rows.some(row => positive(row.ceiling) || positive(row.ceilingPerKg));
@@ -77,7 +77,7 @@ export function dailyDoseMarkup({ note, input = {}, source = null, context = '',
     ? adultAugmentinReference({...referenceContext,input,source}) : null;
   const rows = note.rows.map(row => `<div class="dose-safety-row"><dt>${esc(row.name)}</dt><dd><div class="dose-safety-amount"><strong>${row.daily === null ? '—' : n(row.daily, 6)} <span>${esc(row.unit)}/dobę</span></strong>${row.perKg === null ? '' : `<small>${n(row.perKg, 4)} ${esc(row.unit)}/kg/dobę</small>`}</div>${comparative ? referenceMeterMarkup(row, comparative) || meterMarkup(row, note, comparisonAllowed) : meterMarkup(row, note, comparisonAllowed)}</dd></div>`).join('');
   const hasDerived = note.rows.some(row => row.derivedCeiling);
-  const scope = source ? `<p class="daily-dose-scope"><strong>Wybrany schemat:</strong> ${esc(source.label)}${source.phaseLabel ? ` · ${esc(source.phaseLabel)}` : ''}. Granice dotyczą wyłącznie tego wskazania i zakresu pacjentów.</p>` : '';
+  const scope = source ? `<p class="daily-dose-scope"><strong>${modified ? 'Źródło odniesienia dla zmodyfikowanego schematu:' : 'Wybrany schemat:'}</strong> ${esc(source.label)}${source.phaseLabel ? ` · ${esc(source.phaseLabel)}` : ''}. Granice dotyczą wyłącznie tego wskazania i zakresu pacjentów.</p>` : '';
   const errors = source && !comparisonAllowed
     ? `<div class="dose-safety-notice"><strong>Nie potwierdzono warunków porównania.</strong><p>Wartości graniczne są informacją o schemacie, nie limitem zatwierdzonym dla tego pacjenta.</p>${eligibility?.errors?.length ? `<ul>${[...new Set(eligibility.errors)].map(error => `<li>${esc(error)}</li>`).join('')}</ul>` : ''}</div>` : '';
   const doseIssues = comparisonAllowed && doseProblems.length ? `<div class="dose-safety-notice"><strong>Sprawdź zgodność ze schematem.</strong><ul>${[...new Set(doseProblems)].map(error => `<li>${esc(error)}</li>`).join('')}</ul></div>` : '';

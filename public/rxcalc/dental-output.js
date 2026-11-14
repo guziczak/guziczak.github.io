@@ -20,13 +20,16 @@ export function prescriptionText({ mode = 'full', header, dosing, source, veteri
 }
 
 /** Keep PRN ceilings separate from a fixed daily schedule in copied instructions. */
-export function humanDosingText({ source, amount, route = '', frequency, days, effectiveDailyLimit, extraInstructions = '' }) {
+export function humanDosingText({ source, sourceModified = false, amount, route = '', frequency, days, effectiveDailyLimit, extraInstructions = '' }) {
   const count = `${n(frequency)} ${frequency === 1 ? 'raz' : 'razy'} na dobę`;
   let text = `D.S. Stosować ${amount}${route ? ` ${route}` : ''}, ${source?.asNeeded ? `w razie potrzeby, nie więcej niż ${count}` : count}${durationText(days)}.`;
   if (source?.asNeeded && source.minIntervalHours) text += ` Pomiędzy podaniami zachować co najmniej ${n(source.minIntervalHours)} godz.`;
   const dailyLimit = effectiveDailyLimit === undefined ? source?.maxDailyMg : effectiveDailyLimit;
   if (source?.asNeeded && dailyLimit > 0) text += ` Nie przekraczać łącznie ${n(dailyLimit)} mg tej substancji na dobę ze wszystkich preparatów.`;
-  if (source?.administration) text += ` ${source.administration}`;
+  // A modified schedule must not export contradictory source prose (e.g. an
+  // original "3 administrations" after editing to 2). Structured PRN/interval
+  // limits above remain in force; the clinician supplies any extra instructions.
+  if (source?.administration && !sourceModified) text += ` ${source.administration}`;
   if (extraInstructions.trim()) text += ` ${extraInstructions.trim()}`;
   return text;
 }

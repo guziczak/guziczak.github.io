@@ -11,7 +11,7 @@ const clean = value => Number(value.toPrecision(14));
  * Patient eligibility and completeness remain the responsibility of the dose engine.
  */
 export function tabletDoseChoices(form, {
-  doseMode = 'fixed', source = null, frequency = null,
+  doseMode = 'fixed', source = null, frequency = null, allowFixedSource = false,
   maxSingleMg = null, maxDailyMg = null,
 } = {}) {
   if (form?.form !== 'tablet' || !positive(form.strengthMg)
@@ -19,8 +19,9 @@ export function tabletDoseChoices(form, {
       || form.referenceOnly || form.calculationBlocked) return [];
 
   const range = source?.doseRange;
-  if (source && (source.doseMode !== doseMode || present(source.dose)
-      || !positive(range?.min) || !positive(range?.max) || range.min > range.max)) return [];
+  const fixedEditable = allowFixedSource === true && positive(source?.dose);
+  if (source && (source.doseMode !== doseMode || !fixedEditable && (present(source.dose)
+      || !positive(range?.min) || !positive(range?.max) || range.min > range.max))) return [];
 
   const singleLimits = [form.maxSingleMg, source?.maxSingleMg, maxSingleMg].filter(present);
   const dailyLimits = [form.maxDailyMg, source?.maxDailyMg, maxDailyMg].filter(present);

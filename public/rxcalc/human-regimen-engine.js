@@ -205,7 +205,39 @@ function checkAge(record, context, errors) {
   if (ambiguous) errors.push('Wiek podany w dniach jest niejednoznaczny przy granicy schematu. Podaj wiek w ukończonych miesiącach.');
 }
 
-function resolveChoice(record, context, result, key, optionsKey) {
+function resolveChoice(record, context, result, key, optionsKey, editable = false) {
+  // Explicit UI override: use the entered value, never the source default.
+  // Patient eligibility, numeric ceilings, intervals and duration are still
+  // checked below against the ORIGINAL, unmodified source record.
+  if (editable) {
+    result.requirements.push(key);
+    const value = context[key];
+    if (missing(value)) {
+      result.errors.push(key === 'dose' ? 'Uzupełnij dawkę.' : 'Uzupełnij liczbę podań na dobę.');
+      return;
+    }
+    if (key === 'dose' ? !positive(value) : !positiveInteger(value) || value > 48) {
+      result.errors.push(key === 'dose' ? 'Podaj dodatnią, skończoną dawkę.' : 'Liczba podań musi być całkowita, od 1 do 48 na dobę.');
+      return;
+    }
+    result[key] = value;
+    const matches = present(record[key]) ? same(value, record[key])
+      : key === 'dose' ? value >= record.doseRange.min && value <= record.doseRange.max
+        : record.frequencyOptions.includes(value);
+    if (!matches) {
+      result.warnings.push(key === 'dose'
+        ? 'Dawka została zmieniona względem źródła. Zmodyfikowany schemat wymaga oceny lekarza.'
+        : 'Częstotliwość została zmieniona względem źródła. Zmodyfikowany schemat wymaga oceny lekarza.');
+    }
+    // A range boundary remains a constraint, even when its field is editable.
+    if (key === 'dose' && record.doseRange && !matches) {
+      result.errors.push('Dawka jest poza zakresem wybranego schematu.');
+    }
+    if (key === 'frequency' && record.frequencyOptions && !matches) {
+      result.errors.push('Liczba podań nie należy do wybranego schematu.');
+    }
+    return;
+  }
   if (present(record[key])) {
     result[key] = record[key];
     if (!missing(context[key]) && (!finite(context[key]) || !same(context[key], record[key]))) {
@@ -230,7 +262,7 @@ function resolveChoice(record, context, result, key, optionsKey) {
 }
 
 /** Resolve a source candidate, never an automatically selected treatment. */
-export function resolveHumanRegimen(record, context = {}) {
+export function resolveHumanRegimen(record, context = {}, { allowNumericOverrides = false } = {}) {
   const result = emptyResult();
   if (!object(context)) {
     result.errors.push('Nieprawidłowy kontekst pacjenta.');
@@ -294,8 +326,9 @@ export function resolveHumanRegimen(record, context = {}) {
     result.errors.push(`CrCl nie spełnia warunku schematu (${record.minCrClExclusive ? 'powyżej' : 'co najmniej'} ${fmt(record.minCrCl)} ml/min). Wymagany jest inny schemat.`);
   }
 
-  if (record.doseMode !== 'instruction') resolveChoice(record, context, result, 'dose', 'doseRange');
-  resolveChoice(record, context, result, 'frequency', 'frequencyOptions');
+  const editable = allowNumericOverrides === true && record.doseMode !== 'instruction';
+  if (record.doseMode !== 'instruction') resolveChoice(record, context, result, 'dose', 'doseRange', editable);
+  resolveChoice(record, context, result, 'frequency', 'frequencyOptions', editable);
   if (result.frequency !== null && positive(record.minIntervalHours)
       && above(result.frequency * record.minIntervalHours, 24)) {
     result.errors.push('Wybrana liczba podań nie zachowuje minimalnego odstępu między dawkami.');

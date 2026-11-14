@@ -72,3 +72,11 @@
 .dose-reference-details small{display:block;color:var(--muted);margin-top:5px}
 @media(max-width:780px){.daily-dose-note .dose-reference-intro,.dose-reference-status,.dose-reference-footnote,.dose-reference-details{font-size:12px}.dose-reference-values{font-size:13px}.dose-reference-values small,.dose-reference-badge,.dose-reference-values b{font-size:11px}}
 @media(forced-colors:active){.dose-reference-track{border:1px solid CanvasText}.dose-reference-fill{background:Highlight;forced-color-adjust:none}.dose-reference-marker{border-color:CanvasText;filter:none}}
+
+/* Source values stay editable; provenance is separate from the input controls. */
+.source-edit-note{margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-soft);min-width:0}
+.source-edit-status{display:grid;gap:4px;font-size:12px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+.source-edit-status strong{color:var(--ink);font-weight:650}
+.source-edit-status.modified strong{color:var(--warn)}
+.source-edit-note>.text-button{margin-top:8px;min-height:36px;text-align:left;white-space:normal}
+.source-edit-note>.small-help{margin:6px 0 0}

@@ -15,6 +15,7 @@ import { createViewportLayout } from './viewport-layout.js';
 import { createCatalogueMotion } from './catalogue-motion.js';
 import { ingredientDailyDose } from './daily-dose.js';
 import { dailyDoseMarkup } from './dose-safety-view.js';
+import { editableHumanSource, sourceInitialValues, sourceEditState, sourceEditMarkup } from './regimen-edit.js';
 
 const $ = (q, root = document) => root.querySelector(q);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -177,13 +178,18 @@ const getAvailableRegimens = () => state.custom || isReference(getForm()) ? [] :
   ? availableRegimens(REGIMENS, regimenContext()) : availableHumanRegimens(HUMAN_REGIMENS, humanContext());
 const humanAgeYears = () => num(state.age) === null ? null : num(state.age) * ({years:1,months:1/12,days:1/365.25}[state.humanAgeUnit] || 1);
 const ageUnitLabel = () => ({ years: 'lat', months: 'mies.', weeks: 'tyg.', days: 'dni' })[state.vetAgeUnit] || '';
-function syncSourceRegimen() {
+const canEditSourceValues = () => !isVeterinary() && !isInstruction(getForm()) && editableHumanSource(getSourceRegimen());
+const sourceIsModified = () => canEditSourceValues() && sourceEditState(getSourceRegimen(), state).modified;
+function syncSourceRegimen({ initialize = false } = {}) {
   if (!state.regimenId) return null;
   const source = getSourceRegimen();
-  const result = isVeterinary() ? resolveRegimen(source, regimenContext()) : resolveHumanRegimen(source, humanContext());
+  const editable = canEditSourceValues();
+  if (initialize && editable) Object.assign(state, sourceInitialValues(source));
+  const result = isVeterinary() ? resolveRegimen(source, regimenContext())
+    : resolveHumanRegimen(source, humanContext(), { allowNumericOverrides:editable });
   state.doseMode = result.doseMode || getForm()?.defaultMode || 'perKgDose';
-  if (isVeterinary() || source?.dose != null || !source?.doseRange) state.dose = result.dose == null ? '' : String(result.dose);
-  if (isVeterinary() || source?.frequency != null || !source?.frequencyOptions) state.frequency = result.frequency == null ? '' : String(result.frequency);
+  if (!editable && (isVeterinary() || source?.dose != null || !source?.doseRange)) state.dose = result.dose == null ? '' : String(result.dose);
+  if (!editable && (isVeterinary() || source?.frequency != null || !source?.frequencyOptions)) state.frequency = result.frequency == null ? '' : String(result.frequency);
   state.roundingStep = '';
   for (const id of ['dose', 'frequency', 'doseMode', 'roundingStep']) if ($(`#${id}`)) $(`#${id}`).value = state[id];
   return result;
@@ -197,7 +203,7 @@ function chooseSourceRegimen(id) {
   state.roundingStep = '';
   if (source?.fixedDays) state.days = String(source.fixedDays);
   if (source?.minimumAge && state.age === '') state.vetAgeUnit = source.minimumAge.unit;
-  syncSourceRegimen();
+  syncSourceRegimen({ initialize:true });
   prefillSourceTabletDose();
   ui.regimenExpanded = false;
 }
@@ -260,7 +266,7 @@ function sourceRegimenPicker() {
   const choices = getAvailableRegimens(), source = getSourceRegimen();
   if (!choices.length) return `<p class="small-help">${isInstruction(getForm()) ? 'Brak schematu źródłowego dla tej grupy pacjenta. Sprawdź grupę i dokumentację preparatu.' : `Schemat ręczny · parametry ustala ${isVeterinary() ? 'lekarz weterynarii' : 'lekarz'}.`}</p>`;
   if (ui.manualRegimen && !source) return `<div class="regimen-summary"><div class="selection-copy"><strong>Schemat ręczny</strong><small>Wartości ustala ${isVeterinary() ? 'lekarz weterynarii' : 'lekarz'}.</small></div><button class="text-button" data-action="source-mode">Wybierz ze źródła</button></div>`;
-  if (source && !ui.regimenExpanded) return `<div class="regimen-summary"><div class="selection-copy"><strong>${esc(sourceLabel(source))}</strong>${source.phaseLabel ? `<small>${esc(source.phaseLabel)}</small>` : ''}</div><button class="text-button" data-action="edit-regimen">Zmień schemat</button></div>`;
+  if (source && !ui.regimenExpanded) return `<div class="regimen-summary"><div class="selection-copy"><strong>${esc(sourceLabel(source))}</strong>${source.phaseLabel ? `<small>${canEditSourceValues() ? 'Źródło: ' : ''}${esc(source.phaseLabel)}</small>` : ''}</div><button class="text-button" data-action="edit-regimen">Zmień schemat</button></div>`;
   return `<div class="source-regimen-picker"><div class="field"><label for="regimenId">${isVeterinary() ? 'Wskazanie i etap leczenia' : 'Wskazanie i schemat ze źródła'}</label><select id="regimenId" data-field="regimenId"><option value="">Wybierz właściwy schemat…</option>${choices.map(r => `<option value="${esc(r.id)}" ${r.id === state.regimenId ? 'selected' : ''}>${esc(sourceLabel(r))}</option>`).join('')}</select></div>${!source ? `<p class="small-help">${isVeterinary() ? 'Wybór uzupełni dawkę i częstość dla wskazanego etapu.' : 'Wybór uzupełni wartości określone w źródle. Gdy podano zakres, dawkę wybiera lekarz.'}</p>${!isInstruction(getForm()) ? '<button class="text-button" data-action="manual-regimen">Wprowadź własny schemat</button>' : ''}` : ''}</div>`;
 }
 
@@ -285,10 +291,12 @@ function patientPanel(f) {
 function humanRegimenPanel(f) {
   const source = getSourceRegimen();
   const instruction = isInstruction(f);
-  const doseControl = source?.doseRange ? `<div>${field('dose',doseLabel(),state.dose,'Wybierz dawkę z zakresu',doseUnit(),'data-patient-picker')}${tabletDoseButtons()}<p class="small-help">Zakres tego schematu: ${n(source.doseRange.min)}–${n(source.doseRange.max)} ${esc(doseUnit())}. Wartość wybiera lekarz.</p></div>` : !instruction && source ? `<div class="source-fact"><small>${esc(doseLabel())}</small><strong id="source-dose-value">${state.dose !== '' ? `${n(num(state.dose),6)} ${esc(doseUnit())}` : 'Po uzupełnieniu danych'}</strong></div>` : '';
-  const frequencyControl = source?.frequencyOptions ? `<div class="field"><label for="frequency">${source.asNeeded ? 'Maks. liczba podań na dobę' : 'Częstotliwość'}</label><select id="frequency" data-field="frequency"><option value="">Wybierz</option>${source.frequencyOptions.map(v => `<option value="${v}" ${state.frequency === String(v) ? 'selected' : ''}>${source.asNeeded ? 'Do ' : ''}${v} × na dobę</option>`).join('')}</select></div>` : source?.frequency ? `<div class="source-fact"><small>Częstotliwość</small><strong id="source-frequency-value">${n(source.frequency)} × na dobę</strong></div>` : '';
+  const editable = canEditSourceValues();
+  const doseControl = editable ? `<div>${field('dose',doseLabel(),state.dose,source.doseRange ? 'Wybierz dawkę z zakresu' : 'Wpisz dawkę',doseUnit(),'data-patient-picker')}${tabletDoseButtons()}</div>` : '';
+  const frequencies = editable ? [...new Set([1,2,3,4,5,6,8,12,...(source.frequencyOptions || []),...(source.frequency ? [source.frequency] : [])])].sort((a,b)=>a-b) : source?.frequencyOptions;
+  const frequencyControl = frequencies ? `<div class="field"><label for="frequency">${source.asNeeded ? 'Maks. liczba podań na dobę' : 'Częstotliwość'}</label><select id="frequency" data-field="frequency"><option value="">Wybierz</option>${frequencies.map(v => `<option value="${v}" ${state.frequency === String(v) ? 'selected' : ''}>${source.asNeeded ? 'Do ' : ''}${v} × na dobę</option>`).join('')}</select></div>` : source?.frequency ? `<div class="source-fact"><small>Częstotliwość</small><strong id="source-frequency-value">${n(source.frequency)} × na dobę</strong></div>` : '';
   const duration = source?.fixedDays ? `<p class="source-duration">Czas tego schematu: <strong>${n(source.fixedDays)} ${source.fixedDays === 1 ? 'dzień' : 'dni'}</strong></p>` : `<div class="duration-field">${field('days',instruction && !source?.minDays && !source?.maxDays ? 'Czas stosowania (jeśli ustalony)' : 'Czas stosowania',state.days,'Ustala lekarz','dni')}${durationHint(source) ? `<p class="small-help">${esc(durationHint(source))}</p>` : ''}${!instruction ? `<div class="quick-days"><span>Szybki wybór:</span>${quickDays(source,false).map(d => `<button class="${state.days === String(d) ? 'active' : ''}" data-action="days" data-value="${d}" aria-pressed="${state.days === String(d)}">${d} dni</button>`).join('')}</div>` : ''}</div>`;
-  return `<section class="panel regimen-panel human-regimen" aria-labelledby="regimen-title"><div class="section-heading"><span class="step-number">02</span><h2 id="regimen-title">${instruction ? 'Sposób stosowania' : 'Schemat podawania'}</h2><span class="trailing">${source ? 'Ze źródła' : ''}</span></div>${sourceRegimenPicker()}${source ? `${patientPanel(f)}<div class="human-source-body">${instruction ? `<div class="instruction-summary">${icon('book')}<p>${esc(source.instructionText || source.administration || '')}</p></div>` : ''}<div class="regimen-fields human-regimen-fields">${doseControl}${frequencyControl}</div>${dailyDoseSlot(f)}${source.asNeeded ? `<p class="small-help">W razie potrzeby. ${source.minIntervalHours ? `Odstęp między podaniami: co najmniej ${n(source.minIntervalHours)} godz.` : ''} Zapas pokazuje maksymalne planowane zużycie.</p>` : ''}${duration}${instruction ? `<div class="instruction-supply">${field('instructionPacks','Liczba opakowań (jeśli ustalona)',state.instructionPacks,'Ustala lekarz','op.')}<p class="small-help">Ilości preparatu i liczby opakowań nie wyliczamy z umownej porcji. Wpisana liczba opakowań jest decyzją lekarza.</p></div>` : ''}${source.screening ? `<p class="source-screening">${icon('shield')}<span>${esc(source.screening)}</span></p>` : ''}<details class="advanced" data-disclosure="advancedOpen" ${ui.advancedOpen ? 'open' : ''}><summary>${icon('settings')}Dodatkowe zalecenia${instruction ? '' : ' i limit'}</summary><div class="advanced-grid">${!instruction ? field('manualMax','Własny niższy limit dobowy',state.manualMax,'Opcjonalnie','mg') : ''}<div class="field full"><label for="extraInstructions">Dodatkowe zalecenia</label><input id="extraInstructions" data-field="extraInstructions" value="${esc(state.extraInstructions)}" maxlength="500" placeholder="Ustalone przez lekarza" autocomplete="off"></div></div></details><details class="source-details" data-disclosure="sourceDetailsOpen" ${ui.sourceDetailsOpen ? 'open' : ''}><summary>${icon('book')}Źródło i zakres schematu</summary><ul>${(source.notes || []).map(note => `<li>${esc(note)}</li>`).join('')}</ul><a href="${esc(source.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(source.sourceLabel)}${source.sourceSection ? ` · ${esc(source.sourceSection)}` : ''} ↗</a><p class="small-help">Źródło sprawdzone: ${esc(source.sourceCheckedAt)}. Schemat obejmuje opisane warunki, nie pełną ocenę kliniczną.</p>${!instruction ? '<button class="text-button" data-action="manual-regimen">Edytuj jako schemat ręczny</button>' : ''}</details></div>` : ''}</section>`;
+  return `<section class="panel regimen-panel human-regimen" aria-labelledby="regimen-title"><div class="section-heading"><span class="step-number">02</span><h2 id="regimen-title">${instruction ? 'Sposób stosowania' : 'Schemat podawania'}</h2><span class="trailing" id="regimen-provenance">${source ? (sourceIsModified() ? 'Zmodyfikowany' : 'Ze źródła') : ''}</span></div>${sourceRegimenPicker()}${source ? `${patientPanel(f)}<div class="human-source-body">${instruction ? `<div class="instruction-summary">${icon('book')}<p>${esc(source.instructionText || source.administration || '')}</p></div>` : ''}<div class="regimen-fields human-regimen-fields">${doseControl}${frequencyControl}</div>${editable ? `<div class="source-edit-note" id="source-edit-note">${sourceEditMarkup(source,state,doseUnit())}</div>` : ''}${dailyDoseSlot(f)}${source.asNeeded ? `<p class="small-help">W razie potrzeby. ${source.minIntervalHours ? `Odstęp między podaniami: co najmniej ${n(source.minIntervalHours)} godz.` : ''} Zapas pokazuje maksymalne planowane zużycie.</p>` : ''}${duration}${instruction ? `<div class="instruction-supply">${field('instructionPacks','Liczba opakowań (jeśli ustalona)',state.instructionPacks,'Ustala lekarz','op.')}<p class="small-help">Ilości preparatu i liczby opakowań nie wyliczamy z umownej porcji. Wpisana liczba opakowań jest decyzją lekarza.</p></div>` : ''}${source.screening ? `<p class="source-screening">${icon('shield')}<span>${esc(source.screening)}</span></p>` : ''}<details class="advanced" data-disclosure="advancedOpen" ${ui.advancedOpen ? 'open' : ''}><summary>${icon('settings')}Dodatkowe zalecenia${instruction ? '' : ' i limit'}</summary><div class="advanced-grid">${!instruction ? field('manualMax','Własny niższy limit dobowy',state.manualMax,'Opcjonalnie','mg') : ''}<div class="field full"><label for="extraInstructions">Dodatkowe zalecenia</label><input id="extraInstructions" data-field="extraInstructions" value="${esc(state.extraInstructions)}" maxlength="500" placeholder="Ustalone przez lekarza" autocomplete="off"></div></div></details><details class="source-details" data-disclosure="sourceDetailsOpen" ${ui.sourceDetailsOpen ? 'open' : ''}><summary>${icon('book')}Źródło i zakres schematu</summary><ul>${(source.notes || []).map(note => `<li>${esc(note)}</li>`).join('')}</ul>${source.administration ? `<p><strong>Sposób podania w źródle:</strong> ${esc(source.administration)}</p>` : ''}<a href="${esc(source.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(source.sourceLabel)}${source.sourceSection ? ` · ${esc(source.sourceSection)}` : ''} ↗</a><p class="small-help">Źródło sprawdzone: ${esc(source.sourceCheckedAt)}. Schemat obejmuje opisane warunki, nie pełną ocenę kliniczną.</p>${!instruction ? '<button class="text-button" data-action="manual-regimen">Edytuj jako schemat ręczny</button>' : ''}</details></div>` : ''}</section>`;
 }
 
 function regimenPanel(f) {
@@ -441,10 +449,10 @@ function updateDailyDoseNote(form,input,sourceCheck,limit) {
       dose:source.dose??source.doseRange?.min??null,
       frequency:source.frequency??source.frequencyOptions?.[0]??null});
   const actualCheck=source&&!isVeterinary()
-    ?resolveHumanRegimen(source,{...humanContext(),days:previewDays}):null;
-  const doseProblems=actualCheck&&!actualCheck.valid&&input.dose>0&&input.frequency>0
-    ?actualCheck.errors:[];
-  const markup=dailyDoseMarkup({note,input,source,eligibility,doseProblems,
+    ?resolveHumanRegimen(source,{...humanContext(),days:previewDays},{allowNumericOverrides:canEditSourceValues()}):null;
+  const doseProblems=actualCheck&&input.dose>0&&input.frequency>0
+    ?[...actualCheck.errors,...actualCheck.warnings]:[];
+  const markup=dailyDoseMarkup({note,input,source,eligibility,doseProblems,modified:sourceIsModified(),
     referenceContext:{formId:form.id,patientType:state.patientType,renalStatus:state.renalStatus,crcl:num(state.humanCrCl)},
     context:suspensionLimitContext(form),
     canChooseSource:!source&&getAvailableRegimens().length>0,
@@ -452,11 +460,24 @@ function updateDailyDoseNote(form,input,sourceCheck,limit) {
   if (node.innerHTML!==markup) node.innerHTML=markup;
 }
 
+function updateSourceEditNotice() {
+  const slot=$('#source-edit-note');
+  if (!slot || !canEditSourceValues()) return;
+  const modified=sourceIsModified();
+  const markup=sourceEditMarkup(getSourceRegimen(),state,doseUnit());
+  if (slot.innerHTML!==markup) slot.innerHTML=markup;
+  if ($('#regimen-provenance')) $('#regimen-provenance').textContent=modified?'Zmodyfikowany':'Ze źródła';
+  const confirmation=$('#confirmed + span');
+  if (confirmation) confirmation.textContent=modified
+    ? 'Potwierdzam jako lekarz zmodyfikowane dawkowanie, jego zgodność z pacjentem i dodatkowe zalecenia. Sprawdziłem odstępstwa od źródła.'
+    : 'Potwierdzam dobór preparatu i schemat w aktualnej dokumentacji dla tego pacjenta.';
+}
+
 function currentTabletDoseChoices() {
   const form=getForm();
   if(!form||!productReady())return [];
   const limit=applicableLimit(form);
-  return tabletDoseChoices(form,{doseMode:state.doseMode,source:getSourceRegimen(),frequency:num(state.frequency),maxSingleMg:limit.single,maxDailyMg:limit.daily});
+  return tabletDoseChoices(form,{doseMode:state.doseMode,source:getSourceRegimen(),allowFixedSource:canEditSourceValues(),frequency:num(state.frequency),maxSingleMg:limit.single,maxDailyMg:limit.daily});
 }
 function prefillSourceTabletDose() {
   // One-time convenience within an explicitly selected source range, never a weight-based dose.
@@ -606,7 +627,7 @@ function updateInstructionResult(check) {
 }
 
 function updateResult() {
-  try { updateResultContent(); } finally { selectMenus.refresh();patientPickers.refresh();updateTabletDoseButtons(); }
+  try { updateResultContent(); } finally { selectMenus.refresh();patientPickers.refresh();updateTabletDoseButtons();updateSourceEditNotice(); }
 }
 function updateResultContent() {
   if(!productReady() || !$('#dose-value')) {
@@ -623,7 +644,11 @@ function updateResultContent() {
     if(sourceCheck.maxUnitsPerDose != null && r.singleUnits > sourceCheck.maxUnitsPerDose + 1e-9) { r.errors.push('Ilość na podanie przekracza limit tego schematu.');r.valid=false;r.status='critical'; }
     if(sourceCheck.maxDailyUnits != null && r.dailyUnits > sourceCheck.maxDailyUnits + 1e-9) { r.errors.push('Dobowa ilość preparatu przekracza limit tego schematu.');r.valid=false;r.status='critical'; }
   }
-  const sourceApplicable=!sourceCheck||sourceCheck.valid;
+  const selectedSource=getSourceRegimen();
+  const sourceApplicable=!sourceCheck||sourceCheck.valid||canEditSourceValues()&&resolveHumanRegimen(selectedSource,{
+    ...humanContext(),dose:selectedSource.dose??selectedSource.doseRange?.min,
+    frequency:selectedSource.frequency??selectedSource.frequencyOptions?.[0],
+  }).valid;
   if(state.custom && !state.customName.trim() && r.valid){r.valid=false;r.status='incomplete';r.errors.push('Wprowadź pełną nazwę, moc i postać preparatu.');}
   if(isVeterinary() && r.valid && !f.routeLabel?.trim()){r.valid=false;r.status='incomplete';r.errors.push('Uzupełnij drogę podania preparatu.');}
   if(!isVeterinary() && f.form==='injection' && r.valid && !state.extraInstructions.trim()){r.valid=false;r.status='incomplete';r.errors.push('Uzupełnij drogę i sposób podania w szczegółach schematu.');}
@@ -676,7 +701,10 @@ function updateResultContent() {
   if(isVeterinary())review.unshift(['Pacjent',`${getAnimal()?.label||'—'} · ${state.weight!==''?`${n(num(state.weight),6)} kg`:'uzupełnij masę'}`]);
   else if(state.age!==''||state.weight!=='')review.push(['Pacjent',[state.age!==''?`${n(num(state.age))} ${({years:'lat',months:'mies.',days:'dni'})[state.humanAgeUnit]}`:'',state.weight!==''?`${n(num(state.weight),6)} kg`:''].filter(Boolean).join(' · ')]);
   if(isVeterinary()&&state.age!=='')review.push(['Wiek',`${n(num(state.age),6)} ${ageUnitLabel()}`]);
-  if(source)review.push(['Wskazanie i schemat',[source.indication,source.phaseLabel].filter(Boolean).join(' · ')]);
+  if(source) {
+    review.push([sourceIsModified()?'Źródło odniesienia':'Wskazanie i schemat',[source.indication,source.phaseLabel].filter(Boolean).join(' · ')]);
+    if(sourceIsModified())review.push(['Schemat','Zmodyfikowany przez użytkownika'],['Wpisane wartości',`${n(input.dose,6)} ${doseUnit()} · ${n(input.frequency)} × na dobę`]);
+  }
   else review.push(['Schemat',!ui.manualRegimen&&getAvailableRegimens().length?(isVeterinary()?'Wybierz wskazanie i etap':'Wybierz wskazanie i schemat'):'Wprowadzony ręcznie']);
   if(f.requiresFoodChainExclusion||source?.requiresFoodChainExclusion)review.push(['Paszport',({excluded:'Wykluczony z uboju',notExcluded:'Niewykluczony z uboju',unknown:'Do sprawdzenia'})[state.foodChainStatus]]);
   $('#result-review').innerHTML=`<h3>Sprawdź przed skopiowaniem</h3><dl>${review.map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
@@ -691,7 +719,7 @@ function prescription(r,f,input) {
   const source=getSourceRegimen();
   const divisions=deviceDivisions(r,f);
   const amount=divisions!==null?`${n(divisions)} ${divisions===1?'działkę':divisionUnit(divisions)} strzykawki (około ${n(r.singleUnits,6)} ${unit} preparatu)`:`${n(r.singleUnits,isVeterinary()?10:6)} ${unit}`;
-  let ds=isVeterinary()?`D.S. Stosować ${amount}${f.routeLabel?' '+f.routeLabel:''}, ${n(input.frequency)} ${input.frequency===1?'raz':'razy'} na dobę przez ${n(input.days)} ${input.days===1?'dzień':'dni'}.`:humanDosingText({source,amount,route:f.routeLabel,frequency:input.frequency,days:input.days,effectiveDailyLimit:input.maxDailyMg,extraInstructions:state.extraInstructions});
+  let ds=isVeterinary()?`D.S. Stosować ${amount}${f.routeLabel?' '+f.routeLabel:''}, ${n(input.frequency)} ${input.frequency===1?'raz':'razy'} na dobę przez ${n(input.days)} ${input.days===1?'dzień':'dni'}.`:humanDosingText({source,sourceModified:sourceIsModified(),amount,route:f.routeLabel,frequency:input.frequency,days:input.days,effectiveDailyLimit:input.maxDailyMg,extraInstructions:state.extraInstructions});
   if(divisions!==null && f.doseStepLabel) ds+=` Kalibracja: ${f.doseStepLabel}.`;
   if(isVeterinary()&&source?.administration) ds+=' '+source.administration;
   if(isVeterinary()&&state.extraInstructions.trim()) ds+=' '+state.extraInstructions.trim();
@@ -725,7 +753,7 @@ function favoritesDialog() {
 async function installApp() {
   if(window.matchMedia('(display-mode: standalone)').matches){toast('RxCalc jest już uruchomiony jako aplikacja.');return;}
   if(deferredInstall){await deferredInstall.prompt();const choice=await deferredInstall.userChoice;deferredInstall=null;if(choice.outcome==='accepted'){toast('Dodawanie RxCalc do urządzenia.');return;}}
-  openDialog('RxCalc na Twoim telefonie',`<p>Na Androidzie otwórz stronę w <strong>Chrome</strong>.</p><ol><li>Dotknij menu <strong>⋮</strong> w prawym górnym rogu.</li><li>Wybierz <strong>„Dodaj do ekranu głównego”</strong> lub <strong>„Zainstaluj aplikację”</strong>. Nazwa opcji zależy od wersji Chrome i urządzenia.</li><li>Potwierdź przyciskiem <strong>„Zainstaluj”</strong> albo „Dodaj”.</li></ol><p>Ikona RxCalc pojawi się na ekranie głównym. Po zainstalowaniu aplikacja może otwierać się we własnym oknie.</p><p><strong>${offlineReady?'Pliki zapisane — tryb offline jest gotowy.':'Pozostań chwilę online, aby pobrać komplet plików do pracy offline.'}</strong> Przeglądarka może usunąć dane witryny przy czyszczeniu pamięci; wtedy otwórz ją ponownie z internetem.</p><p>Na iPhonie: Safari → Udostępnij → Do ekranu głównego.</p>`);
+  openDialog('RxCalc na Twoim telefonie',`<p>Na Androidzie otwórz stronę w <strong>Chrome</strong>.</p><ol><li>Dotknij menu <strong>⋮</strong> w prawym górnym rogu.</li><li>Wybierz <strong>„Dodaj do ekranu głównego”</strong> lub <strong>„Zainstaluj aplikację”</strong>.</li><li>Potwierdź przyciskiem <strong>„Zainstaluj”</strong> albo „Dodaj”.</li></ol><p>Ikona RxCalc pojawi się na ekranie głównym. Po zainstalowaniu aplikacja może otwierać się we własnym oknie.</p><p><strong>${offlineReady?'Pliki zapisane — tryb offline jest gotowy.':'Pozostań chwilę online, aby pobrać komplet plików do pracy offline.'}</strong> Przeglądarka może usunąć dane witryny przy czyszczeniu pamięci; wtedy otwórz ją ponownie z internetem.</p><p>Na iPhonie: Safari → Udostępnij → Do ekranu głównego.</p>`);
 }
 async function copyPrescription() {
   if(!productReady()||!latest?.valid||!state.confirmed||state.demo||!latestText)return;
@@ -777,6 +805,14 @@ document.addEventListener('click',e=>{
       render();break;
     }
     case 'category':state.category=value;ui.showAll=false;render();break;
+    case 'restore-source-values':{
+      if(!canEditSourceValues())break;
+      Object.assign(state,sourceInitialValues(getSourceRegimen()));
+      dirty();syncSourceRegimen();prefillSourceTabletDose();
+      if($('#dose'))$('#dose').value=state.dose;
+      if($('#frequency'))$('#frequency').value=state.frequency;
+      updateResult();$('#dose-wheel-trigger')?.focus({preventScroll:true});toast('Przywrócono dawkę i częstotliwość ze źródła.');break;
+    }
     case 'edit-regimen':ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
     case 'daily-dose-source':ui.manualRegimen=false;ui.regimenExpanded=true;dirty();render();selectMenus.focus('regimenId');break;
     case 'source-mode':resetRegimen();ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
@@ -816,7 +852,7 @@ document.addEventListener('click',e=>{
 $('#app').addEventListener('input',e=>{
   if(e.target.id==='search'){state.search=e.target.value;ui.showAll=false;renderDrugs();return;}
   const key=e.target.dataset.field;if(!key || e.target.tagName==='SELECT')return;
-  if(state.regimenId&&((key==='dose'&&(isVeterinary()||!getSourceRegimen()?.doseRange))||(key==='days'&&getSourceRegimen()?.fixedDays))){e.target.value=state[key];return;}
+  if(state.regimenId&&((key==='dose'&&!canEditSourceValues()&&(isVeterinary()||!getSourceRegimen()?.doseRange))||(key==='days'&&getSourceRegimen()?.fixedDays))){e.target.value=state[key];return;}
   if(Object.hasOwn(state,key)){state[key]=e.target.value;dirty();updateResult();}
 });
 $('#app').addEventListener('change',e=>{
@@ -828,7 +864,7 @@ $('#app').addEventListener('change',e=>{
   if(key==='specialty'){switchSpecialty(e.target.value);render();viewportLayout.showStart();return;}
   if(key==='formId'){if(e.target.value){if(selectForm(e.target.value)){ui.productExpanded=false;renderProductSelection();}}else{resetRegimen();ui.formChosen=false;render();}return;}
   if(key==='regimenId'){chooseSourceRegimen(e.target.value);render();return;}
-  if(state.regimenId&&(['doseMode','roundingStep'].includes(key)||(key==='frequency'&&(isVeterinary()||!getSourceRegimen()?.frequencyOptions)))){e.target.value=state[key];return;}
+  if(state.regimenId&&(['doseMode','roundingStep'].includes(key)||(key==='frequency'&&!canEditSourceValues()&&(isVeterinary()||!getSourceRegimen()?.frequencyOptions)))){e.target.value=state[key];return;}
   state[key]=e.target.value;dirty();
   if(key==='species'){state.age='';state.weight='';state.foodChainStatus='unknown';state.vetAgeUnit=['hamster','rat'].includes(state.species)?'months':'years';startVeterinary();render();}
   else if(key==='vetAgeUnit'){state.age='';render();}
