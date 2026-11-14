@@ -3,13 +3,16 @@ import { formatNumber as n } from './engine.js';
 const durationText = days => Number.isFinite(days) && days > 0
   ? ` przez ${n(days)} ${days === 1 ? 'dzień' : 'dni'}` : '';
 
-/** Human prescriptions contain dispensing and dosing text; source context stays in the review. */
+/** Full prescriptions contain dispensing and dosing; human advice also names the chosen indication. */
 export function prescriptionText({ mode = 'full', header, dosing, source, veterinaryContext = '' }) {
   const lines = [];
   if (veterinaryContext) {
     lines.push(veterinaryContext);
     if (source?.indication) lines.push(`Wskazanie: ${source.indication}.`);
     if (source?.phaseLabel) lines.push(`Schemat: ${source.phaseLabel}.`);
+  } else if (mode === 'ds' && source?.indication?.trim()) {
+    const indication = source.indication.trim();
+    lines.push(`Wskazanie: ${indication}${/[.!?]$/.test(indication) ? '' : '.'}`, '');
   }
   if (mode !== 'ds' && header) lines.push(header);
   if (dosing) lines.push(dosing);

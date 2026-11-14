@@ -75,7 +75,7 @@ test('new solid antibiotics are searchable and feed real catalogue forms into ca
     assert.ok(output.startsWith('Rp. '));
     assert.ok(!output.includes('Wskazanie:'));
     assert.ok(!output.includes('Schemat:'));
-    assert.equal(prescriptionText({mode:'ds',header,dosing,source}),dosing);
+    assert.equal(prescriptionText({mode:'ds',header,dosing,source}),`Wskazanie: ${source.indication}.\n\n${dosing}`);
   }
 });
 

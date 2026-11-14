@@ -68,7 +68,7 @@ Opakowania w tabeli są **udokumentowane w źródłach, ale nie oznaczają potwi
 
 ### Podsumowanie a tekst do skopiowania
 
-Dla ludzi funkcja `prescriptionText()` w `dental-output.js` generuje nagłówek `Rp.` z opakowaniem i tekst `D.S.` albo samo `D.S.`. Nie dopisuje automatycznie wierszy „Wskazanie” ani „Schemat”. Wskazanie, wybrany wariant i dane pacjenta pozostają w widocznym podsumowaniu do sprawdzenia. Wyroby i kosmetyk nadal mają nagłówek „Preparat” zamiast `Rp.`. Zapis weterynaryjny zachowuje dotychczasowy kontekst gatunku, masy, wskazania i etapu leczenia. Zmiana eksportu nie usuwa kontroli schematu.
+Dla ludzi funkcja `prescriptionText()` w `dental-output.js` generuje dwa warianty. **„Rp. + D.S.”** zawiera nagłówek `Rp.`, preparat, opakowanie i dawkowanie, bez automatycznych wierszy „Wskazanie” i „Schemat”. **„Zalecenia”** zawierają jedną linię „Wskazanie: ….” z wybranego źródła, pusty wiersz i tekst `D.S.`, bez automatycznej linii „Schemat”. Ręczny schemat bez przypisanego wskazania daje samo `D.S.`; aplikacja nie dopisuje brakującego rozpoznania. Uwagi lekarza pozostają niezmienione. Wskazanie, wybrany wariant i dane pacjenta pozostają też w widocznym podsumowaniu do sprawdzenia. Wyroby i kosmetyk nadal mają nagłówek „Preparat” zamiast `Rp.`. Zapis weterynaryjny zachowuje dotychczasowy kontekst gatunku, masy, wskazania i etapu leczenia. Zmiana eksportu nie usuwa kontroli schematu.
 
 ### Preparaty miejscowe i zabiegowe
 
