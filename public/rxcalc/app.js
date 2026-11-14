@@ -27,7 +27,7 @@ const paths = {
   arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
   down: '<path d="m7 10 5 5 5-5"/>',
   tooth: '<path d="M12 5c-2-2-7-3-8 1-1 3 1 6 2 9s1 6 3 5c1-1 1-6 3-6s2 5 3 6c2 1 2-2 3-5s3-6 2-9c-1-4-6-3-8-1Z"/><path d="M9 4c1 2 3 3 5 3"/>',
-  paw: '<ellipse cx="7" cy="7" rx="2" ry="3"/><ellipse cx="17" cy="7" rx="2" ry="3"/><ellipse cx="3.5" cy="12" rx="1.5" ry="2.5"/><ellipse cx="20.5" cy="12" rx="1.5" ry="2.5"/><path d="M6 18c0-3 3-7 6-7s6 4 6 7c0 4-4 2-6 2s-6 2-6-2Z"/>',
+  paw: '<ellipse cx="8.5" cy="5" rx="2" ry="2.5" transform="rotate(-12 8.5 5)"/><ellipse cx="15.5" cy="5" rx="2" ry="2.5" transform="rotate(12 15.5 5)"/><ellipse cx="3.8" cy="10" rx="2" ry="2.3" transform="rotate(-25 3.8 10)"/><ellipse cx="20.2" cy="10" rx="2" ry="2.3" transform="rotate(25 20.2 10)"/><path d="M12 11c-1.8 0-2.7 1.9-4 3.4-1.3 1.5-3.4 2.7-2.7 4.7.6 1.9 2.9 1.9 4.5 1.3 1.4-.5 3-.5 4.4 0 1.6.6 3.9.6 4.5-1.3.7-2-1.4-3.2-2.7-4.7-1.3-1.5-2.2-3.4-4-3.4Z"/>',
   heart: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0l-1 1-1-1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/><path d="M4 12h4l2-4 3 8 2-4h5"/>',
   search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
   shield: '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/>',
