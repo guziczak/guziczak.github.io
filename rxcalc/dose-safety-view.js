@@ -1,3 +1,4 @@
+import { adultAugmentinReference, referenceMeterMarkup, referenceIntroMarkup, referenceDetailsMarkup } from './dose-reference.js';
 import { formatNumber as n } from './engine.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g,
@@ -68,21 +69,23 @@ function meterMarkup(row, note, comparisonAllowed) {
 }
 
 /** Pure HTML renderer. No source limits are invented and no input is mutated. */
-export function dailyDoseMarkup({ note, input = {}, source = null, context = '', eligibility = null, doseProblems = [], canChooseSource = false, veterinary = false, icon = () => '' } = {}) {
+export function dailyDoseMarkup({ note, input = {}, source = null, context = '', eligibility = null, doseProblems = [], canChooseSource = false, veterinary = false, referenceContext = null, icon = () => '' } = {}) {
   if (!note) return '';
   const comparisonAllowed = !source || eligibility?.valid === true;
-  const rows = note.rows.map(row => `<div class="dose-safety-row"><dt>${esc(row.name)}</dt><dd><div class="dose-safety-amount"><strong>${row.daily === null ? '—' : n(row.daily, 6)} <span>${esc(row.unit)}/dobę</span></strong>${row.perKg === null ? '' : `<small>${n(row.perKg, 4)} ${esc(row.unit)}/kg/dobę</small>`}</div>${meterMarkup(row, note, comparisonAllowed)}</dd></div>`).join('');
   const hasCeiling = note.rows.some(row => positive(row.ceiling) || positive(row.ceilingPerKg));
+  const comparative = !hasCeiling && !veterinary && referenceContext
+    ? adultAugmentinReference({...referenceContext,input,source}) : null;
+  const rows = note.rows.map(row => `<div class="dose-safety-row"><dt>${esc(row.name)}</dt><dd><div class="dose-safety-amount"><strong>${row.daily === null ? '—' : n(row.daily, 6)} <span>${esc(row.unit)}/dobę</span></strong>${row.perKg === null ? '' : `<small>${n(row.perKg, 4)} ${esc(row.unit)}/kg/dobę</small>`}</div>${comparative ? referenceMeterMarkup(row, comparative) || meterMarkup(row, note, comparisonAllowed) : meterMarkup(row, note, comparisonAllowed)}</dd></div>`).join('');
   const hasDerived = note.rows.some(row => row.derivedCeiling);
   const scope = source ? `<p class="daily-dose-scope"><strong>Wybrany schemat:</strong> ${esc(source.label)}${source.phaseLabel ? ` · ${esc(source.phaseLabel)}` : ''}. Granice dotyczą wyłącznie tego wskazania i zakresu pacjentów.</p>` : '';
   const errors = source && !comparisonAllowed
     ? `<div class="dose-safety-notice"><strong>Nie potwierdzono warunków porównania.</strong><p>Wartości graniczne są informacją o schemacie, nie limitem zatwierdzonym dla tego pacjenta.</p>${eligibility?.errors?.length ? `<ul>${[...new Set(eligibility.errors)].map(error => `<li>${esc(error)}</li>`).join('')}</ul>` : ''}</div>` : '';
   const doseIssues = comparisonAllowed && doseProblems.length ? `<div class="dose-safety-notice"><strong>Sprawdź zgodność ze schematem.</strong><ul>${[...new Set(doseProblems)].map(error => `<li>${esc(error)}</li>`).join('')}</ul></div>` : '';
-  const missing = !hasCeiling ? `<div class="dose-safety-notice"><strong>Brak zweryfikowanego limitu dla tego schematu.</strong><p>Brak limitu nie oznacza bezpieczeństwa dawki. Zweryfikuj wskazanie, dane pacjenta i aktualną ChPL.</p>${context ? `<p>${esc(context)}</p>` : ''}${canChooseSource ? '<button type="button" class="text-button dose-safety-source-choice" data-action="daily-dose-source">Wybierz schemat ze źródła</button>' : ''}</div>` : '';
+  const missing = !hasCeiling && !comparative ? `<div class="dose-safety-notice"><strong>Brak zweryfikowanego limitu dla tego schematu.</strong><p>Brak limitu nie oznacza bezpieczeństwa dawki. Zweryfikuj wskazanie, dane pacjenta i aktualną ChPL.</p>${context ? `<p>${esc(context)}</p>` : ''}${canChooseSource ? '<button type="button" class="text-button dose-safety-source-choice" data-action="daily-dose-source">Wybierz schemat ze źródła</button>' : ''}</div>` : '';
   const caution = hasCeiling ? `<p class="dose-safety-caution">${note.ceilingKind === 'manual' ? 'Limit ręczny nie jest automatycznie weryfikowany w ChPL. ' : ''}${hasDerived ? 'Składniki porównano do tej samej granicy schematu. ' : ''}Wynik poniżej kreski nie potwierdza bezpieczeństwa ani prawidłowego doboru dawki. Uwzględnij także inne leki z tą samą substancją.</p>` : '';
   const rounding = note.rounding ? `<p class="dose-safety-rounding"><strong>Po zaokrągleniu objętości:</strong> ${n(note.rounding.from, 6)} → ${n(note.rounding.to, 6)} ${esc(input.unitLabel)} na podanie (krok ${n(input.roundingStep, 6)} ${esc(input.unitLabel)}). Dawki dobowe uwzględniają tę zmianę.</p>` : '';
   const pending = note.dailyUnits === null ? '<p class="daily-dose-pending">Uzupełnij dawkę, częstotliwość i wymagane dane pacjenta. Czas kuracji nie jest potrzebny do podglądu dobowego.</p>' : '';
   const url = /^https?:\/\//i.test(note.sourceUrl || '') ? note.sourceUrl : '';
   const reference = url ? `<a class="daily-dose-source" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(note.sourceLabel || (veterinary ? 'Źródło dawkowania' : 'ChPL · dawkowanie'))} ↗</a>` : '';
-  return `<div class="daily-dose-heading">${icon('info')}<h3 id="daily-dose-title">Dawki dobowe i granice</h3><span>Z tego preparatu</span></div>${source?.asNeeded ? '<p class="dose-safety-prn">Maksymalne planowane zużycie doraźne, nie obowiązkowa dawka.</p>' : ''}<dl class="dose-safety-rows">${rows || `<div class="dose-safety-row"><dt>Ilość preparatu</dt><dd>${note.dailyUnits === null ? '—' : n(note.dailyUnits, 6)} ${esc(input.unitLabel)}/dobę</dd></div>`}</dl>${rounding}${pending}${errors}${doseIssues}${missing}${scope}${caution}${reference}`;
+  return `<div class="daily-dose-heading">${icon('info')}<h3 id="daily-dose-title">${comparative ? 'Dawki dobowe i odniesienia' : 'Dawki dobowe i granice'}</h3><span>Z tego preparatu</span></div>${source?.asNeeded ? '<p class="dose-safety-prn">Maksymalne planowane zużycie doraźne, nie obowiązkowa dawka.</p>' : ''}${referenceIntroMarkup(comparative)}<dl class="dose-safety-rows">${rows || `<div class="dose-safety-row"><dt>Ilość preparatu</dt><dd>${note.dailyUnits === null ? '—' : n(note.dailyUnits, 6)} ${esc(input.unitLabel)}/dobę</dd></div>`}</dl>${rounding}${pending}${errors}${doseIssues}${missing}${scope}${caution}${referenceDetailsMarkup(comparative)}${comparative ? '' : reference}`;
 }

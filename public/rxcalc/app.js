@@ -445,6 +445,7 @@ function updateDailyDoseNote(form,input,sourceCheck,limit) {
   const doseProblems=actualCheck&&!actualCheck.valid&&input.dose>0&&input.frequency>0
     ?actualCheck.errors:[];
   const markup=dailyDoseMarkup({note,input,source,eligibility,doseProblems,
+    referenceContext:{formId:form.id,patientType:state.patientType,renalStatus:state.renalStatus,crcl:num(state.humanCrCl)},
     context:suspensionLimitContext(form),
     canChooseSource:!source&&getAvailableRegimens().length>0,
     veterinary:isVeterinary(),icon});
