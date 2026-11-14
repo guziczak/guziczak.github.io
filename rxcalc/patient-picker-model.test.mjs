@@ -121,6 +121,49 @@ test('invalid existing input opens manual entry without replacing it with a draf
   }
 });
 
+test('an empty CrCl wheel has no assumed patient value and can still be cleared',()=>{
+  const context=Object.freeze({value:'',patientType:'adult',ageUnit:'months'});
+  const model=createPatientPickerModel('humanCrCl',context);
+  assert.equal(model.unit,'ml/min');
+  assert.equal(model.scale,1);
+  assert.equal(model.initialDisplay,'');
+  assert.equal(model.emptyDraft,true);
+  assert.equal(model.manualRequired,false);
+  assert.equal(context.value,'');
+  assert.deepEqual(parsePickerValue('',model),{valid:true,value:'',error:''});
+  for(const value of ['0','-0','-1','-0.1']){
+    const result=parsePickerValue(value,model);
+    assert.equal(result.valid,false);
+    assert.match(result.error,/CrCl/);
+  }
+});
+
+test('CrCl wheels preserve exact fractional values on either side of source thresholds',()=>{
+  for(const [value,precision] of [['15',1],['29,999',3],['30',1],['30.001',3],['90.25',2],['300.9',1]]){
+    const model=createPatientPickerModel('humanCrCl',{value});
+    assert.equal(model.emptyDraft,false);
+    assert.equal(model.precision,precision);
+    assert.equal(model.manualRequired,false);
+    assert.equal(model.unit,'ml/min');
+    assert.equal(parsePickerValue(formatWheelValue(model.whole,model.fraction,model.precision),model).value,value.replace(',','.'));
+  }
+});
+
+test('CrCl wheel limits never truncate exact manual values or impose a clinical maximum',()=>{
+  for(const value of ['301.1','450','30.0001','29.999999999999999']){
+    const model=createPatientPickerModel('humanCrCl',{value});
+    assert.equal(model.manualRequired,true);
+    assert.equal(model.initialDisplay,value);
+    assert.deepEqual(parsePickerValue(model.initialDisplay,model),{valid:true,value,error:''});
+  }
+  for(const value of ['0','-1','NaN','Infinity','1e2']){
+    const model=createPatientPickerModel('humanCrCl',{value});
+    assert.equal(model.manualRequired,true);
+    assert.equal(model.initialDisplay,value);
+    assert.equal(parsePickerValue(value,model).valid,false);
+  }
+});
+
 test('wheel formatting retains leading fractional zeros and rejects invalid positions',()=>{
   assert.equal(formatWheelValue(70,0,1),'70.0');
   assert.equal(formatWheelValue(70,5,2),'70.05');

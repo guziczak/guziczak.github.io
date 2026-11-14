@@ -36,7 +36,29 @@ function greaterThan(value, limit) {
   return fraction.padEnd(length,'0')>limitFraction.padEnd(length,'0');
 }
 
+function createCrClPickerModel(context) {
+  const raw=String(context.value??'').trim();
+  const empty=raw==='';
+  const existing=empty?null:decimal(raw);
+  const positive=existing!==null&&Number(existing)>0;
+  const fractionDigits=existing?.split('.')[1]?.length??0;
+  const precision=Math.min(3,Math.max(1,fractionDigits));
+  // This is a compact wheel range, not a clinical upper limit. Other exact
+  // values remain available through manual entry without clipping or rounding.
+  const maxWhole=300;
+  const [integer,fractionText='']=(positive?existing:'0').split('.');
+  return {
+    title:'Wartość CrCl',fractionLabel:'Część dziesiętna CrCl',
+    unit:'ml/min',scale:1,min:0,max:null,maxWhole,precision,
+    whole:Math.min(maxWhole,Number(integer)),
+    fraction:Number(fractionText.slice(0,precision).padEnd(precision,'0')),
+    manualRequired:!empty&&(!positive||Number(integer)>maxWhole||fractionDigits>3),
+    initialDisplay:existing??raw,emptyDraft:empty,
+  };
+}
+
 export function createPatientPickerModel(field, context={}) {
+  if(field==='humanCrCl')return createCrClPickerModel(context);
   if(!['age','weight'].includes(field))throw new RangeError('Unknown patient picker field');
   const veterinary=context.veterinary===true;
   const ageUnit=Object.hasOwn(AGE_UNITS,context.ageUnit)?context.ageUnit:'years';
@@ -74,17 +96,20 @@ export function createPatientPickerModel(field, context={}) {
   };
 }
 
-/** Validate display units and return exact canonical kg or age in the unchanged current unit. */
+/** Validate display units, preserving exact kg, age, or CrCl in its current unit. */
 export function parsePickerValue(display, model) {
   const raw=String(display??'').trim();
   if(raw==='')return {valid:true,value:'',error:''};
   const value=decimal(raw);
   if(value===null)return {valid:false,value:'',error:'Podaj liczbę, używając przecinka lub kropki.'};
   const weight=['kg','g'].includes(model.unit);
+  if(model.unit==='ml/min'&&Number(value)<=0)return {
+    valid:false,value:'',error:'Podaj CrCl większy od zera.',
+  };
   if(value.startsWith('-')||weight&&Number(value)<=0)return {
     valid:false,value:'',error:weight?'Podaj masę większą od zera.':'Wiek nie może być ujemny.',
   };
-  if(greaterThan(value,model.max))return {
+  if(model.max!=null&&greaterThan(value,model.max))return {
     valid:false,value:'',error:weight?`Podaj masę nie większą niż ${model.max/model.scale} kg.`:'Wiek przekracza zakres pola (130 lat).',
   };
   return {valid:true,value:model.scale===1000?shiftDecimal(value,-3):value,error:''};

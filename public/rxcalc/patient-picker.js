@@ -80,7 +80,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
 
   function currentDisplay(session) {
     return session.mode === 'manual' ? session.manualInput.value
-      : formatWheelValue(session.whole, session.fraction, session.model.precision);
+      : session.unset ? '' : formatWheelValue(session.whole, session.fraction, session.model.precision);
   }
 
   function updatePreview(session) {
@@ -111,12 +111,14 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       ? `0,${String(index).padStart(session.model.precision, '0')} ${session.model.unit}`
       : `${index} ${session.model.unit}`);
     session[part] = index;
+    if (changed && !session.positioning) session.unset = false;
     if (changed && session.feedbackArmed && !session.positioning) feedback.tick({ sound:soundEnabled });
     return true;
   }
 
   function chooseIndex(session, part, index) {
     const wheel = session.wheels[part];
+    session.unset = false;
     wheel.motion.setIndex(Math.max(0, Math.min(wheel.max, index)));
     readWheel(session, part);
     updatePreview(session);
@@ -129,7 +131,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     const node = element('div', 'patient-picker-wheel');
     node.tabIndex = 0;
     node.setAttribute('role', 'spinbutton');
-    node.setAttribute('aria-label', part === 'fraction' ? 'Część dziesiętna masy' : session.model.title);
+    node.setAttribute('aria-label', part === 'fraction' ? session.model.fractionLabel || 'Część dziesiętna masy' : session.model.title);
     node.setAttribute('aria-valuemin', '0');
     node.setAttribute('aria-valuemax', String(max));
     node.setAttribute('aria-valuenow', String(initial));
@@ -213,6 +215,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
         return;
       }
       session.model = model;
+      session.unset = model.emptyDraft === true;
       session.whole = model.whole; session.fraction = model.fraction;
       renderWheels(session);
     }
@@ -292,7 +295,8 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     preview.setAttribute('aria-live', 'polite'); preview.setAttribute('aria-atomic', 'true');
     const footer = element('div', 'patient-picker-footer');
     const session = { record, context, model, dialog, wheelsBox, manualBox, manualInput, error, preview,
-      whole:model.whole, fraction:model.fraction, mode:null, wheels:{}, positioning:false, feedbackArmed:false };
+      whole:model.whole, fraction:model.fraction, unset:model.emptyDraft === true,
+      mode:null, wheels:{}, positioning:false, feedbackArmed:false };
     session.wheelsButton = button('', 'Przewijaj', () => setMode(session, 'wheels'));
     session.manualButton = button('', 'Wpisz', () => setMode(session, 'manual'));
     modes.append(session.wheelsButton, session.manualButton);

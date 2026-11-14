@@ -8,6 +8,7 @@
 .patient-wheel-chevron svg{width:15px;height:15px}
 .patient-wheel-trigger[aria-expanded="true"] .patient-wheel-chevron{transform:translateY(-50%) rotate(180deg)}
 .input-unit>.patient-wheel-trigger{padding-right:66px}
+.input-unit>.patient-wheel-trigger[data-picker-id="humanCrCl"]{padding-right:96px}
 .input-unit>.patient-wheel-trigger~span{right:36px}
 .age-input-group>.patient-wheel-trigger{height:100%;padding-left:10px;padding-right:30px}
 .age-input-group>.patient-wheel-trigger .patient-wheel-chevron{right:8px}
