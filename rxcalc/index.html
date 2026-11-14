@@ -10,17 +10,18 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="color-scheme" content="light dark">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <script src="./theme-init.js" blocking="render" fetchpriority="high"></script>
   <title>RxCalc — kalkulator dawkowania</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
-  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./patient-picker.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
   <a href="#main" class="skip-link">Przejdź do kalkulatora</a>
-  <div id="app"><div class="boot"><span class="boot-mark">Rx</span><p>Uruchamianie kalkulatora…</p></div></div>
+  <div id="app"><div class="boot" role="status" aria-live="polite"><span class="boot-mark"><img src="./icons/icon.svg" width="512" height="512" alt="" fetchpriority="high"></span><span class="boot-name" aria-hidden="true">Rx<span>Calc</span></span><p>Uruchamianie kalkulatora…</p><span class="boot-progress" aria-hidden="true"></span></div></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
   <noscript>RxCalc wymaga włączonego JavaScript. Włącz JavaScript w przeglądarce, aby korzystać z obliczeń.</noscript>

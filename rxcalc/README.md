@@ -62,6 +62,8 @@ Praca offline jest dostępna po udanym zarejestrowaniu service workera i zapisan
 - `workflow.js` wyznacza widoczność pól, bez zmiany walidacji klinicznej. Masa zwierzęcia pozostaje zawsze dostępna. Wiek, warunkowe limity masy oraz paszport konia pojawiają się zgodnie z wymaganiami postaci i schematu; już wpisane wartości zawsze można poprawić. Wykluczenie konia pozostaje wymagane także w trybie ręcznym.
 - Wynik obejmuje podsumowanie kontekstu przed jawnym potwierdzeniem i kopiowaniem. Zmiana danych unieważnia potwierdzenie. Brak świadomego wyboru preparatu lub wariantu czyści poprzedni wynik oraz tekst do skopiowania.
 - Mobilny pasek udostępnia podsumowanie i kopiowanie, uwzględnia safe-area i ukrywa się podczas wpisywania. Pola tekstowe aktualizują wynik bez przebudowy formularza i utraty fokusu.
+- Zapisany motyw jest odczytywany przez mały skrypt klasyczny w nagłówku HTML, zanim powstanie loader i zostaną uruchomione moduły aplikacji. Przy braku poprawnej preferencji używany jest motyw systemowy. Zmiana motywu aktualizuje też kolor interfejsu przeglądarki. Systemowy ekran uruchamiania PWA ma stałe ciemne tło marki zapisane w manifeście; wybór motywu loadera HTML działa niezależnie od tego ekranu.
+- Nagłówek i loader używają tego samego wektorowego monogramu z `icons/icon.svg`. Ikony PNG 192/512, wariant maskowalny i nieprzezroczysty Apple touch 180 px są eksportami znaków SVG z tego katalogu.
 - „Nowy pacjent” i przeładowanie usuwają dane kliniczne, wybór gatunku i schemat; nic z nich nie jest zapisywane jako preferencja.
 
 ## Prywatność
@@ -119,6 +121,7 @@ Po zmianie reguł klinicznych trzeba osobno zaktualizować źródło, datę wery
 | `dental-source-review.md`, `dental-*.test.mjs`, `human-regimen-engine.test.mjs`, `product-search.test.mjs` | Ścieżka źródeł oraz testy zakresów i integracji |
 | `regimen-engine.test.mjs`, `regimens.test.mjs`, `equine-regimens.test.mjs`, `equine-practice.test.mjs`, `veterinary-vials.test.mjs` | Testy granic wieku/masy, faz, czasu i zgodności z katalogiem |
 | `catalogue-selection.test.mjs`, `veterinary-catalogue.md` | Kontrole izolacji gatunków i dokumentacja katalogu |
+| `theme-init.js`, `theme-init.test.mjs` | Motyw przed pierwszym wyświetleniem loadera, ustawienia przeglądarki i testy preferencji / niedostępnej pamięci |
 | `manifest.webmanifest`, `sw.js`, `icons/` | Instalacja PWA i cache offline |
 | `.github/workflows/pages.yml` | Testy i publikacja GitHub Pages |
 
