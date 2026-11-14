@@ -13,7 +13,8 @@ import { tabletDoseChoices } from './tablet-doses.js';
 import { createPatientPickers } from './patient-picker.js';
 import { createViewportLayout } from './viewport-layout.js';
 import { createCatalogueMotion } from './catalogue-motion.js';
-import { suspensionDailyDose } from './daily-dose.js';
+import { ingredientDailyDose } from './daily-dose.js';
+import { dailyDoseMarkup } from './dose-safety-view.js';
 
 const $ = (q, root = document) => root.querySelector(q);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -394,14 +395,14 @@ const doseLabel = () => {
 const doseUnit = () => ({ fixed:'mg', perKgDay:'mg/kg/d', perKgDose:'mg/kg', units:getForm().unitLabel }[state.doseMode]);
 
 function dailyDoseSlot(form) {
-  return form.form === 'suspension' && !isInstruction(form) && !isReference(form)
+  return (form.form === 'suspension' || !isVeterinary() && form.form === 'tablet') && !isInstruction(form) && !isReference(form)
     ? '<div class="daily-dose-note" id="daily-dose-note" aria-labelledby="daily-dose-title"></div>' : '';
 }
 
 function suspensionLimitContext(form) {
   if (form.id === 'augmentin-400-57') {
     if (state.patientType === 'adult' || num(state.weight) >= 40) {
-      return 'Dla tego schematu ręcznego nie określono limitu dobowego. ChPL tej zawiesiny opisuje zakresy dla dzieci poniżej 40 kg; dzieciom od 40 kg wskazuje postaci lub moce stosowane u dorosłych.';
+      return 'ChPL tej zawiesiny opisuje zakresy dla dzieci poniżej 40 kg; dzieciom od 40 kg wskazuje postaci lub moce stosowane u dorosłych.';
     }
     return 'Zakres stomatologiczny w aplikacji dotyczy dzieci od 2 miesięcy i poniżej 40 kg: do 45 mg amoksycyliny/kg/dobę oraz około 6,4 mg kwasu klawulanowego/kg/dobę, w 2 podaniach. Wybierz ten schemat, aby zastosować jego granicę. Większe zakresy z ChPL dotyczą innych, określonych zakażeń.';
   }
@@ -426,24 +427,27 @@ function updateDailyDoseNote(form,input,sourceCheck,limit) {
   // converted into mg or borrowed from an unrelated nystatin formulation.
   const ingredientOverride=form.id==='nystatyna-teva'
     ? [{name:'Nystatyna',amount:100000,perMl:1,unit:'j.m.'}] : null;
-  const note=suspensionDailyDose({form,drug:getDrug(),input,source,sourceCheck,limit:{...limit,kind},ingredientOverride});
+  const note=ingredientDailyDose({form,drug:getDrug(),input,source,sourceCheck,limit:{...limit,kind},ingredientOverride});
   if (!note) { node.hidden=true;return; }
   node.hidden=false;
-  const hasCeiling=note.rows.some(row=>row.ceiling!==null || row.ceilingPerKg!==null);
-  const ceilingLabel=note.ceilingKind==='manual' ? 'Limit wpisany przez lekarza'
-    : note.ceilingKind==='source' ? 'Granica wybranego schematu' : 'Limit z danych preparatu';
-  const rowLimit=row=>{
-    if (row.ceilingPerKg===null && row.ceiling===null) return '';
-    const perKg=row.ceiling===null;
-    const weightBasis=!perKg && note.ceilingKind==='source' && sourceCheck?.maxDailyMgPerKg>0 && row.ceilingPerKg!==null
-      ? ` · ${n(row.ceilingPerKg,4)} ${esc(row.unit)}/kg/dobę` : '';
-    return `<small class="daily-dose-ceiling">${row.derivedCeiling ? 'Przy tej granicy' : ceilingLabel}: ${n(perKg ? row.ceilingPerKg : row.ceiling,4)} ${esc(row.unit)}/${perKg?'kg/':''}dobę${weightBasis}</small>`;
-  };
-  const names=note.rows.map(row=>`<div class="daily-dose-line"><dt>${esc(row.name)}</dt><dd><strong>${row.daily===null?'—':n(row.daily,6)} <span>${esc(row.unit)}/dobę</span></strong>${row.perKg===null?'':`<small>${n(row.perKg,4)} ${esc(row.unit)}/kg/dobę</small>`}${rowLimit(row)}</dd></div>`).join('');
-  const scope=hasCeiling && source ? `<p class="daily-dose-scope">${esc(source.label)}. Granica dotyczy tego wskazania i grupy pacjenta.</p>` : '';
-  const reference=!hasCeiling ? `<p class="daily-dose-context">${esc(suspensionLimitContext(form))}</p>` : '';
-  const url=note.sourceUrl || form.sourceUrl;
-  const markup=`<div class="daily-dose-heading">${icon('info')}<h3 id="daily-dose-title">Dawka dobowa</h3><span>Z tego preparatu</span></div><dl>${names || `<div class="daily-dose-line"><dt>Ilość preparatu</dt><dd><strong>${note.dailyUnits===null?'—':n(note.dailyUnits,6)} <span>${esc(form.unitLabel)}/dobę</span></strong></dd></div>`}</dl>${note.dailyUnits===null?'<p class="daily-dose-pending">Uzupełnij dawkę, częstotliwość i wymagane dane do przeliczenia.</p>':''}${note.exceeded?`<p class="daily-dose-exceeded">${icon('alert')}Przekroczona ${note.ceilingKind==='source'?'granica wybranego schematu':'wartość limitu dobowego'}.</p>`:''}${scope}${reference}${url?`<a class="daily-dose-source" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${isVeterinary()?'Źródło dawkowania':'ChPL · dawkowanie'} ↗</a>`:''}`;
+  // A source-valid probe checks patient eligibility separately from the dose.
+  // Otherwise an excessive dose would suppress its own comparison. Probe values
+  // are never stored, used for daily arithmetic, or offered as a treatment.
+  // Duration is deliberately independent of this daily preview.
+  const previewDays=source?.fixedDays||source?.minDays||1;
+  const eligibility=!source?null:isVeterinary()
+    ?resolveRegimen(source,{...regimenContext(),days:previewDays})
+    :resolveHumanRegimen(source,{...humanContext(),days:previewDays,
+      dose:source.dose??source.doseRange?.min??null,
+      frequency:source.frequency??source.frequencyOptions?.[0]??null});
+  const actualCheck=source&&!isVeterinary()
+    ?resolveHumanRegimen(source,{...humanContext(),days:previewDays}):null;
+  const doseProblems=actualCheck&&!actualCheck.valid&&input.dose>0&&input.frequency>0
+    ?actualCheck.errors:[];
+  const markup=dailyDoseMarkup({note,input,source,eligibility,doseProblems,
+    context:suspensionLimitContext(form),
+    canChooseSource:!source&&getAvailableRegimens().length>0,
+    veterinary:isVeterinary(),icon});
   if (node.innerHTML!==markup) node.innerHTML=markup;
 }
 
@@ -720,7 +724,7 @@ function favoritesDialog() {
 async function installApp() {
   if(window.matchMedia('(display-mode: standalone)').matches){toast('RxCalc jest już uruchomiony jako aplikacja.');return;}
   if(deferredInstall){await deferredInstall.prompt();const choice=await deferredInstall.userChoice;deferredInstall=null;if(choice.outcome==='accepted'){toast('Dodawanie RxCalc do urządzenia.');return;}}
-  openDialog('RxCalc na Twoim telefonie',`<p>Na Androidzie otwórz stronę w <strong>Chrome</strong>.</p><ol><li>Dotknij menu <strong>⋮</strong> w prawym górnym rogu.</li><li>Wybierz <strong>„Dodaj do ekranu głównego”</strong> lub <strong>„Zainstaluj aplikację”</strong>.</li><li>Potwierdź przyciskiem <strong>„Zainstaluj”</strong> albo „Dodaj”.</li></ol><p>Ikona RxCalc pojawi się na ekranie głównym. Po zainstalowaniu aplikacja może otwierać się we własnym oknie.</p><p><strong>${offlineReady?'Pliki zapisane — tryb offline jest gotowy.':'Pozostań chwilę online, aby pobrać komplet plików do pracy offline.'}</strong> Przeglądarka może usunąć dane witryny przy czyszczeniu pamięci; wtedy otwórz ją ponownie z internetem.</p><p>Na iPhonie: Safari → Udostępnij → Do ekranu głównego.</p>`);
+  openDialog('RxCalc na Twoim telefonie',`<p>Na Androidzie otwórz stronę w <strong>Chrome</strong>.</p><ol><li>Dotknij menu <strong>⋮</strong> w prawym górnym rogu.</li><li>Wybierz <strong>„Dodaj do ekranu głównego”</strong> lub <strong>„Zainstaluj aplikację”</strong>. Nazwa opcji zależy od wersji Chrome i urządzenia.</li><li>Potwierdź przyciskiem <strong>„Zainstaluj”</strong> albo „Dodaj”.</li></ol><p>Ikona RxCalc pojawi się na ekranie głównym. Po zainstalowaniu aplikacja może otwierać się we własnym oknie.</p><p><strong>${offlineReady?'Pliki zapisane — tryb offline jest gotowy.':'Pozostań chwilę online, aby pobrać komplet plików do pracy offline.'}</strong> Przeglądarka może usunąć dane witryny przy czyszczeniu pamięci; wtedy otwórz ją ponownie z internetem.</p><p>Na iPhonie: Safari → Udostępnij → Do ekranu głównego.</p>`);
 }
 async function copyPrescription() {
   if(!productReady()||!latest?.valid||!state.confirmed||state.demo||!latestText)return;
@@ -773,6 +777,7 @@ document.addEventListener('click',e=>{
     }
     case 'category':state.category=value;ui.showAll=false;render();break;
     case 'edit-regimen':ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
+    case 'daily-dose-source':ui.manualRegimen=false;ui.regimenExpanded=true;dirty();render();selectMenus.focus('regimenId');break;
     case 'source-mode':resetRegimen();ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
     case 'manual-regimen':if(isInstruction(getForm()))break;state.regimenId='';ui.manualRegimen=true;ui.regimenExpanded=false;ui.sourceDetailsOpen=false;dirty();render();toast('Tryb ręczny — wartości wymagają własnej weryfikacji.');break;
     case 'days':if(getSourceRegimen()?.fixedDays)break;state.days=value;dirty();if($('#days'))$('#days').value=value;document.querySelectorAll('[data-action=days]').forEach(x=>{x.classList.toggle('active',x.dataset.value===value);x.setAttribute('aria-pressed',String(x.dataset.value===value));});updateResult();break;

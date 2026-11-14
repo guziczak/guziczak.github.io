@@ -1,0 +1,40 @@
+/* Ingredient-specific daily measurements. The wall is always at 100%, not at
+   the right edge; the remaining fifth of the track shows up to 25% excess. */
+.daily-dose-note .dose-safety-rows{margin:12px 0 0}
+.dose-safety-row{padding:13px 0 15px;min-width:0}
+.dose-safety-row+.dose-safety-row{border-top:1px solid var(--border)}
+.dose-safety-row dt{font-size:13px;line-height:1.5;color:var(--ink);font-weight:600;text-transform:none}
+.dose-safety-row dt::first-letter{text-transform:uppercase}
+.dose-safety-row dd{margin:4px 0 0;min-width:0}
+.dose-safety-amount{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:3px 12px}
+.dose-safety-amount strong{font-size:21px;line-height:1.4;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
+.dose-safety-amount strong span{font-size:12px;font-weight:500;white-space:nowrap}
+.dose-safety-amount small,.dose-safety-weight-boundary{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dose-safety-boundary{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin-top:10px;font-size:11px;line-height:1.6;color:var(--muted)}
+.dose-safety-boundary strong{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.dose-safety-weight-boundary{display:block;text-align:right}
+.dose-safety-meter{position:relative;height:12px;margin-top:15px;isolation:isolate}
+.dose-safety-track{position:absolute;inset:0;background:var(--border);border-radius:6px}
+.dose-safety-fill,.dose-safety-excess{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:6px 0 0 6px;max-width:80%}
+.dose-safety-excess{left:80%;max-width:20%;border-radius:0 6px 6px 0;background:repeating-linear-gradient(135deg,transparent 0 4px,#ffffff33 4px 6px),var(--red)}
+.dose-safety-wall{position:absolute;left:80%;top:-5px;bottom:-5px;width:3px;transform:translateX(-50%);border-radius:2px;background:var(--ink);box-shadow:0 0 0 2px var(--surface-soft);z-index:2}
+.dose-safety-meter.boundary .dose-safety-wall{background:var(--warn)}
+.dose-safety-meter.exceeded .dose-safety-wall{background:var(--red)}
+.dose-safety-overflow{position:absolute;right:-1px;top:-8px;font-size:24px;line-height:26px;font-weight:700;color:var(--red);z-index:3}
+.dose-safety-meter.unscaled .dose-safety-track{background:repeating-linear-gradient(135deg,var(--border) 0 5px,var(--surface-soft) 5px 10px);border:1px solid var(--border)}
+.dose-safety-axis{display:flex;justify-content:space-between;position:relative;font-size:9px;line-height:1.5;color:var(--muted);margin-top:8px}
+.dose-safety-axis-limit{position:absolute;left:80%;transform:translateX(-100%);padding-right:5px;white-space:nowrap}
+.dose-safety-status{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:2px 12px;font-size:11px;line-height:1.6;color:var(--muted);margin-top:8px}
+.dose-safety-status strong{font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.dose-safety-status.exceeded,.dose-safety-status.exceeded strong{color:var(--red);font-weight:650}
+.dose-safety-status.boundary,.dose-safety-status.boundary strong,.dose-safety-status.unknown,.dose-safety-status.unconfirmed{color:var(--warn)}
+.daily-dose-note .dose-safety-derived{font-size:10px;line-height:1.6;margin:6px 0 0}
+.daily-dose-note .dose-safety-notice{margin:10px 0 0;padding:12px;border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:6px;background:var(--warn-bg);color:var(--ink);font-size:11px;line-height:1.65}
+.daily-dose-note .dose-safety-notice>strong{color:var(--warn);font-weight:650}
+.daily-dose-note .dose-safety-notice p{margin:6px 0 0;color:var(--ink)}
+.dose-safety-notice ul{padding-left:18px;margin:8px 0 0}
+.dose-safety-source-choice{min-height:44px;margin-top:7px;text-align:left}
+.daily-dose-note .dose-safety-rounding{padding:10px 0;border-block:1px solid var(--border);color:var(--ink);font-size:11px;line-height:1.65}
+.daily-dose-note .dose-safety-caution{font-size:10px;line-height:1.6}
+@media(max-width:780px){.dose-safety-row dt{font-size:14px}.dose-safety-amount strong{font-size:23px}.dose-safety-amount strong span{font-size:13px}.dose-safety-amount small,.dose-safety-weight-boundary,.dose-safety-boundary,.dose-safety-status{font-size:12px}.dose-safety-axis{font-size:10px}.daily-dose-note .dose-safety-derived,.daily-dose-note .dose-safety-caution{font-size:11px}.daily-dose-note .dose-safety-notice,.daily-dose-note .dose-safety-rounding{font-size:12px}}
+@media(forced-colors:active){.dose-safety-track{border:1px solid CanvasText}.dose-safety-fill{background:Highlight;forced-color-adjust:none}.dose-safety-wall{background:CanvasText}.dose-safety-excess{background:Mark;forced-color-adjust:none}}

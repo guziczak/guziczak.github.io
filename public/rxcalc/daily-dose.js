@@ -19,8 +19,11 @@ function ingredientList(form,drug,override) {
   const definitions=Array.isArray(override)?override
     :Array.isArray(form.ingredients)&&form.ingredients.length
       ?form.ingredients.map(ingredient=>({...ingredient,amount:ingredient.amountMg,unit:'mg'}))
-      :[{name:drug?.substanceLabel||drug?.name||'Substancja czynna',
-        amount:form.concentrationMg,perMl:form.concentrationMl,unit:'mg'}];
+      :form.form==='tablet'&&Array.isArray(form.activeIngredients)&&form.activeIngredients.length
+        ?form.activeIngredients.map(ingredient=>({name:ingredient.substanceLabel,amount:ingredient.strengthMg,perMl:1,unit:'mg'}))
+        :[{name:drug?.substanceLabel||drug?.name||'Substancja czynna',
+          amount:form.form==='tablet'?form.strengthMg:form.concentrationMg,
+          perMl:form.form==='tablet'?1:form.concentrationMl,unit:'mg'}];
   return definitions.map((ingredient,index)=>({
     index,name:typeof ingredient?.name==='string'?ingredient.name.trim():'',
     unit:typeof ingredient?.unit==='string'?ingredient.unit.trim():'',
@@ -33,8 +36,8 @@ function ingredientList(form,drug,override) {
  * source/limits define its scope; this module never supplies a universal limit
  * or decides whether a source regimen is appropriate for the patient.
  */
-export function suspensionDailyDose({form,drug,input={},source=null,sourceCheck=null,limit=null,ingredientOverride=null}={}) {
-  if(form?.form!=='suspension'||form.calculationBlocked===true||input.calculationBlocked===true)return null;
+export function ingredientDailyDose({form,drug,input={},source=null,sourceCheck=null,limit=null,ingredientOverride=null}={}) {
+  if(!['suspension','tablet'].includes(form?.form)||form.calculationBlocked===true||input.calculationBlocked===true)return null;
   const preview=calculate({...input,days:1});
   // A later validation error can retain useful arithmetic; absent inputs cannot.
   const dailyUnits=positive(preview.dailyUnits);
@@ -84,6 +87,9 @@ export function suspensionDailyDose({form,drug,input={},source=null,sourceCheck=
   });
   return {
     rows,dailyUnits,ceilingKind,
+    rounding:positive(preview.theoreticalUnits)!==null&&positive(preview.singleUnits)!==null
+      &&Math.abs(preview.roundingDifferencePercent)>1e-7
+      ?{from:preview.theoreticalUnits,to:preview.singleUnits}:null,
     sourceLabel:source?.sourceLabel||form.sourceLabel||'',
     sourceUrl:source?.sourceUrl||form.sourceUrl||'',
     sourceScope:source?.label||'',
@@ -93,4 +99,9 @@ export function suspensionDailyDose({form,drug,input={},source=null,sourceCheck=
       ||above(primaryDaily!==null&&weight!==null?primaryDaily/weight:null,ceilingPerKg)
       ||above(dailyUnits,sourceDailyUnits),
   };
+}
+
+/** Existing suspension-only API retained for callers and regression tests. */
+export function suspensionDailyDose(options={}) {
+  return options.form?.form==='suspension'?ingredientDailyDose(options):null;
 }
