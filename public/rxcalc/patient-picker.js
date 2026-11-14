@@ -1,10 +1,15 @@
 import { createPatientPickerModel, parsePickerValue, formatWheelValue } from './patient-picker-model.js';
 import { createWheelMotion } from './wheel-motion.js';
+import { createWheelFeedback } from './wheel-feedback.js';
 
 /** Patient values are committed once, on Done. The wheels only edit an ephemeral draft. */
 export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }) {
   const records = new Set(), byInput = new WeakMap();
   const ROW = 44;
+  const feedback = createWheelFeedback(window);
+  const SOUND_KEY = 'rxcalc-wheel-sound';
+  let soundEnabled = true;
+  try { soundEnabled = localStorage.getItem(SOUND_KEY) !== 'off'; } catch { /* Keep the in-memory preference. */ }
   let active = null;
   const element = (tag, className, text) => {
     const node = document.createElement(tag);
@@ -20,6 +25,19 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
   };
   const display = value => String(value).replace('.', ',');
 
+  function updateSoundButton(node) {
+    node.setAttribute('aria-label', 'Dźwięk bębna');
+    node.setAttribute('aria-pressed', String(soundEnabled));
+    node.title = soundEnabled ? 'Wycisz dźwięk bębna' : 'Włącz dźwięk bębna';
+    node.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/>${soundEnabled ? '<path d="M15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14"/>' : '<path d="m16 9 6 6m0-6-6 6"/>'}</svg>`;
+  }
+
+  function armFeedback(session) {
+    if (active !== session || session.mode !== 'wheels') return;
+    session.feedbackArmed = true;
+    feedback.unlock();
+  }
+
   function refreshOne(record) {
     record.value.textContent = record.input.value ? display(record.input.value) : record.input.placeholder || 'Wybierz';
     record.value.classList.toggle('is-placeholder', !record.input.value);
@@ -30,6 +48,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     const session = active;
     if (!session) return;
     active = null;
+    feedback.stop();
     for (const wheel of Object.values(session.wheels)) wheel.motion.destroy();
     session.record.trigger.setAttribute('aria-expanded', 'false');
     session.record.trigger.removeAttribute('aria-controls');
@@ -79,6 +98,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
   function readWheel(session, part) {
     const wheel = session.wheels[part];
     const index = Math.max(0, Math.min(wheel.max, Math.round(wheel.node.scrollTop / ROW)));
+    const changed = wheel.index !== index;
     if (wheel.index === index && wheel.node.hasAttribute('aria-valuetext')) {
       session[part] = index;
       return false;
@@ -91,6 +111,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       ? `0,${String(index).padStart(session.model.precision, '0')} ${session.model.unit}`
       : `${index} ${session.model.unit}`);
     session[part] = index;
+    if (changed && session.feedbackArmed && !session.positioning) feedback.tick({ sound:soundEnabled });
     return true;
   }
 
@@ -122,6 +143,9 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     });
     const motion = createWheelMotion(node, { rowHeight:ROW });
     session.wheels[part] = { node, rows, max, index:initial, motion };
+    node.addEventListener('pointerdown', () => armFeedback(session), { passive:true });
+    node.addEventListener('pointerup', () => armFeedback(session), { passive:true });
+    node.addEventListener('wheel', event => { if (!event.ctrlKey) armFeedback(session); }, { passive:true });
     node.addEventListener('scroll', () => {
       if (active !== session || session.mode !== 'wheels' || session.positioning) return;
       if (readWheel(session, part)) updatePreview(session);
@@ -129,13 +153,14 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     node.addEventListener('click', event => {
       if (motion.isClickSuppressed()) return;
       const row = event.target.closest('.patient-picker-row');
-      if (row) chooseIndex(session, part, Number(row.dataset.index));
+      if (row) { armFeedback(session); chooseIndex(session, part, Number(row.dataset.index)); }
     });
     node.addEventListener('keydown', event => {
       if (event.key === 'Enter') { event.preventDefault(); commit(session); return; }
       const steps = { ArrowUp:1, ArrowDown:-1, PageUp:10, PageDown:-10 };
       if (Object.hasOwn(steps, event.key) || ['Home','End'].includes(event.key)) {
         event.preventDefault();
+        armFeedback(session);
         chooseIndex(session, part, event.key === 'Home' ? 0 : event.key === 'End' ? max : session[part] + steps[event.key]);
       }
       if (['ArrowLeft','ArrowRight'].includes(event.key)) {
@@ -166,6 +191,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     session.positioning = true;
     for (const part of Object.keys(session.wheels)) {
       session.wheels[part].motion.setIndex(session[part]);
+      readWheel(session, part);
     }
     session.positioning = false;
   }
@@ -190,6 +216,9 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
       session.whole = model.whole; session.fraction = model.fraction;
       renderWheels(session);
     }
+    session.feedbackArmed = false;
+    if (mode === 'wheels') feedback.unlock();
+    else feedback.stop();
     session.mode = mode;
     session.wheelsBox.hidden = mode !== 'wheels';
     session.manualBox.hidden = mode !== 'manual';
@@ -232,7 +261,17 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     const header = element('div', 'patient-picker-header');
     const heading = element('h2', '', model.title);
     heading.id = `${dialog.id}-title`;
-    header.append(heading, button('patient-picker-cancel', 'Anuluj', () => close()));
+    const headerActions = element('div', 'patient-picker-header-actions');
+    const soundButton = button('patient-picker-sound', '', () => {
+      soundEnabled = !soundEnabled;
+      try { localStorage.setItem(SOUND_KEY, soundEnabled ? 'on' : 'off'); } catch { /* This session still remembers the choice. */ }
+      feedback.stop();
+      if (active?.mode === 'wheels') feedback.unlock();
+      updateSoundButton(soundButton);
+    });
+    updateSoundButton(soundButton);
+    headerActions.append(soundButton, button('patient-picker-cancel', 'Anuluj', () => close()));
+    header.append(heading, headerActions);
     const modes = element('div', 'patient-picker-mode');
     const wheelsBox = element('div', 'patient-picker-wheels');
     const manualBox = element('div', 'patient-picker-manual');
@@ -253,7 +292,7 @@ export function createPatientPickers({ icon, getContext, beforeOpen = () => {} }
     preview.setAttribute('aria-live', 'polite'); preview.setAttribute('aria-atomic', 'true');
     const footer = element('div', 'patient-picker-footer');
     const session = { record, context, model, dialog, wheelsBox, manualBox, manualInput, error, preview,
-      whole:model.whole, fraction:model.fraction, mode:null, wheels:{}, positioning:false };
+      whole:model.whole, fraction:model.fraction, mode:null, wheels:{}, positioning:false, feedbackArmed:false };
     session.wheelsButton = button('', 'Przewijaj', () => setMode(session, 'wheels'));
     session.manualButton = button('', 'Wpisz', () => setMode(session, 'manual'));
     modes.append(session.wheelsButton, session.manualButton);

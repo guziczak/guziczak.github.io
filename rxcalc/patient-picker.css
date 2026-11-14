@@ -18,6 +18,12 @@ html.patient-picker-open{overflow:hidden}
 .patient-picker-panel{padding:18px;min-width:0}
 .patient-picker-header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px}
 .patient-picker-header h2{margin:0;font-size:18px;font-weight:650;line-height:1.3;letter-spacing:-.3px}
+.patient-picker-header-actions{display:flex;flex-shrink:0;align-items:center;gap:8px}
+.patient-picker-sound{display:grid;place-items:center;width:40px;height:40px;padding:8px;border:0;border-radius:9px;background:transparent;color:var(--muted)}
+.patient-picker-sound svg{width:20px;height:20px}
+.patient-picker-sound[aria-pressed="true"]{color:var(--accent)}
+.patient-picker-sound:hover{background:var(--soft)}
+.patient-picker-sound:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .patient-picker-cancel,.patient-picker-clear{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;line-height:1.4;min-height:40px;padding:8px 2px}
 .patient-picker-cancel:hover,.patient-picker-clear:hover{color:var(--accent)}
 .patient-picker-caption{margin:3px 0 12px;color:var(--muted);font-size:12px;line-height:1.5}
@@ -61,6 +67,7 @@ html.patient-picker-open{overflow:hidden}
   .patient-picker{border-radius:22px 22px 0 0;border-bottom:0;box-shadow:0 -12px 48px #102b2533;animation-name:patient-picker-sheet-in}
   .patient-picker-panel{padding:15px max(20px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
   .patient-picker-header h2{font-size:19px}
+  .patient-picker-sound{width:44px;height:44px}
   .patient-picker-cancel,.patient-picker-clear{min-height:44px;font-size:14px}
   .patient-picker-mode button{min-height:36px;font-size:13px}
   .patient-picker-done{min-height:48px;font-size:15px}

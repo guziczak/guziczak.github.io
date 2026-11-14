@@ -58,14 +58,15 @@ function fixture() {
   media.matches=false;
   const win={ performance:{now:()=>clock}, matchMedia:()=>media,
     requestAnimationFrame:fn=>{frames.set(++serial,fn);return serial;},cancelAnimationFrame:id=>frames.delete(id),
-    setTimeout:fn=>{timers.set(++serial,fn);return serial;},clearTimeout:id=>timers.delete(id) };
+    setTimeout:(fn,delay)=>{timers.set(++serial,{fn,at:clock+delay});return serial;},clearTimeout:id=>timers.delete(id) };
   const node=new EventTarget();
   Object.assign(node,{ownerDocument:{defaultView:win},scrollTop:0,scrollHeight:4620,clientHeight:220,
     setPointerCapture(){},releasePointerCapture(){},hasPointerCapture(){return false;}});
-  const send=(type,values={})=>{const event=new Event(type,{cancelable:true});Object.assign(event,values);node.dispatchEvent(event);};
+  const send=(type,values={})=>{const event=new Event(type,{cancelable:true});Object.assign(event,values);node.dispatchEvent(event);return event;};
   const tick=time=>{clock=time;for(const [id,fn] of [...frames]){frames.delete(id);fn(time);}};
+  const runTimers=time=>{clock=time;for(const [id,timer] of [...timers])if(timer.at<=time){timers.delete(id);timer.fn();}};
   const pointer=(type,y)=>send(type,{isPrimary:true,button:0,pointerId:1,clientY:y});
-  return {node,win,frames,timers,send,tick,pointer,setTime:time=>{clock=time;}};
+  return {node,win,frames,timers,send,tick,runTimers,pointer,setTime:time=>{clock=time;}};
 }
 
 test('Done interrupts momentum at the currently visible row, and close cancels later frames', () => {
@@ -94,5 +95,30 @@ test('native scroll waits for inactivity and an explicit selection cancels its p
   const f=fixture(), motion=createWheelMotion(f.node);
   f.node.scrollTop=113;f.send('scroll');assert.equal(f.timers.size,1);
   motion.setIndex(10);assert.equal(f.node.scrollTop,440);assert.equal(f.timers.size,0);
+  motion.destroy();
+});
+
+test('desktop wheel interrupts custom inertia, preserves native scrolling and zoom, and snaps only after inactivity', () => {
+  const f=fixture(), motion=createWheelMotion(f.node);
+  f.pointer('pointerdown',200);f.setTime(50);f.pointer('pointermove',150);f.setTime(100);f.pointer('pointermove',100);f.pointer('pointerup',100);
+  f.tick(200);
+  const interrupted=f.node.scrollTop;
+  const wheel=f.send('wheel',{deltaY:90,deltaMode:0,ctrlKey:false});
+  assert.equal(wheel.defaultPrevented,false);
+  assert.equal(f.frames.size,0);
+  assert.equal(f.node.scrollTop,interrupted); // The browser, not the handler, applies deltaY.
+
+  // Native wheel/trackpad scrolling can keep producing scroll events after wheel.
+  f.node.scrollTop=113;f.send('scroll');
+  f.setTime(300);f.node.scrollTop=145;f.send('scroll');
+  f.runTimers(479);assert.equal(f.frames.size,0);assert.equal(f.node.scrollTop,145);
+  f.runTimers(480);assert.equal(f.frames.size,1);
+  f.tick(640);assert.equal(f.node.scrollTop,132);assert.equal(f.frames.size,0);
+  f.send('scroll');assert.equal(f.timers.size,0); // The settled frame cannot restart a snap loop.
+
+  const zoom=f.send('wheel',{deltaY:-50,deltaMode:0,ctrlKey:true});
+  assert.equal(zoom.defaultPrevented,false);
+  assert.equal(f.node.scrollTop,132);
+  assert.equal(f.frames.size,0);assert.equal(f.timers.size,0);
   motion.destroy();
 });
