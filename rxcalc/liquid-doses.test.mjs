@@ -7,8 +7,9 @@ import { availableHumanRegimens,resolveHumanRegimen } from './human-regimen-engi
 import { calculate } from './engine.js';
 import { ingredientDailyDose } from './daily-dose.js';
 import { sourceInitialValues,sourceEditState } from './regimen-edit.js';
-import { liquidDoseChoices,liquidDoseChoicesMarkup,supportsLiquidChoices } from './liquid-doses.js';
+import { liquidDoseChoices as evaluateLiquidChoices,liquidDoseChoicesMarkup,supportsLiquidChoices } from './liquid-doses.js';
 import { LIQUID_STARTER_REGIMENS,liquidStarterMarkup } from './liquid-starters.js';
+const liquidDoseChoices=(form,options={})=>evaluateLiquidChoices(form,{...options,adaptive:false});
 const drug=DRUGS.find(d=>d.id==='amoxicillin-clavulanate');
 const form=drug.forms.find(f=>f.id==='augmentin-400-57');
 const starter=LIQUID_STARTER_REGIMENS[0];

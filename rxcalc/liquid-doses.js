@@ -3,6 +3,8 @@
  * Range/ceiling deviations are advisory here; engine/export validation is unchanged.
  */
 import { formatNumber as n } from './engine.js';
+import { liquidShortcutWindow, liquidShortcutKey } from './adaptive-dose-choices.js';
+import { shortcutPage, shortcutNavigation } from './shortcut-browser.js';
 const positive = v => typeof v === 'number' && Number.isFinite(v) && v > 0;
 const present = v => v !== null && v !== undefined && v !== '';
 const clean = v => Number(v.toPrecision(14));
@@ -15,7 +17,7 @@ export function supportsLiquidChoices(form, veterinary=false) {
 }
 export function liquidDoseChoices(form, {doseMode='fixed',weight=null,frequency=null,
   source=null,maxSingleMg=null,maxDailyMg=null,roundingStep=null,veterinary=false,
-  eligibility=null}={}) {
+  eligibility=null,adaptive=true,page=null,volumes=null}={}) {
   if(!supportsLiquidChoices(form,veterinary)||source?.doseMode==='instruction'
     ||!['fixed','units','perKgDay','perKgDose'].includes(doseMode))return [];
   const concentration=positive(form.concentrationMg)&&positive(form.concentrationMl)
@@ -25,7 +27,10 @@ export function liquidDoseChoices(form, {doseMode='fixed',weight=null,frequency=
   const daily=[form.maxDailyMg,source?.maxDailyMg,maxDailyMg].filter(present);
   const perKg=[source?.maxSingleMgPerKg,source?.maxDailyMgPerKg].filter(present);
   const units=[source?.maxUnitsPerDose,source?.maxDailyUnits].filter(present);
-  return [2.5,5,10].map(ml=>{
+  const settings={doseMode,weight,frequency,source,maxSingleMg,maxDailyMg,roundingStep,veterinary,eligibility,adaptive};
+  const key=liquidShortcutKey(form,settings);
+  const window=adaptive?liquidShortcutWindow(form,{...settings,page:page??shortcutPage(key)}):null;
+  const list=(volumes||window?.volumes||[2.5,5,10]).map(ml=>{
     const mg=concentration===null?null:clean(ml*concentration);
     const value=doseMode==='units'?ml:doseMode==='fixed'?mg
       :positive(weight)&&weight<=500&&mg!==null
@@ -34,6 +39,7 @@ export function liquidDoseChoices(form, {doseMode='fixed',weight=null,frequency=
     if(doseMode!=='units'&&mg===null)reason='Brak stężenia w mg/ml';
     else if(weighted&&(!positive(weight)||weight>500))reason='Uzupełnij poprawną masę';
     else if(doseMode==='perKgDay'&&!positive(frequency))reason='Wybierz częstotliwość';
+    else if(!positive(value)||value>1e6)reason='Wartość poza zakresem technicznym';
     else if(source&&(source.doseMode!==doseMode||source.formIds&&!source.formIds.includes(form.id)))reason='Inny sposób przeliczenia';
     else if(source&&eligibility&&eligibility.valid!==true)reason='Sprawdź dane pacjenta';
     else if([...single,...daily,...perKg,...units].some(v=>!positive(v)))reason='Nieprawidłowy limit';
@@ -67,16 +73,24 @@ export function liquidDoseChoices(form, {doseMode='fixed',weight=null,frequency=
     return {ml,mg,value,allowed:!reason&&positive(value),reason:reason||primary?.message||'',
       severity:primary?.severity||null,warnings};
   });
+  if(window)Object.defineProperty(list,'browser',{value:{key,window,form,settings},enumerable:false});
+  return list;
 }
 export function liquidDoseChoicesMarkup(choices, {dose=null,unit='mg',basis=''}={}) {
   if(!choices.length)return '';
+  const browser=choices.browser,weighted=browser?.window.anchored&&browser.window.weighted;
+  const labelNumber=(v,d=4)=>`${Math.abs(v-Number(v.toFixed(d)))>1e-10?'≈ ':''}${n(v,d)}`;
+  const navigation=browser?shortcutNavigation(browser.key,browser.window,()=>liquidDoseChoicesMarkup(
+    liquidDoseChoices(browser.form,browser.settings),{dose,unit,basis})):'';
+  const explanation=browser?.window.noGridValue?'Wybrany krok objętości nie odtwarza dokładnej dawki lub zakresu. Sąsiednie wartości nie są automatycznie akceptowanym zaokrągleniem.'
+    :browser?.window.exact?'Objętości są przeliczeniem źródła, nie potwierdzoną podziałką strzykawki. Sprawdź możliwość odmierzenia; ≈ oznacza skrócony zapis, nie zmianę dawki.':'';
   const syringe='<svg viewBox="0 0 48 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10h25v12H8zM8 16H3m30-6v12m0-6h10m0-6v12M14 10v5m6-5v5m6-5v5"/></svg>';
-  return `<div class="liquid-dose-heading">Szybki wybór objętości <span>na jedno podanie</span></div><div class="liquid-dose-choices" role="group" aria-label="Objętość zawiesiny na podanie">${choices.map(c=>{
+  return `<div class="liquid-dose-heading">${weighted?'Szybki wybór dawki <span>w jednostce schematu</span>':'Szybki wybór objętości <span>na jedno podanie</span>'}</div><div class="liquid-dose-choices" role="group" aria-label="Objętość zawiesiny na podanie">${choices.map(c=>{
     const selected=c.allowed&&equal(c.value,dose);
     const tone=c.allowed&&['warning','critical'].includes(c.severity)?c.severity:'';
     const messages=(c.warnings||[]).map(w=>w.message).join('. ');
     const label=`${n(c.ml)} ml${c.mg===null?'':` = ${n(c.mg,6)} mg ${basis}`}`;
     const detail=messages||c.reason;
-    return `<button type="button" class="liquid-dose-choice ${selected?'active':''} ${tone?`liquid-dose-${tone}`:''}" data-action="liquid-dose" data-value="${c.ml}" aria-pressed="${selected}" ${c.allowed?'':'disabled'} title="${esc(label+(detail?`. ${detail}`:''))}">${selected?'<span class="liquid-dose-selected" aria-hidden="true">✓</span>':''}${syringe}<strong>${n(c.ml)} <small>ml</small></strong><span>${c.mg===null?'Objętość preparatu':`${n(c.mg,6)} mg`}</span>${!['mg','ml'].includes(unit)&&c.value!==null?`<small>${n(c.value,6)} ${esc(unit)}</small>`:''}<small class="liquid-dose-reason">${tone?'<span aria-hidden="true">⚠ </span>':''}${esc(c.reason)}</small></button>`;
-  }).join('')}</div><p class="liquid-dose-help">${choices.some(c=>c.mg!==null)?`mg dotyczą ${esc(basis||'substancji głównej')}. `:''}Żółty: poniżej schematu; czerwony: powyżej schematu lub limitu. Skróty przeliczenia, nie zalecane dawki — kontrola kopiowania pozostaje aktywna.</p>`;
+    return `<button type="button" class="liquid-dose-choice ${selected?'active':''} ${tone?`liquid-dose-${tone}`:''}" data-action="liquid-dose" data-value="${c.ml}" aria-pressed="${selected}" ${c.allowed?'':'disabled'} title="${esc(label+(detail?`. ${detail}`:''))}">${selected?'<span class="liquid-dose-selected" aria-hidden="true">✓</span>':''}${syringe}<strong>${weighted&&c.value!==null?labelNumber(c.value):labelNumber(c.ml)} <small>${weighted?esc(unit):'ml'}</small></strong>${weighted?`<span>${labelNumber(c.ml)} ml na podanie</span>`:''}<span>${c.mg===null?'Objętość preparatu':`${n(c.mg,6)} mg`}</span>${!weighted&&!['mg','ml'].includes(unit)&&c.value!==null?`<small>${n(c.value,6)} ${esc(unit)}</small>`:''}<small class="liquid-dose-reason">${tone?'<span aria-hidden="true">⚠ </span>':''}${esc(c.reason|| (browser?.window.anchored&&c.allowed?'Liczbowo w schemacie':''))}</small></button>`;
+  }).join('')}</div>${navigation}${explanation?`<p class="liquid-dose-help">${esc(explanation)}</p>`:''}<p class="liquid-dose-help">${choices.some(c=>c.mg!==null)?`mg dotyczą ${esc(basis||'substancji głównej')}. `:''}Żółty: poniżej schematu; czerwony: powyżej schematu lub limitu. Skróty przeliczenia, nie zalecane dawki — kontrola kopiowania pozostaje aktywna.</p>`;
 }
