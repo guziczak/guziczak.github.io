@@ -1,4 +1,4 @@
-import { regimenMeterMarkup, regimenLegendMarkup } from './dose-regimen.js';
+import { regimenMeterMarkup, regimenLegendMarkup, regimenDosePercentMarkup } from './dose-regimen.js';
 import { adultAugmentinReference, referenceMeterMarkup, referenceIntroMarkup, referenceDetailsMarkup } from './dose-reference.js';
 import { formatNumber as n } from './engine.js';
 
@@ -77,7 +77,10 @@ export function dailyDoseMarkup({ note, input = {}, source = null, context = '',
   const comparative = !hasCeiling && !veterinary && referenceContext
     ? adultAugmentinReference({...referenceContext,input,source}) : null;
   const schemes = !veterinary ? note.schemeRows : null;
-  const rows = note.rows.map((row,index) => `<div class="dose-safety-row"><dt>${esc(row.name)}</dt><dd><div class="dose-safety-amount"><strong>${row.daily === null ? '—' : n(row.daily, 6)} <span>${esc(row.unit)}/dobę</span></strong>${row.perKg === null ? '' : `<small>${n(row.perKg, 4)} ${esc(row.unit)}/kg/dobę</small>`}</div>${comparative ? referenceMeterMarkup(row, comparative) || meterMarkup(row, note, comparisonAllowed) : (schemes?.[index] ? regimenMeterMarkup(row, schemes[index], comparisonAllowed) : meterMarkup(row, note, comparisonAllowed))}</dd></div>`).join('');
+  const rows = note.rows.map((row,index) => {
+    const percent=!comparative && schemes?.[index] ? regimenDosePercentMarkup(row,schemes[index],comparisonAllowed) : '';
+    return `<div class="dose-safety-row"><dt>${esc(row.name)}</dt><dd><div class="dose-safety-amount ${percent?'has-scheme-percent':''}"><strong>${row.daily === null ? '—' : n(row.daily, 6)} <span>${esc(row.unit)}/dobę</span></strong>${row.perKg === null ? '' : `<small>${n(row.perKg, 4)} ${esc(row.unit)}/kg/dobę</small>`}${percent}</div>${comparative ? referenceMeterMarkup(row, comparative) || meterMarkup(row, note, comparisonAllowed) : (schemes?.[index] ? regimenMeterMarkup(row, schemes[index], comparisonAllowed) : meterMarkup(row, note, comparisonAllowed))}</dd></div>`;
+  }).join('');
   const hasDerived = note.rows.some(row => row.derivedCeiling);
   const scope = source ? `<p class="daily-dose-scope"><strong>${modified ? 'Źródło odniesienia dla zmodyfikowanego schematu:' : 'Wybrany schemat:'}</strong> ${esc(source.label)}${source.phaseLabel ? ` · ${esc(source.phaseLabel)}` : ''}. Granice dotyczą wyłącznie tego wskazania i zakresu pacjentów.</p>` : '';
   const errors = source && !comparisonAllowed

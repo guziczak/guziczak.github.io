@@ -112,3 +112,24 @@
 .daily-dose-note .dose-scheme-small{font-size:11px;line-height:1.6;margin:5px 0 0}
 @media(max-width:780px){.dose-scheme-legend,.daily-dose-note .dose-scheme-caption{font-size:11px}.dose-scheme-values,.dose-scheme-status{font-size:12px}}
 @media(forced-colors:active){.dose-scheme-track{border:1px solid CanvasText}.dose-scheme-band{background:Canvas;border:1px dashed CanvasText;opacity:1}.dose-scheme-fill{background:Highlight;forced-color-adjust:none}.dose-scheme-marker{border-color:CanvasText}.dose-scheme-wall{background:Mark;forced-color-adjust:none}}
+
+/* Percentages refer to the upper source endpoint, not the length of the track.
+   Source annotations use a dedicated lane; nearby endpoints share one label. */
+.dose-safety-amount.has-scheme-percent{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:0 12px}
+.dose-safety-amount.has-scheme-percent>strong{grid-column:1;grid-row:1;overflow-wrap:anywhere}
+.dose-safety-amount.has-scheme-percent>small{grid-column:1;grid-row:2}
+.dose-scheme-current{grid-column:2;grid-row:1 / 3;display:flex;flex-direction:column;align-items:flex-end;text-align:right;min-width:0;line-height:1.35}
+.dose-scheme-current b{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.dose-safety-amount .dose-scheme-current small{max-width:155px;font-size:10px;line-height:1.4}
+.dose-scheme-current.above b,.dose-scheme-current.below b{color:var(--warn)}
+.dose-scheme-current.limit-exceeded b{color:var(--red)}
+.dose-scheme-ticks{height:34px;position:relative;margin-top:15px;font-variant-numeric:tabular-nums;pointer-events:none}
+.dose-scheme-tick{position:absolute;top:0;transform:translateX(-50%);width:76px;max-width:38%;text-align:center;color:var(--muted);line-height:1.25}
+.dose-scheme-tick b{font-size:11px;font-weight:650;color:var(--ink);white-space:nowrap}
+.dose-scheme-tick small{display:block;font-size:9px;line-height:1.3}
+.dose-scheme-ticks+.dose-scheme-meter{margin-top:8px}
+.dose-scheme-percent-axis{font-variant-numeric:tabular-nums;align-items:baseline;margin-top:6px;font-size:10px;line-height:1.4}
+.dose-scheme-percent-axis>span:last-child{text-align:right}
+.dose-scheme-percent-axis b{font-weight:600}
+.dose-scheme-percent-axis small{display:block;font-size:10px}
+@media(max-width:780px){.dose-scheme-current b{font-size:23px}.dose-safety-amount .dose-scheme-current small{font-size:11px}.dose-scheme-tick b{font-size:12px}.dose-scheme-tick small{font-size:10px}.dose-scheme-ticks{height:38px}.dose-scheme-percent-axis{font-size:11px}}
