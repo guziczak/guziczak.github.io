@@ -82,12 +82,13 @@ test('400:57 ratios do not invent a false independent clavulanate maximum',()=>{
   assert.equal(note.rows[1].daily,128.25);
   for(const current of note.rows)assert.equal(doseMeterModel(current).state,'boundary');
   const html=dailyDoseMarkup({note,source,eligibility:valid,input});
-  assert.equal((html.match(/class="dose-safety-wall"/g)||[]).length,2);
+  assert.equal((html.match(/class="dose-scheme-marker"/g)||[]).length,4);
+  assert.ok(!html.includes('class="dose-scheme-wall"'));
   assert.ok(html.includes('nie jest to niezależne maksimum'));
   assert.ok(html.includes('128,25 mg/dobę'));
 });
 
-test('a genuinely excessive input turns both ingredient comparisons red',()=>{
+test('a dose above the source range marks both ingredient comparisons as out of range',()=>{
   const sourceCheck=resolveHumanRegimen(source,{...context,dose:46});
   assert.equal(sourceCheck.valid,false);
   const note=report({input:{...input,doseMode:'perKgDay',dose:46,weight:20,roundingStep:null},source,sourceCheck});
@@ -95,8 +96,8 @@ test('a genuinely excessive input turns both ingredient comparisons red',()=>{
   assert.equal(eligibility.valid,true);
   for(const current of note.rows)assert.equal(doseMeterModel(current).state,'exceeded');
   const html=dailyDoseMarkup({note,input,source,eligibility,doseProblems:sourceCheck.errors});
-  assert.equal((html.match(/class="dose-safety-excess"/g)||[]).length,2);
-  assert.ok(html.includes('Przekroczenie o 2,22%'));
+  assert.equal((html.match(/class="dose-scheme-status above /g)||[]).length,2);
+  assert.ok(html.includes('Powyżej górnej granicy schematu o 2,22%'));
   assert.ok(html.includes('Dawka jest poza zakresem'));
 });
 

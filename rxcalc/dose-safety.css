@@ -80,3 +80,35 @@
 .source-edit-status.modified strong{color:var(--warn)}
 .source-edit-note>.text-button{margin-top:8px;min-height:36px;text-align:left;white-space:normal}
 .source-edit-note>.small-help{margin:6px 0 0}
+
+/* Source bands are comparisons, not goals. Dashed ends describe the selected
+   source; a solid line appears only for a separately supplied daily limit. */
+.dose-scheme-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:14px;font-size:11px;color:var(--muted)}
+.dose-scheme-legend>span{display:inline-flex;align-items:center;gap:6px}
+.dose-scheme-legend i{display:inline-block;width:15px;height:10px;flex-shrink:0}
+.dose-scheme-legend .legend-fill{height:5px;background:var(--accent);border-radius:3px}
+.dose-scheme-legend .legend-range{border-inline:2px dashed var(--ink);background:var(--border)}
+.dose-scheme-legend .legend-limit{width:0;margin:0 7px;border-left:3px solid var(--warn);height:13px}
+.daily-dose-note .dose-scheme-caption{font-size:11px;line-height:1.6;margin:6px 0 0}
+.dose-scheme-values{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:3px 10px;font-size:12px;line-height:1.6;margin-top:10px;color:var(--muted)}
+.dose-scheme-values strong{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.dose-scheme-values small{display:block;font-size:11px;font-weight:400;text-align:right;color:var(--muted)}
+.dose-scheme-values.limit{border-left:3px solid var(--warn);padding-left:8px}
+.dose-scheme-meter{position:relative;height:24px;isolation:isolate;margin-top:14px}
+.dose-scheme-track{position:absolute;inset:8px 0;background:var(--border);border-radius:6px}
+.dose-scheme-band{position:absolute;inset:1px auto 1px 0;background:var(--accent);opacity:.12;border-block:1px solid var(--accent);border-radius:2px}
+.dose-scheme-fill{position:absolute;inset:8px auto 8px 0;max-width:100%;border-radius:6px;background:var(--accent)}
+.dose-scheme-marker{position:absolute;top:-2px;bottom:-2px;width:0;border-left:2px dashed var(--ink);transform:translateX(-50%);z-index:2}
+.dose-scheme-wall{position:absolute;top:-3px;bottom:-3px;width:3px;background:var(--warn);transform:translateX(-50%);box-shadow:0 0 0 2px var(--surface-soft);z-index:3}
+.dose-scheme-meter.above .dose-scheme-fill,.dose-scheme-meter.below .dose-scheme-fill{background:var(--warn)}
+.dose-scheme-meter.limit-exceeded .dose-scheme-fill,.dose-scheme-meter.limit-exceeded .dose-scheme-wall{background:var(--red)}
+.dose-scheme-meter.unscaled .dose-scheme-track{background:repeating-linear-gradient(135deg,var(--border) 0 5px,var(--surface-soft) 5px 10px);border:1px solid var(--border)}
+.dose-scheme-axis{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:var(--muted);margin-top:3px}
+.dose-scheme-status{font-size:12px;line-height:1.6;margin-top:8px;color:var(--ink)}
+.dose-scheme-status.above,.dose-scheme-status.below,.dose-scheme-status.unconfirmed{color:var(--warn)}
+.dose-scheme-status.pending{color:var(--muted)}
+.dose-scheme-status.limit-exceeded{color:var(--red);font-weight:600}
+.dose-scheme-overflow{position:absolute;right:-1px;top:-4px;font-size:24px;color:var(--warn);z-index:4}
+.daily-dose-note .dose-scheme-small{font-size:11px;line-height:1.6;margin:5px 0 0}
+@media(max-width:780px){.dose-scheme-legend,.daily-dose-note .dose-scheme-caption{font-size:11px}.dose-scheme-values,.dose-scheme-status{font-size:12px}}
+@media(forced-colors:active){.dose-scheme-track{border:1px solid CanvasText}.dose-scheme-band{background:Canvas;border:1px dashed CanvasText;opacity:1}.dose-scheme-fill{background:Highlight;forced-color-adjust:none}.dose-scheme-marker{border-color:CanvasText}.dose-scheme-wall{background:Mark;forced-color-adjust:none}}

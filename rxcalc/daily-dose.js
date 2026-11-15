@@ -1,3 +1,4 @@
+import { regimenComparisonRows } from './dose-regimen.js';
 import { calculate } from './engine.js';
 
 const positive=value=>typeof value==='number'&&Number.isFinite(value)&&value>0?value:null;
@@ -87,6 +88,7 @@ export function ingredientDailyDose({form,drug,input={},source=null,sourceCheck=
   });
   return {
     rows,dailyUnits,ceilingKind,
+    schemeRows:regimenComparisonRows({source,input,ingredients,weight,limit}),
     rounding:positive(preview.theoreticalUnits)!==null&&positive(preview.singleUnits)!==null
       &&Math.abs(preview.roundingDifferencePercent)>1e-7
       ?{from:preview.theoreticalUnits,to:preview.singleUnits}:null,
