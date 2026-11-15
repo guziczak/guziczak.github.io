@@ -42,3 +42,12 @@ rx-shortcut-browser{display:block}
 .liquid-dose-choice strong{overflow-wrap:anywhere}
 .liquid-dose-choice strong small{display:inline-block}
 @media(max-width:780px){.shortcut-navigation button{font-size:12px}}
+
+/* The documented rounded shortcut remains an explicit, warned input choice. */
+.liquid-rounded-note{margin-top:9px;font-size:11px;line-height:1.55;color:var(--muted);overflow-wrap:anywhere}
+.liquid-rounded-note p{font-size:inherit;margin:6px 0}
+.liquid-rounded-note strong{color:var(--ink)}
+.liquid-rounded-details summary{cursor:pointer;color:var(--accent);padding:6px 0;min-height:32px}
+.liquid-rounded-details a{display:block;margin:8px 0;overflow-wrap:anywhere}
+.liquid-dose-choice .liquid-rounded-label{font-weight:650;color:var(--ink)}
+@media(max-width:780px){.liquid-rounded-note{font-size:12px}.liquid-rounded-details summary{min-height:44px}}

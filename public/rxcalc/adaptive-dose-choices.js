@@ -1,3 +1,5 @@
+import { roundedVolumeShortcut } from './rounded-volume-shortcuts.js';
+
 /** Pure arithmetic shortcut windows. These are NOT dose recommendations.
  * Never takes the entered dose as its anchor, invents a measurement tolerance,
  * chooses a treatment, or modifies source limits / patient values.
@@ -66,6 +68,8 @@ export function liquidShortcutWindow(form, options = {}) {
   if(!values.length)values=[step,2*step,3*step];
   while(values.length<3)values=unique([...values,clean(values.at(-1)+step)]);
   values=values.slice(0,3);
+  const rounded=anchored&&kind==='fixed'?roundedVolumeShortcut(form,options):null;
+  if(rounded){values=unique(values.map(v=>near(v,min)?rounded.ml:v));exact=false;}
   const initial=values.slice();
   // Paging changes shortcuts only. Source and entered values never change here.
   const requested=Number.isSafeInteger(options.page)?options.page:0;
@@ -81,6 +85,7 @@ export function liquidShortcutWindow(form, options = {}) {
     // A lower edge can legitimately have fewer than three positive values.
   }
   return {volumes:values,initial,kind,anchored,weighted,grid,exact:exact&&page===0,
+    roundingShortcut:page===0?rounded:null,
     noGridValue:anchored&&noGridValue,page,canLower:values[0]>step&&!near(values[0],step),
     canHigher:values.at(-1)+2*step<=1e6,sourceMinimum:min,sourceMaximum:max};
 }

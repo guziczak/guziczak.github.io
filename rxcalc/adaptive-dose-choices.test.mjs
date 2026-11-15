@@ -16,8 +16,8 @@ const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} differs from ${b}`);
 const list=(o={})=>liquidDoseChoices(form,{...fixed,...o});
 
 test('all-small 875 mg case replaces two tiles with larger source-anchored values',()=>{
- const c=list();assert.deepEqual(c.map(x=>x.ml),[10,10.9375,12.5]);
- assert.deepEqual(c.map(x=>x.value),[800,875,1000]);assert.deepEqual(c.map(x=>x.severity),['warning',null,'critical']);
+ const c=list();assert.deepEqual(c.map(x=>x.ml),[10,11,12.5]);
+ assert.deepEqual(c.map(x=>x.value),[800,880,1000]);assert.deepEqual(c.map(x=>x.severity),['warning','critical','critical']);
  assert.ok(c.every(x=>x.allowed));
 });
 test('an explicit 0.1 ml grid brackets the source without inventing clinical tolerance',()=>{
@@ -53,7 +53,7 @@ test('distant ranges replace an irrelevant old lower tile rather than anchoring 
 });
 test('larger-volume browsing reaches 15 and 20 without changing source anchor',()=>{
  assert.deepEqual(list({page:1}).map(x=>x.ml),[12.5,15,17.5]);assert.deepEqual(list({page:2}).map(x=>x.ml),[17.5,20,22.5]);
- assert.deepEqual(list().map(x=>x.ml),[10,10.9375,12.5]);assert.ok(list({page:2}).every(x=>x.severity==='critical'));
+ assert.deepEqual(list().map(x=>x.ml),[10,11,12.5]);assert.ok(list({page:2}).every(x=>x.severity==='critical'));
 });
 test('paging below zero clamps to positive finite values, never an empty dead-end',()=>{
  for(const page of [-1000,-10,-3,-2,-1,0,1,50]){const w=liquidShortcutWindow(form,{...fixed,page});assert.ok(w.volumes.length>0&&w.volumes.length<=3);assert.ok(w.volumes.every(v=>v>0&&Number.isFinite(v)));}
