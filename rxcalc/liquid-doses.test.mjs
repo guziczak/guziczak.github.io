@@ -56,22 +56,25 @@ test('no shortcuts for veterinary, blocked, instructional or non-suspension form
     assert.deepEqual(liquidDoseChoices({...form,...changed}),[]);
   assert.deepEqual(choices({veterinary:true}),[]);assert.equal(supportsLiquidChoices(form,true),false);
 });
-test('single and daily limits disable only the corresponding shortcuts',()=>{
-  assert.deepEqual(choices({maxSingleMg:500}).map(c=>c.allowed),[true,true,false]);
-  assert.deepEqual(choices({frequency:2,maxDailyMg:700}).map(c=>c.allowed),[true,false,false]);
+test('single and daily limits flag shortcuts without blocking entry',()=>{
+  assert.deepEqual(choices({maxSingleMg:500}).map(c=>c.allowed),[true,true,true]);
+  assert.deepEqual(choices({maxSingleMg:500}).map(c=>c.severity),[null,null,'critical']);
+  assert.deepEqual(choices({frequency:2,maxDailyMg:700}).map(c=>c.allowed),[true,true,true]);
+  assert.deepEqual(choices({frequency:2,maxDailyMg:700}).map(c=>c.severity),[null,'critical','critical']);
   assert.ok(choices({maxDailyMg:NaN}).every(c=>!c.allowed));
 });
 test('source range and mg/kg daily boundaries remain active',()=>{
   const list=choices({source,doseMode:'perKgDay',weight:20,frequency:2,eligibility:{valid:true}});
-  assert.deepEqual(list.map(c=>c.allowed),[false,true,false]);
+  assert.deepEqual(list.map(c=>c.allowed),[true,true,true]);
+  assert.deepEqual(list.map(c=>c.severity),['warning',null,'critical']);
   assert.ok(choices({source,doseMode:'fixed'}).every(c=>!c.allowed));
 });
-test('patient ineligibility, source identity, intervals and unit ceilings are enforced',()=>{
+test('patient ineligibility, identity and intervals block entry; unit ceilings warn',()=>{
   assert.ok(choices({source:starter,eligibility:{valid:false}}).every(c=>!c.allowed));
   assert.ok(choices({source:{...starter,formIds:['other']}}).every(c=>!c.allowed));
   assert.ok(choices({source:starter,frequency:3}).every(c=>!c.allowed));
-  assert.deepEqual(choices({source:{doseMode:'fixed',maxUnitsPerDose:5}}).map(c=>c.allowed),[true,true,false]);
-  assert.deepEqual(choices({source:{doseMode:'fixed',maxDailyUnits:10},frequency:2}).map(c=>c.allowed),[true,true,false]);
+  assert.deepEqual(choices({source:{doseMode:'fixed',maxUnitsPerDose:5}}).map(c=>c.severity),[null,null,'critical']);
+  assert.deepEqual(choices({source:{doseMode:'fixed',maxDailyUnits:10},frequency:2}).map(c=>c.severity),[null,null,'critical']);
 });
 test('a volume shortcut never silently changes through an incompatible rounding step',()=>{
   assert.deepEqual(choices({roundingStep:1}).map(c=>c.allowed),[false,true,true]);
