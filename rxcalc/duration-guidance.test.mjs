@@ -64,7 +64,7 @@ test('different preparation or mismatched form does not inherit duration guidanc
 test('Augmentin and Dalacin never inherit amoxicillin 3–5-day reference',()=>{
  for(const id of ['dental-augmentin-400-57-child','dental-dalacin-c-300-over14-tid']){
   const s=HUMAN_REGIMENS.find(r=>r.id===id),f=DRUGS.flatMap(d=>d.forms).find(f=>f.id===s.formIds[0]);
-  assert.equal(resolveDurationGuidance({source:s,form:f,context}).rule,null);
+  const g=resolveDurationGuidance({source:s,form:f,context});assert.equal(g.rule.origin,'source');assert.notEqual(g.rule.maximum,5);assert.equal(g.rule.minimum,null);
  }
 });
 test('source-matched Ospamox tablets get the same duration reference as suspension',()=>{
@@ -89,13 +89,13 @@ test('shelf life and package size never determine duration guidance',()=>{
  const o=opts();o.source=null;o.form.shelfLifeDays=7;o.form.packOptions=[{quantity:100}];assert.equal(resolveDurationGuidance(o).rule,null);
  const a=g();o.source=source;o.form.shelfLifeDays=1;assert.deepEqual(resolveDurationGuidance(o),a);
 });
-test('explicit existing numerical source duration takes priority over external reference',()=>{
+test('changed source duration requires an updated audit before external or numeric colors apply',()=>{
  const o=opts();o.source.minDays=7;o.source.maxDays=10;const r=resolveDurationGuidance(o);
- assert.equal(r.rule.origin,'source');assert.equal(assessDuration(7,r).tone,'within');assert.equal(assessDuration(11,r).tone,'critical');
- assert.equal(assessDuration(3,r).tone,'warning');assert.match(assessDuration(11,r).message,/limit leku/);
+ assert.equal(r.coverage,'changed');assert.equal(r.applicable,false);assert.equal(assessDuration(7,r).tone,'neutral');
 });
-test('consultation threshold is not painted as an absolute maximum',()=>{
- const o=opts();o.source.maxDays=7;o.source.reviewAfterDays=7;const r=resolveDurationGuidance(o);
+test('reviewed Tantum consultation threshold is not painted as an absolute maximum',()=>{
+ const o=opts();o.source=HUMAN_REGIMENS.find(r=>r.id==='tantum-rinse-use');
+ o.form=DRUGS.flatMap(d=>d.forms).find(f=>f.id===o.source.formIds[0]);const r=resolveDurationGuidance(o);
  assert.equal(r.rule.hardMaximum,false);assert.equal(assessDuration(10,r).tone,'warning');assert.equal(assessDuration(3,r).tone,'neutral');
 });
 test('a single lower bound is not enough to paint all longer durations green',()=>{

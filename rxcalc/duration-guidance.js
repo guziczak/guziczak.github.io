@@ -1,132 +1,92 @@
 import { resolveHumanRegimen } from './human-regimen-engine.js';
+import { resolveRegimen } from './regimen-engine.js';
+import { auditedDurationPolicy, DURATION_REVIEW_DATE } from './duration-rules.js';
 
-/** Duration-only references. These do not choose a course, validate the whole
- * treatment, modify dose limits, or change the existing export requirements.
- * An external recommendation is NOT a new minDays/maxDays source constraint.
+/** One duration-only assessment for entry, shortcuts and result warnings.
+ * No mutation of treatment, catalogue constraints, rounding review or exports.
  */
-const SDCEP_URL = 'https://www.sdcepdentalprescribing.nhs.scot/guidance/bacterial-infections/dental-abscess/first-line-antibiotics/amoxicillin/';
-const REVIEW_URL = 'https://www.sdcepdentalprescribing.nhs.scot/guidance/supporting-tools/bacterial-infections-review-tool/';
-const OSPAMOX_SOURCES = new Map([
-  ...['suspension', 'tablet'].flatMap(family => ['q8', 'q12', 'severe'].map(mode => [
-    `dental-ospamox-${family}-ge40-${mode}`,
-    family === 'suspension' ? ['ospamox-250', 'ospamox-500'] : ['ospamox-tablet-500', 'ospamox-tablet-1000'],
-  ])),
-  ['dental-ospamox-child-tid', ['ospamox-250', 'ospamox-500']],
-]);
-const positiveDay = v => Number.isSafeInteger(v) && v > 0 && v <= 3660;
-const has = v => v !== null && v !== undefined && v !== '';
-const finite = v => typeof v === 'number' && Number.isFinite(v);
-const httpUrl = v => typeof v === 'string' && /^https:\/\/[^\s]+$/.test(v);
-const rangeLabel = rule => rule.fixed ? `${rule.minimum} dni`
-  : rule.minimum && rule.maximum ? `${rule.minimum}–${rule.maximum} dni`
-    : rule.minimum ? `od ${rule.minimum} dni` : rule.maximum ? `do ${rule.maximum} dni` : '';
+const positiveDay=v=>Number.isSafeInteger(v)&&v>0&&v<=3660;
+const has=v=>v!==null&&v!==undefined&&v!=='';
+const finite=v=>typeof v==='number'&&Number.isFinite(v);
+const httpUrl=v=>typeof v==='string'&&/^https:\/\/[^\s]+$/.test(v);
+const rangeLabel=r=>r.fixed?`${r.minimum} dni`:r.minimum&&r.maximum?`${r.minimum}–${r.maximum} dni`:r.minimum?`od ${r.minimum} dni`:r.maximum?`do ${r.maximum} dni`:'';
 
-/** Deliberately ignore the entered dose and duration when checking whether a
- * source's patient scope applies. Use unmodified source values in a temporary
- * object, not the real state. No inference from package size/shelf life.
- */
-export function durationPatientEligibility(source, context = {}) {
-  if (!source || context.specialty === 'veterinary' || context.custom || context.calculationBlocked) return false;
-  const sample = {
-    ...context,
-    dose: source.dose ?? source.doseRange?.min ?? null,
-    frequency: source.frequency ?? source.frequencyOptions?.[0] ?? null,
-    days: source.fixedDays ?? source.minDays ?? 1,
-  };
-  return resolveHumanRegimen(source, sample).valid;
+export function durationPatientEligibility(source,context={}) {
+  if(!source||context.custom||context.calculationBlocked)return false;
+  const veterinary=context.specialty==='veterinary';
+  if(veterinary!==Array.isArray(source.species))return false;
+  const sample={...context,dose:source.dose??source.doseRange?.min??null,
+    frequency:source.frequency??source.frequencyOptions?.[0]??null,
+    days:source.fixedDays??source.minDays??1};
+  return (veterinary?resolveRegimen(source,sample):resolveHumanRegimen(source,sample)).valid;
 }
-
-function sdcepPatientScope(context) {
-  // The inspected children's table starts at 6 months. Do not extend its
-  // duration reference to the app's younger Ospamox population by inference.
-  if (!has(context.age)) return context.patientType === 'adult';
-  if (!finite(context.age) || context.age < 0) return false;
-  const low = context.ageUnit === 'years' ? context.age * 12
-    : context.ageUnit === 'months' ? context.age
-      : context.ageUnit === 'days' ? context.age / 31 : null;
-  if (low === null) return false;
-  return context.patientType === 'adult' ? low >= 216 : context.patientType === 'child' && low >= 6;
+function sdcepPatientScope(c) {
+  if(!has(c.age))return c.patientType==='adult';
+  if(!finite(c.age)||c.age<0)return false;
+  const months=c.ageUnit==='years'?c.age*12:c.ageUnit==='months'?c.age:c.ageUnit==='days'?c.age/31:null;
+  return months!==null&&(c.patientType==='adult'?months>=216:c.patientType==='child'&&months>=6);
 }
-
-export function resolveDurationGuidance({ source = null, form = null, context = {} } = {}) {
-  const neutral = (reason, rule = null) => ({ applicable: false, rule, reason });
-  if (!source || !form || context.custom || context.specialty === 'veterinary'
-    || form.referenceOnly || form.calculationBlocked || !source.formIds?.includes(form.id)) {
-    return neutral('Brak dopasowanego źródłowego zakresu czasu. Przyciski są tylko skrótami wpisywania.');
-  }
-  const keys = ['fixedDays', 'minDays', 'maxDays', 'reviewAfterDays'];
-  if (keys.some(k => has(source[k]) && !positiveDay(source[k]))) {
-    return neutral('Nie można ocenić czasu: nieprawidłowe dane źródłowe.');
-  }
-  let rule = null;
-  if (keys.some(k => positiveDay(source[k]))) {
-    // Existing numerical source duration fields remain unchanged. A maximum
-    // with an explicit review requirement is NOT labelled an absolute ban.
-    rule = {
-      id: `duration:${source.id}`, origin: 'source', fixed: positiveDay(source.fixedDays),
-      minimum: source.fixedDays ?? source.minDays ?? null,
-      maximum: source.fixedDays ?? source.maxDays ?? null,
-      reviewAfterDays: source.reviewAfterDays ?? null,
-      hardMaximum: positiveDay(source.maxDays) && !positiveDay(source.reviewAfterDays),
-      label: source.sourceLabel, url: source.sourceUrl, section: source.sourceSection,
-      checkedAt: source.sourceCheckedAt, indication: source.indication,
-      reviewUrl: null,
-      note: 'Oceniany jest tylko czas wybranego schematu, nie poprawność całego leczenia. Dotychczasowe ograniczenia schematu pozostają aktywne.',
-    };
-  } else if (context.specialty === 'dental' && OSPAMOX_SOURCES.get(source.id)?.includes(form.id)
-    && source.specialties?.includes('dental')) {
-    rule = {
-      id: 'sdcep-amoxicillin-dental-abscess-duration', origin: 'external', fixed: false,
-      minimum: 3, maximum: 5, hardMaximum: false, reviewAfterDays: 3,
-      label: 'SDCEP (Szkocja) · amoksycylina, ropień zębowy', url: SDCEP_URL,
-      reviewUrl: REVIEW_URL, section: 'Czas antybiotykoterapii i ponowna ocena', checkedAt: '2026-11-16',
-      indication: 'Ropień zębowy, gdy antybiotyk jest wskazany, z leczeniem miejscowym/przyczynowym.',
-      note: 'To osobne odniesienie do czasu z zagranicznych wytycznych, nie zapis ChPL Ospamoxu ani potwierdzenie całego schematu dawkowania. Czas ustala lekarz według odpowiedzi pacjenta. Brak poprawy lub pogorszenie wymaga wcześniejszego kontaktu; decyzja o skróceniu kuracji zapada po ocenie.',
-    };
-    if (!sdcepPatientScope(context)) return neutral('Brak potwierdzonego zakresu wieku dla tego odniesienia do czasu (tabela dziecięca SDCEP od 6 miesięcy).', rule);
-  }
-  if (!rule) return neutral('Brak źródłowego zakresu czasu dla tego schematu. Przyciski są tylko skrótami wpisywania.');
-  if (!httpUrl(rule.url) || !rule.label || (rule.minimum && rule.maximum && rule.minimum > rule.maximum)) {
-    return neutral('Nie można ocenić czasu: niepełne lub sprzeczne odniesienie źródłowe.');
-  }
-  if (!durationPatientEligibility(source, { ...context, formId: form.id })) {
-    return neutral('Uzupełnij lub sprawdź dane pacjenta. Kolorowa ocena czasu jest wstrzymana.', rule);
-  }
-  return { applicable: true, rule, reason: '' };
+export function resolveDurationGuidance({source=null,form=null,context={}}={}) {
+  const neutral=(reason,coverage='unverified',rule=null)=>({applicable:false,coverage,rule,reason});
+  if(!source)return neutral('Wybierz schemat, aby ocenić czas. W trybie ręcznym przyciski są tylko skrótami wpisywania.','manual');
+  if(!form||context.custom||form.referenceOnly||form.calculationBlocked||context.calculationBlocked||!source.formIds?.includes(form.id))
+    return neutral('Brak dopasowanego źródła czasu dla tej postaci lub trybu.','not-applicable');
+  const audit=auditedDurationPolicy(source);
+  if(audit.status!=='reviewed')return neutral(audit.status==='changed'
+    ?'Dane schematu zmieniły się od przeglądu czasu. Wymagana ponowna weryfikacja; skróty bez oceny.'
+    :'Odniesienie do czasu tego schematu nie zostało jeszcze zweryfikowane. Skróty bez oceny.',audit.status);
+  const p=audit.policy;
+  const rule={...p,id:p.origin==='external'?'sdcep-amoxicillin-dental-abscess-duration':`duration:${source.id}`,
+    origin:p.origin||'source',minimum:p.minimum??null,maximum:p.maximum??null,
+    fixed:['fixed','single','stage'].includes(p.kind),hardMaximum:!!p.hardMaximum,
+    reviewAfterDays:p.reviewAfterDays??null,reviewMode:p.reviewMode||null,
+    label:p.label||source.sourceLabel,url:p.url||source.sourceUrl,section:p.section||source.sourceSection,
+    checkedAt:DURATION_REVIEW_DATE,indication:source.indication,
+    primarySourceUrl:source.sourceUrl,primarySourceLabel:source.sourceLabel};
+  const keys=['minimum','maximum','reviewAfterDays'];
+  if(keys.some(k=>has(rule[k])&&!positiveDay(rule[k]))||!httpUrl(rule.url)||!rule.label||rule.minimum&&rule.maximum&&rule.minimum>rule.maximum)
+    return neutral('Niespójne dane odniesienia do czasu — ocena wstrzymana.','invalid');
+  if(!durationPatientEligibility(source,{...context,formId:form.id}))
+    return neutral('Źródło czasu sprawdzone. Uzupełnij lub sprawdź dane pacjenta; kolorowa ocena jest wstrzymana.','reviewed',rule);
+  if(rule.origin==='external'&&!sdcepPatientScope(context))return neutral('Brak potwierdzonego zakresu wieku dla odniesienia SDCEP (tabela dziecięca od 6 miesięcy).','reviewed',rule);
+  return {applicable:true,coverage:'reviewed',rule,reason:''};
 }
-
-/** Every button and a manually entered duration use the same classification.
- * "within" refers only to duration; it never means "safe" or "approved".
- */
-export function assessDuration(value, guidance) {
-  const blank = !has(value) || typeof value === 'string' && !value.trim();
-  if (blank) return { state: 'pending', tone: 'neutral', short: '', message: 'Wybierz czas; żadna liczba dni nie jest ustawiana automatycznie.' };
-  const days = typeof value === 'number' ? value : Number(String(value).trim().replace(',', '.'));
-  if (!positiveDay(days)) return { state: 'invalid', tone: 'critical', short: 'Nieprawidłowy czas', message: 'Podaj całkowitą liczbę dni od 1 do 3660.' };
-  if (!guidance?.applicable || !guidance.rule) return { state: 'unassessed', tone: 'neutral', short: '', message: guidance?.reason || 'Brak źródłowego zakresu czasu.' };
-  const r = guidance.rule;
-  if (r.minimum && days < r.minimum) return {
-    state: 'below', tone: 'warning', short: 'Krócej',
-    message: `Krócej niż ${rangeLabel(r)} ${r.origin === 'external' ? 'w SDCEP' : 'w źródle'} — wymaga indywidualnej oceny.`,
+export function assessDuration(value,guidance) {
+  const blank=!has(value)||typeof value==='string'&&!value.trim();
+  if(blank)return {state:'pending',tone:'neutral',short:'',message:'Wybierz czas; żadna liczba dni nie jest ustawiana automatycznie.'};
+  const days=typeof value==='number'?value:Number(String(value).trim().replace(',','.'));
+  if(!positiveDay(days))return {state:'invalid',tone:'critical',short:'Nieprawidłowy czas',message:'Podaj całkowitą liczbę dni od 1 do 3660.'};
+  if(!guidance?.applicable||!guidance.rule)return {state:'unassessed',tone:'neutral',short:'',message:guidance?.reason||'Odniesienie do czasu nie zostało zweryfikowane.'};
+  const r=guidance.rule,origin=r.origin==='external'?'w SDCEP':'w źródle';
+  if(r.minimum&&days<r.minimum)return {state:'below',tone:'warning',short:'Krócej',message:`Krócej niż ${rangeLabel(r)} ${origin} — wymaga indywidualnej oceny.`};
+  if(r.maximum&&days>r.maximum)return {state:'above',tone:r.hardMaximum?'critical':'warning',short:r.hardMaximum?'Ponad zakres':'Dłużej',
+    message:r.hardMaximum?`Przekroczony czas wybranego ${r.kind==='stage'?'etapu':'schematu'}: ${r.maximum} dni. To nie jest uniwersalny limit leku.`
+      :r.reviewMode==='extension'?r.reviewText:`Dłużej niż ${rangeLabel(r)} ${origin} — wymaga indywidualnej oceny.`};
+  if(r.reviewAfterDays&&days>r.reviewAfterDays&&r.origin!=='external')return {state:'review',tone:'warning',short:r.reviewMode==='conditional'?'Oceń objawy':'Ocena',message:r.reviewText};
+  if(r.minimum&&r.maximum)return {state:'within',tone:'within',short:r.kind==='single'?'Jednorazowo':r.fixed?'Ze źródła':'W zakresie',
+    message:r.kind==='single'?'Jednorazowe podanie w wybranym schemacie; nie oznacza codziennego powtarzania.'
+      :`Czas ${r.kind==='stage'?'wybranego etapu':r.fixed?'wybranego schematu':`w zakresie ${rangeLabel(r)}`}${r.origin==='external'?' według SDCEP':' ze źródła'}. Ocena dotyczy tylko czasu, nie całego leczenia.`};
+  const noRange={
+    individual:'Źródło sprawdzone: nie określa pełnego zakresu dni dla tego wskazania. Czas ustala lekarz.',
+    procedural:'Czas i kolejność zabiegów ustala lekarz; nie jest to zwykła kuracja wyznaczana liczbą dni.',
+    routine:'Źródło opisuje codzienną higienę, nie skończoną kurację. Podany okres nie oznacza zalecenia zakończenia stosowania.',
+    chronic:'Leczenie przewlekłe: podany okres służy planowaniu zapasu, nie jest automatycznym terminem odstawienia.',
+    response:'Kontynuacja zależy od odpowiedzi na leczenie. Warunki oceny opisano poniżej; brak pełnego zakresu dni.',
+    'as-needed':'Doraźnie — brak obowiązkowej liczby dni. Termin konsultacji nie wyznacza długości kuracji.',
+    maximum:'Źródło określa tylko górne ograniczenie czasu. Wynik poniżej niego nie potwierdza zalecanej długości kuracji.',
+    'review-only':'Źródło sprawdzone: określa warunek kontroli, nie pełny zalecany zakres dni.',
   };
-  if (r.maximum && days > r.maximum) return {
-    state: 'above', tone: r.hardMaximum ? 'critical' : 'warning',
-    short: r.hardMaximum ? 'Ponad limit' : 'Dłużej',
-    message: r.hardMaximum ? `Przekroczony limit czasu wybranego schematu: ${r.maximum} dni. To nie jest uniwersalny limit leku.`
-      : `Dłużej niż ${rangeLabel(r)} ${r.origin === 'external' ? 'w SDCEP' : 'w źródle'} — wymaga indywidualnej oceny.`,
-  };
-  if (r.reviewAfterDays && days > r.reviewAfterDays && r.origin !== 'external') return {
-    state: 'review', tone: 'warning', short: 'Ocena',
-    message: `Stosowanie dłużej niż ${r.reviewAfterDays} dni wymaga ponownej oceny według źródła. Termin oceny nie wyznacza końca kuracji.`,
-  };
-  if (r.minimum && r.maximum) return {
-    state: 'within', tone: 'within', short: r.fixed ? 'Ze źródła' : 'W zakresie',
-    message: `Czas w ${r.fixed ? 'wybranym schemacie' : `zakresie ${rangeLabel(r)}`}${r.origin === 'external' ? ' według SDCEP' : ' ze źródła'}. Nie potwierdza doboru dawki ani leczenia.`,
-  };
-  return { state: 'unassessed', tone: 'neutral', short: '', message: 'Źródło określa warunek czasu lub kontroli, ale nie pełny zalecany zakres długości leczenia.' };
+  return {state:'unassessed',tone:'neutral',short:'',message:noRange[r.kind]||'Źródło nie określa pełnego zalecanego zakresu dni.'};
 }
-
-export function durationResultWarning(value, guidance) {
-  const result = assessDuration(value, guidance);
-  return guidance?.applicable && ['below', 'above', 'review'].includes(result.state) ? result.message : null;
+export function durationResultWarning(value,guidance) {
+  const a=assessDuration(value,guidance);
+  return guidance?.applicable&&['below','above','review'].includes(a.state)?a.message:null;
+}
+/** Supply-period shortcuts are not recommended courses. Fixed/procedural
+ * sources expose no misleading editable 3/5/7/10-day shortcuts. */
+export function durationDayChoices(source,guidance,{cardio=false}={}) {
+  if(source?.fixedDays)return [];
+  if(guidance?.coverage==='reviewed'&&guidance.rule?.choices)return [...guidance.rule.choices];
+  if(source?.doseMode==='instruction')return [];
+  return cardio?[30,90,120]:[3,5,7,10];
 }
