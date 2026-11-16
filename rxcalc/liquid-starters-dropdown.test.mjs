@@ -66,5 +66,5 @@ test('dropdown runtime and cache version match the public mirror',async()=>{
     assert.equal(await readFile(new URL(name,import.meta.url),'utf8'),
       await readFile(new URL(`../public/rxcalc/${name}`,import.meta.url),'utf8'));
   }
-  assert.match(await readFile(new URL('sw.js',import.meta.url),'utf8'),/2026-11-16\.56/);
+  assert.match(await readFile(new URL('sw.js',import.meta.url),'utf8'),/2026-11-16\.57/);
 });

@@ -54,3 +54,8 @@ rx-shortcut-browser{display:block}
 .liquid-dose-choice.liquid-dose-reviewed{--tile-tone:var(--rounding-blue);border-color:var(--rounding-blue);background:var(--rounding-blue-bg)}
 .liquid-dose-choice.liquid-dose-reviewed.active{box-shadow:inset 0 0 0 1px var(--rounding-blue)}
 .liquid-dose-choice.liquid-dose-reviewed svg,.liquid-dose-choice.liquid-dose-reviewed .liquid-dose-reason{color:var(--rounding-blue)}
+
+/* Preserve the three fixed slots: a lower-edge gap belongs on the left.
+ * Upper-edge/ordinary rows keep their normal left-to-right placement. */
+.liquid-dose-choices[data-align="end"]>.liquid-dose-choice:first-child:nth-last-child(2){grid-column-start:2}
+.liquid-dose-choices[data-align="end"]>.liquid-dose-choice:only-child{grid-column-start:3}

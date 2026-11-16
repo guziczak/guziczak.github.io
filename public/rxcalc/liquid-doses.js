@@ -88,6 +88,8 @@ export function liquidDoseChoices(form, {doseMode='fixed',weight=null,frequency=
 export function liquidDoseChoicesMarkup(choices, {dose=null,unit='mg',basis=''}={}) {
   if(!choices.length)return '';
   const browser=choices.browser,weighted=browser?.window.anchored&&browser.window.weighted;
+  // Keep missing smaller slots on the left, without changing DOM/tab order.
+  const lowerEdge=choices.length<3 && browser?.window.canLower===false && browser.window.canHigher===true;
   const labelNumber=(v,d=4)=>`${Math.abs(v-Number(v.toFixed(d)))>1e-10?'≈ ':''}${n(v,d)}`;
   const navigation=browser?shortcutNavigation(browser.key,browser.window,()=>liquidDoseChoicesMarkup(
     liquidDoseChoices(browser.form,browser.settings),{dose,unit,basis})):'';
@@ -96,7 +98,7 @@ export function liquidDoseChoicesMarkup(choices, {dose=null,unit='mg',basis=''}=
   const rounded=browser?.window.roundingShortcut;
   const roundingNote=rounded?roundedVolumeNote(rounded):'';
   const syringe='<svg viewBox="0 0 48 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10h25v12H8zM8 16H3m30-6v12m0-6h10m0-6v12M14 10v5m6-5v5m6-5v5"/></svg>';
-  return `<div class="liquid-dose-heading">${weighted?'Szybki wybór dawki <span>w jednostce schematu</span>':'Szybki wybór objętości <span>na jedno podanie</span>'}</div><div class="liquid-dose-choices" role="group" aria-label="Objętość zawiesiny na podanie">${choices.map(c=>{
+  return `<div class="liquid-dose-heading">${weighted?'Szybki wybór dawki <span>w jednostce schematu</span>':'Szybki wybór objętości <span>na jedno podanie</span>'}</div><div class="liquid-dose-choices" data-align="${lowerEdge?'end':'start'}" role="group" aria-label="Objętość zawiesiny na podanie">${choices.map(c=>{
     const selected=c.allowed&&equal(c.value,dose);
     const tone=c.allowed&&['warning','critical','reviewed'].includes(c.severity)?c.severity:'';
     const messages=(c.warnings||[]).map(w=>w.message).join('. ');
