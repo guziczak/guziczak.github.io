@@ -10,6 +10,8 @@ export const LIQUID_STARTER_REGIMENS=[{
   label:'Dorosły ≥40 kg · trudność połykania tabletki · przeliczenie 875 mg co 12 h',
   phaseLabel:'875 mg amoksycyliny na podanie, 2 razy/dobę · przeliczenie źródeł',
   indication:'Ciężki ropień okołozębowy z szerzącym się zapaleniem tkanki łącznej — przeliczenie schematu tabletek u dorosłego z trudnością połykania',
+  // These two inherited numbers describe the reference regimen, not an independent maximum.
+  roundingConstraintKind:'source-target',
   minIntervalHours:12,sourceCheckedAt:'2026-11-14',
   sourceLabel:'ChPL Augmentin 875/125 (tabletki) + FDA (zamiana postaci)',
   sourceSection:'ChPL 4.1–4.2; FDA 2.2 i 2.8, tabela 6',

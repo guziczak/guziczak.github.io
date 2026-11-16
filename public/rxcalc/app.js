@@ -18,6 +18,8 @@ import { createViewportLayout } from './viewport-layout.js';
 import { createCatalogueMotion } from './catalogue-motion.js';
 import { ingredientDailyDose } from './daily-dose.js';
 import { dailyDoseMarkup } from './dose-safety-view.js';
+import { assessDoseRounding, roundingValidationSource, resolveRoundingRegimen, createRoundingReview, roundingAuditText } from './rounding-assessment.js';
+import { roundingReviewMarkup } from './rounding-review-view.js';
 import { editableHumanSource, sourceInitialValues, sourceEditState, sourceEditMarkup } from './regimen-edit.js';
 
 const $ = (q, root = document) => root.querySelector(q);
@@ -96,6 +98,7 @@ let theme = window.RxCalcTheme?.current || readPreference('theme', 'light');
 document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
 let latest = null, latestText = '', deferredInstall = null, swRegistration = null, toastTimer = null, copyObserver = null;
 let offlineReady = false, requestedUpdate = false;
+let roundingReview = null; // Ephemeral, revoked on every committed edit/reset.
 const field = (id, label, value, placeholder, unit = '', extra = '') => `<div class="field"><label for="${id}">${label}</label><div class="input-unit"><input id="${id}" data-field="${id}" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(value)}" placeholder="${esc(placeholder)}" ${extra}>${unit ? `<span>${unit}</span>` : ''}</div></div>`;
 const isVeterinary = () => state.specialty === 'veterinary';
 const patientPickers = createPatientPickers({ icon, beforeOpen:() => selectMenus.close(), getContext:id => id === 'dose' ? ({
@@ -138,6 +141,7 @@ function chooseDrug(id) {
   return true;
 }
 function resetRegimen() {
+  roundingReview = null;
   if (state.demo) Object.assign(state, { age: '', weight: '' });
   Object.assign(state, { dose: '', frequency: '', days: '', manualMax: '', extraInstructions: '', instructionPacks: '', confirmed: false, demo: false, regimenId: '' });
   ui.manualRegimen = false; ui.regimenExpanded = false; ui.sourceDetailsOpen = false;
@@ -181,6 +185,21 @@ const getAvailableRegimens = () => state.custom || isReference(getForm()) ? [] :
   ? availableRegimens(REGIMENS, regimenContext()) : availableHumanRegimens(HUMAN_SOURCE_OPTIONS, humanContext());
 const humanAgeYears = () => num(state.age) === null ? null : num(state.age) * ({years:1,months:1/12,days:1/365.25}[state.humanAgeUnit] || 1);
 const ageUnitLabel = () => ({ years: 'lat', months: 'mies.', weeks: 'tyg.', days: 'dni' })[state.vetAgeUnit] || '';
+function currentRoundingOptions() {
+  const form=getForm();
+  return {form,source:getSourceRegimen(),context:{...humanContext(),
+    doseMode:state.doseMode,roundingStep:num(state.roundingStep),
+    patientKind:isVeterinary()?'animal':'human'},
+    limits:form?applicableLimit(form,{includeSource:false}):{},review:roundingReview};
+}
+function updateRoundingReview() {
+  const slot=$('#rounding-review-slot');if(!slot)return;
+  const options=currentRoundingOptions(),assessment=assessDoseRounding(options);
+  const complete=!!assessment&&assessment.state!=='blocked'&&resolveHumanRegimen(
+    roundingValidationSource(options.source,assessment),options.context,{allowNumericOverrides:true}).valid;
+  const markup=roundingReviewMarkup(assessment,{complete});
+  if(slot.innerHTML!==markup)slot.innerHTML=markup;
+}
 const canEditSourceValues = () => !isVeterinary() && !isInstruction(getForm()) && editableHumanSource(getSourceRegimen());
 const sourceIsModified = () => canEditSourceValues() && sourceEditState(getSourceRegimen(), state).modified;
 function syncSourceRegimen({ initialize = false } = {}) {
@@ -189,7 +208,7 @@ function syncSourceRegimen({ initialize = false } = {}) {
   const editable = canEditSourceValues();
   if (initialize && editable) Object.assign(state, sourceInitialValues(source));
   const result = isVeterinary() ? resolveRegimen(source, regimenContext())
-    : resolveHumanRegimen(source, humanContext(), { allowNumericOverrides:editable });
+    : resolveRoundingRegimen(currentRoundingOptions(), { allowNumericOverrides:editable });
   state.doseMode = result.doseMode || getForm()?.defaultMode || 'perKgDose';
   if (!editable && (isVeterinary() || source?.dose != null || !source?.doseRange)) state.dose = result.dose == null ? '' : String(result.dose);
   if (!editable && (isVeterinary() || source?.frequency != null || !source?.frequencyOptions)) state.frequency = result.frequency == null ? '' : String(result.frequency);
@@ -416,7 +435,7 @@ const doseUnit = () => ({ fixed:'mg', perKgDay:'mg/kg/d', perKgDose:'mg/kg', uni
 
 function dailyDoseSlot(form) {
   return (form.form === 'suspension' || !isVeterinary() && form.form === 'tablet') && !isInstruction(form) && !isReference(form)
-    ? '<div class="daily-dose-note" id="daily-dose-note" aria-labelledby="daily-dose-title"></div>' : '';
+    ? '<div id="rounding-review-slot"></div><div class="daily-dose-note" id="daily-dose-note" aria-labelledby="daily-dose-title"></div>' : '';
 }
 
 function suspensionLimitContext(form) {
@@ -447,7 +466,8 @@ function updateDailyDoseNote(form,input,sourceCheck,limit) {
   // converted into mg or borrowed from an unrelated nystatin formulation.
   const ingredientOverride=form.id==='nystatyna-teva'
     ? [{name:'Nystatyna',amount:100000,perMl:1,unit:'j.m.'}] : null;
-  const note=ingredientDailyDose({form,drug:getDrug(),input,source,sourceCheck,limit:{...limit,kind},ingredientOverride});
+  const roundingAssessment=assessDoseRounding(currentRoundingOptions());
+  const note=ingredientDailyDose({form,drug:getDrug(),input,source:roundingValidationSource(source,roundingAssessment),sourceCheck,limit:{...limit,kind},ingredientOverride});
   if (!note) { node.hidden=true;return; }
   node.hidden=false;
   // A source-valid probe checks patient eligibility separately from the dose.
@@ -461,10 +481,10 @@ function updateDailyDoseNote(form,input,sourceCheck,limit) {
       dose:source.dose??source.doseRange?.min??null,
       frequency:source.frequency??source.frequencyOptions?.[0]??null});
   const actualCheck=source&&!isVeterinary()
-    ?resolveHumanRegimen(source,{...humanContext(),days:previewDays},{allowNumericOverrides:canEditSourceValues()}):null;
+    ?resolveRoundingRegimen(currentRoundingOptions(),{allowNumericOverrides:canEditSourceValues(),previewDuration:true}):null;
   const doseProblems=actualCheck&&input.dose>0&&input.frequency>0
     ?[...actualCheck.errors,...actualCheck.warnings]:[];
-  const markup=dailyDoseMarkup({note,input,source,eligibility,doseProblems,modified:sourceIsModified(),
+  const markup=dailyDoseMarkup({note,input,source,eligibility,doseProblems,roundingAssessment,modified:sourceIsModified(),
     referenceContext:{formId:form.id,patientType:state.patientType,renalStatus:state.renalStatus,crcl:num(state.humanCrCl)},
     context:suspensionLimitContext(form),
     canChooseSource:!source&&getAvailableRegimens().length>0,
@@ -499,7 +519,8 @@ function currentLiquidDoseChoices() {
     days:source.fixedDays||source.minDays||1,dose:source.dose??source.doseRange?.min??null,
     frequency:source.frequency??source.frequencyOptions?.[0]??null}):null;
   return liquidDoseChoices(form,{doseMode:state.doseMode,weight:num(state.weight),frequency:num(state.frequency),
-    source,maxSingleMg:limit.single,maxDailyMg:limit.daily,roundingStep:num(state.roundingStep),veterinary:isVeterinary(),eligibility});
+    source,maxSingleMg:limit.single,maxDailyMg:limit.daily,roundingStep:num(state.roundingStep),veterinary:isVeterinary(),eligibility,
+    roundingContext:currentRoundingOptions()});
 }
 function liquidDoseButtons() {
   return `<div class="liquid-dose-slot">${liquidDoseChoicesMarkup(currentLiquidDoseChoices(),{dose:num(state.dose),unit:doseUnit(),basis:getForm()?.doseBasisIngredient})}</div>`;
@@ -607,13 +628,13 @@ function renderDrugs() {
   $('#catalogue-more').innerHTML = !filtering && (favorites.length || list.length > 6 || ui.showAll && visibleFavorites().length) ? `<button class="show-more" data-action="browse-catalogue" aria-expanded="${ui.showAll}">${ui.showAll ? 'Zwiń katalog' : favorites.length ? `Pokaż cały katalog (${list.length})` : `Pokaż wszystkie (${list.length})`} ${icon('down')}</button>` : '';
 }
 function shortForm(f) { return f.shortFormLabel || ({tablet:'tabletki',suspension:'zawiesina',oralPaste:'pasta doustna',oralGel:'żel doustny',oralPowder:'granulat doustny',spray:'aerozol',solution:'roztwór',gel:'żel',drops:'krople',injection:'iniekcja'})[f.form] || f.form; }
-function applicableLimit(f) {
+function applicableLimit(f,{includeSource=true}={}) {
   const age=isVeterinary()?num(state.age):humanAgeYears(),weight=num(state.weight);
   let rule=(f.conditionalLimits||[]).find(r => {
     const tests=[['minAge','age',v=>age>=v],['minAgeExclusive','age',v=>age>v],['maxAge','age',v=>age<=v],['minWeight','weight',v=>weight>=v],['minWeightExclusive','weight',v=>weight>v],['maxWeight','weight',v=>weight<=v]];
     return tests.every(([key,param,test]) => r[key] == null || (Number.isFinite(param==='age'?age:weight) && test(r[key])));
   });
-  const humanSource = !isVeterinary() && getSourceRegimen() ? resolveHumanRegimen(getSourceRegimen(),humanContext()) : null;
+  const humanSource = includeSource && !isVeterinary() && getSourceRegimen() ? resolveRoundingRegimen(currentRoundingOptions()) : null;
   const strictest = values => values.filter(v => Number.isFinite(v) && v > 0).length ? Math.min(...values.filter(v => Number.isFinite(v) && v > 0)) : null;
   const fromSource=strictest([rule?.maxDailyMg,f.maxDailyMg,humanSource?.maxDailyMg]);
   const manual=num(state.manualMax);
@@ -661,7 +682,7 @@ function updateInstructionResult(check) {
 }
 
 function updateResult() {
-  try { updateResultContent(); } finally { selectMenus.refresh();patientPickers.refresh();updateTabletDoseButtons();updateLiquidDoseButtons();updateSourceEditNotice(); }
+  try { updateResultContent(); } finally { selectMenus.refresh();patientPickers.refresh();updateTabletDoseButtons();updateLiquidDoseButtons();updateSourceEditNotice();updateRoundingReview(); }
 }
 function updateResultContent() {
   if(!productReady() || !$('#dose-value')) {
@@ -686,6 +707,7 @@ function updateResultContent() {
   if(state.custom && !state.customName.trim() && r.valid){r.valid=false;r.status='incomplete';r.errors.push('Wprowadź pełną nazwę, moc i postać preparatu.');}
   if(isVeterinary() && r.valid && !f.routeLabel?.trim()){r.valid=false;r.status='incomplete';r.errors.push('Uzupełnij drogę podania preparatu.');}
   if(!isVeterinary() && f.form==='injection' && r.valid && !state.extraInstructions.trim()){r.valid=false;r.status='incomplete';r.errors.push('Uzupełnij drogę i sposób podania w szczegółach schematu.');}
+  const roundingAssessment=sourceCheck?.rounding||null;
   latest=r;
   if($('#source-dose-value')) $('#source-dose-value').textContent=state.dose !== '' ? `${n(num(state.dose),10)} ${doseUnit()}` : 'Po uzupełnieniu danych';
   if($('#source-frequency-value')) $('#source-frequency-value').textContent=state.frequency !== '' ? `${n(num(state.frequency))} × na dobę` : '—';
@@ -705,7 +727,9 @@ function updateResultContent() {
   const showStatus=!!state.regimenId||hasResult||r.status==='critical';
   const badge=$('#status-badge'); badge.className=`status-badge ${showStatus?r.status:''}`;
   badge.innerHTML=icon(r.status==='critical'?'alert':r.status==='ok'?'check':'info')+(showStatus?({ok:'Brak przekroczeń limitów',warning:'Wymaga sprawdzenia',critical:'Sprawdź schemat',incomplete:'Niepełna ocena'})[r.status]:'Oczekuje na dane');
+  if(roundingAssessment&&r.status!=='critical'){badge.innerHTML=icon('info')+(roundingAssessment.state==='reviewed'?'Zaokrąglenie ocenione':'Zaokrąglenie do oceny');badge.classList.add('rounding-'+roundingAssessment.state);}
   const meter=$('#dose-meter');meter.className=`dose-meter ${r.status}`;
+  meter.hidden=!!roundingAssessment&&limit.daily===null;
   meter.firstElementChild.style.width=r.maxRatio!==null?`${Math.min(100,Math.max(0,r.maxRatio*100))}%`:'0%';
   $('#limit-text').innerHTML=`<span>${quantitiesAvailable&&r.dailyMg!==null?`${n(r.dailyMg,3)} mg / dobę`:quantitiesAvailable&&r.dailyUnits!==null?`${n(r.dailyUnits,3)} ${esc(f.unitLabel)} / dobę`:'Dawka dobowa'}</span><span>${limit.daily!==null?`limit ${n(limit.daily)} mg/dobę${sourceCheck?.maxDailyMgPerKg ? ` · ${n(sourceCheck.maxDailyMgPerKg)} mg/kg/dobę` : ''}`:sourceCheck?.maxDailyUnits ? `limit ${n(sourceCheck.maxDailyUnits)} ${esc(f.unitLabel)}/dobę`:'Brak liczbowego limitu'}</span>`;
   $('#limit-text').title=limit.daily!==null?limit.label:'Brak limitu nie oznacza potwierdzenia bezpieczeństwa.';
@@ -717,6 +741,7 @@ function updateResultContent() {
   if(hasResult && pack.estimated)messages.push(['Wydajność opakowania jest szacunkowa. Uwzględnij przygotowanie pompki.','warning']);
   if(state.demo)messages.unshift(['Przykład arytmetyczny. Kopiowanie wyłączone — rozpocznij od „Nowy pacjent”.','neutral']);
   if(sourceCheck?.limitLabel) messages.push([sourceCheck.limitLabel,'neutral']);
+  if(roundingAssessment?.state==='reviewed')messages.push([roundingAuditText(roundingAssessment),'rounding-reviewed']);
   $('#result-alerts').innerHTML=started?messages.map(([m,c])=>`<div class="alert ${c}">${icon(c==='critical'?'alert':'info')}<span>${esc(m)}</span></div>`).join(''):'';
   $('#total-units').textContent=quantitiesAvailable&&r.totalUnits!==null?`${n(r.totalUnits,4)} ${f.unitLabel}`:'—';
   $('#package-result').textContent=quantitiesAvailable&&r.packages!==null?`${getSourceRegimen()?.asNeeded ? 'Do ' : ''}${n(r.packages)} op. × ${pack.label}`:'— opakowań';
@@ -761,9 +786,11 @@ function prescription(r,f,input) {
   const name=state.custom?state.customName.trim():`${getDrug().substance}\n${f.label}`;
   const pack=f.packOptions.find(p=>p.id===state.packageId)||f.packOptions[0];
   const header=`${isVeterinary()||['device','cosmetic'].includes(f.productKind)?'Preparat:':'Rp.'} ${name}\n${n(r.packages)} op. po ${pack.label}${source?.asNeeded?'\nZapas odpowiada maksymalnemu planowanemu zużyciu doraźnemu.':''}${supplyNote(r,f)?'\nZapas: '+supplyNote(r,f):''}`;
-  return prescriptionText({mode:state.rxMode,header,dosing:ds,source,veterinaryContext});
+  const text=prescriptionText({mode:state.rxMode,header,dosing:ds,source,veterinaryContext});
+  const audit=!isVeterinary()?roundingAuditText(assessDoseRounding(currentRoundingOptions())):'';
+  return text+(audit&&state.rxMode!=='ds'?'\n\n'+audit:'');
 }
-function dirty() { state.confirmed=false; }
+function dirty() { state.confirmed=false;roundingReview=null; }
 function toast(message) { clearTimeout(toastTimer); const el=$('#toast');el.textContent=message;el.classList.add('show');toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
 function openDialog(title,content) {
   patientPickers.close(false);
@@ -839,6 +866,17 @@ document.addEventListener('click',e=>{
       render();break;
     }
     case 'category':state.category=value;ui.showAll=false;render();break;
+    case 'accept-rounding-review':{
+      const proof=createRoundingReview(currentRoundingOptions(),{
+        reason:$('#rounding-review-reason')?.value||'',
+        scopeConfirmed:$('#rounding-review-scope')?.checked===true,
+        measurementConfirmed:$('#rounding-review-measurement')?.checked===true});
+      if(!proof){if($('#rounding-review-feedback'))$('#rounding-review-feedback').textContent='Uzupełnij uzasadnienie, oba potwierdzenia i wymagane dane. Ograniczeń nie można ominąć.';break;}
+      dirty();roundingReview=proof;updateResult();
+      $('#rounding-review-title')?.scrollIntoView({block:'nearest'});
+      toast('Zapisano indywidualną ocenę w tej karcie. Potwierdź całe dawkowanie przed kopiowaniem.');break;
+    }
+    case 'revoke-rounding-review':dirty();updateResult();break;
     case 'restore-source-values':{
       if(!canEditSourceValues())break;
       Object.assign(state,sourceInitialValues(getSourceRegimen()));

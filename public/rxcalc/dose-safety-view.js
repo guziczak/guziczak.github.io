@@ -70,7 +70,7 @@ function meterMarkup(row, note, comparisonAllowed) {
 }
 
 /** Pure HTML renderer. No source limits are invented and no input is mutated. */
-export function dailyDoseMarkup({ note, input = {}, source = null, context = '', eligibility = null, doseProblems = [], canChooseSource = false, veterinary = false, referenceContext = null, modified = false, icon = () => '' } = {}) {
+export function dailyDoseMarkup({ note, input = {}, source = null, context = '', eligibility = null, doseProblems = [], canChooseSource = false, veterinary = false, referenceContext = null, modified = false, roundingAssessment = null, icon = () => '' } = {}) {
   if (!note) return '';
   const comparisonAllowed = !source || eligibility?.valid === true;
   const hasCeiling = note.rows.some(row => positive(row.ceiling) || positive(row.ceilingPerKg));
@@ -78,15 +78,15 @@ export function dailyDoseMarkup({ note, input = {}, source = null, context = '',
     ? adultAugmentinReference({...referenceContext,input,source}) : null;
   const schemes = !veterinary ? note.schemeRows : null;
   const rows = note.rows.map((row,index) => {
-    const percent=!comparative && schemes?.[index] ? regimenDosePercentMarkup(row,schemes[index],comparisonAllowed) : '';
-    return `<div class="dose-safety-row"><dt>${esc(row.name)}</dt><dd><div class="dose-safety-amount ${percent?'has-scheme-percent':''}"><strong>${row.daily === null ? '—' : n(row.daily, 6)} <span>${esc(row.unit)}/dobę</span></strong>${row.perKg === null ? '' : `<small>${n(row.perKg, 4)} ${esc(row.unit)}/kg/dobę</small>`}${percent}</div>${comparative ? referenceMeterMarkup(row, comparative) || meterMarkup(row, note, comparisonAllowed) : (schemes?.[index] ? regimenMeterMarkup(row, schemes[index], comparisonAllowed) : meterMarkup(row, note, comparisonAllowed))}</dd></div>`;
+    const percent=!comparative && schemes?.[index] ? regimenDosePercentMarkup(row,schemes[index],comparisonAllowed,roundingAssessment) : '';
+    return `<div class="dose-safety-row"><dt>${esc(row.name)}</dt><dd><div class="dose-safety-amount ${percent?'has-scheme-percent':''}"><strong>${row.daily === null ? '—' : n(row.daily, 6)} <span>${esc(row.unit)}/dobę</span></strong>${row.perKg === null ? '' : `<small>${n(row.perKg, 4)} ${esc(row.unit)}/kg/dobę</small>`}${percent}</div>${comparative ? referenceMeterMarkup(row, comparative) || meterMarkup(row, note, comparisonAllowed) : (schemes?.[index] ? regimenMeterMarkup(row, schemes[index], comparisonAllowed,roundingAssessment) : meterMarkup(row, note, comparisonAllowed))}</dd></div>`;
   }).join('');
   const hasDerived = note.rows.some(row => row.derivedCeiling);
   const scope = source ? `<p class="daily-dose-scope"><strong>${modified ? 'Źródło odniesienia dla zmodyfikowanego schematu:' : 'Wybrany schemat:'}</strong> ${esc(source.label)}${source.phaseLabel ? ` · ${esc(source.phaseLabel)}` : ''}. Granice dotyczą wyłącznie tego wskazania i zakresu pacjentów.</p>` : '';
   const errors = source && !comparisonAllowed
     ? `<div class="dose-safety-notice"><strong>Nie potwierdzono warunków porównania.</strong><p>Wartości graniczne są informacją o schemacie, nie limitem zatwierdzonym dla tego pacjenta.</p>${eligibility?.errors?.length ? `<ul>${[...new Set(eligibility.errors)].map(error => `<li>${esc(error)}</li>`).join('')}</ul>` : ''}</div>` : '';
   const doseIssues = comparisonAllowed && doseProblems.length ? `<div class="dose-safety-notice"><strong>Sprawdź zgodność ze schematem.</strong><ul>${[...new Set(doseProblems)].map(error => `<li>${esc(error)}</li>`).join('')}</ul></div>` : '';
-  const missing = !hasCeiling && !comparative ? `<div class="dose-safety-notice"><strong>Brak zweryfikowanego limitu dla tego schematu.</strong><p>Brak limitu nie oznacza bezpieczeństwa dawki. Zweryfikuj wskazanie, dane pacjenta i aktualną ChPL.</p>${context ? `<p>${esc(context)}</p>` : ''}${canChooseSource ? '<button type="button" class="text-button dose-safety-source-choice" data-action="daily-dose-source">Wybierz schemat ze źródła</button>' : ''}</div>` : '';
+  const missing = !hasCeiling && !comparative && !schemes ? `<div class="dose-safety-notice"><strong>Brak zweryfikowanego limitu dla tego schematu.</strong><p>Brak limitu nie oznacza bezpieczeństwa dawki. Zweryfikuj wskazanie, dane pacjenta i aktualną ChPL.</p>${context ? `<p>${esc(context)}</p>` : ''}${canChooseSource ? '<button type="button" class="text-button dose-safety-source-choice" data-action="daily-dose-source">Wybierz schemat ze źródła</button>' : ''}</div>` : '';
   const caution = hasCeiling ? `<p class="dose-safety-caution">${note.ceilingKind === 'manual' ? 'Limit ręczny nie jest automatycznie weryfikowany w ChPL. ' : ''}${hasDerived && !schemes ? 'Składniki porównano do tej samej granicy schematu. ' : ''}Położenie na pasku nie potwierdza bezpieczeństwa ani prawidłowego doboru dawki. Uwzględnij także inne leki z tą samą substancją.</p>` : '';
   const rounding = note.rounding ? `<p class="dose-safety-rounding"><strong>Po zaokrągleniu objętości:</strong> ${n(note.rounding.from, 6)} → ${n(note.rounding.to, 6)} ${esc(input.unitLabel)} na podanie (krok ${n(input.roundingStep, 6)} ${esc(input.unitLabel)}). Dawki dobowe uwzględniają tę zmianę.</p>` : '';
   const pending = note.dailyUnits === null ? '<p class="daily-dose-pending">Uzupełnij dawkę, częstotliwość i wymagane dane pacjenta. Czas kuracji nie jest potrzebny do podglądu dobowego.</p>' : '';

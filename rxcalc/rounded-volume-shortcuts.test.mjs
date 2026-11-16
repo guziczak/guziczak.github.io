@@ -86,7 +86,7 @@ test('lower physician limits are not widened or removed for a rounded shortcut',
 });
 test('source context, arithmetic discrepancy and foreign/off-label scope remain visible',()=>{
  const html=liquidDoseChoicesMarkup(choices());
- for(const text of ['HSE','Cleveland Clinic','off-label','2020','Nie jest to nowy schemat stomatologiczny','blokady kopiowania','880 mg, nie 875 mg'])assert.ok(html.includes(text),text);
+ for(const text of ['HSE','Cleveland Clinic','off-label','2020','Nie jest to nowy schemat stomatologiczny','kopiowanie pozostaje niedostępne','880 mg, nie 875 mg'])assert.ok(html.includes(text),text);
  assert.ok(html.includes('10,9375 ml'));assert.ok(html.includes('Zaokrąglenie i źródła'));
 });
 test('building and rendering never writes patient values or relaxes validation',()=>{
