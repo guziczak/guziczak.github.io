@@ -18,6 +18,12 @@ Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym
 
 To pierwsza wersja pomocniczego kalkulatora. Katalog oraz zakres kontroli nie zastępują aktualnej ChPL ani pełnej oceny klinicznej. Nie ma certyfikacji wyrobu medycznego, pełnego silnika interakcji, integracji P1 ani automatycznej synchronizacji z RPL. Wynik wymaga weryfikacji przez osobę ordynującą; komunikat o braku przekroczeń odnosi się tylko do wykonanych kontroli. Dobór leku, wskazania, schematu i danych pacjenta pozostaje po stronie użytkownika.
 
+## Przełącznik dawki i objętości — 17.11.2026
+
+Skróty dla zawiesin z przeliczeniem w mg mają dwa widoki: **Dawka** (w jednostce aktualnego sposobu dawkowania, np. mg lub mg/kg/dobę) i **Objętość** (ml na podanie). Po wybraniu liczbowego schematu w mg domyślnie pokazywana jest dawka. Ręczny wybór widoku pozostaje w pamięci bieżącej karty podczas edycji; wybór nowego preparatu lub schematu przywraca odpowiedni widok domyślny. Przełącznik nie zapisuje danych, nie zmienia dawki, czasu, częstości ani potwierdzeń.
+
+Dla źródłowych 875 mg widok dawki zachowuje dokładny kafelek **875 mg = 10,9375 ml**. Widok objętości nadal udostępnia odrębny skrót **11 ml = 880 mg** wraz z dotychczasową oceną zaokrąglenia. Bieżąca wpisana dawka i jej przeliczenie są widoczne także wtedy, gdy nie odpowiadają żadnemu z trzech kafelków. Przełączenie po wyborze 11 ml nie podmienia 880 mg na 875 mg. Obliczona objętość pozostaje odrębna od możliwości jej odmierzenia. Jawny krok zaokrąglenia oraz dotychczasowe ograniczenia i kontrola kopiowania nadal obowiązują. Preparaty bez stężenia w mg/ml i dawkowanie w jednostkach zachowują widok objętości.
+
 ## Ocena czasu według wpisanego schematu — 17.11.2026
 
 Kolor czasu uwzględnia wybrane źródło i etap, postać, zakres pacjenta, rzeczywistą dawkę po zaokrągleniu oraz częstość. Gdy czas mieści się w źródłowym zakresie, zielony wymaga zgodności sprawdzanych danych; brak danych pozostaje neutralny, a rozbieżność lub wymagająca oceny zgodność z zewnętrznym odniesieniem daje ostrzeżenie. Sama liczba „3 dni” ani położenie na dolnej granicy zakresu nie przesądzają o kolorze.

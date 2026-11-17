@@ -6,7 +6,7 @@ import { availableRegimens, resolveRegimen } from './regimen-engine.js';
 import { patientFieldsFor } from './workflow.js';
 import { HUMAN_REGIMENS } from './human-regimens.js';
 import { LIQUID_STARTER_REGIMENS, liquidStarterMarkup } from './liquid-starters.js';
-import { supportsLiquidChoices, liquidDoseChoices, liquidDoseChoicesMarkup } from './liquid-doses.js';
+import { supportsLiquidChoices, supportsLiquidDoseView, defaultLiquidDoseView, liquidDoseChoices, liquidDoseChoicesMarkup } from './liquid-doses.js';
 const HUMAN_SOURCE_OPTIONS = [...HUMAN_REGIMENS, ...LIQUID_STARTER_REGIMENS];
 import { availableHumanRegimens, resolveHumanRegimen } from './human-regimen-engine.js';
 import { catalogueProducts, searchProducts, highlightSegments, searchMatchDetails } from './product-search.js';
@@ -86,13 +86,14 @@ const ui = {
   productChosen: false, formChosen: false, productExpanded: true,
   filtersOpen: false, showAll: false, manualRegimen: false, regimenExpanded: false,
   sourceDetailsOpen: false, patientDetailsOpen: false, advancedOpen: false,
+  liquidDoseView: null,
 };
 const catalogueExpanded = () => ui.showAll && !state.custom && (!ui.productChosen || ui.productExpanded);
 const productReady = () => ui.productChosen && ui.formChosen && (!isVeterinary() || !!state.species);
 function resetProductView() {
   Object.assign(ui, { productChosen:false, formChosen:false, productExpanded:true, filtersOpen:false,
     showAll:false, manualRegimen:false, regimenExpanded:false, sourceDetailsOpen:false,
-    patientDetailsOpen:false, advancedOpen:false });
+    patientDetailsOpen:false, advancedOpen:false, liquidDoseView:null });
   state.confirmed = false;
   latest = null; latestText = '';
 }
@@ -147,6 +148,7 @@ function resetRegimen() {
   if (state.demo) Object.assign(state, { age: '', weight: '' });
   Object.assign(state, { dose: '', frequency: '', days: '', manualMax: '', extraInstructions: '', instructionPacks: '', confirmed: false, demo: false, regimenId: '' });
   ui.manualRegimen = false; ui.regimenExpanded = false; ui.sourceDetailsOpen = false;
+  ui.liquidDoseView = null;
 }
 const getSourceRegimen = () => (isVeterinary() ? REGIMENS : HUMAN_SOURCE_OPTIONS).find(r => r.id === state.regimenId);
 const isReference = f => !!(f?.referenceOnly || f?.calculationBlocked);
@@ -526,6 +528,11 @@ function currentTabletDoseChoices() {
   const limit=applicableLimit(form);
   return tabletDoseChoices(form,{doseMode:state.doseMode,source:getSourceRegimen(),allowFixedSource:canEditSourceValues(),frequency:num(state.frequency),maxSingleMg:limit.single,maxDailyMg:limit.daily});
 }
+function currentLiquidDoseView() {
+  const options={source:getSourceRegimen(),doseMode:state.doseMode,veterinary:isVeterinary()};
+  if(!supportsLiquidDoseView(getForm(),options))return 'volume';
+  return ui.liquidDoseView || defaultLiquidDoseView(getForm(),options);
+}
 function currentLiquidDoseChoices() {
   const form=getForm();
   if(!form||!productReady())return [];
@@ -535,7 +542,7 @@ function currentLiquidDoseChoices() {
     frequency:source.frequency??source.frequencyOptions?.[0]??null}):null;
   return liquidDoseChoices(form,{doseMode:state.doseMode,weight:num(state.weight),frequency:num(state.frequency),
     source,maxSingleMg:limit.single,maxDailyMg:limit.daily,roundingStep:num(state.roundingStep),veterinary:isVeterinary(),eligibility,
-    roundingContext:currentRoundingOptions()});
+    roundingContext:currentRoundingOptions(),view:currentLiquidDoseView()});
 }
 function liquidDoseButtons() {
   return `<div class="liquid-dose-slot">${liquidDoseChoicesMarkup(currentLiquidDoseChoices(),{dose:num(state.dose),unit:doseUnit(),basis:getForm()?.doseBasisIngredient})}</div>`;
@@ -544,9 +551,11 @@ function updateLiquidDoseButtons() {
   const slot=$('.liquid-dose-slot');if(!slot)return;
   const markup=liquidDoseChoicesMarkup(currentLiquidDoseChoices(),{dose:num(state.dose),unit:doseUnit(),basis:getForm()?.doseBasisIngredient});
   if(slot.innerHTML!==markup){
-    const focused=slot.contains(document.activeElement)?document.activeElement.dataset.value:null;
+    const focused=slot.contains(document.activeElement)?document.activeElement:null;
+    const action=focused?.dataset.action,value=focused?.dataset.value;
     slot.innerHTML=markup;
-    if(focused)slot.querySelector(`[data-value="${focused}"]:not(:disabled)`)?.focus({preventScroll:true});
+    if(action&&value)Array.from(slot.querySelectorAll('button[data-action]:not(:disabled)'))
+      .find(button=>button.dataset.action===action&&button.dataset.value===value)?.focus({preventScroll:true});
   }
 }
 function prefillSourceTabletDose() {
@@ -925,6 +934,12 @@ function example() {
     }
     case 'rx-mode':state.rxMode=value;document.querySelectorAll('[data-action=rx-mode]').forEach(x=>{x.classList.toggle('active',x.dataset.value===value);x.setAttribute('aria-pressed',String(x.dataset.value===value));});updateResult();break;
     case 'best-package':state.packageId=value;dirty();if($('#packageId'))$('#packageId').value=value;updateResult();break;
+    case 'liquid-dose-view':{
+      if(!['dose','volume'].includes(value)||!supportsLiquidDoseView(getForm(),{doseMode:state.doseMode,veterinary:isVeterinary()}))break;
+      // Presentation only: preserve the entered amount, rounding review and
+      // confirmation. Editing a dose remains a separate, explicit action.
+      ui.liquidDoseView=value;updateLiquidDoseButtons();break;
+    }
     case 'liquid-dose':{
       const choice=currentLiquidDoseChoices().find(item=>item.ml===num(value));
       if(!choice?.allowed||!$('#dose'))break;

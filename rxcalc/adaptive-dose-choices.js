@@ -68,7 +68,10 @@ export function liquidShortcutWindow(form, options = {}) {
   if(!values.length)values=[step,2*step,3*step];
   while(values.length<3)values=unique([...values,clean(values.at(-1)+step)]);
   values=values.slice(0,3);
-  const rounded=anchored&&kind==='fixed'?roundedVolumeShortcut(form,options):null;
+  // The dose view retains the exact source anchor. The named rounded volume
+  // remains an explicit alternative in the volume view, never a replacement
+  // for the source dose merely because the presentation unit changed.
+  const rounded=options.view!=='dose'&&anchored&&kind==='fixed'?roundedVolumeShortcut(form,options):null;
   if(rounded){values=unique(values.map(v=>near(v,min)?rounded.ml:v));exact=false;}
   const initial=values.slice();
   // Paging changes shortcuts only. Source and entered values never change here.
@@ -96,6 +99,6 @@ export function liquidShortcutKey(form, options={}) {
   const s=options.source;
   return JSON.stringify([form?.id,form?.concentrationMg,form?.concentrationMl,form?.unitLabel,
     s?.id,s?.doseMode,s?.dose,s?.doseRange?.min,s?.doseRange?.max,s?.frequency,
-    options.doseMode,options.weight,options.frequency,options.roundingStep,
+    options.doseMode,options.weight,options.frequency,options.roundingStep,options.view,
     options.eligibility?.valid,options.eligibility?.errors]);
 }
