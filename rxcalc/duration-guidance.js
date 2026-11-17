@@ -83,8 +83,9 @@ function assessRuleDuration(value,guidance) {
   };
   return {state:'unassessed',tone:'neutral',short:'',message:noRange[r.kind]||'Źródło nie określa pełnego zalecanego zakresu dni.'};
 }
-/** Primary-source time restrictions remain independent of regimen alignment. */
-function assessTime(value,guidance) {
+/** Time-only comparison for presentation. Primary-source restrictions retain
+ * precedence; this does not replace the complete-regimen assessment below. */
+export function assessDurationTime(value,guidance) {
   const primary=assessRuleDuration(value,guidance);
   if(!guidance?.applicable||!guidance.reference||['pending','invalid'].includes(primary.state))return primary;
   const comparison=assessRuleDuration(value,{...guidance,rule:guidance.reference});
@@ -95,7 +96,7 @@ function assessTime(value,guidance) {
   return {...comparison,sourceState:primary.state};
 }
 export function assessDuration(value,guidance) {
-  const time=assessTime(value,guidance);
+  const time=assessDurationTime(value,guidance);
   if(!guidance?.applicable||['pending','invalid','unassessed'].includes(time.state))return time;
   const regimen=guidance.regimen;
   const reasons=regimen?.reasons?.filter(Boolean)||[];

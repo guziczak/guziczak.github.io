@@ -112,7 +112,8 @@ test('selected 10-day button stays warning, with an independent pressed state',(
  const html=durationGuidanceMarkup({choices:[3,5,7,10],days:10,guidance:g()});
  assert.match(html,/class="duration-choice duration-warning active" data-action="days" data-value="10" aria-pressed="true"/);
  assert.equal((html.match(/aria-pressed="true"/g)||[]).length,1);assert.doesNotMatch(html,/\bdisabled\b/);
- assert.match(html,/duration-selected/);assert.match(html,/⚠/);assert.match(html,/Wymaga oceny/);
+ assert.match(html,/duration-selected/);assert.match(html,/⚠/);assert.match(html,/Wybrano/);
+ assert.match(html,/duration-regimen-context/);assert.match(html,/Warunki zastosowania wymagają oceny/);
 });
 test('UI keeps source disclosure collapsed and separates review from end of treatment',()=>{
  const html=durationGuidanceMarkup({choices:[3,5,7,10],guidance:g()});assert.match(html,/<details class="duration-sources">/);

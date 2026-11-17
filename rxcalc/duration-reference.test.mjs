@@ -145,10 +145,12 @@ test('explicit 0.1 ml rounding recalculates both substances and total supply, no
 test('view keeps external context visible and separate ChPL review in disclosure',()=>{
  const html=durationGuidanceMarkup({choices:[3,5,7,10],days:5,guidance:g()});
  assert.match(html,/Porównanie czasu: UCSF \(dzieci\)/);assert.match(html,/duration-reference-context/);
- assert.ok(html.indexOf('Dawka lub częstość różni')<html.indexOf('<details'));
+ const mismatchAt=html.indexOf('Rzeczywista dawka na podanie');
+ assert.ok(mismatchAt>=0&&mismatchAt<html.indexOf('<details'));
  assert.ok(html.indexOf('niewystarczającej odpowiedzi')<html.indexOf('<details'));
  assert.match(html,/Osobny warunek ChPL:/);assert.match(html,/14 dni/);assert.doesNotMatch(html,/według SDCEP/);
- assert.match(html,/duration-warning active.*data-value="5"/);assert.doesNotMatch(html,/\bdisabled\b/);
+ assert.match(html,/duration-neutral active.*data-value="5"/);assert.doesNotMatch(html,/\bdisabled\b/);
+ assert.match(html,/W zakresie UCSF/);assert.match(html,/Wybrano/);
 });
 test('selected longer course retains warning color and one selected checkmark',()=>{
  const html=durationGuidanceMarkup({choices:[3,5,7,10],days:10,guidance:g()});

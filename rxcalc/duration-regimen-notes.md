@@ -12,7 +12,8 @@ Aktualizacja nie dodaje leków, klinicznych wariantów dawkowania, wartości daw
 - `durationPatientEligibility()` w `duration-guidance.js` sprawdza zakres pacjenta względem źródła. Tymczasowe wartości źródłowe używane na tym etapie nie potwierdzają aktualnie wpisanej dawki.
 - `assessDurationRegimen()` w `duration-regimen.js` sprawdza rzeczywiste dawkowanie i zwraca `matched`, `mismatch`, `incomplete` albo `review` wraz z przyczynami po polsku.
 - `durationDosePreview()` korzysta z kanonicznego `calculate()` w `engine.js`. Ten sam podgląd służy ocenie zgodności i informacji `doseComparison` wyświetlanej przy UCSF.
-- `assessDuration()` w `duration-guidance.js` łączy niezależną ocenę dni z wynikiem dopasowania. `duration-view.js` prezentuje wynik, a `durationResultWarning()` przekazuje ostrzeżenia czasu i dopasowania do wyniku formularza.
+- `assessDurationTime()` w `duration-guidance.js` udostępnia osobną ocenę liczby dni z zachowaniem pierwszeństwa ograniczeń pierwotnego źródła. `assessDuration()` łączy ją z wynikiem dopasowania całego schematu, a `durationResultWarning()` przekazuje ostrzeżenia czasu i dopasowania do wyniku formularza.
+- `duration-view.js` dla zewnętrznych odniesień pokazuje osobno porównanie dni w kafelkach oraz wszystkie przyczyny oceny schematu we wspólnym bloku. Dla pozostałych źródeł zachowuje dotychczasową prezentację oceny łącznej.
 
 ## Rzeczywista dawka i ograniczenia
 
@@ -28,7 +29,7 @@ Przy pustej dawce, częstości lub jednostce moduł nie podstawia wartości źr�
 
 Najpierw oceniana jest sama liczba dni. Weryfikacja całkowitej dodatniej liczby, minimum, maksimum i warunków ponownej oceny pozostaje niezależna od dopasowania dawki. Stan wybrania przycisku, obwódka, znacznik i `aria-pressed` są niezależne od koloru.
 
-Poniższa tabela dotyczy sytuacji, w której wybrany czas mieści się w pełnym źródłowym przedziale albo odpowiada stałemu czasowi:
+Poniższa tabela dotyczy oceny łącznej oraz kafelków bez zewnętrznego odniesienia, gdy wybrany czas mieści się w pełnym źródłowym przedziale albo odpowiada stałemu czasowi. Osobna prezentacja UCSF i SDCEP jest opisana poniżej:
 
 | Dopasowanie dawkowania | Prezentacja czasu | Znaczenie |
 | --- | --- | --- |
@@ -42,6 +43,14 @@ Czas poza zakresem, przekroczony twardy limit lub warunek kontroli zachowują sw
 Brak pełnego zakresu dni nadal pozostaje brakiem oceny zalecanego czasu. Samo minimum, samo maksimum, termin kontroli, leczenie doraźne, okres zapasu leczenia przewlekłego lub opis procedury nie wyznaczają pełnej kuracji. Tryb ręczny bez źródła pozostawia skróty neutralne.
 
 ## Zewnętrzne odniesienia UCSF i SDCEP
+
+### Prezentacja porównania dni — aktualizacja 17.11.2026
+
+Kafelki w zewnętrznym odniesieniu pokazują tylko wynik `assessDurationTime()`: wewnątrz przedziału są neutralne, z etykietą „W zakresie UCSF” albo „W zakresie SDCEP”; poniżej/powyżej przedziału zachowują ostrzeżenie. Brak zastosowalności źródła nie uzyskuje etykiety zgodności z zakresem. Twarde ograniczenia pierwotnego źródła i warunki kontroli mają nadal pierwszeństwo.
+
+Wspólny blok przy grupie, dostępny także jako opis grupy dla czytnika ekranu, zawiera komplet przyczyn z `guidance.regimen.reasons`. Różnica ma oznaczenie ostrzegawcze; nieocenione warunki lub brak danych pozostają informacją neutralną. Przy wybranym czasie komunikat o samych dniach nie powtarza przyczyn oceny dawkowania. Ostrzeżenia wyniku i ocena całego schematu pozostają niezmienione.
+
+Zaznaczenie kafelka ma widoczny napis „Wybrano” i `aria-pressed`. Neutralny wybór używa neutralnego obrysu, nie zielonego. Źródło bez pełnego przedziału nadal nie potwierdza żadnego z proponowanych skrótów jako zalecanej kuracji. Ta zmiana nie zmienia wpisanej dawki, częstości, dni, zaokrąglenia ani potwierdzeń.
 
 UCSF jest osobnym odniesieniem tylko dla istniejącego dziecięcego wariantu Augmentinu i dokładnie sprawdzanej postaci. Rzeczywista dawka na podanie jest porównywana z `comparisonSingleMg`, a częstość z `comparisonFrequency`. Rozbieżność daje `mismatch`. Przy zgodnych liczbach wynik nadal wynosi `review`: formularz nie ustala niewystarczającej odpowiedzi na leczenie pierwszego wyboru, potrzeby indywidualizacji przy powikłaniach ani dopasowania zagranicznego odniesienia do postaci. Szczegóły pochodzenia zakresu pozostają w [duration-reference-notes.md](duration-reference-notes.md).
 
@@ -61,6 +70,6 @@ Trzy dni mogą oznaczać zgodny czas konkretnego źródłowego etapu, np. istnie
 
 `duration-regimen.test.mjs` obejmuje m.in. oba końce zakresu dawki, równoważne jednostki, zmienioną częstość, brak danych, brak mutacji i niezależność od dni, rzeczywistą dawkę po zaokrągleniu, limit na podanie w odniesieniu UCSF, źródłowy etap trzydniowy, tabelę masy, podziałki przyrządu, podzielność tabletek, limity niezależne i tryb instrukcyjny. Przykład regresji rachunkowej: nominalne 450 mg w sprawdzanej zawiesinie po zaokrągleniu objętości do 5,6 ml daje 448 mg; informacja przy źródle i ocena zgodności muszą używać tej samej rzeczywistej wartości. To przypadek testowy, nie propozycja leczenia.
 
-Testy integracji znajdują się także w `duration-guidance.test.mjs`, `duration-reference.test.mjs` i `duration-coverage.test.mjs`. Pełny zestaw uruchamia `npm test` z katalogu `rxcalc/`, a budowę statyczną `npm run build`. Nowy moduł jest wpisany do list plików `build.mjs` i `sw.js`.
+Testy integracji znajdują się także w `duration-guidance.test.mjs`, `duration-reference.test.mjs` i `duration-coverage.test.mjs`. `duration-comparison-view.test.mjs` sprawdza osobną prezentację porównania czasu, wspólny komunikat, ograniczenia pierwotnego źródła oraz wybór bez zmiany wartości. Pełny zestaw uruchamia `npm test` z katalogu `rxcalc/`, a budowę statyczną `npm run build`. Moduł jest wpisany do list plików `build.mjs` i `sw.js`.
 
-Weryfikacja tej zmiany: pełny zestaw `npm test` zakończył się wynikiem **703/703**, a budowa statyczna zakończyła się poprawnie. Sprawdzono zgodność wszystkich **61 plików wykonawczych** między katalogiem źródłowym a `public/rxcalc/`. Dokument nie potwierdza testów interfejsu w przeglądarce ani publikacji. Wyniki liczbowe zachowane we wcześniejszych notatkach są wyraźnie oznaczone jako historyczne. Testy techniczne nie stanowią walidacji klinicznej.
+Historyczna weryfikacja pierwotnej zmiany oceny łącznej: pełny zestaw `npm test` zakończył się wynikiem **703/703**, a budowa statyczna zakończyła się poprawnie. Sprawdzono zgodność wszystkich **61 plików wykonawczych** między katalogiem źródłowym a `public/rxcalc/`. Ta historyczna liczba nie opisuje aktualnego zestawu po późniejszych zmianach interfejsu. Testy techniczne nie stanowią walidacji klinicznej.

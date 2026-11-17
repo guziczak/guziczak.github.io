@@ -26,7 +26,9 @@ Dla źródłowych 875 mg widok dawki zachowuje dokładny kafelek **875 mg = 10,9
 
 ## Ocena czasu według wpisanego schematu — 17.11.2026
 
-Kolor czasu uwzględnia wybrane źródło i etap, postać, zakres pacjenta, rzeczywistą dawkę po zaokrągleniu oraz częstość. Gdy czas mieści się w źródłowym zakresie, zielony wymaga zgodności sprawdzanych danych; brak danych pozostaje neutralny, a rozbieżność lub wymagająca oceny zgodność z zewnętrznym odniesieniem daje ostrzeżenie. Sama liczba „3 dni” ani położenie na dolnej granicy zakresu nie przesądzają o kolorze.
+Ocena całego schematu uwzględnia wybrane źródło i etap, postać, zakres pacjenta, rzeczywistą dawkę po zaokrągleniu oraz częstość. Dla źródłowych schematów zielony wymaga zgodności sprawdzanych danych. Sama liczba „3 dni” ani położenie na dolnej granicy zakresu nie przesądzają o kolorze.
+
+W zewnętrznych odniesieniach **UCSF i SDCEP kafelki porównują wyłącznie liczbę dni**: czas wewnątrz przedziału jest neutralny i opisany „W zakresie UCSF/SDCEP”, a wyjście poza przedział zachowuje ostrzeżenie. Dopasowanie dawkowania, brak danych i nieocenione warunki zastosowania są pokazane raz, we wspólnym komunikacie przy grupie. Ocena całego schematu i ostrzeżenia wyniku nadal zachowują te różnice. Przy źródle bez pełnego zakresu dni neutralne skróty nie potwierdzają czasu kuracji. Zaznaczony kafelek ma osobny napis **„Wybrano”**; neutralny wybór nie zmienia obrysu na zielony.
 
 UCSF i SDCEP pozostają odrębnymi odniesieniami wymagającymi oceny warunków zastosowania także przy zgodnym dawkowaniu liczbowym. Zmiana dawki ponownie ocenia zgodność, ale nie skraca ani nie wydłuża wybranego czasu. Pierwotne limity czasu i warunki kontroli zachowują pierwszeństwo. Jest to porównanie danych ze źródłem, nie dobór terapii; nie dodano nowych leków, wartości dawek ani pól potwierdzenia warunków klinicznych. Szczegóły: [duration-regimen-notes.md](duration-regimen-notes.md).
 
