@@ -1,0 +1,21 @@
+/* Progressive disclosure of repeated explanation; never hides model warnings. */
+.ui-details{margin:10px 0 0;padding:0;border:0;min-width:0;color:var(--muted);font-size:11px;line-height:1.6;overflow-wrap:anywhere}
+.ui-details>summary{cursor:pointer;display:list-item;list-style-position:inside;min-height:36px;padding:9px 0;color:var(--accent);font:inherit;font-weight:600}
+.ui-details>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.ui-details[open]>summary{margin-bottom:6px}
+.ui-details p{font-size:inherit;line-height:1.6;margin:8px 0}
+.ui-details a{overflow-wrap:anywhere}
+.ui-details .liquid-rounded-note{margin-top:0}
+.ui-details>.daily-dose-scope{border-top:0;padding-top:0}
+.daily-dose-note>.ui-dose-context,.rounding-review>.ui-rounding-context{color:var(--muted);font-size:11px;line-height:1.5;margin:6px 0 10px}
+.source-edit-note.ui-edit-compact{background:transparent;border:0;border-radius:0;margin:10px 0;padding:0}
+.ui-edit-compact .source-edit-status{font-size:11px;line-height:1.5;gap:3px}
+.ui-edit-compact .source-edit-status[hidden]{display:none}
+.ui-edit-compact>.text-button{font-size:11px;min-height:36px;padding:7px 0;margin:0}
+.source-details.ui-details{border-top:1px solid var(--border);padding-top:8px}
+.source-details.ui-details>.source-screening{margin:0 0 10px}
+.liquid-dose-slot>.ui-details .liquid-dose-help{margin:8px 0!important}
+@media(max-width:780px){
+ .ui-details,.daily-dose-note>.ui-dose-context,.rounding-review>.ui-rounding-context,.ui-edit-compact .source-edit-status,.ui-edit-compact>.text-button{font-size:12px}
+ .ui-details>summary,.ui-edit-compact>.text-button{min-height:44px;padding:11px 0}
+}
