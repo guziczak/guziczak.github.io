@@ -1,14 +1,18 @@
 # Wspólna ocena czasu stosowania — 16.11.2026
 
+## Aktualizacja oceny — 17.11.2026
+
+Pokrycie zweryfikowaną regułą czasu jest obecnie oddzielone od dopasowania wpisanego dawkowania. Zielony wynik dla czasu w zakresie wymaga także zgodnej rzeczywistej dawki po zaokrągleniu, częstości, wybranego źródła i etapu oraz sprawdzanych warunków pacjenta i postaci. Braki dają stan neutralny, a rozbieżności lub warunki UCSF/SDCEP wymagające odrębnej oceny dają ostrzeżenie. Pierwotne limity i warunki kontroli czasu zachowują pierwszeństwo. Szczegóły: [duration-regimen-notes.md](duration-regimen-notes.md). Przypisania źródeł poniżej oraz wyniki wcześniejszych testów pozostają zapisem przeglądu z 16.11.2026.
+
 ## Zakres i ograniczenia
 
 Przegląd dokumentacji obejmuje wszystkie 60 jawnie zdefiniowanych schematów (31 dla ludzi i 29 weterynaryjnych), nie tylko Ospamox. Każdy ma jedno jawne przypisanie do reguły czasu, odnośnik i datę przeglądu. To przegląd informacji w dokumentacji, **nie kliniczna walidacja aplikacji ani potwierdzenie leczenia pacjenta**.
 
 - Zakres/fixed duration, jednorazowe podanie, etap, warunek konsultacji, ocena zależna od odpowiedzi, leczenie przewlekłe i procedura są odrębne. Zmiana danych źródłowych unieważnia przypisanie; nowy schemat jest niezweryfikowany, dopóki nie otrzyma przeglądu.
 - Ten sam model ocenia kafelki, wpis ręczny i ostrzeżenie wyniku. Objął także instrukcje miejscowe, stałe etapy i weterynarię, poprzednio omijające wspólny widok. Zaznaczenie (obwódka/✓) jest niezależne od koloru.
-- Zielony oznacza wyłącznie zgodność liczby dni z jawnym przedziałem lub stałym czasem. Pojedyncze minimum, maksimum lub termin konsultacji nie upoważnia do malowania pozostałych dni na zielono. Warunek konsultacji jest bursztynowy; przekroczenie odrębnego limitu danego schematu czerwone.
+- Zielony oznacza zgodność czasu i dostępnych danych dawkowania z wybranym schematem w zakresie wykonanych kontroli. Sam przedział lub stały czas nie wystarcza. Pojedyncze minimum, maksimum lub termin konsultacji nadal nie upoważnia do malowania pozostałych dni na zielono. Warunek konsultacji jest bursztynowy; przekroczenie odrębnego limitu danego schematu czerwone.
 - Brak pełnego przedziału po przeglądzie jest podpisany wprost, inaczej niż brak weryfikacji. Tryb ręczny / brak wybranego schematu nie dziedziczy reguł po nazwie leku, wielkości opakowania, trwałości zawiesiny ani innym pacjencie.
-- Ospamox zachowuje oddzielne zagraniczne odniesienie SDCEP 3–5 dni, z oceną najlepiej po 3 dniach. Nie utożsamia się go z ChPL ani oceną całej dawki. Pozostaje ograniczenie tabeli dziecięcej od 6 miesięcy.
+- Ospamox zachowuje oddzielne zagraniczne odniesienie SDCEP 3–5 dni, z oceną najlepiej po 3 dniach. Nie utożsamia się go z ChPL ani potwierdzeniem całego schematu. Nawet zgodne dawkowanie ChPL pozostawia zakres SDCEP jako wymagający odrębnej oceny. Pozostaje ograniczenie tabeli dziecięcej od 6 miesięcy.
 - Augmentin: nie przedłużać ponad 14 dni bez ponownej oceny. To nie polecenie kontroli dopiero w dniu 14 i nie zalecenie każdej kuracji krótszej niż 14. Nie przeniesiono dawnych zaleceń SDCEP dotyczących co-amoxiclav, usuniętych z ich zaleceń drugiego wyboru w maju 2026.
 - Dalacin: warunek minimum 10 dni dla paciorkowców beta-hemolizujących nie jest uogólniony na zakażenia zębów/jamy ustnej. Brak właściwego pełnego zakresu jest jawny. Nie zastosowano pięciodniowego SDCEP dla innego doboru wskazania/dawkowania.
 - Analgetyki: konsultacja przy potrzebie stosowania ponad 3 dni nie staje się obowiązkową trzydniową kuracją. Tantum: okres ciągły do 7 dni i decyzja lekarza o przedłużeniu; Dentinox: kontrola przy braku poprawy po 7 dniach lub pogorszeniu.
@@ -116,10 +120,12 @@ Poniższe postaci nie otrzymują domyślnego zalecanego czasu z samej nazwy prod
 - chlosite-1: karta informacyjna / przeliczenie zablokowane
 - dentomycin-gel-ie: karta informacyjna / przeliczenie zablokowane
 
-## Testy techniczne
+## Historyczne testy techniczne wersji z 16.11.2026
+
+Poniższe liczby i opis środowiska pochodzą z wcześniejszej weryfikacji pokrycia czasu. Nie stanowią wyniku ponownego uruchomienia po zmianie oceny dawkowania.
 
 646 testów Node.js, w tym test pokrycia każdego z 60 schematów i każdej przypisanej postaci. 154 unikalnych sprawdzeń funkcjonalnych / układu w lokalnym Chromium: schematy ludzkie, miejscowe i weterynaryjne; zakresy, progi kontroli, stałe etapy, brak danych, dwie drogi wpisania dni, potwierdzenie i kopiowanie, dwa motywy, 320/390/768/1280 px. Brak błędów JavaScript w zakończonych scenariuszach.
 
 Lokalne HTTP było blokowane przez środowisko. Testy UI korzystały z niezmienionej logiki modułów/CSS z lokalnych plików, z adresami importów i ikon zamienionymi na blob/data i CSP pominiętym tylko w stronie testowej. Część przygotowania scenariusza używa natywnych zdarzeń DOM selektorów; nie jest to test fizycznego dotyku. Nie testowano rzeczywistego iPhone/Safari, produkcyjnego CSP, sieci ani aktualizacji service workera. Flaki automatyzacji związane ze stabilnością animowanego edytora rozwiązano w sterowniku testu (nie zmieniano edytora w aplikacji); nie stanowi to pełnego audytu jego ergonomii.
 
-Kod wykonawczy jest identyczny w rxcalc/ i public/rxcalc/. Cache: `2026-11-16.59`. Testy programu nie są walidacją kliniczną.
+W tamtej wersji kod wykonawczy był identyczny w rxcalc/ i public/rxcalc/. Cache: `2026-11-16.59`. Testy programu nie są walidacją kliniczną.

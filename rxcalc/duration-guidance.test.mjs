@@ -10,7 +10,7 @@ import { durationGuidanceMarkup } from './duration-view.js';
 const source = HUMAN_REGIMENS.find(s => s.id === 'dental-ospamox-suspension-ge40-q8');
 const form = DRUGS.flatMap(d => d.forms).find(f => f.id === 'ospamox-250');
 const context = { formId:form.id,specialty:'dental',patientType:'adult',age:35,ageUnit:'years',weight:70,
-  renalStatus:'unknown',crcl:null,dose:250,frequency:3,days:10 };
+  renalStatus:'unknown',crcl:null,doseMode:source.doseMode,dose:250,frequency:3,days:10 };
 const opts = () => ({source:structuredClone(source),form:structuredClone(form),context:{...context}});
 const g = () => resolveDurationGuidance(opts());
 const check = (d,tone) => assert.equal(assessDuration(d,g()).tone,tone);
@@ -20,12 +20,12 @@ test('Ospamox abscess has separate, explicitly foreign SDCEP duration reference'
  assert.equal(r.rule.minimum,3);assert.equal(r.rule.maximum,5);assert.equal(r.rule.reviewAfterDays,3);
  assert.match(r.rule.url,/sdcep.*amoxicillin/);assert.match(r.rule.note,/nie zapis ChPL/);assert.equal(r.rule.hardMaximum,false);
 });
-test('3, 4, 5 days are within duration reference only',()=>{for(const d of [3,4,5])check(d,'within');});
+test('3, 4, 5 days in an external range still require assessment of its full regimen',()=>{for(const d of [3,4,5]){check(d,'warning');assert.equal(assessDuration(d,g()).timeState,'within');}});
 test('7 and 10 days are amber, not forbidden or universally excessive',()=>{for(const d of [7,10])check(d,'warning');assert.match(assessDuration(10,g()).message,/SDCEP.*indywidualnej oceny/);});
 test('shorter durations are amber and all outside values share same model',()=>{for(const d of [1,2])check(d,'warning');assert.equal(assessDuration(2,g()).state,'below');});
 test('review at 3 days never makes 4/5-day reference values invalid',()=>{
- assert.equal(assessDuration(5,g()).state,'within');assert.equal(assessDuration(3,g()).tone,'within');
- assert.equal(durationResultWarning(5,g()),null);
+ assert.equal(assessDuration(5,g()).timeState,'within');assert.equal(assessDuration(3,g()).tone,'warning');
+ assert.match(durationResultWarning(5,g()),/SDCEP/);
 });
 test('missing duration is pending, not zero, and defaults remain empty',()=>{for(const v of ['',null,undefined,'  '])assert.equal(assessDuration(v,g()).state,'pending');assert.equal(source.defaultDays,undefined);});
 test('invalid duration is explicitly rejected rather than compared as a recommendation',()=>{
@@ -49,9 +49,11 @@ test('renal restriction preserves the original scope check',()=>{
  const o=opts();o.context.renalStatus='impaired';assert.equal(resolveDurationGuidance(o).applicable,false);
  o.context.renalStatus='unknown';o.context.crcl=20;assert.equal(resolveDurationGuidance(o).applicable,false);
 });
-test('duration comparison is independent of blank dose/days and retained after an override',()=>{
+test('reviewed source coverage survives blank dose and overrides without granting green agreement',()=>{
  const o=opts();o.context.dose=null;o.context.frequency=null;o.context.days=null;assert.equal(resolveDurationGuidance(o).applicable,true);
+ assert.equal(assessDuration(3,resolveDurationGuidance(o)).tone,'neutral');
  o.context.dose=2000;assert.equal(resolveDurationGuidance(o).applicable,true);
+ o.context.frequency=3;assert.equal(assessDuration(3,resolveDurationGuidance(o)).tone,'warning');
  assert.equal(resolveHumanRegimen(o.source,{...o.context,days:10,frequency:3},{allowNumericOverrides:true}).valid,false);
 });
 test('manual, custom, reference and veterinary contexts remain neutral',()=>{
@@ -110,7 +112,7 @@ test('selected 10-day button stays warning, with an independent pressed state',(
  const html=durationGuidanceMarkup({choices:[3,5,7,10],days:10,guidance:g()});
  assert.match(html,/class="duration-choice duration-warning active" data-action="days" data-value="10" aria-pressed="true"/);
  assert.equal((html.match(/aria-pressed="true"/g)||[]).length,1);assert.doesNotMatch(html,/\bdisabled\b/);
- assert.match(html,/duration-selected/);assert.match(html,/⚠/);assert.match(html,/W zakresie/);
+ assert.match(html,/duration-selected/);assert.match(html,/⚠/);assert.match(html,/Wymaga oceny/);
 });
 test('UI keeps source disclosure collapsed and separates review from end of treatment',()=>{
  const html=durationGuidanceMarkup({choices:[3,5,7,10],guidance:g()});assert.match(html,/<details class="duration-sources">/);

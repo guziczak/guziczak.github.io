@@ -1,9 +1,10 @@
 import { supplementaryDurationReference } from './duration-reference.js';
+import { assessDurationRegimen } from './duration-regimen.js';
 import { resolveHumanRegimen } from './human-regimen-engine.js';
 import { resolveRegimen } from './regimen-engine.js';
 import { auditedDurationPolicy, DURATION_REVIEW_DATE } from './duration-rules.js';
 
-/** One duration-only assessment for entry, shortcuts and result warnings.
+/** One regimen-aware duration assessment for entry, shortcuts and result warnings.
  * No mutation of treatment, catalogue constraints, rounding review or exports.
  */
 const positiveDay=v=>Number.isSafeInteger(v)&&v>0&&v<=3660;
@@ -52,7 +53,8 @@ export function resolveDurationGuidance({source=null,form=null,context={}}={}) {
   if(rule.origin==='external'&&!sdcepPatientScope(context))return neutral('Brak potwierdzonego zakresu wieku dla odniesienia SDCEP (tabela dziecięca od 6 miesięcy).','reviewed',rule);
   const guidance={applicable:true,coverage:'reviewed',rule,reason:''};
   const reference=supplementaryDurationReference({source,form,context,guidance});
-  return reference?{...guidance,reference}:guidance;
+  const regimen=assessDurationRegimen({source,form,context,rule,reference});
+  return {...guidance,regimen,...(reference?{reference}:{})};
 }
 function assessRuleDuration(value,guidance) {
   const blank=!has(value)||typeof value==='string'&&!value.trim();
@@ -81,8 +83,8 @@ function assessRuleDuration(value,guidance) {
   };
   return {state:'unassessed',tone:'neutral',short:'',message:noRange[r.kind]||'Źródło nie określa pełnego zalecanego zakresu dni.'};
 }
-/** Primary-source time restrictions remain independent of a comparison range. */
-export function assessDuration(value,guidance) {
+/** Primary-source time restrictions remain independent of regimen alignment. */
+function assessTime(value,guidance) {
   const primary=assessRuleDuration(value,guidance);
   if(!guidance?.applicable||!guidance.reference||['pending','invalid'].includes(primary.state))return primary;
   const comparison=assessRuleDuration(value,{...guidance,rule:guidance.reference});
@@ -92,9 +94,28 @@ export function assessDuration(value,guidance) {
   }
   return {...comparison,sourceState:primary.state};
 }
+export function assessDuration(value,guidance) {
+  const time=assessTime(value,guidance);
+  if(!guidance?.applicable||['pending','invalid','unassessed'].includes(time.state))return time;
+  const regimen=guidance.regimen;
+  const reasons=regimen?.reasons?.filter(Boolean)||[];
+  if(time.state!=='within')return reasons.length
+    ?{...time,message:[time.message,...reasons].join(' ')}:time;
+  const rule=guidance.reference||guidance.rule;
+  const range=rule.kind==='single'?'Jednorazowe podanie w wybranym schemacie; nie oznacza codziennego powtarzania.'
+    :rule.fixed?`Czas wybranego ${rule.kind==='stage'?'etapu':'schematu'}: ${rule.minimum} ${rule.minimum===1?'dzień':'dni'}.`
+      :`Czas mieści się w zakresie ${rangeLabel(rule)}${rule.origin==='external'?` według ${rule.organization||'SDCEP'}`:' wybranego schematu'}.`;
+  if(regimen?.state==='matched')return {...time,
+    short:rule.kind==='single'?'Jednorazowo':rule.kind==='stage'?'Zgodny etap':'Zgodne ze schematem',
+    message:`${range} Wpisane dawkowanie i sprawdzane warunki są zgodne ${rule.kind==='stage'?'z wybranym etapem':'ze schematem źródłowym'}. To nie pełna ocena kliniczna leczenia.`};
+  const incomplete=!regimen||regimen.state==='incomplete';
+  return {...time,timeState:time.state,state:incomplete?'regimen-incomplete':regimen.state==='mismatch'?'regimen-mismatch':'regimen-review',
+    tone:incomplete?'neutral':'warning',short:incomplete?'Uzupełnij dane':'Wymaga oceny',
+    message:[range,...(reasons.length?reasons:['Brak potwierdzenia zgodności dawkowania ze źródłem.'])].join(' ')};
+}
 export function durationResultWarning(value,guidance) {
   const a=assessDuration(value,guidance);
-  return guidance?.applicable&&['below','above','review'].includes(a.state)?a.message:null;
+  return guidance?.applicable&&['below','above','review','regimen-mismatch','regimen-review'].includes(a.state)?a.message:null;
 }
 /** Supply-period shortcuts are not recommended courses. Fixed/procedural
  * sources expose no misleading editable 3/5/7/10-day shortcuts. */

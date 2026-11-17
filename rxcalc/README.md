@@ -18,6 +18,12 @@ Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym
 
 To pierwsza wersja pomocniczego kalkulatora. Katalog oraz zakres kontroli nie zastępują aktualnej ChPL ani pełnej oceny klinicznej. Nie ma certyfikacji wyrobu medycznego, pełnego silnika interakcji, integracji P1 ani automatycznej synchronizacji z RPL. Wynik wymaga weryfikacji przez osobę ordynującą; komunikat o braku przekroczeń odnosi się tylko do wykonanych kontroli. Dobór leku, wskazania, schematu i danych pacjenta pozostaje po stronie użytkownika.
 
+## Ocena czasu według wpisanego schematu — 17.11.2026
+
+Kolor czasu uwzględnia wybrane źródło i etap, postać, zakres pacjenta, rzeczywistą dawkę po zaokrągleniu oraz częstość. Gdy czas mieści się w źródłowym zakresie, zielony wymaga zgodności sprawdzanych danych; brak danych pozostaje neutralny, a rozbieżność lub wymagająca oceny zgodność z zewnętrznym odniesieniem daje ostrzeżenie. Sama liczba „3 dni” ani położenie na dolnej granicy zakresu nie przesądzają o kolorze.
+
+UCSF i SDCEP pozostają odrębnymi odniesieniami wymagającymi oceny warunków zastosowania także przy zgodnym dawkowaniu liczbowym. Zmiana dawki ponownie ocenia zgodność, ale nie skraca ani nie wydłuża wybranego czasu. Pierwotne limity czasu i warunki kontroli zachowują pierwszeństwo. Jest to porównanie danych ze źródłem, nie dobór terapii; nie dodano nowych leków, wartości dawek ani pól potwierdzenia warunków klinicznych. Szczegóły: [duration-regimen-notes.md](duration-regimen-notes.md).
+
 ## Android: dodanie do ekranu głównego
 
 1. Otwórz opublikowany adres aplikacji w **Chrome** na Androidzie przy dostępie do internetu.
@@ -117,6 +123,7 @@ Po zmianie reguł klinicznych trzeba osobno zaktualizować źródło, datę wery
 | `regimens.js`, `regimen-engine.js` | Jawnie wybierane schematy źródłowe i kontrola ich zakresu |
 | `dental-systemic.js`, `dental-topicals.js`, `human-regimens.js` | Źródłowe dane stomatologiczne: preparaty, postaci, opakowania, schematy i instrukcje |
 | `human-regimen-engine.js`, `dental-output.js` | Warunki schematu dla ludzi i teksty zachowujące doraźne limity |
+| `duration-regimen.js`, `duration-guidance.js`, `duration-reference.js`, `duration-view.js` | Dopasowanie rzeczywistego dawkowania do źródła i wspólna ocena czasu w polach, skrótach oraz ostrzeżeniach wyniku |
 | `product-search.js` | Wyszukiwanie dokładnych wariantów preparat–moc–opakowanie |
 | `dental-source-review.md`, `dental-*.test.mjs`, `human-regimen-engine.test.mjs`, `product-search.test.mjs` | Ścieżka źródeł oraz testy zakresów i integracji |
 | `regimen-engine.test.mjs`, `regimens.test.mjs`, `equine-regimens.test.mjs`, `equine-practice.test.mjs`, `veterinary-vials.test.mjs` | Testy granic wieku/masy, faz, czasu i zgodności z katalogiem |

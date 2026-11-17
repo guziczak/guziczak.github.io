@@ -26,7 +26,7 @@
 @media(max-width:780px){.duration-choices-label,.duration-choice strong{font-size:13px}.duration-choice small{font-size:10px}.duration-origin,.duration-feedback,.duration-review,.duration-sources{font-size:12px!important}.duration-sources summary{min-height:44px}.duration-sources small{font-size:11px}.duration-selected{font-size:12px}}
 @media(forced-colors:active){.quick-days.duration-choices .duration-choice.active{outline:2px solid Highlight;outline-offset:-4px}.duration-selected{color:ButtonText}}
 
-/* Keep the scope of a duration-only comparison visible beside its colors. */
+/* Keep the external reference and its applicability conditions beside the colors. */
 .duration-reference-context{font-size:11px;line-height:1.5;color:var(--muted);margin:7px 0}
 .duration-reference-context p{font-size:inherit;line-height:inherit;margin:4px 0}
 @media(max-width:780px){.duration-reference-context{font-size:12px}}

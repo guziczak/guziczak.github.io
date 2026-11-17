@@ -1,11 +1,12 @@
-/** Optional duration-only comparison, never a replacement dosing regimen.
+/** Optional external reference, never a replacement dosing regimen.
  * Entered dose, frequency, duration and primary-source constraints stay intact.
  * This does not establish prior treatment failure or clinical suitability.
  */
+import { durationDosePreview } from './duration-regimen.js';
 const SOURCE_ID = 'dental-augmentin-400-57-child';
 const UCSF_URL = 'https://idmp.ucsf.edu/content/dental-infection';
 const positive = v => typeof v === 'number' && Number.isFinite(v) && v > 0;
-const near = (a, b) => Math.abs(a - b) <= Number.EPSILON * 64 * Math.max(1, Math.abs(a), Math.abs(b));
+const near = (a, b) => Math.abs(a - b) <= Number.EPSILON * 256 * Math.max(1, Math.abs(a), Math.abs(b));
 
 export function supplementaryDurationReference({ source, form, context = {}, guidance } = {}) {
   if (!guidance?.applicable || guidance.coverage !== 'reviewed'
@@ -27,11 +28,7 @@ export function supplementaryDurationReference({ source, form, context = {}, gui
   // not a numeric age boundary stated by the UCSF dental page.
   if (ageUpperMonths === null || ageUpperMonths >= 216 || !positive(context.weight)) return null;
   const sourceSingleMg = Math.min(22.5 * context.weight, 875);
-  const mode = context.doseMode || source.doseMode;
-  const enteredSingleMg = !positive(context.dose) ? null
-    : mode === 'perKgDay' && positive(context.frequency) ? context.dose * context.weight / context.frequency
-      : mode === 'perKgDose' ? context.dose * context.weight
-        : mode === 'fixed' ? context.dose : mode === 'units' ? context.dose * 80 : null;
+  const enteredSingleMg = durationDosePreview({source,form,context})?.singleMg ?? null;
   const doseComparison = enteredSingleMg === null || !positive(context.frequency) ? 'unknown'
     : near(enteredSingleMg, sourceSingleMg) && context.frequency === 2 ? 'same' : 'different';
   return {
@@ -47,8 +44,9 @@ export function supplementaryDurationReference({ source, form, context = {}, gui
     conditionText: 'UCSF: po niewystarczającej odpowiedzi na leczenie pierwszego wyboru. Przy powikłaniach czas ustala się indywidualnie.',
     doseComparison,
     contextNotice: doseComparison === 'different'
-      ? 'Dawka lub częstość różni się od UCSF — kolory porównują tylko dni.'
-      : 'Kolory porównują tylko dni, nie potwierdzają wskazania ani doboru postaci.',
+      ? 'Dawka lub częstość różni się od UCSF — czas wymaga oceny w kontekście całego schematu.'
+      : doseComparison === 'unknown' ? 'Uzupełnij dawkowanie, aby porównać je z UCSF.'
+        : 'Dawkowanie liczbowe odpowiada UCSF. Warunki zastosowania odniesienia wymagają oceny.',
     comparisonSingleMg: sourceSingleMg, comparisonFrequency: 2,
     primarySourceUrl: source.sourceUrl, primarySourceLabel: source.sourceLabel,
     additionalSources: [{

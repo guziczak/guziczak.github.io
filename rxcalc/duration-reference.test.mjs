@@ -30,8 +30,8 @@ test('UCSF provenance retains prior nonresponse, dose cap, twice-daily and denta
  assert.equal(r.reviewAfterDays,null);assert.equal(r.reviewText,'');
  assert.match(r.additionalSources[0].url,/maximum-dosing/);
 });
-test('3 through 7 days are green duration comparisons, never approval of the whole regimen',()=>{
- for(const d of [3,4,5,6,7]){const a=assessDuration(d,g());assert.equal(a.tone,'within');assert.equal(a.short,'W zakresie czasu');assert.match(a.message,/UCSF.*tylko czasu/);}
+test('35 mg/kg/day does not grant green UCSF agreement for any 3 through 7 day duration',()=>{
+ for(const d of [3,4,5,6,7]){const a=assessDuration(d,g());assert.equal(a.tone,'warning');assert.equal(a.short,'Wymaga oceny');assert.equal(a.timeState,'within');assert.match(a.message,/UCSF/);assert.ok(durationResultWarning(d,g()));}
 });
 test('short and longer than reference durations are advisory amber, not invented prohibitions',()=>{
  for(const d of [1,2,8,10]){const a=assessDuration(d,g());assert.equal(a.tone,'warning');assert.match(a.message,/UCSF/);}
@@ -69,7 +69,26 @@ test('dose comparison includes frequency and UCSF 875 mg per-dose cap, without u
 test('absence of dose/frequency is not agreement and does not choose a course',()=>{
  const r=g({context:{...context,dose:null,frequency:null,days:null}});
  assert.equal(r.reference.doseComparison,'unknown');assert.equal(assessDuration(null,r).state,'pending');
+ assert.equal(assessDuration(3,r).tone,'neutral');
  assert.equal(source.defaultDays,undefined);
+});
+test('UCSF notice and duration use the same actual dose after rounding',()=>{
+ const r=g({context:{...context,dose:45,roundingStep:0.1}});
+ assert.equal(r.reference.doseComparison,'different');
+ assert.equal(r.regimen.state,'mismatch');
+ assert.match(r.reference.contextNotice,/różni się/);
+ assert.doesNotMatch(r.reference.contextNotice,/odpowiada UCSF/);
+ assert.equal(assessDuration(3,r).tone,'warning');
+ const html=durationGuidanceMarkup({choices:[3,5,7,10],days:3,guidance:r});
+ assert.doesNotMatch(html,/Dawkowanie liczbowe odpowiada UCSF/);
+});
+test('numerical agreement with UCSF does not confirm its unassessed clinical conditions',()=>{
+ const r=g({context:{...context,dose:45}});
+ assert.equal(r.reference.doseComparison,'same');assert.equal(r.regimen.state,'review');
+ for(const d of [3,5,7]){
+  const a=assessDuration(d,r);assert.equal(a.tone,'warning');
+  assert.match(a.message,/niewystarczającej odpowiedzi/);assert.match(a.message,/powikłaniach/);
+ }
 });
 test('unknown patient conditions suspend colors rather than imply clinical applicability',()=>{
  for(const change of [{weight:null},{weight:40},{age:null},{age:1,ageUnit:'months'},{patientType:'adult'},
@@ -129,7 +148,7 @@ test('view keeps external context visible and separate ChPL review in disclosure
  assert.ok(html.indexOf('Dawka lub częstość różni')<html.indexOf('<details'));
  assert.ok(html.indexOf('niewystarczającej odpowiedzi')<html.indexOf('<details'));
  assert.match(html,/Osobny warunek ChPL:/);assert.match(html,/14 dni/);assert.doesNotMatch(html,/według SDCEP/);
- assert.match(html,/duration-within active.*data-value="5"/);assert.doesNotMatch(html,/\bdisabled\b/);
+ assert.match(html,/duration-warning active.*data-value="5"/);assert.doesNotMatch(html,/\bdisabled\b/);
 });
 test('selected longer course retains warning color and one selected checkmark',()=>{
  const html=durationGuidanceMarkup({choices:[3,5,7,10],days:10,guidance:g()});

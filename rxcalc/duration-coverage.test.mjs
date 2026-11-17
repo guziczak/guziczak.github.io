@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {HUMAN_REGIMENS} from './human-regimens.js';
 import {LIQUID_STARTER_REGIMENS} from './liquid-starters.js';
 import {REGIMENS} from './regimens.js';
+import {resolveRegimen} from './regimen-engine.js';
 import {DRUGS} from './catalogue.js';
 import {DURATION_BINDINGS,auditedDurationPolicy} from './duration-rules.js';
 import {resolveDurationGuidance,assessDuration,durationDayChoices,durationResultWarning,durationPatientEligibility} from './duration-guidance.js';
@@ -19,10 +20,14 @@ function options(s, formId=s.formIds[0]) {
  if(s.minWeight!=null)weight=Math.max(weight,s.minWeight+(s.minWeightExclusive?1:0));
  if(s.maxWeight!=null)weight=Math.min(weight,s.maxWeight-(s.maxWeightExclusive?1:0));
  if(animal)weight=s.species[0]==='horse'?500:s.species[0]==='cat'?4:10;
+ if(s.id==='gastazole-followup')weight=400; // A whole applicator division at this stage's dose.
  if(animal&&s.weightBands)weight=(s.weightBands[0].min+s.weightBands[0].max)/2;
  const context=animal?{specialty:'veterinary',species:s.species[0],age:5,ageUnit:'years',weight,foodChainStatus:'excluded'}
  :{specialty:s.specialties[0],patientType:child?'child':'adult',age,ageUnit:'months',weight,renalStatus:'unknown',crcl:null};
- return {source:s,form:forms.find(f=>f.id===formId),context:{...context,formId,days:null,dose:null,frequency:null}};
+ const resolved=animal?resolveRegimen(s,{...context,formId,days:s.fixedDays||s.minDays||1}):null;
+ return {source:s,form:forms.find(f=>f.id===formId),context:{...context,formId,days:null,
+  doseMode:s.doseMode,dose:animal?resolved.dose:s.dose??s.doseRange?.min??null,
+  frequency:animal?resolved.frequency:s.frequency??s.frequencyOptions?.[0]??null}};
 }
 const lookup=id=>options(records.find(s=>s.id===id));
 const guidance=id=>resolveDurationGuidance(lookup(id));
@@ -53,11 +58,24 @@ test('reviewed-no-range differs from unreviewed and manual statuses',()=>{
  assert.match(assessDuration(10,g).message,/Źródło sprawdzone/);assert.equal(assessDuration(10,g).tone,'neutral');
  assert.equal(resolveDurationGuidance({}).coverage,'manual');
 });
+test('changed phase, weight table, dose limits or instructions suspend audited agreement',()=>{
+ for(const [id,change] of [
+  ['butagran-horse-days-two-four',s=>s.phaseLabel='Inny etap'],
+  ['iverpraz-horse-mixed-infestation-table',s=>s.weightBands[0].units+=1],
+  ['dental-augmentin-400-57-child',s=>s.maxDailyMgPerKg=90],
+  ['baikadent-chronic-mucosa',s=>s.instructionText='Inna instrukcja'],
+ ]){
+  const o=lookup(id),source=structuredClone(o.source);change(source);
+  const g=resolveDurationGuidance({...o,source});
+  assert.equal(g.coverage,'changed',id);assert.equal(g.applicable,false);
+  assert.equal(assessDuration(3,g).tone,'neutral');
+ }
+});
 test('Augmentin primary policies retain extension threshold; pediatric comparison is separate',()=>{
  for(const s of records.filter(s=>s.id.startsWith('dental-augmentin'))){const g=resolveDurationGuidance(options(s));
   assert.equal(g.rule.reviewAfterDays,14);
   assert.equal(g.rule.minimum,null);assert.equal(g.rule.maximum,null);
-  for(const d of [3,5,7,10,14])assert.equal(assessDuration(d,g).tone,g.reference?(d<=7?'within':'warning'):'neutral');
+  for(const d of [3,5,7,10,14])assert.equal(assessDuration(d,g).tone,g.reference?'warning':'neutral');
   assert.equal(assessDuration(15,g).tone,'warning');assert.match(g.rule.reviewText,/Nie przedłużać.*ponad 14/);
  }
 });
@@ -86,6 +104,13 @@ test('procedures never reuse dressing-retention interval as course length',()=>{
 test('fixed phases and single treatments have no editable multi-day quick choices',()=>{
  for(const s of records.filter(s=>s.fixedDays)){const g=resolveDurationGuidance(options(s));
  assert.deepEqual(durationDayChoices(s,g),[]);assert.equal(assessDuration(s.fixedDays,g).tone,'within');assert.equal(assessDuration(s.fixedDays+1,g).tone,'critical');}
+});
+test('a correct duration does not approve a dose outside the applicator divisions',()=>{
+ const o=lookup('gastazole-followup');o.context.weight=500;
+ const g=resolveDurationGuidance(o),a=assessDuration(28,g);
+ assert.equal(a.timeState,'within');assert.equal(a.tone,'warning');
+ assert.match(a.message,/podział|dział/);
+ assert.equal(assessDuration(29,g).tone,'critical');
 });
 test('chronic Cardisure and daily Eludril are not silently treated as finite courses',()=>{
  for(const id of ['cardisure-preferred','eludril-care-adult','eludril-care-child']){const o=lookup(id),g=resolveDurationGuidance(o);

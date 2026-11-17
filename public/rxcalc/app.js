@@ -173,6 +173,8 @@ function quickDays(source, cardio) {
 function currentDurationGuidance() {
   return resolveDurationGuidance({source:getSourceRegimen(),form:getForm(),
     context:{...(isVeterinary()?regimenContext():humanContext()),specialty:state.specialty,
+      doseMode:state.doseMode,dose:num(state.dose),frequency:num(state.frequency),
+      roundingStep:num(state.roundingStep),manualMax:num(state.manualMax),
       custom:state.custom,calculationBlocked:!!getForm()?.calculationBlocked}});
 }
 function durationChoices(source, cardio = false) {
