@@ -1,3 +1,4 @@
+import { supplementaryDurationReference } from './duration-reference.js';
 import { resolveHumanRegimen } from './human-regimen-engine.js';
 import { resolveRegimen } from './regimen-engine.js';
 import { auditedDurationPolicy, DURATION_REVIEW_DATE } from './duration-rules.js';
@@ -49,23 +50,25 @@ export function resolveDurationGuidance({source=null,form=null,context={}}={}) {
   if(!durationPatientEligibility(source,{...context,formId:form.id}))
     return neutral('Źródło czasu sprawdzone. Uzupełnij lub sprawdź dane pacjenta; kolorowa ocena jest wstrzymana.','reviewed',rule);
   if(rule.origin==='external'&&!sdcepPatientScope(context))return neutral('Brak potwierdzonego zakresu wieku dla odniesienia SDCEP (tabela dziecięca od 6 miesięcy).','reviewed',rule);
-  return {applicable:true,coverage:'reviewed',rule,reason:''};
+  const guidance={applicable:true,coverage:'reviewed',rule,reason:''};
+  const reference=supplementaryDurationReference({source,form,context,guidance});
+  return reference?{...guidance,reference}:guidance;
 }
-export function assessDuration(value,guidance) {
+function assessRuleDuration(value,guidance) {
   const blank=!has(value)||typeof value==='string'&&!value.trim();
   if(blank)return {state:'pending',tone:'neutral',short:'',message:'Wybierz czas; żadna liczba dni nie jest ustawiana automatycznie.'};
   const days=typeof value==='number'?value:Number(String(value).trim().replace(',','.'));
   if(!positiveDay(days))return {state:'invalid',tone:'critical',short:'Nieprawidłowy czas',message:'Podaj całkowitą liczbę dni od 1 do 3660.'};
   if(!guidance?.applicable||!guidance.rule)return {state:'unassessed',tone:'neutral',short:'',message:guidance?.reason||'Odniesienie do czasu nie zostało zweryfikowane.'};
-  const r=guidance.rule,origin=r.origin==='external'?'w SDCEP':'w źródle';
+  const r=guidance.rule,externalName=r.organization||'SDCEP',origin=r.origin==='external'?`w ${externalName}`:'w źródle';
   if(r.minimum&&days<r.minimum)return {state:'below',tone:'warning',short:'Krócej',message:`Krócej niż ${rangeLabel(r)} ${origin} — wymaga indywidualnej oceny.`};
   if(r.maximum&&days>r.maximum)return {state:'above',tone:r.hardMaximum?'critical':'warning',short:r.hardMaximum?'Ponad zakres':'Dłużej',
     message:r.hardMaximum?`Przekroczony czas wybranego ${r.kind==='stage'?'etapu':'schematu'}: ${r.maximum} dni. To nie jest uniwersalny limit leku.`
       :r.reviewMode==='extension'?r.reviewText:`Dłużej niż ${rangeLabel(r)} ${origin} — wymaga indywidualnej oceny.`};
   if(r.reviewAfterDays&&days>r.reviewAfterDays&&r.origin!=='external')return {state:'review',tone:'warning',short:r.reviewMode==='conditional'?'Oceń objawy':'Ocena',message:r.reviewText};
-  if(r.minimum&&r.maximum)return {state:'within',tone:'within',short:r.kind==='single'?'Jednorazowo':r.fixed?'Ze źródła':'W zakresie',
+  if(r.minimum&&r.maximum)return {state:'within',tone:'within',short:r.kind==='single'?'Jednorazowo':r.fixed?'Ze źródła':r.organization?'W zakresie czasu':'W zakresie',
     message:r.kind==='single'?'Jednorazowe podanie w wybranym schemacie; nie oznacza codziennego powtarzania.'
-      :`Czas ${r.kind==='stage'?'wybranego etapu':r.fixed?'wybranego schematu':`w zakresie ${rangeLabel(r)}`}${r.origin==='external'?' według SDCEP':' ze źródła'}. Ocena dotyczy tylko czasu, nie całego leczenia.`};
+      :`Czas ${r.kind==='stage'?'wybranego etapu':r.fixed?'wybranego schematu':`w zakresie ${rangeLabel(r)}`}${r.origin==='external'?` według ${externalName}`:' ze źródła'}. Ocena dotyczy tylko czasu, nie całego leczenia.`};
   const noRange={
     individual:'Źródło sprawdzone: nie określa pełnego zakresu dni dla tego wskazania. Czas ustala lekarz.',
     procedural:'Czas i kolejność zabiegów ustala lekarz; nie jest to zwykła kuracja wyznaczana liczbą dni.',
@@ -77,6 +80,17 @@ export function assessDuration(value,guidance) {
     'review-only':'Źródło sprawdzone: określa warunek kontroli, nie pełny zalecany zakres dni.',
   };
   return {state:'unassessed',tone:'neutral',short:'',message:noRange[r.kind]||'Źródło nie określa pełnego zalecanego zakresu dni.'};
+}
+/** Primary-source time restrictions remain independent of a comparison range. */
+export function assessDuration(value,guidance) {
+  const primary=assessRuleDuration(value,guidance);
+  if(!guidance?.applicable||!guidance.reference||['pending','invalid'].includes(primary.state))return primary;
+  const comparison=assessRuleDuration(value,{...guidance,rule:guidance.reference});
+  if(['below','above','review'].includes(primary.state)) {
+    const main=primary.tone==='critical'||['within','neutral'].includes(comparison.tone)?primary:comparison;
+    return {...main,message:[comparison.message,primary.message].filter(Boolean).join(' '),sourceState:primary.state};
+  }
+  return {...comparison,sourceState:primary.state};
 }
 export function durationResultWarning(value,guidance) {
   const a=assessDuration(value,guidance);

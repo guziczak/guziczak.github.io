@@ -53,9 +53,11 @@ test('reviewed-no-range differs from unreviewed and manual statuses',()=>{
  assert.match(assessDuration(10,g).message,/Źródło sprawdzone/);assert.equal(assessDuration(10,g).tone,'neutral');
  assert.equal(resolveDurationGuidance({}).coverage,'manual');
 });
-test('all adult and child Augmentin variants have reviewed extension threshold, not green courses',()=>{
+test('Augmentin primary policies retain extension threshold; pediatric comparison is separate',()=>{
  for(const s of records.filter(s=>s.id.startsWith('dental-augmentin'))){const g=resolveDurationGuidance(options(s));
-  assert.equal(g.rule.reviewAfterDays,14);for(const d of [3,5,7,10,14])assert.equal(assessDuration(d,g).tone,'neutral');
+  assert.equal(g.rule.reviewAfterDays,14);
+  assert.equal(g.rule.minimum,null);assert.equal(g.rule.maximum,null);
+  for(const d of [3,5,7,10,14])assert.equal(assessDuration(d,g).tone,g.reference?(d<=7?'within':'warning'):'neutral');
   assert.equal(assessDuration(15,g).tone,'warning');assert.match(g.rule.reviewText,/Nie przedłużać.*ponad 14/);
  }
 });
