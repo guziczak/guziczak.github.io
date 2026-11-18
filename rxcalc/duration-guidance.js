@@ -112,6 +112,9 @@ export function assessDuration(value,guidance) {
   if(regimen?.state==='matched')return {...time,
     short:rule.kind==='single'?'Jednorazowo':rule.kind==='stage'?'Zgodny etap':'Zgodne ze schematem',
     message:`${range} Wpisane dawkowanie i sprawdzane warunki są zgodne ${rule.kind==='stage'?'z wybranym etapem':'ze schematem źródłowym'}. To nie pełna ocena kliniczna leczenia.`};
+  if(guidance.reference&&regimen?.state==='reference-matched')return {...time,
+    timeState:time.state,state:'reference-within',tone:'neutral',short:'Zgodność liczbowa',
+    message:`Dawka, częstość i czas zgodne liczbowo z odniesieniem ${rule.organization||'UCSF'}.`};
   const incomplete=!regimen||regimen.state==='incomplete';
   return {...time,timeState:time.state,state:incomplete?'regimen-incomplete':regimen.state==='mismatch'?'regimen-mismatch':'regimen-review',
     tone:incomplete?'neutral':'warning',short:incomplete?'Uzupełnij dane':'Wymaga oceny',

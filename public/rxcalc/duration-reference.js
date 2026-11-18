@@ -46,7 +46,7 @@ export function supplementaryDurationReference({ source, form, context = {}, gui
     contextNotice: doseComparison === 'different'
       ? 'Dawka lub częstość różni się od UCSF — czas wymaga oceny w kontekście całego schematu.'
       : doseComparison === 'unknown' ? 'Uzupełnij dawkowanie, aby porównać je z UCSF.'
-        : 'Dawkowanie liczbowe odpowiada UCSF. Warunki zastosowania odniesienia wymagają oceny.',
+        : 'Dawkowanie liczbowe odpowiada UCSF.',
     comparisonSingleMg: sourceSingleMg, comparisonFrequency: 2,
     primarySourceUrl: source.sourceUrl, primarySourceLabel: source.sourceLabel,
     additionalSources: [{

@@ -37,11 +37,26 @@ test('35 mg/kg/day does not inherit green from the UCSF duration range', () => {
   }
 });
 
-test('numeric UCSF agreement still needs assessment of unmodelled clinical and formulation conditions', () => {
-  const assessment = assessDurationRegimen(ucsf({ dose: 45 }));
-  assert.equal(assessment.state, 'review');
-  for (const text of [/niewystarczającej odpowiedzi/, /powikłaniach/, /postaci/])
-    assert.match(assessment.reasons.join(' '), text);
+test('numeric UCSF agreement has a distinct reference match without a permanent warning', () => {
+  for (const [doseMode, dose] of [['perKgDay', 45], ['perKgDose', 22.5], ['fixed', 450], ['units', 5.625]]) {
+    const assessment = assessDurationRegimen(ucsf({ doseMode, dose }));
+    assert.equal(assessment.state, 'reference-matched', doseMode);
+    assert.deepEqual(assessment.reasons, []);
+    assert.notEqual(assessment.state, 'matched', 'Numerical reference agreement is separate from a primary-source match');
+  }
+});
+
+test('a UCSF reference match still requires complete actual inputs and reference targets', () => {
+  for (const patch of [{ dose: null }, { frequency: null }])
+    assert.equal(assessDurationRegimen(ucsf({ dose: 45, ...patch })).state, 'incomplete');
+  assert.equal(assessDurationRegimen(ucsf({ dose: 45, frequency: 1 })).state, 'mismatch');
+  for (const key of ['comparisonSingleMg', 'comparisonFrequency']) {
+    const scenario = ucsf({ dose: 45 });
+    scenario.reference[key] = null;
+    const assessment = assessDurationRegimen(scenario);
+    assert.equal(assessment.state, 'review', key);
+    assert.match(assessment.reasons.join(' '), /Brak pełnych zweryfikowanych danych/);
+  }
 });
 
 test('source range accepts both dose endpoints without inventing a lower-bound warning', () => {
@@ -88,7 +103,9 @@ test('assessment is pure and never replaces, chooses or validates the selected n
 
 test('actual rounded dose, not the unrounded input, is compared with UCSF', () => {
   assert.equal(assessDurationRegimen(ucsf({ dose: 45, roundingStep: 0.1 })).state, 'mismatch');
-  assert.equal(assessDurationRegimen(ucsf({ dose: 45, roundingStep: 0.125 })).state, 'review');
+  const exact = assessDurationRegimen(ucsf({ dose: 45, roundingStep: 0.125 }));
+  assert.equal(exact.state, 'reference-matched');
+  assert.deepEqual(exact.reasons, []);
   // A rounded dose may still be within the original dose range; no new
   // percentage tolerance or automatic clinical acceptance is introduced.
   assert.equal(assessDurationRegimen(augmentin({ dose: 45, roundingStep: 0.1 })).state, 'matched');
@@ -116,7 +133,8 @@ test('the UCSF per-dose cap is compared against the actual amount', () => {
   scenario.reference.comparisonSingleMg = 875;
   assert.equal(assessDurationRegimen(scenario).state, 'mismatch');
   scenario.context.dose = 875 * 2 / 39;
-  assert.equal(assessDurationRegimen(scenario).state, 'review');
+  assert.equal(assessDurationRegimen(scenario).state, 'reference-matched');
+  assert.deepEqual(assessDurationRegimen(scenario).reasons, []);
 });
 
 test('SDCEP cannot acquire complete-regimen agreement from a ChPL dose match', () => {

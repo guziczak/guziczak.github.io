@@ -24,7 +24,9 @@ function choiceAssessment(value, guidance) {
   const time = assessDurationTime(value, guidance);
   if (time.state === 'within') return { ...time, tone: 'neutral',
     short: `W zakresie ${organization(reference)}`,
-    message: `Czas mieści się w zakresie ${reference.minimum}–${reference.maximum} dni według ${organization(reference)}. Warunki zastosowania odniesienia opisano osobno.` };
+    message: guidance.reference && guidance.regimen?.state === 'reference-matched'
+      ? assessDuration(value, guidance).message
+      : `Czas mieści się w zakresie ${reference.minimum}–${reference.maximum} dni według ${organization(reference)}. Warunki zastosowania odniesienia opisano osobno.` };
   if (time.tone === 'warning' && ['below', 'above'].includes(time.state)) {
     // Name the external source only when its own range produces this warning.
     // A primary-source restriction can take precedence over an in-range reference.
@@ -39,13 +41,14 @@ function regimenContextMarkup(guidance) {
   const reference = externalRule(guidance);
   if (!reference || !guidance?.applicable) return '';
   const regimen = guidance.regimen;
+  if (guidance.reference && regimen?.state === 'reference-matched') return '';
   const reasons = [...new Set(regimen?.reasons?.filter(Boolean) || [])];
   const mismatch = regimen?.state === 'mismatch';
   const heading = mismatch ? `Różnica względem odniesienia ${organization(reference)}`
     : regimen?.state === 'incomplete' ? 'Uzupełnij dane do porównania schematu'
       : 'Warunki zastosowania wymagają oceny';
-  // The UCSF review reason already names these conditions. Other states retain
-  // the short conditions next to the comparison, outside the disclosure.
+  // Unresolved or differing comparisons retain their short source context.
+  // A numeric match uses the compact feedback and the full source details.
   const condition = guidance.reference?.conditionText && regimen?.state !== 'review'
     ? guidance.reference.conditionText : '';
   if (!reasons.length) reasons.push('Nie potwierdzono dopasowania całego schematu do odniesienia.');

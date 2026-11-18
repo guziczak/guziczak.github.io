@@ -115,7 +115,9 @@ function externalAssessment(rule, reference, actual, context) {
     if (context.frequency !== reference.comparisonFrequency)
       differences.push('Liczba podań na dobę różni się od schematu odniesienia UCSF.');
     if (differences.length) return result('mismatch', differences);
-    return result('review', ['Dawkowanie liczbowe odpowiada odniesieniu UCSF. Formularz nie ocenia niewystarczającej odpowiedzi na leczenie pierwszego wyboru, potrzeby indywidualizacji przy powikłaniach ani dopasowania zagranicznego odniesienia do wybranej postaci. Warunki wymagają oceny lekarza.']);
+    // Numeric agreement is informational. The reference's clinical scope stays
+    // in its source details; it is not a detected discrepancy or result warning.
+    return result('reference-matched');
   }
   if (rule?.origin === 'external')
     return result('review', ['Zakres SDCEP dotyczy określonego dawkowania i warunków zastosowania. Ich zgodność z wpisanym schematem wymaga odrębnej oceny.']);

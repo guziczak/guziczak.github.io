@@ -4,6 +4,12 @@ Lekki kalkulator dawkowania i zapotrzebowania na preparaty z interfejsem po pols
 
 Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym pliku nie stanowi potwierdzenia publikacji.
 
+## Zgodność liczbowa UCSF bez stałego alarmu — 18.11.2026
+
+Gdy rzeczywista dawka po zaokrągleniu i częstość odpowiadają odniesieniu UCSF, a czas mieści się w jego zakresie, wynik pokazuje krótką neutralną informację o zgodności liczbowej. Stały akapit o nieocenianych warunkach nie jest już ostrzeżeniem wyniku ani osobnym blokiem obok dni. Pełne warunki zastosowania pozostają w szczegółach źródła.
+
+Rozbieżności dawki/częstości, czas poza zakresem, warunki ponownej oceny i pozostałe ograniczenia zachowują działanie. Ten stan jest odrębny od potwierdzenia zgodności całego schematu; nie zmienia danych formularza ani końcowego potwierdzenia. Szczegóły: [duration-regimen-notes.md](duration-regimen-notes.md).
+
 ## Zakres pierwszej wersji
 
 - Profile stomatologiczny i kardiologiczny oraz katalog wybranych preparatów z odnośnikami do źródeł.

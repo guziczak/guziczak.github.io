@@ -8,6 +8,8 @@ Uzupełniający przegląd 17 rekordów jest dostępny w szczegółach. `duration
 
 ## Cel i zakres
 
+Aktualizacja 18.11.2026: zgodność rzeczywistej dawki i częstości z UCSF ma stan `reference-matched`, bez stałego zastrzeżenia w `reasons`. Gdy czas także mieści się w zakresie, ocena łączna ma stan `reference-within` i ton neutralny. Pokazuje jedynie „Dawka, częstość i czas zgodne liczbowo z odniesieniem UCSF”. `durationResultWarning()` nie tworzy z tego stanu alarmu. Warunki zastosowania UCSF pozostają w szczegółach źródła; rozbieżności i ostrzeżenia czasu działają jak dotąd.
+
 Kolor czasu uwzględnia zgodność dostępnych danych z wybranym źródłem dawkowania. Porównywane są postać, grupa pacjenta lub gatunek, sprawdzane warunki pacjenta, wybrane wskazanie i etap reprezentowane przez konkretny rekord źródłowy, rzeczywista dawka oraz częstość. Aplikacja nie rozpoznaje wskazania ani nie dobiera terapii. Zielony wynik oznacza zgodność w zakresie wykonanych kontroli, a nie pełną ocenę kliniczną, bezpieczeństwo całego leczenia lub potwierdzenie wszystkich przeciwwskazań.
 
 Aktualizacja nie dodaje leków, klinicznych wariantów dawkowania, wartości dawek do katalogu ani pól potwierdzających nieoceniane warunki kliniczne. Nie zmienia źródłowych ograniczeń, mechanizmu zaokrąglania ani indywidualnej oceny zaokrąglenia. Zmienia ocenę zgodności i jej prezentację w skrótach czasu, ręcznym wpisie oraz ostrzeżeniach wyniku.
@@ -16,7 +18,7 @@ Aktualizacja nie dodaje leków, klinicznych wariantów dawkowania, wartości daw
 
 - `duration-rules.js` przypisuje istniejące rekordy do reguł czasu i sprawdza sygnaturę danych objętych wcześniejszym przeglądem.
 - `durationPatientEligibility()` w `duration-guidance.js` sprawdza zakres pacjenta względem źródła. Tymczasowe wartości źródłowe używane na tym etapie nie potwierdzają aktualnie wpisanej dawki.
-- `assessDurationRegimen()` w `duration-regimen.js` sprawdza rzeczywiste dawkowanie i zwraca `matched`, `mismatch`, `incomplete` albo `review` wraz z przyczynami po polsku.
+- `assessDurationRegimen()` w `duration-regimen.js` sprawdza rzeczywiste dawkowanie i zwraca `matched`, `reference-matched`, `mismatch`, `incomplete` albo `review` wraz z przyczynami po polsku.
 - `durationDosePreview()` korzysta z kanonicznego `calculate()` w `engine.js`. Ten sam podgląd służy ocenie zgodności i informacji `doseComparison` wyświetlanej przy UCSF.
 - `assessDurationTime()` w `duration-guidance.js` udostępnia osobną ocenę liczby dni z zachowaniem pierwszeństwa ograniczeń pierwotnego źródła. `assessDuration()` łączy ją z wynikiem dopasowania całego schematu, a `durationResultWarning()` przekazuje ostrzeżenia czasu i dopasowania do wyniku formularza.
 - `duration-view.js` dla zewnętrznych odniesień pokazuje osobno porównanie dni w kafelkach oraz wszystkie przyczyny oceny schematu we wspólnym bloku. Dla pozostałych źródeł zachowuje dotychczasową prezentację oceny łącznej.
@@ -40,6 +42,7 @@ Poniższa tabela dotyczy oceny łącznej oraz kafelków bez zewnętrznego odnies
 | Dopasowanie dawkowania | Prezentacja czasu | Znaczenie |
 | --- | --- | --- |
 | `matched` | Zielony: „Zgodne ze schematem”, „Zgodny etap” albo „Jednorazowo” | Wpisane dane odpowiadają sprawdzanym warunkom konkretnego źródła. |
+| `reference-matched` | Neutralny: „Zgodność liczbowa” | Dawka i częstość odpowiadają UCSF; zgodny czas nie tworzy dodatkowego alarmu. Pełny zakres zastosowania jest w szczegółach. |
 | `incomplete` lub brak oceny dawkowania | Neutralny: „Uzupełnij dane” | Brakuje podstaw do potwierdzenia zgodności. |
 | `mismatch` | Ostrzeżenie: „Wymaga oceny” | Istnieje opisana rozbieżność dawki, częstości, etapu lub ograniczenia postaci. |
 | `review` | Ostrzeżenie: „Wymaga oceny” | Samo porównanie liczb nie rozstrzyga warunków odniesienia. |
@@ -54,11 +57,11 @@ Brak pełnego zakresu dni nadal pozostaje brakiem oceny zalecanego czasu. Samo m
 
 Kafelki w zewnętrznym odniesieniu pokazują tylko wynik `assessDurationTime()`: wewnątrz przedziału są neutralne, z etykietą „W zakresie UCSF” albo „W zakresie SDCEP”; poniżej/powyżej przedziału zachowują ostrzeżenie. Brak zastosowalności źródła nie uzyskuje etykiety zgodności z zakresem. Twarde ograniczenia pierwotnego źródła i warunki kontroli mają nadal pierwszeństwo.
 
-Wspólny blok przy grupie, dostępny także jako opis grupy dla czytnika ekranu, zawiera komplet przyczyn z `guidance.regimen.reasons`. Różnica ma oznaczenie ostrzegawcze; nieocenione warunki lub brak danych pozostają informacją neutralną. Przy wybranym czasie komunikat o samych dniach nie powtarza przyczyn oceny dawkowania. Ostrzeżenia wyniku i ocena całego schematu pozostają niezmienione.
+Wspólny blok przy grupie, dostępny także jako opis grupy dla czytnika ekranu, zawiera przyczyny z `guidance.regimen.reasons`. Różnica ma oznaczenie ostrzegawcze; brak danych pozostaje informacją neutralną. Przy `reference-matched` nie ma tego bloku ani odwołania `aria-describedby` do niego: informacja o zgodności liczb pojawia się w krótkim neutralnym komunikacie po wybraniu czasu. Wcześniejsze stałe zastrzeżenie UCSF nie tworzy ostrzeżenia wyniku.
 
 Zaznaczenie kafelka ma widoczny napis „Wybrano” i `aria-pressed`. Neutralny wybór używa neutralnego obrysu, nie zielonego. Źródło bez pełnego przedziału nadal nie potwierdza żadnego z proponowanych skrótów jako zalecanej kuracji. Ta zmiana nie zmienia wpisanej dawki, częstości, dni, zaokrąglenia ani potwierdzeń.
 
-UCSF jest osobnym odniesieniem tylko dla istniejącego dziecięcego wariantu Augmentinu i dokładnie sprawdzanej postaci. Rzeczywista dawka na podanie jest porównywana z `comparisonSingleMg`, a częstość z `comparisonFrequency`. Rozbieżność daje `mismatch`. Przy zgodnych liczbach wynik nadal wynosi `review`: formularz nie ustala niewystarczającej odpowiedzi na leczenie pierwszego wyboru, potrzeby indywidualizacji przy powikłaniach ani dopasowania zagranicznego odniesienia do postaci. Szczegóły pochodzenia zakresu pozostają w [duration-reference-notes.md](duration-reference-notes.md).
+UCSF jest osobnym odniesieniem tylko dla istniejącego dziecięcego wariantu Augmentinu i dokładnie sprawdzanej postaci. Rzeczywista dawka na podanie jest porównywana z `comparisonSingleMg`, a częstość z `comparisonFrequency`. Rozbieżność daje `mismatch`, zgodność daje `reference-matched`. Formularz nie ustala warunków klinicznych opisanych przez UCSF; ich opis pozostaje w szczegółach źródła, a nie w stałym alarmie przy zgodnym wyniku. Szczegóły pochodzenia zakresu pozostają w [duration-reference-notes.md](duration-reference-notes.md).
 
 SDCEP pozostaje odrębnym odniesieniem dla wskazanych wariantów Ospamoxu. Zgodność wpisanej dawki z wybraną ChPL nie potwierdza zgodności całego dawkowania i warunków SDCEP, więc po poprawnym sprawdzeniu źródła wynik nadal wynosi `review`. Brak danych daje wcześniej `incomplete`, a rozbieżność z wybranym źródłem `mismatch`. Żadne z tych dwóch odniesień zewnętrznych nie uzyskuje zielonego potwierdzenia tylko dzięki zgodnym liczbom lub zaznaczeniu nowego pola — takich pól nie dodano.
 

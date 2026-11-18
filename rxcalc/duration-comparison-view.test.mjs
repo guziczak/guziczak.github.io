@@ -93,18 +93,39 @@ test('25 and 35 mg/kg/day show neutral in-range UCSF days with one shared mismat
   }
 });
 
-test('numeric 45 mg/kg/day agreement changes shared context without approving the treatment', () => {
+test('numeric UCSF agreement has compact neutral feedback and clinical conditions only in details', () => {
   const guidance = resolve({ dose: 45 });
   assert.equal(guidance.reference.doseComparison, 'same');
-  assert.equal(guidance.regimen.state, 'review');
+  assert.equal(guidance.regimen.state, 'reference-matched');
+  assert.deepEqual(guidance.regimen.reasons, []);
   const html = markup(guidance, 7);
   for (const days of [3, 5, 7]) neutralReferenceButton(html, days, 'UCSF');
-  const context = shared(html);
-  assert.match(context, /Dawkowanie liczbowe odpowiada (?:odniesieniu )?UCSF/);
-  assert.match(context, /niewystarczającej odpowiedzi/);
-  assert.match(context, /powikłaniach/);
+  assert.doesNotMatch(html, /duration-regimen-context/);
+  const message = feedback(html);
+  assert.match(message, /duration-neutral/);
+  for (const text of [/dawka/i, /częstość/i, /czas/i, /liczbow/i, /UCSF/]) assert.match(message, text);
+  assert.doesNotMatch(message, /⚠|wymaga.*oceny|niewystarczającej odpowiedzi|powikłani/i);
+  assert.doesNotMatch(html.split('<details')[0], /niewystarczającej odpowiedzi|powikłani/i);
+  const details = html.match(/<details\b[^>]*class="duration-sources"[^>]*>[\s\S]*?<\/details>/)?.[0];
+  assert.ok(details, 'Clinical source conditions remain available in the disclosure');
+  assert.ok(details.includes(escape(guidance.reference.note)));
+  for (const text of [/niewystarczającej odpowiedzi/, /powikłanych/, /konsultację stomatologiczną/, /14 dni/])
+    assert.match(details, text);
   assert.doesNotMatch(html, /duration-within|Zgodne ze schematem/);
-  assert.ok(durationResultWarning(7, guidance), 'Overall treatment review remains active');
+  for (const days of [3, 5, 7]) assert.equal(durationResultWarning(days, guidance), null);
+});
+
+test('matching UCSF dosing does not invent selected days or suppress a changed-frequency warning', () => {
+  const pending = markup(resolve({ dose: 45 }));
+  assert.doesNotMatch(feedback(pending), /czas zgodne liczbowo|Zgodność liczbowa/);
+  assert.doesNotMatch(pending, /aria-pressed="true"|duration-regimen-context/);
+  const changed = resolve({ dose: 45, frequency: 1 });
+  assert.equal(changed.regimen.state, 'mismatch');
+  const html = markup(changed, 5);
+  neutralReferenceButton(html, 5, 'UCSF');
+  assert.match(shared(html), /podań|często/i);
+  assert.ok(durationResultWarning(5, changed));
+  assert.doesNotMatch(feedback(html), /Dawka, częstość i czas zgodne liczbowo/);
 });
 
 test('below and above the UCSF range remain time warnings with explicit direction', () => {
@@ -139,13 +160,16 @@ test('a primary review threshold inside an external range remains visible and ye
 });
 
 test('15 days preserves both external range deviation and the primary 14-day review', () => {
-  const guidance = resolve({ dose: 25 });
-  const html = markup(guidance, 15, [3, 7, 10, 15]);
-  assert.match(button(html, 15), /duration-warning/);
-  const message = feedback(html);
-  assert.match(message, /3–7 dni w UCSF/);
-  assert.match(message, /Nie przedłużać leczenia ponad 14 dni/);
-  assert.equal(assessDurationTime(15, guidance).sourceState, 'review');
+  for (const dose of [25, 45]) {
+    const guidance = resolve({ dose });
+    const html = markup(guidance, 15, [3, 7, 10, 15]);
+    assert.match(button(html, 15), /duration-warning/);
+    const message = feedback(html);
+    assert.match(message, /3–7 dni w UCSF/);
+    assert.match(message, /Nie przedłużać leczenia ponad 14 dni/);
+    assert.equal(assessDurationTime(15, guidance).sourceState, 'review');
+    assert.ok(durationResultWarning(15, guidance));
+  }
 });
 
 test('SDCEP uses the same presentation split and keeps its review instruction visible', () => {

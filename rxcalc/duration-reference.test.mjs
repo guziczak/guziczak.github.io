@@ -34,20 +34,29 @@ test('35 mg/kg/day does not grant green UCSF agreement for any 3 through 7 day d
  for(const d of [3,4,5,6,7]){const a=assessDuration(d,g());assert.equal(a.tone,'warning');assert.equal(a.short,'Wymaga oceny');assert.equal(a.timeState,'within');assert.match(a.message,/UCSF/);assert.ok(durationResultWarning(d,g()));}
 });
 test('short and longer than reference durations are advisory amber, not invented prohibitions',()=>{
- for(const d of [1,2,8,10]){const a=assessDuration(d,g());assert.equal(a.tone,'warning');assert.match(a.message,/UCSF/);}
+ for(const dose of [35,45])for(const d of [1,2,8,10]){
+  const guidance=g({context:{...context,dose}}),a=assessDuration(d,guidance);
+  assert.equal(a.tone,'warning');assert.match(a.message,/UCSF/);assert.ok(durationResultWarning(d,guidance));
+ }
  assert.equal(assessDuration(2,g()).state,'below');assert.equal(assessDuration(10,g()).state,'above');
 });
 test('primary 14-day extension review survives a supplementary time range',()=>{
- assert.doesNotMatch(assessDuration(14,g()).message,/Nie przedłużać/);
- const a=assessDuration(15,g());assert.equal(a.tone,'warning');assert.equal(a.sourceState,'review');
- assert.match(a.message,/3–7 dni w UCSF/);assert.match(a.message,/Nie przedłużać.*14 dni/);
- assert.equal(durationResultWarning(15,g()),a.message);
+ for(const dose of [35,45]){
+  const guidance=g({context:{...context,dose}});
+  assert.doesNotMatch(assessDuration(14,guidance).message,/Nie przedłużać/);
+  const a=assessDuration(15,guidance);assert.equal(a.tone,'warning');assert.equal(a.sourceState,'review');
+  assert.match(a.message,/3–7 dni w UCSF/);assert.match(a.message,/Nie przedłużać.*14 dni/);
+  assert.equal(durationResultWarning(15,guidance),a.message);
+ }
 });
 test('primary hard or review restrictions cannot be turned green by supplementary comparison',()=>{
- const r=g();r.rule={...r.rule,maximum:4,hardMaximum:true};
+ const r=g({context:{...context,dose:45}});assert.equal(r.regimen.state,'reference-matched');
+ r.rule={...r.rule,maximum:4,hardMaximum:true};
  assert.equal(assessDuration(5,r).tone,'critical');
+ assert.ok(durationResultWarning(5,r));
  r.rule={...r.rule,maximum:null,hardMaximum:false,reviewAfterDays:4,reviewText:'Ocena po 4 dniach.'};
  assert.equal(assessDuration(5,r).tone,'warning');assert.match(assessDuration(5,r).message,/Ocena po 4 dniach/);
+ assert.match(durationResultWarning(5,r),/Ocena po 4 dniach/);
 });
 test('typed and clicked durations use the same assessment; empty is not zero',()=>{
  for(const d of [2,3,5,7,10,15])assert.deepEqual(assessDuration(d,g()),assessDuration(String(d),g()));
@@ -82,12 +91,28 @@ test('UCSF notice and duration use the same actual dose after rounding',()=>{
  const html=durationGuidanceMarkup({choices:[3,5,7,10],days:3,guidance:r});
  assert.doesNotMatch(html,/Dawkowanie liczbowe odpowiada UCSF/);
 });
-test('numerical agreement with UCSF does not confirm its unassessed clinical conditions',()=>{
+test('matching actual UCSF dosing and days gives neutral numerical agreement without a result warning',()=>{
+ for(const patch of [{dose:45},{dose:45,roundingStep:0.125},{weight:39,dose:875*2/39}]){
+  const scenario={...opts(),context:{...context,...patch}},before=structuredClone(scenario);
+  const r=resolveDurationGuidance(scenario);
+  assert.equal(r.reference.doseComparison,'same');assert.equal(r.regimen.state,'reference-matched');
+  assert.deepEqual(r.regimen.reasons,[]);
+  for(const d of [3,4,5,6,7]){
+   const a=assessDuration(d,r);
+   assert.equal(a.state,'reference-within');assert.equal(a.timeState,'within');assert.equal(a.tone,'neutral');
+   for(const text of [/dawka/i,/częstość/i,/czas/i,/liczbow/i,/UCSF/])assert.match(a.message,text);
+   assert.doesNotMatch(a.message,/wymagają oceny|niewystarczającej odpowiedzi|powikłani/i);
+   assert.equal(durationResultWarning(d,r),null);
+  }
+  for(const text of [/niewystarczającej odpowiedzi/,/powikłanych/,/konsultację stomatologiczną/])assert.match(r.reference.note,text);
+  assert.deepEqual(scenario,before,'Assessment must not change the dose, days or source data');
+ }
+});
+test('numerical dosing agreement alone cannot mark missing or invalid days as matching',()=>{
  const r=g({context:{...context,dose:45}});
- assert.equal(r.reference.doseComparison,'same');assert.equal(r.regimen.state,'review');
- for(const d of [3,5,7]){
-  const a=assessDuration(d,r);assert.equal(a.tone,'warning');
-  assert.match(a.message,/niewystarczającej odpowiedzi/);assert.match(a.message,/powikłaniach/);
+ for(const days of ['',null,undefined])assert.equal(assessDuration(days,r).state,'pending');
+ for(const days of [0,-1,1.5,'invalid']){
+  const a=assessDuration(days,r);assert.equal(a.state,'invalid');assert.equal(a.tone,'critical');
  }
 });
 test('unknown patient conditions suspend colors rather than imply clinical applicability',()=>{
