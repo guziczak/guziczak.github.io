@@ -893,11 +893,11 @@ function cartDialog(notice='') {
 }
 function addToPrescriptionCart() {
   if(!productReady()||!latest?.valid||!state.confirmed||state.demo)return;
-  const f=getForm(),pack=currentPackage(f);
+  const f=getForm(),pack=currentPackage(f),asNeeded=getSourceRegimen()?.asNeeded===true;
   const summary=[isInstruction(f)?'Instrukcja stosowania':`${n(latest.singleUnits,10)} ${f.unitLabel} na podanie`,
-    state.frequency!==''?`${n(num(state.frequency))} × na dobę`:'',
+    state.frequency!==''?`${asNeeded?'Doraźnie, do ':''}${n(num(state.frequency))} × na dobę`:'',
     state.days!==''?`przez ${n(num(state.days))} dni`:'',
-    isInstruction(f)?(state.instructionPacks!==''?`${state.instructionPacks} op. × ${pack.label}`:pack.label):`${n(latest.packages)} op. × ${pack.label}`,
+    isInstruction(f)?(state.instructionPacks!==''?`${state.instructionPacks} op. × ${pack.label}`:pack.label):`${asNeeded?'Do ':''}${n(latest.packages)} op. × ${pack.label}`,
   ].filter(Boolean).join(' · ');
   const saved=savePrescriptionItem(prescriptionCart,{
     snapshot:{...state},label:f.label,summary,texts:{...latestTexts},
