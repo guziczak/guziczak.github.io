@@ -4,6 +4,10 @@ Lekki kalkulator dawkowania i zapotrzebowania na preparaty z interfejsem po pols
 
 Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym pliku nie stanowi potwierdzenia publikacji.
 
+## Smukłe zaokrąglanie przy tekście do kopiowania — 18.11.2026
+
+Przełącznik zaokrąglania i wybór liczby miejsc są w jednym wierszu u dołu pola z zapisem do kopiowania, we wspólnej ramce. Osobny panel nad kontrolą dawki został usunięty. Krótki podgląd przed → po i różnica procentowa pojawiają się tylko po włączeniu. Pełne etykiety pozostają dostępne dla czytników ekranu; na telefonie obszary dotykowe mają co najmniej 44 px wysokości. Obliczenia, zawartość kopiowanego tekstu i zapis pozycji koszyka korzystają z dotychczasowej logiki.
+
 ## Potwierdzenie dodania do koszyka — 18.11.2026
 
 Po udanym dodaniu przycisk pokazuje krótkie potwierdzenie, a znacznik przemieszcza się do widocznego koszyka i wyróżnia jego licznik. Zapis edytowanej pozycji pokazuje osobne potwierdzenie bez sygnału dodania następnej pozycji. Koszyk pozostaje zamknięty, fokus i pozycja przewijania są zachowane. Przy systemowym ograniczeniu animacji pozostaje potwierdzenie tekstowe i kolorystyczne. Komunikat pod przyciskiem nadal zawiera skróty do następnego preparatu i koszyka; nie zasłania go dodatkowy toast. Efekty dotyczą wyłącznie prezentacji udanego zapisu.

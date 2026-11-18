@@ -12,18 +12,22 @@ export function decimalRoundingMarkup({ supported, enabled = false, places = 1, 
   if (!supported) return '';
   const selected = precision(places);
   return `<div class="decimal-rounding" id="decimal-rounding">
+    <div class="decimal-rounding-row">
     <label class="decimal-rounding-toggle" for="roundDoses">
-      <span class="decimal-rounding-label">Zaokrąglaj dawki <small>${esc(unit)}</small></span>
+      <span class="decimal-rounding-label">Zaokrąglaj</span>
       <span class="decimal-rounding-control">
-        <input id="roundDoses" type="checkbox" role="switch" aria-describedby="rounding-help rounding-preview"${enabled ? ' checked' : ''}>
+        <input id="roundDoses" type="checkbox" role="switch" aria-label="Zaokrąglaj dawki ${esc(unit)}" aria-describedby="rounding-help rounding-preview"${enabled ? ' checked' : ''}>
         <span class="decimal-rounding-track" aria-hidden="true"></span>
       </span>
     </label>
-    <div class="field decimal-rounding-places">
-      <label for="roundingPlaces">Do ilu miejsc po przecinku</label>
+    <div class="decimal-rounding-places">
+      <label class="decimal-rounding-sr-only" for="roundingPlaces">Do ilu miejsc po przecinku</label>
+      <span aria-hidden="true">do</span>
       <select id="roundingPlaces" data-field="roundingPlaces"${enabled ? '' : ' disabled'}>${[0, 1, 2, 3].map(value => `<option value="${value}"${selected === value ? ' selected' : ''}>${value}</option>`).join('')}</select>
+      <span id="rounding-places-label" aria-hidden="true">${selected === 1 ? 'miejsca' : 'miejsc'}</span>
     </div>
-    <p class="decimal-rounding-help" id="rounding-help">Zaokrąglenie dotyczy ilości na podanie.</p>
+    </div>
+    <p class="decimal-rounding-sr-only" id="rounding-help">Zaokrąglenie dotyczy ilości na podanie.</p>
     <p class="decimal-rounding-preview" id="rounding-preview" aria-live="polite" aria-atomic="true"></p>
   </div>`;
 }

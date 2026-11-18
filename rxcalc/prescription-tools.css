@@ -1,21 +1,33 @@
-/* Optional rounding of the actual quantity administered. */
-.decimal-rounding {
-  margin: 20px 0;
-  padding: 14px;
+/* Rounding is a compact footer within the copyable-text field. */
+.rx-output {
+  min-width: 0;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-soft);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f6f8f6;
 }
-.decimal-rounding-toggle {
+.rx-output > .rx-preview { border: 0; border-radius: 0; background: transparent; }
+html[data-theme="dark"] .rx-output { background: #15251d; }
+.decimal-rounding {
+  margin: 0;
+  padding: 2px 12px;
+  border-top: 1px solid var(--border);
+}
+.decimal-rounding-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  min-height: 32px;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+.decimal-rounding-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
   cursor: pointer;
 }
-.decimal-rounding-label { color: var(--ink); font-size: 12px; font-weight: 600; }
-.decimal-rounding-label small { margin-left: 4px; color: var(--muted); font-size: 10px; font-weight: 500; }
+.decimal-rounding-label { color: var(--muted); font-size: 12px; font-weight: 500; }
 .decimal-rounding-control { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; }
 .decimal-rounding-control input {
   position: absolute;
@@ -29,8 +41,8 @@
 .decimal-rounding-track {
   display: block;
   position: relative;
-  width: 40px;
-  height: 24px;
+  width: 32px;
+  height: 20px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--soft);
@@ -39,24 +51,35 @@
 .decimal-rounding-track::after {
   content: '';
   position: absolute;
-  left: 3px;
-  top: 3px;
-  width: 16px;
-  height: 16px;
+  left: 2px;
+  top: 2px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--muted);
   transition: transform .15s ease, background .15s ease;
 }
 .decimal-rounding-control input:checked + .decimal-rounding-track { background: var(--accent); border-color: var(--accent); }
-.decimal-rounding-control input:checked + .decimal-rounding-track::after { transform: translateX(16px); background: var(--surface); }
+.decimal-rounding-control input:checked + .decimal-rounding-track::after { transform: translateX(12px); background: var(--surface); }
 .decimal-rounding-control input:focus-visible + .decimal-rounding-track { outline: 3px solid var(--accent); outline-offset: 4px; }
 .decimal-rounding-control input:disabled { cursor: not-allowed; }
 .decimal-rounding-control input:disabled + .decimal-rounding-track { opacity: .45; }
-.decimal-rounding-places { margin-top: 12px; }
-.decimal-rounding-places select { width: 100%; }
-.decimal-rounding-help { margin: 10px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
-.decimal-rounding-preview { margin: 0; color: var(--ink); font-size: 11px; line-height: 1.65; overflow-wrap: anywhere; }
-.decimal-rounding-preview:not(:empty) { margin-top: 10px; }
+.decimal-rounding-places { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.decimal-rounding-places .rx-select, .decimal-rounding-places select { width: 44px; flex: 0 0 44px; }
+.decimal-rounding-places .rx-select-trigger {
+  min-height: 36px;
+  padding: 5px;
+  gap: 2px;
+  border-color: transparent;
+  border-radius: 5px;
+  background: transparent;
+  font-size: 12px;
+}
+.decimal-rounding-places .rx-select-value { text-align: center; white-space: nowrap; }
+.decimal-rounding-places .rx-select-chevron, .decimal-rounding-places .rx-select-chevron svg { width: 13px; flex-basis: 13px; }
+.decimal-rounding-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.decimal-rounding-preview { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.decimal-rounding-preview:not(:empty) { margin-bottom: 8px; }
 
 /* Entry points in the header and calculation summary. */
 .cart-open {
@@ -174,12 +197,8 @@ html[data-theme="dark"] .cart-button-primary { color: #102d20; }
 
 @media (max-width: 780px) {
   .cart-open { min-height: 44px; padding: 8px 10px; font-size: 12px; }
-  .decimal-rounding { padding: 14px; }
-  .decimal-rounding-toggle { min-height: 44px; }
-  .decimal-rounding-label { font-size: 14px; }
-  .decimal-rounding-label small, .decimal-rounding-help { font-size: 11px; }
-  .decimal-rounding-places label { font-size: 12px; }
-  .decimal-rounding-preview { font-size: 12px; }
+  .decimal-rounding-toggle, .decimal-rounding-places .rx-select-trigger { min-height: 44px; }
+  .decimal-rounding-label, .decimal-rounding-places, .decimal-rounding-places .rx-select-trigger { font-size: 12px; }
   .result-actions .copy-button, .cart-add-button { min-height: 48px; padding: 12px 9px; font-size: 12px; }
   .cart-item-actions button, .cart-mode button { min-height: 44px; }
   .cart-button { min-height: 48px; }
