@@ -32,6 +32,12 @@ W zewnętrznych odniesieniach **UCSF i SDCEP kafelki porównują wyłącznie lic
 
 UCSF i SDCEP pozostają odrębnymi odniesieniami wymagającymi oceny warunków zastosowania także przy zgodnym dawkowaniu liczbowym. Zmiana dawki ponownie ocenia zgodność, ale nie skraca ani nie wydłuża wybranego czasu. Pierwotne limity czasu i warunki kontroli zachowują pierwszeństwo. Jest to porównanie danych ze źródłem, nie dobór terapii; nie dodano nowych leków, wartości dawek ani pól potwierdzenia warunków klinicznych. Szczegóły: [duration-regimen-notes.md](duration-regimen-notes.md).
 
+### Doprecyzowanie źródła oceny — 18.11.2026
+
+Kafelki poza zewnętrznym przedziałem wskazują jego źródło, np. **„Powyżej zakresu UCSF”**. Brak zakresu w sprawdzonym źródle dla czasu indywidualnego lub warunku kontroli jest podpisany **„Czas nieoceniony — źródło wybranego schematu nie określa zakresu dni dla tego wskazania”**. Ostrzeżenia o rzeczywistym przekroczeniu czasu lub potrzebie ponownej oceny zachowują pierwszeństwo.
+
+W szczegółach 17 wskazanych schematów stomatologicznych dodano przegląd źródeł z 18.11.2026 i warunki ich zastosowania. Przypisania są jawne i wymagają zgodnego rekordu źródłowego oraz zakresu pacjenta. Przegląd wyjaśnia m.in. zależne od objawów zakończenie wariantu ADA i ograniczenie wskazania w Queensland; te informacje nie tworzą nowych minimów ani przedziałów dni. Moduł `duration-source-review.js` zawiera wyłącznie opisy i odnośniki. Zakres przeglądu i decyzje opisuje [duration-coverage-notes.md](duration-coverage-notes.md).
+
 ## Android: dodanie do ekranu głównego
 
 1. Otwórz opublikowany adres aplikacji w **Chrome** na Androidzie przy dostępie do internetu.
@@ -132,6 +138,7 @@ Po zmianie reguł klinicznych trzeba osobno zaktualizować źródło, datę wery
 | `dental-systemic.js`, `dental-topicals.js`, `human-regimens.js` | Źródłowe dane stomatologiczne: preparaty, postaci, opakowania, schematy i instrukcje |
 | `human-regimen-engine.js`, `dental-output.js` | Warunki schematu dla ludzi i teksty zachowujące doraźne limity |
 | `duration-regimen.js`, `duration-guidance.js`, `duration-reference.js`, `duration-view.js` | Dopasowanie rzeczywistego dawkowania do źródła i wspólna ocena czasu w polach, skrótach oraz ostrzeżeniach wyniku |
+| `duration-source-review.js` | Dodatkowe źródła przypisane do konkretnych schematów wraz z zakresem zastosowania; bez nowych progów czasu |
 | `product-search.js` | Wyszukiwanie dokładnych wariantów preparat–moc–opakowanie |
 | `dental-source-review.md`, `dental-*.test.mjs`, `human-regimen-engine.test.mjs`, `product-search.test.mjs` | Ścieżka źródeł oraz testy zakresów i integracji |
 | `regimen-engine.test.mjs`, `regimens.test.mjs`, `equine-regimens.test.mjs`, `equine-practice.test.mjs`, `veterinary-vials.test.mjs` | Testy granic wieku/masy, faz, czasu i zgodności z katalogiem |

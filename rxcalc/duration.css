@@ -24,6 +24,8 @@
 .duration-sources p{font-size:inherit;margin:8px 0}
 .duration-sources a{display:block;margin:8px 0}
 .duration-sources small{display:block;font-size:10px}
+.duration-source-review{border-top:1px solid var(--border);margin-top:12px;padding-top:4px}
+.duration-source-review strong{color:var(--ink)}
 @media(max-width:780px){.duration-choices-label,.duration-choice strong{font-size:13px}.duration-choice small{font-size:10px}.duration-origin,.duration-feedback,.duration-review,.duration-sources{font-size:12px!important}.duration-sources summary{min-height:44px}.duration-sources small{font-size:11px}.duration-selected{font-size:10px}}
 @media(forced-colors:active){.quick-days.duration-choices .duration-choice.active{outline:2px solid Highlight;outline-offset:-4px}.duration-selected{color:ButtonText}}
 

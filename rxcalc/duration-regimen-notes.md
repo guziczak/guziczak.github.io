@@ -1,5 +1,11 @@
 # Czas stosowania a zgodność wpisanego schematu — 17.11.2026
 
+## Doprecyzowanie źródeł — 18.11.2026
+
+Kafelki poniżej lub powyżej zewnętrznego przedziału wskazują teraz nazwę źródła („Poniżej zakresu UCSF/SDCEP”, „Powyżej zakresu UCSF/SDCEP”). Ograniczenie pochodzące wyłącznie z pierwotnego źródła nie jest przypisywane do UCSF. Dla sprawdzonego czasu indywidualnego lub samego warunku kontroli bez zakresu widoczny jest komunikat „Czas nieoceniony”. Brak danych, zmiana rekordu lub niezweryfikowane źródło zachowują własną przyczynę, a ostrzeżenie o przekroczeniu zakresu/kontroli zachowuje pierwszeństwo.
+
+Uzupełniający przegląd 17 rekordów jest dostępny w szczegółach. `duration-source-review.js` dostarcza wyłącznie opis i linki po sprawdzeniu dokładnego źródła i zakresu pacjenta. Nie dostarcza nowych progów ani nie zastępuje oceny łącznej. Zakres i źródła opisano w [duration-coverage-notes.md](duration-coverage-notes.md).
+
 ## Cel i zakres
 
 Kolor czasu uwzględnia zgodność dostępnych danych z wybranym źródłem dawkowania. Porównywane są postać, grupa pacjenta lub gatunek, sprawdzane warunki pacjenta, wybrane wskazanie i etap reprezentowane przez konkretny rekord źródłowy, rzeczywista dawka oraz częstość. Aplikacja nie rozpoznaje wskazania ani nie dobiera terapii. Zielony wynik oznacza zgodność w zakresie wykonanych kontroli, a nie pełną ocenę kliniczną, bezpieczeństwo całego leczenia lub potwierdzenie wszystkich przeciwwskazań.

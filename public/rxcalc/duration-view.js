@@ -11,13 +11,27 @@ const organization = rule => rule?.organization || 'SDCEP';
  * why the complete regimen is different, incomplete or requires review. */
 function choiceAssessment(value, guidance) {
   const reference = externalRule(guidance);
-  if (!reference) return assessDuration(value, guidance);
+  if (!reference) {
+    const assessment = assessDuration(value, guidance);
+    const rule = guidance?.rule;
+    if (assessment.state === 'unassessed' && guidance?.applicable
+        && !rule?.minimum && !rule?.maximum
+        && ['individual', 'review-only'].includes(rule?.kind))
+      return { ...assessment,
+        message: 'Czas nieoceniony — źródło wybranego schematu nie określa zakresu dni dla tego wskazania.' };
+    return assessment;
+  }
   const time = assessDurationTime(value, guidance);
   if (time.state === 'within') return { ...time, tone: 'neutral',
     short: `W zakresie ${organization(reference)}`,
     message: `Czas mieści się w zakresie ${reference.minimum}–${reference.maximum} dni według ${organization(reference)}. Warunki zastosowania odniesienia opisano osobno.` };
-  if (time.tone === 'warning' && ['below', 'above'].includes(time.state))
-    return { ...time, short: time.state === 'below' ? 'Poniżej zakresu' : 'Powyżej zakresu' };
+  if (time.tone === 'warning' && ['below', 'above'].includes(time.state)) {
+    // Name the external source only when its own range produces this warning.
+    // A primary-source restriction can take precedence over an in-range reference.
+    const comparison = assessDurationTime(value, { ...guidance, rule: reference, reference: null });
+    if (comparison.state === time.state && comparison.tone === time.tone)
+      return { ...time, short: `${time.state === 'below' ? 'Poniżej zakresu' : 'Powyżej zakresu'} ${organization(reference)}` };
+  }
   return time;
 }
 
@@ -38,6 +52,11 @@ function regimenContextMarkup(guidance) {
   return `<div id="duration-regimen-context" class="duration-reference-context duration-regimen-context duration-${mismatch ? 'warning' : 'neutral'}" role="note"><strong>${esc(heading)}</strong>${reasons.map(reason => `<p>${esc(reason)}</p>`).join('')}${condition ? `<p>${esc(condition)}</p>` : ''}</div>`;
 }
 
+function sourceReviewMarkup(review) {
+  if (!review?.entries?.length) return '';
+  return `<div class="duration-source-review"><p><strong>Dodatkowe źródła i zakres zastosowania</strong></p>${review.entries.map(item => `<a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.label)} ↗</a><p>${esc(item.note)}</p>`).join('')}<small>Sprawdzono dodatkowe źródła: ${esc(review.checkedAt)}.</small></div>`;
+}
+
 export function durationGuidanceMarkup({ choices = [], days = '', guidance, detailsOpen = false } = {}) {
   const current = choiceAssessment(days, guidance), primaryRule = guidance?.rule, rule = guidance?.reference || primaryRule;
   const noNumericRange=rule && !(rule.minimum && rule.maximum);
@@ -55,7 +74,7 @@ export function durationGuidanceMarkup({ choices = [], days = '', guidance, deta
   const review = rule?.reviewText ? `<p class="duration-review">${esc(rule.reviewText)}</p>` : '';
   const status = current.state === 'pending' ? !guidance?.applicable ? guidance?.reason
     : noNumericRange ? choiceAssessment(rule.minimum || 1,guidance).message : current.message : current.message;
-  const details = rule ? `<details class="duration-sources"${detailsOpen ? ' open' : ''}><summary>Źródło i zakres oceny czasu</summary><p>${esc(rule.indication)}</p><p>${esc(rule.note)}</p>${guidance?.reference && primaryRule?.reviewText ? `<p><strong>Osobny warunek ChPL:</strong> ${esc(primaryRule.reviewText)}</p>` : ''}<a href="${esc(rule.url)}" target="_blank" rel="noopener noreferrer">${esc(rule.label)} ↗</a>${rule.origin === 'external' && rule.primarySourceUrl ? `<a href="${esc(rule.primarySourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(rule.primarySourceLabel)} · osobne źródło dawkowania ↗</a>` : ''}${(rule.additionalSources || []).map(item => `<a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.label)} ↗</a>`).join('')}${rule.reviewUrl ? `<a href="${esc(rule.reviewUrl)}" target="_blank" rel="noopener noreferrer">SDCEP · zasady ponownej oceny ↗</a>` : ''}<small>Przegląd informacji o czasie: ${esc(rule.checkedAt)}. Zielony oznacza zgodność dostępnych danych z wybranym schematem, w zakresie wykonanych kontroli. To nie pełna ocena kliniczna leczenia.</small></details>` : '';
+  const details = rule ? `<details class="duration-sources"${detailsOpen ? ' open' : ''}><summary>Źródło i zakres oceny czasu</summary><p>${esc(rule.indication)}</p><p>${esc(rule.note)}</p>${guidance?.reference && primaryRule?.reviewText ? `<p><strong>Osobny warunek ChPL:</strong> ${esc(primaryRule.reviewText)}</p>` : ''}<a href="${esc(rule.url)}" target="_blank" rel="noopener noreferrer">${esc(rule.label)} ↗</a>${rule.origin === 'external' && rule.primarySourceUrl ? `<a href="${esc(rule.primarySourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(rule.primarySourceLabel)} · osobne źródło dawkowania ↗</a>` : ''}${(rule.additionalSources || []).map(item => `<a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.label)} ↗</a>`).join('')}${rule.reviewUrl ? `<a href="${esc(rule.reviewUrl)}" target="_blank" rel="noopener noreferrer">SDCEP · zasady ponownej oceny ↗</a>` : ''}<small>Przegląd informacji o czasie: ${esc(rule.checkedAt)}. Zielony oznacza zgodność dostępnych danych z wybranym schematem, w zakresie wykonanych kontroli. To nie pełna ocena kliniczna leczenia.</small>${sourceReviewMarkup(guidance?.sourceReview)}</details>` : '';
   return `${buttons ? `<div class="quick-days duration-choices" role="group" aria-label="Szybki wybór czasu stosowania"${referenceContext ? ' aria-describedby="duration-regimen-context"' : ''}><span class="duration-choices-label">Szybki wybór:</span>${buttons}</div>` : ''}${origin}${referenceContext}<p class="duration-feedback duration-${current.tone}" role="status" aria-live="polite">${current.tone === 'warning' || current.tone === 'critical' ? '<span aria-hidden="true">⚠ </span>' : ''}${esc(status || '')}</p>${guidance?.applicable && status !== rule?.reviewText ? review : ''}${details}`;
 }
 

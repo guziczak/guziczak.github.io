@@ -3,6 +3,7 @@ import { assessDurationRegimen } from './duration-regimen.js';
 import { resolveHumanRegimen } from './human-regimen-engine.js';
 import { resolveRegimen } from './regimen-engine.js';
 import { auditedDurationPolicy, DURATION_REVIEW_DATE } from './duration-rules.js';
+import { reviewedDurationSources } from './duration-source-review.js';
 
 /** One regimen-aware duration assessment for entry, shortcuts and result warnings.
  * No mutation of treatment, catalogue constraints, rounding review or exports.
@@ -54,7 +55,9 @@ export function resolveDurationGuidance({source=null,form=null,context={}}={}) {
   const guidance={applicable:true,coverage:'reviewed',rule,reason:''};
   const reference=supplementaryDurationReference({source,form,context,guidance});
   const regimen=assessDurationRegimen({source,form,context,rule,reference});
-  return {...guidance,regimen,...(reference?{reference}:{})};
+  // Additional reviewed sources explain scope; they never supply evaluator thresholds.
+  const sourceReview=reviewedDurationSources(source.id);
+  return {...guidance,regimen,...(reference?{reference}:{}),...(sourceReview?{sourceReview}:{})};
 }
 function assessRuleDuration(value,guidance) {
   const blank=!has(value)||typeof value==='string'&&!value.trim();

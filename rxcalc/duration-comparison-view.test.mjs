@@ -169,7 +169,8 @@ test('adult Augmentin without a range remains unassessed and keeps its extension
   }
   assert.match(button(html, 15), /duration-warning/);
   assert.doesNotMatch(html, /duration-regimen-context/);
-  assert.match(feedback(html), /warunek kontroli/);
+  assert.match(feedback(html), /Czas nieoceniony — źródło wybranego schematu nie określa zakresu dni/);
+  assert.match(html.split('<details')[0], /Nie przedłużać leczenia ponad 14 dni bez ponownej oceny/);
 });
 
 test('rounding to 448 mg retains the dose mismatch while showing the time range separately', () => {

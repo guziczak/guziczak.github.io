@@ -1,5 +1,31 @@
 # Wspólna ocena czasu stosowania — 16.11.2026
 
+## Uzupełniający przegląd źródeł — 18.11.2026
+
+Uzupełniono opisy źródeł dla **17 konkretnych rekordów**: sześciu schematów Ospamoxu dla masy co najmniej 40 kg, trzech wariantów Augmentinu dla tej grupy, czterech schematów Dalacinu C i czterech instrukcji miejscowego Metronidazolu Chema. Osobna data dotyczy tylko tego przeglądu; nie zmienia daty pierwotnego przypisania wszystkich 60 schematów.
+
+| Schemat | Wynik przeglądu i decyzja |
+|---|---|
+| Augmentin 500/125 mg, 3 razy na dobę | ADA opisuje wariant 7-dniowy po niepowodzeniu pierwszej linii, w określonej populacji dorosłych i kontekście leczenia stomatologicznego. Przewiduje kontrolę w ciągu 3 dni oraz zakończenie 24 godziny po ustąpieniu objawów. Nie wyznaczono na tej podstawie minimum 7 dni ani zakresu 3–7 dni. |
+| Augmentin 875/125 mg, 2 razy na dobę, w tym przeliczenie zawiesiny | Queensland opisuje 5 dni w postępowaniu bez ciężkich lub ogólnoustrojowych cech zakażenia. Nie przypisano tego czasu automatycznie do istniejącego schematu ciężkiego ropnia. ChPL pozostaje źródłem warunku ponownej oceny przy przedłużeniu ponad 14 dni. |
+| Ospamox co 8 godzin i schemat ciężkiego zakażenia | SDCEP opisuje odpowiednio 500 mg lub podwojoną dawkę 1000 mg, 3 razy na dobę, w kontekście 3–5 dni i ponownej oceny. Zachowano zewnętrzne porównanie czasu; zgodność nie obejmuje automatycznie całego zakresu dawek ChPL. |
+| Ospamox co 12 godzin | Schemat z ChPL ma inną częstość niż porównanie SDCEP. Pozostaje jawna informacja o niedopasowaniu całego schematu; porównanie samych dni nie zatwierdza leczenia. |
+| Dalacin C, 3 lub 4 razy na dobę | SDCEP opisuje 300 mg 4 razy na dobę przez 5 dni w określonych warunkach drugiej linii/ciężkiego zakażenia, z oceną odpowiedzi i możliwością wcześniejszego zakończenia. Queensland opisuje 300 mg 3 razy na dobę przez 5 dni w innej ścieżce bez ciężkich lub ogólnoustrojowych cech. Żaden opis nie stał się uniwersalnym minimum lub przedziałem dla całego zakresu ChPL. |
+| Metronidazol Chema, stosowanie miejscowe | Potwierdzono źródło 7–10 dni dla wybranych kuracji oraz odrębność postępowania po drenażu i czasu pozostawienia wkładki. Zaleceń dla metronidazolu doustnego nie przypisano do maści. |
+
+Aktualna strona zmian SDCEP potwierdza usunięcie co-amoxiclav z drugiej linii 8 maja 2026 r. Nie przywrócono historycznego schematu tylko po to, by uzyskać przedział dni dla Augmentinu.
+
+Źródła przeglądu:
+
+- [ADA — przewodnik dla dorosłych z dostępnym leczeniem przyczynowym](https://www.ada.org/-/media/project/ada-organization/ada/ada-org/files/resources/research/ada_chairside_guide_antibiotics_ta.pdf?rev=d23ac4651660443a9ba33d925f97ecd7), zalecenie 3 i przypis 6.
+- [Queensland Health — Primary Clinical Care Manual, wydanie 12](https://www.health.qld.gov.au/__data/assets/pdf_file/0022/1447051/PCCM_full.pdf), drukowane strony 252–254: „Tooth abscess”.
+- [SDCEP — aktualizacje](https://www.sdcepdentalprescribing.nhs.scot/guidance/updates/), [amoksycylina](https://www.sdcepdentalprescribing.nhs.scot/guidance/bacterial-infections/dental-abscess/first-line-antibiotics/amoxicillin/), [klindamycyna](https://www.sdcepdentalprescribing.nhs.scot/guidance/bacterial-infections/dental-abscess/second-line-antibiotics/clindamycin/) i [zasady ponownej oceny](https://www.sdcepdentalprescribing.nhs.scot/guidance/supporting-tools/bacterial-infections-review-tool/).
+- ChPL: [Augmentin 500/125](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/830/characteristic), [Augmentin 875/125](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/7496/characteristic), [Dalacin C 150](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/1692/characteristic), [Dalacin C 300](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/1693/characteristic), [Metronidazol Chema](https://rejestrymedyczne.ezdrowie.gov.pl/api/rpl/medicinal-products/11440/characteristic).
+
+Wdrożenie: `duration-source-review.js` zawiera wyłącznie opisy i odnośniki, dobierane po dokładnym identyfikatorze. `resolveDurationGuidance` udostępnia je dopiero po sprawdzeniu podpisu rekordu i zastosowalności źródła. Metadane nie uczestniczą w ocenie liczby dni ani nie zmieniają dawki, częstości lub wybranego czasu. Kafelki poza zewnętrznym przedziałem nazywają źródło ostrzeżenia; brak przedziału dla czasu indywidualnego lub samego warunku kontroli jest oznaczony „Czas nieoceniony”. Testy przypadków granicznych znajdują się w `duration-provenance-view.test.mjs` i `duration-source-review.test.mjs`.
+
+Weryfikacja techniczna tej aktualizacji: **745/745 testów**, poprawna budowa statyczna i identyczność wszystkich **60 plików wynikowych** z odpowiednikami w `public/rxcalc/`. Nowy moduł znajduje się także w zestawie plików offline; wersja cache to `2026-11-18.65`. Wynik dotyczy kontroli programu, nie klinicznej walidacji leczenia.
+
 ## Aktualizacja oceny — 17.11.2026
 
 Pokrycie zweryfikowaną regułą czasu jest obecnie oddzielone od dopasowania wpisanego dawkowania. Zielony wynik dla czasu w zakresie wymaga także zgodnej rzeczywistej dawki po zaokrągleniu, częstości, wybranego źródła i etapu oraz sprawdzanych warunków pacjenta i postaci. Braki dają stan neutralny, a rozbieżności lub warunki UCSF/SDCEP wymagające odrębnej oceny dają ostrzeżenie. Pierwotne limity i warunki kontroli czasu zachowują pierwszeństwo. Szczegóły: [duration-regimen-notes.md](duration-regimen-notes.md). Przypisania źródeł poniżej oraz wyniki wcześniejszych testów pozostają zapisem przeglądu z 16.11.2026.
