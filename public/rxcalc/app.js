@@ -26,6 +26,7 @@ import { editableHumanSource, sourceInitialValues, sourceEditState, sourceEditMa
 import { effectiveRoundingStep, normalizeDecimalPlaces, supportsDecimalRounding } from './decimal-rounding.js';
 import { createPrescriptionCart, savePrescriptionItem, removePrescriptionItem, assessPrescriptionCart, prescriptionCartText, preparePrescriptionEdit } from './prescription-cart.js';
 import { decimalRoundingMarkup, prescriptionCartMarkup } from './prescription-tools-view.js';
+import { playCartFeedback, cancelCartFeedback } from './cart-feedback.js';
 
 const $ = (q, root = document) => root.querySelector(q);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -382,6 +383,7 @@ function specialtyPicker() {
 }
 
 function render() {
+  cancelCartFeedback();
   catalogueMotion.cancel();
   const previousFocus = document.activeElement;
   const focusId = previousFocus?.id;
@@ -838,7 +840,7 @@ function prescription(r,f,input,mode=state.rxMode) {
   const audit=!isVeterinary()?roundingAuditText(assessDoseRounding(currentRoundingOptions())):'';
   return text+(audit&&mode!=='ds'?'\n\n'+audit:'');
 }
-function dirty() { state.confirmed=false;roundingReview=null;cartFeedback=''; }
+function dirty() { cancelCartFeedback();state.confirmed=false;roundingReview=null;cartFeedback=''; }
 function updateDecimalRounding() {
   const toggle=$('#roundDoses'), places=$('#roundingPlaces'), preview=$('#rounding-preview');
   if(!toggle||!places||!preview)return;
@@ -907,7 +909,8 @@ function addToPrescriptionCart() {
   prescriptionCart=saved.cart;
   editingCartId=null;
   cartFeedback=saved.updated?'Zmiany zapisane w koszyku.':'Dodano do koszyka.';
-  updateCartControls();toast(cartFeedback);
+  updateCartControls();
+  playCartFeedback({source:$('#cart-add'),updated:saved.updated});
 }
 function nextCartProduct() {
   $('#dialog').close();
@@ -941,6 +944,7 @@ async function copyCart() {
 }
 function toast(message) { clearTimeout(toastTimer); const el=$('#toast');el.textContent=message;el.classList.add('show');toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
 function openDialog(title,content,{cart=false}={}) {
+  cancelCartFeedback();
   patientPickers.close(false);
   selectMenus.close();
   const dialog=$('#dialog');dialog.classList.toggle('cart-dialog',cart);dialog.innerHTML=`<div class="dialog-inner"><div class="dialog-header"><h2 id="dialog-title">${title}</h2><button class="icon-button" data-action="close-dialog" aria-label="Zamknij">${icon('close')}</button></div><div class="dialog-content">${content}</div></div>`;

@@ -1,0 +1,53 @@
+/* A saved item visibly travels to its destination without changing layout. */
+.cart-add-button.cart-feedback-active { position: relative; }
+.cart-button-confirmation {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: inherit;
+  background: var(--accent);
+  color: var(--surface);
+  font: inherit;
+  pointer-events: none;
+}
+.cart-button-confirmation svg { width: 18px; height: 18px; stroke-width: 2.4; }
+.cart-flight {
+  position: fixed;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 56px;
+  height: 36px;
+  border: 1px solid color-mix(in srgb, var(--surface) 35%, transparent);
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--surface);
+  box-shadow: 0 7px 20px #0003;
+  font: 700 12px/1 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform, opacity;
+}
+.cart-flight svg { width: 19px; height: 19px; stroke-width: 1.8; }
+[data-action="cart-open"].cart-feedback-arrived {
+  background: var(--mint);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.cart-feedback-arrived [data-cart-count] {
+  background: var(--accent);
+  color: var(--surface);
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cart-flight { display: none; }
+  .cart-button-confirmation, [data-action="cart-open"].cart-feedback-arrived { transition: none; animation: none; }
+}
+@media print {
+  .cart-flight, .cart-button-confirmation { display: none !important; }
+}

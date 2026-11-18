@@ -4,6 +4,10 @@ Lekki kalkulator dawkowania i zapotrzebowania na preparaty z interfejsem po pols
 
 Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym pliku nie stanowi potwierdzenia publikacji.
 
+## Potwierdzenie dodania do koszyka — 18.11.2026
+
+Po udanym dodaniu przycisk pokazuje krótkie potwierdzenie, a znacznik przemieszcza się do widocznego koszyka i wyróżnia jego licznik. Zapis edytowanej pozycji pokazuje osobne potwierdzenie bez sygnału dodania następnej pozycji. Koszyk pozostaje zamknięty, fokus i pozycja przewijania są zachowane. Przy systemowym ograniczeniu animacji pozostaje potwierdzenie tekstowe i kolorystyczne. Komunikat pod przyciskiem nadal zawiera skróty do następnego preparatu i koszyka; nie zasłania go dodatkowy toast. Efekty dotyczą wyłącznie prezentacji udanego zapisu.
+
 ## Zgodność liczbowa UCSF bez stałego alarmu — 18.11.2026
 
 Gdy rzeczywista dawka po zaokrągleniu i częstość odpowiadają odniesieniu UCSF, a czas mieści się w jego zakresie, wynik pokazuje krótką neutralną informację o zgodności liczbowej. Stały akapit o nieocenianych warunkach nie jest już ostrzeżeniem wyniku ani osobnym blokiem obok dni. Pełne warunki zastosowania pozostają w szczegółach źródła.
