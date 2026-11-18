@@ -32,6 +32,94 @@ test('complete exact case can be individually reviewed with rationale and both c
  assert.ok(r.warnings.some(x=>x.includes('Indywidualnie')));
  assert.ok(roundingAuditText(a).includes('875 mg (10,9375 ml) → 880 mg (11 ml)'));
 });
+test('875 mg nominal input rounded to exactly 11 ml enters the same individual-review gate',()=>{
+ const o=withContext({dose:875,roundingStep:1}),before=JSON.stringify(o);
+ const a=assessDoseRounding(o),pending=resolveRoundingRegimen(o);
+ const actual=calculate({...input,dose:875,roundingStep:1});
+ assert.equal(actual.singleUnits,11);assert.equal(actual.singleMg,880);assert.equal(actual.dailyMg,1760);
+ assert.equal(a.state,'needs-review');assert.equal(a.severity,'warning');assert.equal(a.clinicallyValidated,false);
+ assert.equal(a.ml,actual.singleUnits);assert.equal(a.singleMg,actual.singleMg);assert.equal(a.dailyMg,actual.dailyMg);
+ assert.equal(pending.valid,false);assert.ok(pending.errors.some(x=>x.includes('indywidualnej oceny')));
+ assert.equal(pending.maxSingleMg,null);assert.equal(pending.maxDailyMg,null);
+ const review=createRoundingReview(o,attest);assert.ok(review);
+ const reviewed=resolveRoundingRegimen({...o,review});
+ assert.equal(reviewed.valid,true);assert.equal(reviewed.rounding.state,'reviewed');
+ assert.equal(reviewed.dose,875,'Review must preserve the nominal source dose');
+ assert.equal(o.context.roundingStep,1);assert.equal(JSON.stringify(o),before);
+ assert.equal(source.dose,875);assert.equal(source.maxSingleMg,875);assert.equal(source.maxDailyMg,1750);
+});
+test('nominal-dose rounding still needs a reason, both attestations and complete context',()=>{
+ const o=withContext({dose:875,roundingStep:1});
+ for(const a of [{},{...attest,scopeConfirmed:false},{...attest,measurementConfirmed:false},
+  {...attest,reason:''},{...attest,reason:'krótko'}])assert.equal(createRoundingReview(o,a),null);
+ const incomplete={...o,context:{...o.context,days:null}};
+ assert.equal(assessDoseRounding(incomplete).state,'needs-review');
+ assert.equal(createRoundingReview(incomplete,attest),null);
+ assert.equal(resolveRoundingRegimen(incomplete,{allowNumericOverrides:true,previewDuration:true}).valid,false);
+});
+test('nominal dose and rounding step remain part of review proof even for the same actual 11 ml',()=>{
+ const o=withContext({dose:875,roundingStep:1}),review=createRoundingReview(o,attest);
+ assert.equal(assessDoseRounding({...o,review}).state,'reviewed');
+ for(const diff of [{roundingStep:.5},{dose:880},{dose:880,roundingStep:null}]) {
+  const changed={...o,context:{...o.context,...diff},review};
+  const a=assessDoseRounding(changed);
+  assert.equal(a.state,'needs-review',JSON.stringify(diff));assert.notEqual(a.key,review.key);
+  assert.equal(resolveRoundingRegimen(changed).valid,false);
+ }
+ const legacy=approved();
+ assert.equal(assessDoseRounding({...o,review:legacy.review}).state,'needs-review');
+ assert.equal(assessDoseRounding(legacy).state,'reviewed');
+});
+test('decimal rounding only admits the exact 875-to-880 conversion, without a general tolerance',()=>{
+ const o=withContext({dose:875,roundingStep:1}),review=createRoundingReview(o,attest);
+ for(const roundingStep of [null,.1,.01,.001,0,-1,NaN]) {
+  const changed={...o,context:{...o.context,roundingStep},review};
+  assert.equal(assessDoseRounding(changed),null,String(roundingStep));
+ }
+ const hundredths=calculate({...input,dose:875,roundingStep:.01});
+ assert.equal(hundredths.singleUnits,10.94);assert.equal(hundredths.singleMg,875.2);
+ const ordinary=resolveRoundingRegimen(withContext({dose:875,roundingStep:.01}));
+ assert.equal(ordinary.rounding,undefined);assert.equal(ordinary.maxSingleMg,875);assert.equal(ordinary.maxDailyMg,1750);
+ assert.equal(calculate({...input,dose:875,roundingStep:.01,
+  maxSingleMg:ordinary.maxSingleMg,maxDailyMg:ordinary.maxDailyMg}).valid,false);
+ for(const dose of [874,876,879,885])assert.equal(assessDoseRounding(withContext({dose,roundingStep:1})),null,String(dose));
+ for(const diff of [{id:'other'},{roundingConstraintKind:'hard-limit'},{doseRange:{min:800,max:900}}])
+  assert.equal(assessDoseRounding({...o,source:{...source,...diff}}),null);
+});
+test('all independent and patient limits remain active for nominal 875 mg rounded to 11 ml',()=>{
+ const o=withContext({dose:875,roundingStep:1});
+ for(const limits of [{single:875},{daily:1750},{ingredients:[{index:1,single:125}]},
+  {ingredients:[{index:1,daily:250}]},{single:0},{daily:NaN}]) {
+  const limited={...o,limits};assert.equal(assessDoseRounding(limited).state,'blocked');
+  assert.equal(createRoundingReview(limited,attest),null);assert.equal(resolveRoundingRegimen(limited).valid,false);
+ }
+ for(const diff of [{maxSingleMg:875},{maxDailyMg:1750}]) {
+  const limited={...o,form:{...form,...diff}};assert.equal(assessDoseRounding(limited).state,'blocked');
+  assert.equal(createRoundingReview(limited,attest),null);
+ }
+ for(const diff of [{weight:39},{age:12},{renalStatus:'impaired'},{crcl:20}]) {
+  const limited={...o,context:{...o.context,...diff}};
+  assert.equal(assessDoseRounding(limited).state,'blocked');assert.equal(createRoundingReview(limited,attest),null);
+ }
+});
+test('875 mg rounded-dose tile, actual ingredient totals and export review use one assessment',()=>{
+ const pending=withContext({dose:875,roundingStep:1});
+ for(const o of [pending,{...pending,review:createRoundingReview(pending,attest)}]) {
+  const a=assessDoseRounding(o),resolved=resolveRoundingRegimen(o);
+  const choices=liquidDoseChoices(form,{source,doseMode:'fixed',weight:70,frequency:2,
+   eligibility:{valid:true},view:'dose',roundDoseChoices:true,roundingStep:1,roundingContext:o,page:0});
+  const c=choices.find(c=>c.value===875);assert.ok(c);
+  assert.equal(c.ml,10.9375);assert.equal(c.roundedDose.ml,11);assert.equal(c.roundedDose.mg,880);
+  assert.equal(c.roundingAssessment.state,a.state);assert.equal(c.severity,a.severity);
+  assert.ok(!c.warnings.some(w=>w.code==='single-limit'||w.code==='daily-limit'));
+  const actualInput={...input,dose:875,roundingStep:1};
+  const note=ingredientDailyDose({form,drug,input:actualInput,
+   source:roundingValidationSource(source,a),sourceCheck:resolved});
+  assert.equal(note.rows[0].daily,1760);assert.ok(Math.abs(note.rows[1].daily-250.8)<1e-9);
+  assert.equal(note.schemeRows[0].maximum,1750);assert.equal(note.schemeRows[0].limit,null);
+  assert.equal(resolved.valid,Boolean(o.review));
+ }
+});
 test('no empty, implicit, partial or overly long professional acknowledgement',()=>{
  for(const a of [{},{...attest,scopeConfirmed:false},{...attest,measurementConfirmed:false},{...attest,reason:'krótko'},{...attest,reason:' '.repeat(20)},{...attest,reason:'a'.repeat(501)}])assert.equal(createRoundingReview(base,a),null);
  for(const days of [null,0,1.5,Infinity])assert.equal(createRoundingReview(withContext({days}),attest),null);

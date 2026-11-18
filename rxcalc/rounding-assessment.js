@@ -5,6 +5,7 @@
  * All independent limits and the original comparison dose are retained.
  */
 import { resolveHumanRegimen } from './human-regimen-engine.js';
+import { calculate } from './engine.js';
 import { ADULT_AUGMENTIN_ROUNDED_SHORTCUT as rule } from './rounded-volume-shortcuts.js';
 
 const positive = n => typeof n === 'number' && Number.isFinite(n) && n > 0;
@@ -45,7 +46,20 @@ export function assessDoseRounding({form,source,context={},limits={},review=null
   if (!hasScopedRoundingEvidence(form,source) || context.patientType !== 'adult'
     || context.patientKind === 'animal' || context.specialty !== 'dental'
     || context.formId !== form.id || context.doseMode !== 'fixed'
-    || !near(context.dose,rule.amoxicillinMg) || context.frequency !== 2) return null;
+    || context.frequency !== 2) return null;
+  const step=context.roundingStep;
+  if (!near(context.dose,rule.amoxicillinMg)) {
+    // The decimal control can reach the same exact conversion while retaining
+    // the source dose as the nominal input. No other input or rounded amount is
+    // admitted. Keep the original dose and step in the review fingerprint.
+    if (context.dose !== rule.referenceMg || !positive(step)) return null;
+    const preview=calculate({form:form.form,unitLabel:form.unitLabel,
+      doseMode:'fixed',dose:context.dose,roundingStep:step,
+      concentrationMg:form.concentrationMg,concentrationMl:form.concentrationMl,
+      frequency:2,days:1,packageSize:1});
+    if (!preview.valid || !near(preview.singleUnits,rule.ml)
+      || !near(preview.singleMg,rule.amoxicillinMg)) return null;
+  }
   const errors=[];
   const check=resolveHumanRegimen(source,{...context,dose:875,frequency:2,
     days:source.fixedDays || source.minDays || 1});
@@ -56,7 +70,6 @@ export function assessDoseRounding({form,source,context={},limits={},review=null
   }
   if (!positive(context.weight) || context.weight<40 || context.weight>500)
     errors.push('Potwierdź masę dorosłego co najmniej 40 kg.');
-  const step=context.roundingStep;
   if (present(step) && (!positive(step) || !near(Math.round(11/step)*step,11)))
     errors.push('Krok zaokrąglenia zmienia objętość 11 ml. Reguła nie ma zastosowania.');
   const breach=(values,actual,label)=>{

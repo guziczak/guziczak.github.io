@@ -1,0 +1,89 @@
+/** Presentational helpers. Calculation, review and clipboard state live in app.js. */
+const esc = value => String(value ?? '').replace(/[&<>"']/g,
+  character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+
+const precision = value => {
+  if (value === null || value === undefined || String(value).trim() === '') return 1;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 0 && number <= 3 ? number : 1;
+};
+
+export function decimalRoundingMarkup({ supported, enabled = false, places = 1, unit = 'ml' } = {}) {
+  if (!supported) return '';
+  const selected = precision(places);
+  return `<div class="decimal-rounding" id="decimal-rounding">
+    <label class="decimal-rounding-toggle" for="roundDoses">
+      <span class="decimal-rounding-label">Zaokrąglaj dawki <small>${esc(unit)}</small></span>
+      <span class="decimal-rounding-control">
+        <input id="roundDoses" type="checkbox" role="switch" aria-describedby="rounding-help rounding-preview"${enabled ? ' checked' : ''}>
+        <span class="decimal-rounding-track" aria-hidden="true"></span>
+      </span>
+    </label>
+    <div class="field decimal-rounding-places">
+      <label for="roundingPlaces">Do ilu miejsc po przecinku</label>
+      <select id="roundingPlaces" data-field="roundingPlaces"${enabled ? '' : ' disabled'}>${[0, 1, 2, 3].map(value => `<option value="${value}"${selected === value ? ' selected' : ''}>${value}</option>`).join('')}</select>
+    </div>
+    <p class="decimal-rounding-help" id="rounding-help">Zaokrąglenie dotyczy ilości na podanie.</p>
+    <p class="decimal-rounding-preview" id="rounding-preview" aria-live="polite" aria-atomic="true"></p>
+  </div>`;
+}
+
+function cartItemMarkup(item, index, stale, editing) {
+  const id = esc(item.id), label = esc(item.label);
+  return `<li class="cart-item${stale ? ' is-stale' : ''}${editing ? ' is-editing' : ''}" data-cart-item-id="${id}">
+    <span class="cart-item-number" aria-hidden="true">${index + 1}</span>
+    <div class="cart-item-body">
+      <h3>${label}</h3>
+      ${item.summary ? `<p class="cart-item-summary">${esc(item.summary)}</p>` : ''}
+      ${stale || editing ? `<div class="cart-item-badges">${stale ? '<span class="cart-item-stale">Dane pacjenta zmienione</span>' : ''}${editing ? '<span class="cart-item-editing">W trakcie edycji</span>' : ''}</div>` : ''}
+      <div class="cart-item-actions">
+        <button type="button" data-action="cart-edit" data-value="${id}" aria-label="Edytuj: ${label}">Edytuj</button>
+        <button type="button" data-action="cart-remove" data-value="${id}" aria-label="Usuń z koszyka: ${label}">Usuń</button>
+      </div>
+    </div>
+  </li>`;
+}
+
+export function prescriptionCartMarkup({
+  items = [], patientLabel = '', staleIds = [], mode = 'full', text = '',
+  canCopy = false, editingId = '', notice = '', demo = false,
+} = {}) {
+  const list = Array.isArray(items) ? items : [];
+  const stale = new Set(staleIds.map(String));
+  const selectedMode = mode === 'ds' ? 'ds' : 'full';
+  const copyAllowed = canCopy === true && !demo && list.length > 0
+    && !list.some(item => stale.has(String(item.id))) && String(text).trim().length > 0;
+  const context = `<div class="cart-context">
+    <span class="cart-context-label">Pacjent</span>
+    <strong>${esc(patientLabel || 'Dane pacjenta nieuzupełnione')}</strong>
+    <p class="cart-memory-note">Dane i koszyk pozostają w tej karcie.</p>
+  </div>`;
+  const feedback = notice ? `<p class="cart-notice" role="status">${esc(notice)}</p>` : '';
+  if (!list.length) return `<section class="prescription-cart" aria-label="Koszyk preparatów">
+    ${context}${feedback}
+    <div class="cart-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="m8 9 4-6 4 6M3 9h18l-2 11H5L3 9Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 13v3m6-3v3" stroke-linecap="round"/></svg>
+      <h3>Koszyk jest pusty</h3>
+      <p>Dodaj przygotowane obliczenie z podsumowania. Kolejne preparaty będą korzystać z tych samych danych pacjenta.</p>
+      <button type="button" class="cart-button cart-button-primary" data-action="cart-next">Wybierz preparat</button>
+    </div>
+  </section>`;
+  return `<section class="prescription-cart" aria-label="Koszyk preparatów">
+    ${context}${feedback}
+    <ol class="cart-items" aria-label="Preparaty w koszyku" role="list">${list.map((item, index) => cartItemMarkup(item, index, stale.has(String(item.id)), String(item.id) === String(editingId))).join('')}</ol>
+    <section class="cart-export" aria-labelledby="cart-export-title">
+      <div class="cart-export-heading">
+        <h3 id="cart-export-title">Wspólny zapis</h3>
+        <div class="cart-mode" role="group" aria-label="Format wspólnego zapisu">
+          <button type="button" data-action="cart-mode" data-value="full" aria-pressed="${selectedMode === 'full'}"${selectedMode === 'full' ? ' class="active"' : ''}>Rp. + D.S.</button>
+          <button type="button" data-action="cart-mode" data-value="ds" aria-pressed="${selectedMode === 'ds'}"${selectedMode === 'ds' ? ' class="active"' : ''}>Zalecenia</button>
+        </div>
+      </div>
+      <pre class="rx-preview cart-preview" id="cart-preview" tabindex="0" aria-label="Podgląd wspólnego zapisu">${esc(text)}</pre>
+      <div class="cart-dialog-actions">
+        <button type="button" class="cart-button cart-button-secondary" data-action="cart-next">Dodaj kolejny preparat</button>
+        <button type="button" class="cart-button cart-button-primary" data-action="cart-copy"${copyAllowed ? '' : ' disabled'}>Kopiuj całość</button>
+      </div>
+    </section>
+  </section>`;
+}

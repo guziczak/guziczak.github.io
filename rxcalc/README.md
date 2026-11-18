@@ -154,3 +154,12 @@ Po zmianie reguł klinicznych trzeba osobno zaktualizować źródło, datę wery
 | `.github/workflows/pages.yml` | Testy i publikacja GitHub Pages |
 
 Dokumentacja PWA: [instalowanie aplikacji webowych w Chrome](https://developer.chrome.com/docs/modern-web-guidance/guides/pwa/install-web-app), [manifest aplikacji webowej](https://web.dev/learn/pwa/web-app-manifest).
+
+
+## Zaokrąglanie i koszyk obliczeń
+
+W podsumowaniu ciągłych ilości preparatu (ml/g) przełącznik „Zaokrąglaj dawki” pozwala wybrać 0–3 miejsca po przecinku. Domyślnie pozostaje wyłączony. Po włączeniu zmienia rzeczywistą ilość na podanie w istniejącym silniku, a więc również mg, ilość dobową, zapotrzebowanie, opakowania i zapis Rp./D.S. Podgląd pokazuje ilość wyjściową i wynikową oraz różnicę. Ograniczenia źródłowe są sprawdzane po zaokrągleniu. Tabletki, krople, rozpylenia, instrukcje i postacie z własną podziałką urządzenia zachowują dotychczasowe zasady.
+
+Potwierdzone obliczenie można dodać do koszyka, edytować, usunąć lub połączyć z kolejnymi preparatami w jeden tekst do skopiowania. Każda pozycja przechowuje niezmienną kopię parametrów i obu formatów zapisu. Zmiana preparatu zachowuje dane pacjenta. Zmiana danych pacjenta oznacza zapisane pozycje jako nieaktualne i blokuje zbiorczy eksport do ich ponownego przeliczenia i potwierdzenia. Edycja pozycji zachowuje nowe dane pacjenta. Powtórny wybór tego samego produktu i postaci kieruje do edycji, bez cichego sumowania opakowań. Zmiana ludzkiej specjalizacji nie zmienia tożsamości pacjenta koszyka.
+
+Koszyk i parametry pozostają wyłącznie w pamięci bieżącej karty. „Nowy pacjent”, zamknięcie lub przeładowanie strony usuwa ten kontekst. Koszyk łączy teksty z kalkulatora; nie wykonuje analizy interakcji między pozycjami ani nie wystawia e-recepty.

@@ -31,7 +31,8 @@ export function defaultLiquidDoseView(form, {source=null,doseMode='fixed',veteri
 }
 export function liquidDoseChoices(form, {doseMode='fixed',weight=null,frequency=null,
   source=null,maxSingleMg=null,maxDailyMg=null,roundingStep=null,veterinary=false,
-  eligibility=null,adaptive=true,page=null,volumes=null,roundingContext=null,view=null}={}) {
+  eligibility=null,adaptive=true,page=null,volumes=null,roundingContext=null,view=null,
+  roundDoseChoices=false}={}) {
   if(!supportsLiquidChoices(form,veterinary)||source?.doseMode==='instruction'
     ||!['fixed','units','perKgDay','perKgDose'].includes(doseMode))return [];
   const concentration=positive(form.concentrationMg)&&positive(form.concentrationMl)
@@ -41,9 +42,13 @@ export function liquidDoseChoices(form, {doseMode='fixed',weight=null,frequency=
   const daily=[form.maxDailyMg,source?.maxDailyMg,maxDailyMg].filter(present);
   const perKg=[source?.maxSingleMgPerKg,source?.maxDailyMgPerKg].filter(present);
   const units=[source?.maxUnitsPerDose,source?.maxDailyUnits].filter(present);
-  const settings={doseMode,weight,frequency,source,maxSingleMg,maxDailyMg,roundingStep,veterinary,eligibility,adaptive,roundingContext,view};
-  const key=liquidShortcutKey(form,settings);
-  const window=adaptive?liquidShortcutWindow(form,{...settings,page:page??shortcutPage(key)}):null;
+  const settings={doseMode,weight,frequency,source,maxSingleMg,maxDailyMg,roundingStep,veterinary,eligibility,adaptive,roundingContext,view,roundDoseChoices};
+  const roundNominalDose=roundDoseChoices===true&&view==='dose'&&supportsLiquidDoseView(form,{doseMode,veterinary});
+  const key=liquidShortcutKey(form,settings)+(roundNominalDose?':decimal-dose':'');
+  // Dose tiles keep their nominal source anchors. Only their actual dispensed
+  // quantities are rounded; volume tiles continue to use the selected grid.
+  const window=adaptive?liquidShortcutWindow(form,{...settings,
+    roundingStep:roundNominalDose?null:roundingStep,page:page??shortcutPage(key)}):null;
   const list=(volumes||window?.volumes||[2.5,5,10]).map(ml=>{
     const mg=concentration===null?null:clean(ml*concentration);
     const value=doseMode==='units'?ml:doseMode==='fixed'?mg
@@ -60,27 +65,49 @@ export function liquidDoseChoices(form, {doseMode='fixed',weight=null,frequency=
     else if(present(frequency)&&(!Number.isSafeInteger(frequency)||frequency<=0||frequency>48))reason='Sprawdź częstotliwość';
     else if(positive(frequency)&&(source?.frequencyOptions&&!source.frequencyOptions.includes(frequency)
       ||positive(source?.minIntervalHours)&&above(frequency*source.minIntervalHours,24)))reason='Sprawdź częstotliwość';
-    else if(present(roundingStep)&&(!positive(roundingStep)||!equal(ml,Math.round(ml/roundingStep)*roundingStep)))reason='Zmień krok zaokrąglenia';
+    else if(present(roundingStep)&&(!positive(roundingStep)
+      ||!roundNominalDose&&!equal(ml,Math.round(ml/roundingStep)*roundingStep)))reason='Zmień krok zaokrąglenia';
+    let roundedDose=null;
+    if(!reason&&roundNominalDose&&positive(roundingStep)) {
+      // Use the same arithmetic as the result, export and package calculations.
+      // One day (and one administration if frequency is not needed for a dose
+      // conversion) is only a preview input, never a treatment recommendation.
+      const preview=calculate({form:form.form,unitLabel:'ml',doseMode,dose:value,weight,roundingStep,
+        concentrationMg:form.concentrationMg,concentrationMl:form.concentrationMl,
+        frequency:positive(frequency)?frequency:doseMode==='perKgDay'?null:1,
+        days:1,packageSize:1});
+      if(!positive(preview.singleUnits)||!positive(preview.singleMg)) {
+        reason=preview.errors.some(message=>message.includes('zerową dawkę'))
+          ?'Zaokrąglenie daje zerową dawkę':'Nie można przeliczyć zaokrąglenia';
+      } else if(!equal(preview.singleUnits,ml)) {
+        const actualValue=doseMode==='fixed'?preview.singleMg
+          :clean(preview.singleMg*(doseMode==='perKgDay'?frequency:1)/weight);
+        roundedDose={ml:preview.singleUnits,mg:preview.singleMg,value:actualValue,
+          deltaPercent:preview.roundingDifferencePercent};
+      }
+    }
+    const actual=roundedDose||{ml,mg,value};
     // Missing/invalid inputs and ineligible contexts still prevent a shortcut.
     // A computable value outside the source remains selectable, like manual entry.
     const warnings=[];
     const warn=(code,severity,message)=>warnings.push({code,severity,message});
     if(!reason&&positive(value)) {
       if(source?.doseRange) {
-        if(above(source.doseRange.min,value))warn('below-range','warning','Poniżej zakresu schematu');
-        if(above(value,source.doseRange.max))warn('above-range','critical','Powyżej zakresu schematu');
+        if(above(source.doseRange.min,actual.value))warn('below-range','warning','Poniżej zakresu schematu');
+        if(above(actual.value,source.doseRange.max))warn('above-range','critical','Powyżej zakresu schematu');
       } else if(positive(source?.dose)) {
-        if(above(source.dose,value))warn('below-source','warning','Poniżej dawki ze źródła');
-        if(above(value,source.dose))warn('above-source','critical','Powyżej dawki ze źródła');
+        if(above(source.dose,actual.value))warn('below-source','warning','Poniżej dawki ze źródła');
+        if(above(actual.value,source.dose))warn('above-source','critical','Powyżej dawki ze źródła');
       }
-      if(single.some(v=>mg!==null&&above(mg,v))
-        ||positive(source?.maxUnitsPerDose)&&above(ml,source.maxUnitsPerDose)
-        ||positive(weight)&&mg!==null&&positive(source?.maxSingleMgPerKg)&&above(mg/weight,source.maxSingleMgPerKg))
+      if(single.some(v=>actual.mg!==null&&above(actual.mg,v))
+        ||positive(source?.maxUnitsPerDose)&&above(actual.ml,source.maxUnitsPerDose)
+        ||positive(weight)&&actual.mg!==null&&positive(source?.maxSingleMgPerKg)&&above(actual.mg/weight,source.maxSingleMgPerKg))
         warn('single-limit','critical','Ponad limit jednorazowy');
-      if(positive(frequency)&&(daily.some(v=>mg!==null&&above(mg*frequency,v))
-        ||positive(source?.maxDailyUnits)&&above(ml*frequency,source.maxDailyUnits)
-        ||positive(weight)&&mg!==null&&positive(source?.maxDailyMgPerKg)&&above(mg*frequency/weight,source.maxDailyMgPerKg)))
+      if(positive(frequency)&&(daily.some(v=>actual.mg!==null&&above(actual.mg*frequency,v))
+        ||positive(source?.maxDailyUnits)&&above(actual.ml*frequency,source.maxDailyUnits)
+        ||positive(weight)&&actual.mg!==null&&positive(source?.maxDailyMgPerKg)&&above(actual.mg*frequency/weight,source.maxDailyMgPerKg)))
         warn('daily-limit','critical','Ponad limit dobowy');
+      if(roundedDose)warn('decimal-rounding','warning','Zaokrąglenie do oceny');
     }
     const roundingAssessment=roundingContext&&!reason?assessDoseRounding({...roundingContext,context:{...roundingContext.context,dose:value}}):null;
     if(roundingAssessment&&['needs-review','reviewed'].includes(roundingAssessment.state)){
@@ -93,7 +120,8 @@ export function liquidDoseChoices(form, {doseMode='fixed',weight=null,frequency=
     const rounded=window?.roundingShortcut;
     const roundedShortcut=rounded&&equal(ml,rounded.ml)?rounded:null;
     return {ml,mg,value,allowed:!reason&&positive(value),reason:reason||primary?.message||'',
-      severity:primary?.severity||null,warnings,roundingAssessment,...(roundedShortcut?{roundedShortcut}:{})};
+      severity:primary?.severity||null,warnings,roundingAssessment,
+      ...(roundedDose?{roundedDose}:{}),...(roundedShortcut?{roundedShortcut}:{})};
   });
   if(window)Object.defineProperty(list,'browser',{value:{key,window,form,settings},enumerable:false});
   return list;
@@ -109,7 +137,9 @@ export function liquidDoseChoicesMarkup(choices, {dose=null,unit='mg',basis=''}=
   const labelNumber=(v,d=4)=>`${Math.abs(v-Number(v.toFixed(d)))>1e-10?'≈ ':''}${n(v,d)}`;
   const navigation=browser?shortcutNavigation(browser.key,browser.window,()=>liquidDoseChoicesMarkup(
     liquidDoseChoices(browser.form,browser.settings),{dose,unit,basis})):'';
-  const explanation=browser?.window.noGridValue?'Wybrany krok objętości nie odtwarza dokładnej dawki lub zakresu. Sąsiednie wartości nie są automatycznie akceptowanym zaokrągleniem.'
+  const explanation=doseView&&settings?.roundDoseChoices===true&&positive(settings.roundingStep)
+    ?'Nagłówek kafelka pokazuje dawkę przed zaokrągleniem. Poniżej pokazujemy wynikową objętość, ilość mg i zmianę.'
+    :browser?.window.noGridValue?'Wybrany krok objętości nie odtwarza dokładnej dawki lub zakresu. Sąsiednie wartości nie są automatycznie akceptowanym zaokrągleniem.'
     :browser?.window.exact?'Objętości są przeliczeniem źródła, nie potwierdzoną podziałką strzykawki. Sprawdź możliwość odmierzenia; ≈ oznacza skrócony zapis, nie zmianę dawki.':'';
   const rounded=browser?.window.roundingShortcut;
   const roundingNote=rounded?roundedVolumeNote(rounded):'';
@@ -121,10 +151,12 @@ export function liquidDoseChoicesMarkup(choices, {dose=null,unit='mg',basis=''}=
     const tone=c.allowed&&['warning','critical','reviewed'].includes(c.severity)?c.severity:'';
     const sourceDose=doseView&&c.allowed&&!tone&&positive(settings?.source?.dose)&&equal(c.value,settings.source.dose);
     const messages=(c.warnings||[]).map(w=>w.message).join('. ');
-    const label=`${n(c.ml,10)} ml${c.mg===null?'':` = ${n(c.mg,6)} mg ${basis}`}`;
+    const actual=c.roundedDose||c;
+    const label=`${n(c.ml,10)} ml${c.mg===null?'':` = ${n(c.mg,6)} mg ${basis}`}${c.roundedDose?`; po zaokrągleniu ${n(actual.ml,6)} ml = ${n(actual.mg,6)} mg`:''}`;
     const detail=messages||c.reason;
-    const roundedAmount=c.roundedShortcut?`<small class="liquid-rounded-label">Zaokrąglenie +${n(c.roundedShortcut.deltaPercent,2)}%</small>`:'';
-    return `<button type="button" class="liquid-dose-choice ${selected?'active':''} ${tone?`liquid-dose-${tone}`:''} ${sourceDose?'liquid-dose-source':''}" data-action="liquid-dose" data-value="${c.ml}" aria-pressed="${selected}" ${c.allowed?'':'disabled'} title="${esc(label+(detail?`. ${detail}`:''))}">${selected?'<span class="liquid-dose-selected" aria-hidden="true">✓</span>':''}${syringe}<strong>${doseView&&c.value!==null?labelNumber(c.value):labelNumber(c.ml)} <small>${doseView?esc(unit):'ml'}</small></strong>${doseView?`<span>${labelNumber(c.ml)} ml na podanie</span>`:''}${!doseView||unit!=='mg'?`<span>${c.mg===null?'Objętość preparatu':`${n(c.mg,6)} mg`}</span>`:''}${!doseView&&!['mg','ml'].includes(unit)&&c.value!==null?`<small>${n(c.value,6)} ${esc(unit)}</small>`:''}${roundedAmount}<small class="liquid-dose-reason">${tone?`<span aria-hidden="true">${tone==='reviewed'?'ℹ':'⚠'} </span>`:''}${esc(c.reason|| (sourceDose?'Dawka ze źródła':browser?.window.anchored&&c.allowed?'Liczbowo w schemacie':''))}</small></button>`;
+    const roundedAmount=c.roundedDose?`<small class="liquid-rounded-label">Zmiana ${actual.deltaPercent>0?'+':''}${n(actual.deltaPercent,2)}%</small>`
+      :c.roundedShortcut?`<small class="liquid-rounded-label">Zaokrąglenie +${n(c.roundedShortcut.deltaPercent,2)}%</small>`:'';
+    return `<button type="button" class="liquid-dose-choice ${selected?'active':''} ${tone?`liquid-dose-${tone}`:''} ${sourceDose?'liquid-dose-source':''}" data-action="liquid-dose" data-value="${c.ml}" aria-pressed="${selected}" ${c.allowed?'':'disabled'} title="${esc(label+(detail?`. ${detail}`:''))}">${selected?'<span class="liquid-dose-selected" aria-hidden="true">✓</span>':''}${syringe}<strong>${doseView&&c.value!==null?labelNumber(c.value):labelNumber(c.ml)} <small>${doseView?esc(unit):'ml'}</small></strong>${doseView?`<span>${c.roundedDose?'Po zaokrągleniu: ':''}${labelNumber(actual.ml)} ml na podanie</span>`:''}${!doseView||unit!=='mg'||c.roundedDose?`<span>${actual.mg===null?'Objętość preparatu':`${n(actual.mg,6)} mg`}</span>`:''}${!doseView&&!['mg','ml'].includes(unit)&&c.value!==null?`<small>${n(c.value,6)} ${esc(unit)}</small>`:''}${roundedAmount}<small class="liquid-dose-reason">${tone?`<span aria-hidden="true">${tone==='reviewed'?'ℹ':'⚠'} </span>`:''}${esc(c.reason|| (sourceDose?'Dawka ze źródła':browser?.window.anchored&&c.allowed?'Liczbowo w schemacie':''))}</small></button>`;
   }).join('')}</div>${explicitView&&doseView&&browser.window.exact?'<p class="liquid-dose-measurement">Objętości są obliczone. Sprawdź możliwość odmierzenia.</p>':''}${navigation}${roundingNote}${explanation?`<p class="liquid-dose-help">${esc(explanation)}</p>`:''}<p class="liquid-dose-help">${choices.some(c=>c.mg!==null)?`mg dotyczą ${esc(basis||'substancji głównej')}. `:''}Żółty: poniżej schematu lub zaokrąglenie do oceny; niebieski: ocenione indywidualnie; czerwony: inne przekroczenie schematu lub limitu. Skróty przeliczenia, nie zalecane dawki — kontrola kopiowania pozostaje aktywna.</p>`;
 }
 
