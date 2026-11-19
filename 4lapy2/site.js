@@ -8,18 +8,72 @@
   const PHONE = '71 786 78 84';
   const HOURS = [null, [600, 1080], [600, 1080], [600, 1080], [600, 1080], [600, 1080], [600, 720]];
   const WEEKDAYS = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  const DAY_NAMES = ['w niedzielę', 'w poniedziałek', 'we wtorek', 'w środę', 'w czwartek', 'w piątek', 'w sobotę'];
-  const LEADS = { 1: 'dzień wcześniej', 7: 'tydzień wcześniej', 14: 'dwa tygodnie wcześniej' };
+  const LEAD_DAYS = [1, 7, 14];
+  const MESSAGES = {
+    pl: {
+      locale: 'pl-PL', clinic: CLINIC, address: ADDRESS,
+      dayNames: ['w niedzielę', 'w poniedziałek', 'we wtorek', 'w środę', 'w czwartek', 'w piątek', 'w sobotę'],
+      leads: { 1: 'dzień wcześniej', 7: 'tydzień wcześniej', 14: 'dwa tygodnie wcześniej' },
+      open: 'Otwarte teraz', closed: 'Zamknięte', tomorrow: 'jutro',
+      openUntil: time => `Zapraszamy dziś do ${time}`,
+      opensToday: time => `Otwieramy dziś o ${time}`,
+      opensOn: (day, time) => `Otwieramy ${day} o ${time}`,
+      callToBook: 'Zadzwoń, aby umówić wizytę',
+      dateRequired: 'Wybierz datę szczepienia z książeczki zdrowia.',
+      datePast: 'Ta data już minęła. Wpisz datę kolejnego szczepienia.',
+      leadRequired: 'Wybierz termin przypomnienia z listy.',
+      reminderPast: 'Wybrany termin przypomnienia już minął. Wybierz krótsze wyprzedzenie lub późniejszą datę szczepienia.',
+      reminderTitle: name => name ? `Umów szczepienie — ${name}` : 'Umów szczepienie zwierzaka',
+      vaccinationDate: date => `Data szczepienia z książeczki zdrowia: ${date}.`,
+      bookingPhone: `Zadzwoń, żeby umówić wizytę: ${PHONE}.`,
+      appointmentByPhone: 'Termin wizyty ustal telefonicznie.',
+      alarmDescription: title => `${title}. Zadzwoń: ${PHONE}.`,
+      selectDate: 'Wybierz datę szczepienia',
+      previewNote: dateOrLead => `Przypomnienie: ${dateOrLead}, o 9:00`,
+      googleSuccess: 'W Kalendarzu Google zapisz przygotowane wydarzenie. Termin wizyty ustal telefonicznie.',
+      icsSuccess: 'Otwórz pobrany plik i zatwierdź wydarzenie w swoim kalendarzu. Termin wizyty ustal telefonicznie.',
+      filenamePrefix: 'przypomnienie-szczepienie', calendarProduct: 'Przypomnienie//PL',
+      menuOpen: 'Otwórz menu', menuClose: 'Zamknij menu',
+      mapTitle: 'Dojazd do przychodni Cztery Łapy i Ty, Chabrowa 2D, Wysoka',
+      mapLoading: 'Ładowanie mapy Google…', mapLoaded: 'Mapa Google jest włączona.'
+    },
+    en: {
+      locale: 'en-GB', clinic: 'Cztery Łapy i Ty Veterinary Clinic', address: 'Chabrowa 2D, 52-200 Wysoka',
+      dayNames: ['on Sunday', 'on Monday', 'on Tuesday', 'on Wednesday', 'on Thursday', 'on Friday', 'on Saturday'],
+      leads: { 1: 'one day before', 7: 'one week before', 14: 'two weeks before' },
+      open: 'Open now', closed: 'Closed', tomorrow: 'tomorrow',
+      openUntil: time => `Open today until ${time}`,
+      opensToday: time => `We open today at ${time}`,
+      opensOn: (day, time) => `We open ${day} at ${time}`,
+      callToBook: 'Call to book an appointment',
+      dateRequired: 'Choose the vaccination date from your pet’s health record.',
+      datePast: 'That date has passed. Enter the date of the next vaccination.',
+      leadRequired: 'Choose a reminder time from the list.',
+      reminderPast: 'The selected reminder time has passed. Choose a shorter lead time or a later vaccination date.',
+      reminderTitle: name => name ? `Book a vaccination — ${name}` : 'Book your pet’s vaccination',
+      vaccinationDate: date => `Vaccination date from your pet’s health record: ${date}.`,
+      bookingPhone: `Call to book an appointment: +48 ${PHONE}.`,
+      appointmentByPhone: 'Arrange the appointment by phone.',
+      alarmDescription: title => `${title}. Call: +48 ${PHONE}.`,
+      selectDate: 'Choose the vaccination date',
+      previewNote: dateOrLead => `Reminder: ${dateOrLead} at 09:00 (Poland time)`,
+      googleSuccess: 'Save the prepared event in Google Calendar. Arrange the appointment by phone.',
+      icsSuccess: 'Open the downloaded file and add the event to your calendar. Arrange the appointment by phone.',
+      filenamePrefix: 'vaccination-reminder', calendarProduct: 'Vaccination reminder//EN',
+      menuOpen: 'Open menu', menuClose: 'Close menu',
+      mapTitle: 'Directions to Cztery Łapy i Ty Veterinary Clinic, Chabrowa 2D, Wysoka',
+      mapLoading: 'Loading Google Maps…', mapLoaded: 'Google Maps is enabled.'
+    }
+  };
+  const normalizeLanguage = language => /^en(?:-|$)/i.test(String(language || '')) ? 'en' : 'pl';
   const clock = new Intl.DateTimeFormat('en-GB', {
     timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
     weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
   });
-  const fullDate = new Intl.DateTimeFormat('pl-PL', {
-    timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric'
-  });
-  const shortDate = new Intl.DateTimeFormat('pl-PL', {
-    timeZone: 'UTC', day: 'numeric', month: 'long'
-  });
+  const dateFormats = Object.fromEntries(Object.entries(MESSAGES).map(([language, copy]) => [language, {
+    full: new Intl.DateTimeFormat(copy.locale, { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }),
+    short: new Intl.DateTimeFormat(copy.locale, { timeZone: 'UTC', day: 'numeric', month: 'long' })
+  }]));
   const pad = value => String(value).padStart(2, '0');
   const dateKey = date => `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
   const utcStamp = date => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
@@ -55,60 +109,67 @@
     return new Date(instant);
   }
 
-  function openingStatus(date) {
+  function openingStatus(date, language = 'pl') {
+    const copy = MESSAGES[normalizeLanguage(language)];
     const parts = warsawParts(date);
     const day = WEEKDAYS[parts.weekday];
     const minutes = Number(parts.hour) * 60 + Number(parts.minute);
     const schedule = HOURS[day];
     const format = value => `${Math.floor(value / 60)}:${pad(value % 60)}`;
     if (schedule && minutes >= schedule[0] && minutes < schedule[1]) {
-      return { day, state: 'open', label: 'Otwarte teraz', detail: `Zapraszamy dziś do ${format(schedule[1])}` };
+      return { day, state: 'open', label: copy.open, detail: copy.openUntil(format(schedule[1])) };
     }
     if (schedule && minutes < schedule[0]) {
-      return { day, state: 'closed', label: 'Zamknięte', detail: `Otwieramy dziś o ${format(schedule[0])}` };
+      return { day, state: 'closed', label: copy.closed, detail: copy.opensToday(format(schedule[0])) };
     }
     for (let ahead = 1; ahead <= 7; ahead += 1) {
       const next = (day + ahead) % 7;
       if (HOURS[next]) {
-        return { day, state: 'closed', label: 'Zamknięte',
-          detail: `Otwieramy ${ahead === 1 ? 'jutro' : DAY_NAMES[next]} o ${format(HOURS[next][0])}` };
+        return { day, state: 'closed', label: copy.closed,
+          detail: copy.opensOn(ahead === 1 ? copy.tomorrow : copy.dayNames[next], format(HOURS[next][0])) };
       }
     }
-    return { day, state: 'closed', label: 'Zamknięte', detail: 'Zadzwoń, aby umówić wizytę' };
+    return { day, state: 'closed', label: copy.closed, detail: copy.callToBook };
   }
 
   function cleanName(value) {
     return Array.from(String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 30).join('');
   }
 
-  function buildReminder(values, now) {
+  function buildReminder(values, now, language = 'pl') {
+    language = normalizeLanguage(language);
+    const copy = MESSAGES[language];
     const current = now || new Date();
     const vaccination = parseDate(values.date);
-    if (!vaccination) return { error: 'Wybierz datę szczepienia z książeczki zdrowia.', field: 'date' };
+    if (!vaccination) return { error: copy.dateRequired, field: 'date' };
     if (values.date < warsawDateKey(current)) {
-      return { error: 'Ta data już minęła. Wpisz datę kolejnego szczepienia.', field: 'date' };
+      return { error: copy.datePast, field: 'date' };
     }
     const days = Number(values.days);
-    if (!Object.prototype.hasOwnProperty.call(LEADS, days)) {
-      return { error: 'Wybierz termin przypomnienia z listy.', field: 'alarm' };
+    if (!LEAD_DAYS.includes(days)) {
+      return { error: copy.leadRequired, field: 'alarm' };
     }
     const reminderDay = addDays(vaccination, -days);
     const start = atWarsawNine(reminderDay);
     if (start.getTime() <= current.getTime()) {
-      return { error: 'Wybrany termin przypomnienia już minął. Wybierz krótsze wyprzedzenie lub późniejszą datę szczepienia.', field: 'alarm' };
+      return { error: copy.reminderPast, field: 'alarm' };
     }
     const name = cleanName(values.name);
-    const title = name ? `Umów szczepienie — ${name}` : 'Umów szczepienie zwierzaka';
-    const description = `Data szczepienia z książeczki zdrowia: ${fullDate.format(vaccination)}.\n` +
-      `Zadzwoń, żeby umówić wizytę: ${PHONE}.\n${CLINIC}\n${ADDRESS}\nTermin wizyty ustal telefonicznie.`;
-    return { vaccination, reminderDay, start, end: new Date(start.getTime() + 15 * 60000), name, title, description, days };
+    const title = copy.reminderTitle(name);
+    const description = `${copy.vaccinationDate(dateFormats[language].full.format(vaccination))}\n` +
+      `${copy.bookingPhone}\n${copy.clinic}\n${copy.address}\n${copy.appointmentByPhone}`;
+    return { vaccination, reminderDay, start, end: new Date(start.getTime() + 15 * 60000),
+      name, title, description, days, language, location: `${copy.clinic}, ${copy.address}` };
   }
 
   function googleUrl(reminder) {
+    const language = normalizeLanguage(reminder.language);
+    const copy = MESSAGES[language];
     const params = new URLSearchParams({
       action: 'TEMPLATE', text: reminder.title,
       dates: `${utcStamp(reminder.start)}/${utcStamp(reminder.end)}`,
-      ctz: TIME_ZONE, details: reminder.description, location: `${CLINIC}, ${ADDRESS}`
+      ctz: TIME_ZONE, hl: language, details: reminder.description,
+      location: reminder.location || `${copy.clinic}, ${copy.address}`
     });
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
   }
@@ -130,26 +191,38 @@
   }
 
   function calendarFile(reminder, now) {
+    const copy = MESSAGES[normalizeLanguage(reminder.language)];
     const id = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     return [
-      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cztery Lapy i Ty//Przypomnienie//PL',
+      'BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:-//Cztery Lapy i Ty//${copy.calendarProduct}`,
       'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
       `UID:${id}@cztery-lapy-i-ty`, `DTSTAMP:${utcStamp(now || new Date())}`,
       `DTSTART:${utcStamp(reminder.start)}`, `DTEND:${utcStamp(reminder.end)}`,
       `SUMMARY:${icsEscape(reminder.title)}`, `DESCRIPTION:${icsEscape(reminder.description)}`,
-      `LOCATION:${icsEscape(`${CLINIC}, ${ADDRESS}`)}`, 'TRANSP:TRANSPARENT',
+      `LOCATION:${icsEscape(reminder.location || `${copy.clinic}, ${copy.address}`)}`, 'TRANSP:TRANSPARENT',
       'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:PT0S',
-      `DESCRIPTION:${icsEscape(`${reminder.title}. Zadzwoń: ${PHONE}.`)}`,
+      `DESCRIPTION:${icsEscape(copy.alarmDescription(reminder.title))}`,
       'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'
     ].map(foldLine).join('\r\n') + '\r\n';
   }
 
+  function calendarFilename(reminder) {
+    const copy = MESSAGES[normalizeLanguage(reminder.language)];
+    const safeName = String(reminder.name || '').toLowerCase().replace(/ł/g, 'l').normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return `${copy.filenamePrefix}${safeName ? `-${safeName}` : ''}.ics`;
+  }
+
   // Pure functions are available to offline boundary checks, never exposed on window.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseDate, atWarsawNine, openingStatus, buildReminder, googleUrl, calendarFile };
+    module.exports = { parseDate, atWarsawNine, openingStatus, buildReminder, googleUrl, calendarFile, calendarFilename };
   }
   if (typeof document === 'undefined') return;
+
+  const pageLanguage = normalizeLanguage(document.documentElement.lang);
+  const copy = MESSAGES[pageLanguage];
+  const { full: fullDate, short: shortDate } = dateFormats[pageLanguage];
 
   const all = selector => Array.from(document.querySelectorAll(selector));
   const write = (selector, value) => all(selector).forEach(element => {
@@ -302,7 +375,7 @@
   initializeServiceAccordions();
 
   function updateOpening() {
-    const status = openingStatus(new Date());
+    const status = openingStatus(new Date(), pageLanguage);
     write('[data-opening-status]', status.label);
     write('[data-opening-detail]', status.detail);
     all('[data-opening-state]').forEach(element => { element.dataset.state = status.state; });
@@ -322,7 +395,7 @@
     const setMenu = expanded => {
       const compact = isCompact();
       menuToggle.setAttribute('aria-expanded', String(compact && expanded));
-      menuToggle.setAttribute('aria-label', expanded ? 'Zamknij menu' : 'Otwórz menu');
+      menuToggle.setAttribute('aria-label', expanded ? copy.menuClose : copy.menuOpen);
       menuPanel.hidden = compact && !expanded;
       menuToggle.classList.toggle('is-active', compact && expanded);
       document.documentElement.classList.toggle('menu-open', compact && expanded);
@@ -423,14 +496,14 @@
     mapButton.addEventListener('click', () => {
       if (mapEmbed.firstChild) return;
       const iframe = document.createElement('iframe');
-      iframe.src = `https://www.google.com/maps?q=${encodeURIComponent(ADDRESS)}&z=15&output=embed`;
-      iframe.title = 'Dojazd do przychodni Cztery Łapy i Ty, Chabrowa 2D, Wysoka';
+      iframe.src = `https://www.google.com/maps?q=${encodeURIComponent(ADDRESS)}&z=15&hl=${pageLanguage}&output=embed`;
+      iframe.title = copy.mapTitle;
       iframe.referrerPolicy = 'no-referrer';
       iframe.setAttribute('allowfullscreen', '');
       iframe.addEventListener('load', () => {
-        if (iframe.isConnected) mapStatus.textContent = 'Mapa Google jest włączona.';
+        if (iframe.isConnected) mapStatus.textContent = copy.mapLoaded;
       }, { once: true });
-      mapStatus.textContent = 'Ładowanie mapy Google…';
+      mapStatus.textContent = copy.mapLoading;
       mapContainer.style.setProperty('--map-height', `${mapPreview.getBoundingClientRect().height}px`);
       mapEmbed.appendChild(iframe);
       mapPreview.hidden = true;
@@ -471,11 +544,11 @@
     const name = cleanName(nameInput.value);
     const date = parseDate(dateInput.value);
     const days = Number(alarmInput.value);
-    write('[data-reminder-title]', name ? `Umów szczepienie — ${name}` : 'Umów szczepienie zwierzaka');
-    write('[data-reminder-date]', date ? fullDate.format(date) : 'Wybierz datę szczepienia');
-    write('[data-reminder-note]', date && LEADS[days]
-      ? `Przypomnienie: ${shortDate.format(addDays(date, -days))}, o 9:00`
-      : `Przypomnienie: ${LEADS[days] || LEADS[7]}, o 9:00`);
+    write('[data-reminder-title]', copy.reminderTitle(name));
+    write('[data-reminder-date]', date ? fullDate.format(date) : copy.selectDate);
+    write('[data-reminder-note]', copy.previewNote(date && copy.leads[days]
+      ? shortDate.format(addDays(date, -days))
+      : copy.leads[days] || copy.leads[7]));
     updateMinimum();
   };
   updateMinimum();
@@ -488,7 +561,7 @@
     event.preventDefault();
     clearErrors();
     updateMinimum();
-    const reminder = buildReminder(readValues());
+    const reminder = buildReminder(readValues(), undefined, pageLanguage);
     if (reminder.error) {
       const field = reminder.field === 'date' ? dateInput : alarmInput;
       field.setAttribute('aria-invalid', 'true');
@@ -505,18 +578,17 @@
       document.body.appendChild(link);
       link.click();
       link.remove();
-      setMessage('W Kalendarzu Google zapisz przygotowane wydarzenie. Termin wizyty ustal telefonicznie.', false);
+      setMessage(copy.googleSuccess, false);
     } else {
       const blobUrl = URL.createObjectURL(new Blob([calendarFile(reminder)], { type: 'text/calendar;charset=utf-8' }));
       const link = document.createElement('a');
       link.href = blobUrl;
-      const safeName = reminder.name.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      link.download = `przypomnienie-szczepienie${safeName ? `-${safeName}` : ''}.ics`;
+      link.download = calendarFilename(reminder);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-      setMessage('Otwórz pobrany plik i zatwierdź wydarzenie w swoim kalendarzu. Termin wizyty ustal telefonicznie.', false);
+      setMessage(copy.icsSuccess, false);
     }
   });
   renderReminder();

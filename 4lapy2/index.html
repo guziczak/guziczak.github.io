@@ -12,11 +12,15 @@
   <meta property="og:description" content="Przychodnia lek. wet. Agnieszki Janeczek w Wysokiej. Wizyty, szczepienia i badania psów i kotów. Chabrowa 2D — projekt poglądowy.">
   <meta property="og:image" content="https://guziczak.github.io/4lapy2/assets/hero-pets.webp">
   <meta property="og:url" content="https://guziczak.github.io/4lapy2/">
+  <link rel="alternate" hreflang="pl" href="https://guziczak.github.io/4lapy2/">
+  <link rel="alternate" hreflang="en" href="https://guziczak.github.io/4lapy2/en/">
+  <link rel="alternate" hreflang="x-default" href="https://guziczak.github.io/4lapy2/">
+  <script src="preferences.js?v=20261120a"></script>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preload" as="image" href="assets/hero-pets.webp" imagesrcset="assets/hero-pets-640.webp 640w, assets/hero-pets.webp 1122w" imagesizes="(max-width: 760px) 92vw, 46vw" fetchpriority="high">
   <link rel="stylesheet" href="assets/fonts.css">
-  <link rel="stylesheet" href="styles.css?v=20261119h">
-  <script src="site.js?v=20261119d" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261120a">
+  <script src="site.js?v=20261120a" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#tresc">Przejdź do treści</a>
@@ -30,6 +34,8 @@
     <symbol id="i-health" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></symbol>
     <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2Z"/></symbol>
     <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="m3 6 9 7 9-7"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.8 13a9 9 0 0 1-9.8-9.8A9 9 0 1 0 20.8 13Z"/></symbol>
   </svg>
 
   <header class="site-header">
@@ -43,6 +49,10 @@
         <a href="#opieka">Nasza opieka</a>
         <a href="#przypomnienie">Przypomnienie</a>
         <a href="#kontakt">Kontakt</a>
+        <div class="site-preferences" role="group" aria-label="Ustawienia strony">
+          <button class="preference-button theme-toggle" type="button" data-theme-toggle aria-label="Włącz ciemny motyw" title="Włącz ciemny motyw" hidden><svg class="icon theme-icon-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="icon theme-icon-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
+          <a class="preference-button language-switch" href="en/?lang=en" data-language-switch="en" lang="en" hreflang="en" aria-label="View in English" title="English">EN</a>
+        </div>
       </nav>
       <div class="header-actions">
         <a class="header-call" href="tel:+48717867884" aria-label="Umów wizytę: 71 786 78 84"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg><span>Umów wizytę</span></a>

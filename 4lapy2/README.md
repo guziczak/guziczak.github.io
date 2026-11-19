@@ -4,12 +4,24 @@ Statyczna strona przychodni w nowej oprawie wizualnej. Adres publikacji: https:/
 
 ## Zawartość
 
-- `index.html` — treść, semantyczny układ i formularz.
-- `styles.css` — responsywny wygląd i obsługa ograniczenia ruchu.
-- `site.js` — płynne akordeony usług, status otwarcia w Europe/Warsaw, menu, przypomnienia Google Calendar / ICS oraz mapa wczytywana po wyraźnej zgodzie.
+- `index.html` — polska treść, semantyczny układ i formularz.
+- `en/index.html` — pełna angielska wersja pod `/4lapy2/en/`, dostępna również bez JavaScript.
+- `styles.css` — responsywny wygląd, jasny i ciemny motyw oraz obsługa ograniczenia ruchu.
+- `preferences.js` — wybór i zapamiętywanie motywu oraz języka, wczesne ustawienie kolorów przed wyświetleniem strony.
+- `site.js` — płynne akordeony usług, status otwarcia w Europe/Warsaw, menu, przypomnienia Google Calendar / ICS oraz mapa wczytywana po wyraźnej zgodzie. Teksty dynamiczne odpowiadają językowi dokumentu.
 - `assets/` — lokalne zdjęcia i mapa WebP, fonty i licencje OFL.
 
 Nie wymaga kompilacji ani bibliotek JavaScript. Katalog jest publikowany bezpośrednio przez istniejący GitHub Pages z gałęzi main.
+
+## Język i wygląd
+
+Przełączniki języka i motywu znajdują się w nawigacji; przy węższym ekranie są dostępne po otwarciu menu. Pierwszy wybór motywu odpowiada ustawieniu systemowemu. Ręczny wybór jasnego albo ciemnego motywu jest zapamiętywany na tym urządzeniu. Zmiana ustawienia systemowego wpływa na stronę tylko do momentu ręcznego wyboru.
+
+Polska i angielska wersja mają osobne dokumenty HTML, wspólne style i skrypty oraz wzajemne odnośniki `hreflang`. Zmiana języka zachowuje bieżącą sekcję. Powrót na główny adres uwzględnia zapamiętany język; bez wcześniejszego wyboru strona otwiera się po polsku. Jawny wybór w przełączniku ma pierwszeństwo nad zapamiętaną preferencją.
+
+Tłumaczenie obejmuje opisy usług, nawigację, etykiety dostępności, formularz, walidację, podgląd przypomnienia, wydarzenia Google Calendar i ICS oraz komunikaty mapy i godzin otwarcia. Nazwa przychodni i adres pozostają niezmienione. W obu językach godziny odnoszą się do Polski, a przypomnienie powstaje o 9:00 w strefie Europe/Warsaw, z uwzględnieniem czasu letniego i zimowego.
+
+W `localStorage` zapisywane są wyłącznie preferencje `4lapy2-theme` i `4lapy2-language`. Wyłączenie tej pamięci nie blokuje strony ani jej przełączników. Dane formularza i zgoda na mapę nie są zapisywane.
 
 ## Dane i prywatność
 
