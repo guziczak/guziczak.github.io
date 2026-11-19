@@ -346,6 +346,51 @@
   }
 
   const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const openingSign = document.querySelector('[data-opening-sign]');
+  if (openingSign && !motionPreference.matches && 'IntersectionObserver' in window &&
+    typeof openingSign.animate === 'function' && typeof CSS !== 'undefined' &&
+    typeof CSS.supports === 'function' && CSS.supports('rotate', '1deg')) {
+    let signAnimation = null;
+    let hasPlayed = false;
+    let stopped = false;
+    const signObserver = new IntersectionObserver(entries => {
+      if (stopped || hasPlayed || motionPreference.matches ||
+        !entries.some(entry => entry.isIntersecting && entry.intersectionRatio >= 0.5)) return;
+      hasPlayed = true;
+      signObserver.disconnect();
+      // Individual rotation preserves the sign's CSS positioning and suspension point.
+      signAnimation = openingSign.animate([
+        { rotate: '0deg', offset: 0, easing: 'ease-in-out' },
+        { rotate: '-1.8deg', offset: 0.17, easing: 'ease-in-out' },
+        { rotate: '1.1deg', offset: 0.42, easing: 'ease-in-out' },
+        { rotate: '-0.5deg', offset: 0.67, easing: 'ease-in-out' },
+        { rotate: '0.18deg', offset: 0.86, easing: 'ease-in-out' },
+        { rotate: '0deg', offset: 1 }
+      ], { duration: 1100, fill: 'none' });
+      signAnimation.onfinish = stopSignMotion;
+      signAnimation.oncancel = stopSignMotion;
+    }, { threshold: 0.5 });
+
+    function stopSignMotion() {
+      stopped = true;
+      signObserver.disconnect();
+      if (signAnimation) {
+        const current = signAnimation;
+        signAnimation = null;
+        current.onfinish = current.oncancel = null;
+        current.cancel();
+      }
+      if (motionPreference.removeEventListener) motionPreference.removeEventListener('change', onSignMotionChange);
+      else if (motionPreference.removeListener) motionPreference.removeListener(onSignMotionChange);
+    }
+    function onSignMotionChange() {
+      if (motionPreference.matches) stopSignMotion();
+    }
+    if (motionPreference.addEventListener) motionPreference.addEventListener('change', onSignMotionChange);
+    else if (motionPreference.addListener) motionPreference.addListener(onSignMotionChange);
+    signObserver.observe(openingSign);
+  }
+
   const reveals = all('[data-reveal]');
   if ('IntersectionObserver' in window && !motionPreference.matches) {
     const observer = new IntersectionObserver(entries => {

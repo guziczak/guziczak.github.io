@@ -21,6 +21,8 @@ Domyślny podgląd mapy jest lokalnym plikiem i nie łączy przeglądarki z dost
 
 Akordeony zachowują semantykę natywnych details/summary. Animowana jest ich rzeczywista wysokość, również podczas zamykania i zmiany kierunku w trakcie ruchu. Zmiana szerokości lub wysokości treści aktualizuje cel animacji. Preferencja ograniczonego ruchu wyłącza animację; bez JavaScript akordeony nadal działają natywnie.
 
+Wywieszka obok głównego przycisku kontaktu pokazuje najpierw bieżący status, a pod nim godzinę otwarcia lub zamknięcia. Kołysze się delikatnie tylko przy pierwszym pojawieniu się w widoku; preferencja ograniczonego ruchu pozostawia ją nieruchomą. Przypomnienie o szczepieniu znajduje się bezpośrednio po usługach, przed opiniami, i ma dodatkowy skrót w pasku najważniejszych informacji.
+
 ## Materiały wizualne
 
 Portrety psa i kota są ilustracyjnymi zdjęciami wygenerowanymi przy użyciu wbudowanego ImageGen. Nie przedstawiają personelu, wnętrza ani pacjentów przychodni.
