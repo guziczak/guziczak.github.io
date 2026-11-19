@@ -25,6 +25,8 @@ Wywieszka obok głównego przycisku kontaktu pokazuje najpierw bieżący status,
 
 ## Materiały wizualne
 
+Tekst strony przedstawia lokalizację, lek. wet. Agnieszkę Janeczek oraz zakres usług. Zdjęcia pełnią rolę ilustracyjną; usunięto reklamowe podpisy na fotografiach i powtarzalne slogany. Na telefonie zdjęcie główne zachowuje pełny portret i naturalną wysokość, bez przycinania głów zwierząt.
+
 Portrety psa i kota są ilustracyjnymi zdjęciami wygenerowanymi przy użyciu wbudowanego ImageGen. Nie przedstawiają personelu, wnętrza ani pacjentów przychodni.
 
 Prompty: spokojny golden retriever i szary kot w pionowym portrecie na ciemnozielonym tle, naturalne ciepłe boczne światło, redakcyjna fotografia, realistyczna sierść, bez tekstów i logo; jasny kot delikatnie głaskany przez właściciela pod brodą, twarz człowieka poza kadrem, neutralne szałwiowe tło, miękkie dzienne światło, naturalna anatomia.
