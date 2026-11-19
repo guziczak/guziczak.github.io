@@ -125,12 +125,12 @@ export function regimenDosePercentMarkup(row,scheme,allowed=true,roundingAssessm
 
 function percentTicks(scheme,model,percentages) {
   if(!percentages)return '';
-  const tick=(position,text,label)=>`<span class="dose-scheme-tick" style="left:clamp(38px,${position}%,calc(100% - 38px))"><b>${esc(text)}%</b><small>${esc(label)}</small></span>`;
+  const tick=(role,position,text,label)=>`<span class="dose-scheme-tick" data-dose-motion="${role}" style="left:clamp(38px,${position}%,calc(100% - 38px))"><b>${esc(text)}%</b><small>${esc(label)}</small></span>`;
   const endLabel=scheme.kind==='fixed'?'Dawka schematu':'Górna granica';
   // Narrow source ranges get one combined annotation, not overlapping labels.
   const content=scheme.kind==='range'&&model.end-model.start<28
-    ?tick((model.start+model.end)/2,`${formatRegimenPercent(percentages.start)}–100`,'Zakres schematu')
-    :(scheme.kind==='range'?tick(model.start,formatRegimenPercent(percentages.start),'Początek zakresu'):'')+tick(model.end,'100',endLabel);
+    ?tick('tick-range',(model.start+model.end)/2,`${formatRegimenPercent(percentages.start)}–100`,'Zakres schematu')
+    :(scheme.kind==='range'?tick('tick-start',model.start,formatRegimenPercent(percentages.start),'Początek zakresu'):'')+tick('tick-end',model.end,'100',endLabel);
   return `<div class="dose-scheme-ticks" aria-hidden="true">${content}</div>`;
 }
 
@@ -168,10 +168,10 @@ export function regimenMeterMarkup(row, scheme, allowed=true,roundingAssessment=
   if(model.limitExceeded)status+=' · Przekroczony dodatkowy limit';
   const scaled=allowed;
   const sourceMarkers=scheme.kind==='range'
-    ?`<span class="dose-scheme-band" style="left:${model.start}%;width:${model.end-model.start}%"></span><span class="dose-scheme-marker" style="left:${model.start}%"></span>`:'';
+    ?`<span class="dose-scheme-band" style="left:${model.start}%;width:${model.end-model.start}%"></span><span class="dose-scheme-marker" data-dose-motion="start" style="left:${model.start}%"></span>`:'';
   const percentDescription=percentages?` Wartość 100% jest odniesieniem do ${percentBasis(scheme)}. ${scheme.kind==='range'?`Początek zakresu: ${formatRegimenPercent(percentages.start)}%. `:''}${percentages.current===null?'':`Wpisana dawka: ${currentPercent(percentages.current,roundingAssessment)}%. `}${percentages.limit===null?'':`${limitLabel}: ${formatRegimenPercent(percentages.limit)}%. `}Koniec skali: ${formatRegimenPercent(percentages.scale)}%; nie jest limitem dawki.`:'';
   const graphicLabel=`${row.name}. ${label}: ${range}. ${scheme.limit?`${limitLabel}: ${limitValue}. `:''}${status}.${model.value!==null?` Wpisana ilość: ${n(model.value,6)} ${unit}.`:''}${percentDescription}`;
-  const graphic=`${percentTicks(scheme,model,percentages)}<div class="dose-scheme-meter ${scaled?'':'unscaled'} ${tone} ${model.limitExceeded?'limit-exceeded':''}" role="img" aria-label="${esc(graphicLabel)}"><span class="dose-scheme-track"></span>${scaled?`${sourceMarkers}${model.fill===null?'':`<span class="dose-scheme-fill" style="width:${model.fill}%"></span>`}<span class="dose-scheme-marker" style="left:${model.end}%"></span>${model.wall===null?'':`<span class="dose-scheme-wall" style="left:${model.wall}%"></span>`}${model.clipped?'<span class="dose-scheme-overflow">›</span>':''}`:''}</div>`;
+  const graphic=`${percentTicks(scheme,model,percentages)}<div class="dose-scheme-meter ${scaled?'':'unscaled'} ${tone} ${model.limitExceeded?'limit-exceeded':''}" role="img" aria-label="${esc(graphicLabel)}"><span class="dose-scheme-track"></span>${scaled?`${sourceMarkers}${model.fill===null?'':`<span class="dose-scheme-fill" style="width:${model.fill}%"></span>`}<span class="dose-scheme-marker" data-dose-motion="end" style="left:${model.end}%"></span>${model.wall===null?'':`<span class="dose-scheme-wall" style="left:${model.wall}%"></span>`}${model.clipped?'<span class="dose-scheme-overflow">›</span>':''}`:''}</div>`;
   const axis=percentages?`<div class="dose-scheme-axis dose-scheme-percent-axis"><span>0%</span><span><b>${esc(formatRegimenPercent(percentages.scale))}%</b><small>Koniec skali · nie limit</small></span></div>`:'';
   const derived=scheme.derived?'<p class="dose-safety-derived">Z proporcji składników preparatu — nie jest to niezależne maksimum tej substancji.</p>':'';
   return `<div class="dose-scheme-values"><span>${esc(label)}</span><strong>${esc(range)}${equivalent}</strong></div>${extra}${graphic}${axis}<div class="dose-scheme-status ${tone} ${model.limitExceeded?'limit-exceeded':''}">${esc(status)}</div>${model.clipped?'<p class="dose-scheme-small">Wartość wykracza poza skalę paska; pełna dawka jest podana powyżej.</p>':''}${derived}`;

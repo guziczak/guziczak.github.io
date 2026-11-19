@@ -8,18 +8,49 @@ const positive = value => typeof value === 'number' && Number.isFinite(value) &&
 const tolerance = (a, b) => Number.EPSILON * 64 * Math.max(1, Math.abs(a), Math.abs(b));
 
 const dailyDoseViews = new WeakMap();
-const doseFillSelector = '.dose-scheme-fill, .dose-reference-fill, .dose-safety-fill, .dose-safety-excess';
+const doseMotionSelector = '.dose-scheme-fill, .dose-reference-fill, .dose-safety-fill, .dose-safety-excess, .dose-scheme-band, .dose-scheme-marker, .dose-scheme-wall, .dose-scheme-tick';
 
-function doseFills(node) {
-  return [...node.querySelectorAll('.dose-safety-row')].flatMap((row, index) =>
-    [...row.querySelectorAll(doseFillSelector)].map(fill => ({
-      fill, key: `${index}:${row.querySelector('dt')?.textContent}:${fill.className}`,
-    })));
+/** Numeric edits may rescale one comparison. Only a new product, source or
+ * measurement basis resets its motion; frequency and numeric bounds do not.
+ */
+export function dailyDoseMotionContext({note, form, source, specialty, patientType, species} = {}) {
+  return JSON.stringify([specialty, patientType, species, form?.id, source?.id, note?.ceilingKind,
+    (note?.rows || []).map((row, index) => {
+      const scheme = note.schemeRows?.[index];
+      return [row.name, row.unit, scheme ? ['scheme', scheme.kind, scheme.perKg]
+        : ['limit', !positive(row.ceiling) && positive(row.ceilingPerKg)]];
+    })]);
 }
 
-/** Update numbers and warnings immediately; only the bar's width interpolates.
- * Sample the visible width before replacing markup so interrupted animations
- * continue from their current position, rather than a previous target or zero.
+function doseGeometry(node) {
+  return [...node.querySelectorAll('.dose-safety-row')].flatMap((row, index) =>
+    [...row.querySelectorAll(doseMotionSelector)].map(element => {
+      const classes = element.className.split(/\s+/);
+      const band = classes.includes('dose-scheme-band');
+      const centered = classes.some(name => ['dose-scheme-marker', 'dose-scheme-wall', 'dose-scheme-tick'].includes(name));
+      return {element, centered, properties: band ? ['left', 'width'] : centered ? ['left'] : ['width'],
+        key: `${index}:${row.querySelector('dt')?.textContent}:${element.dataset?.doseMotion || element.className}`};
+    }));
+}
+
+function geometryValues({element, centered, properties}, target = false) {
+  const track = element.parentElement.getBoundingClientRect();
+  if (!(track.width > 0 && track.height > 0)) return null;
+  const rect = element.getBoundingClientRect();
+  return Object.fromEntries(properties.map(property => {
+    const inline = element.style[property] || '';
+    // Preserve exact percent targets. Tick labels use clamp(), so read their
+    // resolved centre rather than parsing CSS or confusing it with the left edge.
+    const value = target && /^-?(?:\d+\.?\d*|\.\d+)%$/.test(inline)
+      ? Number.parseFloat(inline)
+      : (property === 'width' ? rect.width : rect.left + (centered ? rect.width / 2 : 0) - track.left) / track.width * 100;
+    return [property, value];
+  }));
+}
+
+/** Numbers and warnings update immediately. The fill, source band, boundaries
+ * and their labels interpolate together, including when the scale changes.
+ * Read visible geometry before cancellation so rapid edits continue in place.
  */
 export function renderDailyDoseNote(node, markup, context = '') {
   const previous = dailyDoseViews.get(node);
@@ -27,12 +58,11 @@ export function renderDailyDoseNote(node, markup, context = '') {
   const view = node.ownerDocument.defaultView;
   const reducedMotion = view?.matchMedia?.('(prefers-reduced-motion: reduce)');
   const canAnimate = previous?.context === context && !reducedMotion?.matches;
-  const widths = new Map();
+  const geometry = new Map();
   if (canAnimate) {
-    for (const {fill, key} of doseFills(node)) {
-      const track = fill.parentElement.getBoundingClientRect();
-      if (track.width > 0 && track.height > 0)
-        widths.set(key, fill.getBoundingClientRect().width / track.width * 100);
+    for (const entry of doseGeometry(node)) {
+      const values = geometryValues(entry);
+      if (values) geometry.set(entry.key, values);
     }
   }
   previous?.cancel();
@@ -45,16 +75,23 @@ export function renderDailyDoseNote(node, markup, context = '') {
   };
   dailyDoseViews.set(node, {markup, context, cancel});
   if (!canAnimate) return;
-  for (const {fill, key} of doseFills(node)) {
-    const from = widths.get(key), to = Number.parseFloat(fill.style.width);
-    if (!Number.isFinite(from) || !Number.isFinite(to) || Math.abs(from - to) < .01 || !fill.animate) continue;
+  for (const entry of doseGeometry(node)) {
+    const from = geometry.get(entry.key), to = geometryValues(entry, true);
+    if (!from || !to || !entry.element.animate) continue;
+    const properties = entry.properties.filter(property => Number.isFinite(from[property]) && Number.isFinite(to[property]));
+    if (!properties.some(property => Math.abs(from[property] - to[property]) >= .01)) continue;
+    const frame = values => Object.fromEntries(properties.map(property => [property, `${values[property]}%`]));
     try {
-      animations.push(fill.animate([{width: `${from}%`}, {width: fill.style.width}], {
+      animations.push(entry.element.animate([frame(from), frame(to)], {
         duration: 240, easing: 'ease-out',
       }));
     } catch { /* Older browsers still display the final, current value. */ }
   }
   if (animations.length) {
+    const startTime = node.ownerDocument.timeline?.currentTime;
+    if (Number.isFinite(startTime)) {
+      for (const animation of animations) animation.startTime = startTime;
+    }
     reducedMotion?.addEventListener?.('change', cancel, {once: true});
     Promise.allSettled(animations.map(animation => animation.finished))
       .then(() => reducedMotion?.removeEventListener?.('change', cancel));
