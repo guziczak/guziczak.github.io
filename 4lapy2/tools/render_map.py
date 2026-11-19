@@ -8,6 +8,7 @@ OSM data © OpenStreetMap contributors, ODbL: https://www.openstreetmap.org/copy
 
 Usage: python render_map.py --source /path/to/map-source-api.json
 Mobile: python render_map.py --source /path/to/map-source-api.json --mobile
+Background for HTML overlays: add --background-only (can combine with --mobile).
 Without --source the script fetches the documented OSM XML export.
 Requires Pillow. Output is a north-up, metric 1500 × 1000 m view.
 """
@@ -89,7 +90,7 @@ def fetch_data():
     return {"source": URL, "elements": elements}
 
 
-def render(data, output, mobile=False):
+def render(data, output, mobile=False, background_only=False):
     image = Image.new("RGB", (WIDTH * SCALE, HEIGHT * SCALE), PAPER)
     draw = ImageDraw.Draw(image)
     ways = []
@@ -199,27 +200,30 @@ def render(data, output, mobile=False):
                 break
 
     draw = ImageDraw.Draw(image)
-    # Small geographic heading and unobtrusive north indicator.
-    draw.rounded_rectangle((34*SCALE, 30*SCALE, 319*SCALE, 115*SCALE), 12*SCALE, fill="#f7f8f1")
-    draw.text((60*SCALE, 45*SCALE), "Wysoka", font=font(44, True), fill=INK)
+    # Background-only images leave the heading and address marker to HTML.
+    if not background_only:
+        draw.rounded_rectangle((34*SCALE, 30*SCALE, 319*SCALE, 115*SCALE), 12*SCALE, fill="#f7f8f1")
+        draw.text((60*SCALE, 45*SCALE), "Wysoka", font=font(44, True), fill=INK)
     draw.text(((WIDTH-71)*SCALE, 37*SCALE), "N", font=font(28, True), fill=INK)
     draw.polygon(scaled([(WIDTH-60, 80), (WIDTH-70, 111), (WIDTH-60, 103), (WIDTH-50, 111)]), fill=INK)
 
     # Pin tip sits exactly on the verified address coordinate, at the centre.
-    shadow = Image.new("RGBA", image.size)
-    shadow_draw = ImageDraw.Draw(shadow)
-    shadow_draw.rounded_rectangle(((cx-250)*SCALE, (cy-218)*SCALE, (cx+250)*SCALE, (cy-89)*SCALE), 19*SCALE, fill=(23,63,53,45))
-    shadow_draw.ellipse(((cx-36)*SCALE, (cy-13)*SCALE, (cx+36)*SCALE, (cy+12)*SCALE), fill=(23,63,53,60))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(10*SCALE))
-    image.paste(shadow, (0,0), shadow)
-    draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle(((cx-250)*SCALE, (cy-229)*SCALE, (cx+250)*SCALE, (cy-102)*SCALE), 17*SCALE, fill="#fcfcf7", outline="#c9d6c8", width=SCALE)
-    draw.text((cx*SCALE, (cy-198)*SCALE), "Cztery Łapy i Ty", font=font(40 if mobile else 38,True), fill=INK, anchor="mt")
-    draw.text((cx*SCALE, (cy-146)*SCALE), "Chabrowa 2D", font=font(34 if mobile else 31), fill="#516558", anchor="mt")
-    draw.ellipse(((cx-38)*SCALE, (cy-101)*SCALE, (cx+38)*SCALE, (cy-25)*SCALE), fill=INK, outline="#fcfcf7", width=4*SCALE)
-    draw.polygon(scaled([(cx-28,cy-38),(cx+28,cy-38),(cx,cy)]), fill=INK)
-    draw.ellipse(((cx-11)*SCALE,(cy-74)*SCALE,(cx+11)*SCALE,(cy-52)*SCALE), fill="#fcfcf7")
-    draw.ellipse(((cx-5)*SCALE,(cy-5)*SCALE,(cx+5)*SCALE,(cy+5)*SCALE), fill="#fcfcf7", outline=INK, width=2*SCALE)
+    # Keep this complete-map mode unchanged; HTML overlays use background-only.
+    if not background_only:
+        shadow = Image.new("RGBA", image.size)
+        shadow_draw = ImageDraw.Draw(shadow)
+        shadow_draw.rounded_rectangle(((cx-250)*SCALE, (cy-218)*SCALE, (cx+250)*SCALE, (cy-89)*SCALE), 19*SCALE, fill=(23,63,53,45))
+        shadow_draw.ellipse(((cx-36)*SCALE, (cy-13)*SCALE, (cx+36)*SCALE, (cy+12)*SCALE), fill=(23,63,53,60))
+        shadow = shadow.filter(ImageFilter.GaussianBlur(10*SCALE))
+        image.paste(shadow, (0,0), shadow)
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle(((cx-250)*SCALE, (cy-229)*SCALE, (cx+250)*SCALE, (cy-102)*SCALE), 17*SCALE, fill="#fcfcf7", outline="#c9d6c8", width=SCALE)
+        draw.text((cx*SCALE, (cy-198)*SCALE), "Cztery Łapy i Ty", font=font(40 if mobile else 38,True), fill=INK, anchor="mt")
+        draw.text((cx*SCALE, (cy-146)*SCALE), "Chabrowa 2D", font=font(34 if mobile else 31), fill="#516558", anchor="mt")
+        draw.ellipse(((cx-38)*SCALE, (cy-101)*SCALE, (cx+38)*SCALE, (cy-25)*SCALE), fill=INK, outline="#fcfcf7", width=4*SCALE)
+        draw.polygon(scaled([(cx-28,cy-38),(cx+28,cy-38),(cx,cy)]), fill=INK)
+        draw.ellipse(((cx-11)*SCALE,(cy-74)*SCALE,(cx+11)*SCALE,(cy-52)*SCALE), fill="#fcfcf7")
+        draw.ellipse(((cx-5)*SCALE,(cy-5)*SCALE,(cx+5)*SCALE,(cy+5)*SCALE), fill="#fcfcf7", outline=INK, width=2*SCALE)
 
     # Scale is tied to the metric projection rather than a decorative graphic.
     scale_width = 100 * PX_PER_M
@@ -247,11 +251,13 @@ if __name__=="__main__":
     parser.add_argument("--source",type=Path)
     parser.add_argument("--output",type=Path)
     parser.add_argument("--mobile",action="store_true",help="1200 × 900 px, 800 × 600 m closer mobile map")
+    parser.add_argument("--background-only",action="store_true",help="Omit the address label, pin and Wysoka badge for an HTML overlay")
     arguments=parser.parse_args()
     if arguments.mobile:
         WIDTH, HEIGHT, VIEW_METERS = 1200, 900, 800
         PX_PER_M = WIDTH / VIEW_METERS
     if arguments.output is None:
-        arguments.output=Path(__file__).resolve().parents[1]/"assets"/("map-wysoka-mobile.webp" if arguments.mobile else "map-wysoka.webp")
+        stem="map-wysoka-base" if arguments.background_only else "map-wysoka"
+        arguments.output=Path(__file__).resolve().parents[1]/"assets"/(stem+("-mobile" if arguments.mobile else "")+".webp")
     data=json.loads(arguments.source.read_text(encoding="utf-8")) if arguments.source else fetch_data()
-    render(data,arguments.output,arguments.mobile)
+    render(data,arguments.output,arguments.mobile,arguments.background_only)

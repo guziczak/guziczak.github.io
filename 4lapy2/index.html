@@ -15,7 +15,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preload" as="image" href="assets/hero-pets.webp" imagesrcset="assets/hero-pets-640.webp 640w, assets/hero-pets.webp 1122w" imagesizes="(max-width: 760px) 92vw, 46vw" fetchpriority="high">
   <link rel="stylesheet" href="assets/fonts.css">
-  <link rel="stylesheet" href="styles.css?v=20261119c">
+  <link rel="stylesheet" href="styles.css?v=20261119d">
   <script src="site.js?v=20261119c" defer></script>
 </head>
 <body>
@@ -192,9 +192,13 @@
         <div class="map-fallback" data-map-preview>
           <figure class="map-preview">
             <picture>
-              <source media="(max-width: 760px)" srcset="assets/map-wysoka-mobile.webp">
-              <img src="assets/map-wysoka.webp" width="1800" height="1200" loading="lazy" decoding="async" alt="Mapa okolicy przychodni Cztery Łapy i Ty przy ulicy Chabrowej 2D w Wysokiej, z zaznaczoną lokalizacją.">
+              <source media="(max-width: 760px)" srcset="assets/map-wysoka-base-mobile.webp">
+              <img src="assets/map-wysoka-base.webp" width="1800" height="1200" loading="lazy" decoding="async" alt="Statyczna mapa okolicy ulic Chabrowej i Radosnej w Wysokiej.">
             </picture>
+            <div class="map-marker">
+              <div class="map-marker-label"><span class="map-marker-name">Cztery Łapy i Ty</span><strong class="map-marker-address">Chabrowa 2D</strong></div>
+              <svg class="map-marker-pin" viewBox="0 0 44 52" aria-hidden="true"><path d="M22 51C18 46 2 32 2 21a20 20 0 0 1 40 0c0 11-16 25-20 30Z"/><circle cx="22" cy="21" r="7"/></svg>
+            </div>
             <figcaption class="map-attribution">Dane mapy: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a></figcaption>
           </figure>
           <div class="map-content">
