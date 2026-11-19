@@ -1,7 +1,20 @@
 import { formatNumber as n } from './engine.js';
+import { auditedDurationPolicy } from './duration-rules.js';
 
-const durationText = days => Number.isFinite(days) && days > 0
-  ? ` przez ${n(days)} ${days === 1 ? 'dzień' : 'dni'}` : '';
+// These reviewed non-chronic policies also define entered days as supply.
+// Do not infer that purpose from a medicine name, free text or a missing limit.
+const supplyPolicies = new Set(['anticoagulant-vte-continuation', 'betaloc-hf-titration', 'toramide-oedema']);
+export function dosingDuration({ source, days } = {}) {
+  const audit = auditedDurationPolicy(source);
+  const supply = audit.status === 'reviewed'
+    && (audit.policy.kind === 'chronic' || supplyPolicies.has(audit.policyId));
+  const period = Number.isFinite(days) && days > 0 ? `${n(days)} ${days === 1 ? 'dzień' : 'dni'}` : '';
+  return {
+    supply,
+    summary: period ? `${supply ? 'Zapas na' : 'przez'} ${period}` : '',
+    dosingSuffix: period ? `${supply ? '. Zapas na' : ' przez'} ${period}` : '',
+  };
+}
 
 /** Legacy and custom human medicines may not have an explicit productKind. */
 export function prescriptionPrefix(form, veterinary = false) {
@@ -37,7 +50,7 @@ export function prescriptionText({ mode = 'full', header, dosing, source, veteri
 /** Keep PRN ceilings separate from a fixed daily schedule in copied instructions. */
 export function humanDosingText({ source, sourceModified = false, amount, route = '', frequency, days, effectiveDailyLimit, extraInstructions = '' }) {
   const count = `${n(frequency)} ${frequency === 1 ? 'raz' : 'razy'} na dobę`;
-  let text = `D.S. Stosować ${amount}${route ? ` ${route}` : ''}, ${source?.asNeeded ? `w razie potrzeby, nie więcej niż ${count}` : count}${durationText(days)}.`;
+  let text = `D.S. Stosować ${amount}${route ? ` ${route}` : ''}, ${source?.asNeeded ? `w razie potrzeby, nie więcej niż ${count}` : count}${dosingDuration({source,days}).dosingSuffix}.`;
   if (source?.asNeeded && source.minIntervalHours) text += ` Pomiędzy podaniami zachować co najmniej ${n(source.minIntervalHours)} godz.`;
   const dailyLimit = effectiveDailyLimit === undefined ? source?.maxDailyMg : effectiveDailyLimit;
   if (source?.asNeeded && dailyLimit > 0) text += ` Nie przekraczać łącznie ${n(dailyLimit)} mg tej substancji na dobę ze wszystkich preparatów.`;

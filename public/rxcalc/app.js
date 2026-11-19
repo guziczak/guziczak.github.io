@@ -11,7 +11,7 @@ import { supportsLiquidChoices, supportsLiquidDoseView, defaultLiquidDoseView, l
 const HUMAN_SOURCE_OPTIONS = [...HUMAN_REGIMENS, ...LIQUID_STARTER_REGIMENS];
 import { availableHumanRegimens, resolveHumanRegimen } from './human-regimen-engine.js';
 import { catalogueProducts, searchProducts, highlightSegments, searchMatchDetails } from './product-search.js';
-import { humanDosingText, instructionDosingText, prescriptionPrefix, prescriptionHeader, prescriptionText } from './dental-output.js';
+import { dosingDuration, humanDosingText, instructionDosingText, prescriptionPrefix, prescriptionHeader, prescriptionText } from './dental-output.js';
 import { createSelectMenus } from './select-menu.js';
 import { tabletDoseChoices } from './tablet-doses.js';
 import { createPatientPickers } from './patient-picker.js';
@@ -793,7 +793,8 @@ function updateResultContent() {
   $('#dose-value').textContent=hasResult?n(divisions??r.singleUnits,isVeterinary()?10:6):'—';
   $('#dose-value').classList.toggle('compact-number', $('#dose-value').textContent.length > 9);
   $('#dose-unit').textContent=divisions!==null?divisionUnit(divisions):f.unitLabel;
-  $('#frequency-output').textContent=hasResult?`${getSourceRegimen()?.asNeeded ? 'Doraźnie, do ' : ''}${n(input.frequency)} × na dobę · przez ${n(input.days)} ${input.days===1?'dzień':'dni'}`:'Uzupełnij schemat podawania';
+  const durationSummary=dosingDuration({source:selectedSource,days:input.days}).summary;
+  $('#frequency-output').textContent=hasResult?`${getSourceRegimen()?.asNeeded ? 'Doraźnie, do ' : ''}${n(input.frequency)} × na dobę${durationSummary ? ` · ${durationSummary}` : ''}`:'Uzupełnij schemat podawania';
   let equivalent=hasResult?(r.singleMg!==null?`${n(r.singleMg,4)} mg${f.doseBasisIngredient?' '+f.doseBasisIngredient:''} na podanie`:`Ilość preparatu na jedno podanie`):'Dawka, częstotliwość i czas stosowania.';
   if(hasResult && f.activityIngredients?.length) equivalent=f.activityIngredients.map(i=>`${n(r.singleUnits*i.amount/i.perMl,4)} ${i.unit} ${i.name.toLowerCase()} na podanie`).join(' · ');
   if(f.ingredients && hasResult) equivalent+=` · ${n(r.singleUnits*f.ingredients[1].amountMg/f.ingredients[1].perMl,3)} mg kw. klawulanowego`;
@@ -861,7 +862,7 @@ function prescription(r,f,input,mode=state.rxMode) {
   const source=getSourceRegimen();
   const divisions=deviceDivisions(r,f);
   const amount=divisions!==null?`${n(divisions)} ${divisions===1?'działkę':divisionUnit(divisions)} strzykawki (około ${n(r.singleUnits,6)} ${unit} preparatu)`:`${n(r.singleUnits,isVeterinary()?10:6)} ${unit}`;
-  let ds=isVeterinary()?`D.S. Stosować ${amount}${f.routeLabel?' '+f.routeLabel:''}, ${n(input.frequency)} ${input.frequency===1?'raz':'razy'} na dobę przez ${n(input.days)} ${input.days===1?'dzień':'dni'}.`:humanDosingText({source,sourceModified:sourceIsModified(),amount,route:f.routeLabel,frequency:input.frequency,days:input.days,effectiveDailyLimit:input.maxDailyMg,extraInstructions:state.extraInstructions});
+  let ds=isVeterinary()?`D.S. Stosować ${amount}${f.routeLabel?' '+f.routeLabel:''}, ${n(input.frequency)} ${input.frequency===1?'raz':'razy'} na dobę${dosingDuration({source,days:input.days}).dosingSuffix}.`:humanDosingText({source,sourceModified:sourceIsModified(),amount,route:f.routeLabel,frequency:input.frequency,days:input.days,effectiveDailyLimit:input.maxDailyMg,extraInstructions:state.extraInstructions});
   if(divisions!==null && f.doseStepLabel) ds+=` Kalibracja: ${f.doseStepLabel}.`;
   if(isVeterinary()&&source?.administration) ds+=' '+source.administration;
   if(isVeterinary()&&state.extraInstructions.trim()) ds+=' '+state.extraInstructions.trim();
@@ -957,7 +958,7 @@ function addToPrescriptionCart() {
   const f=getForm(),pack=currentPackage(f),asNeeded=getSourceRegimen()?.asNeeded===true;
   const summary=[isInstruction(f)?'Instrukcja stosowania':`${n(latest.singleUnits,10)} ${f.unitLabel} na podanie`,
     state.frequency!==''?`${asNeeded?'Doraźnie, do ':''}${n(num(state.frequency))} × na dobę`:'',
-    state.days!==''?`przez ${n(num(state.days))} dni`:'',
+    dosingDuration({source:getSourceRegimen(),days:num(state.days)}).summary,
     isInstruction(f)?(state.instructionPacks!==''?`${state.instructionPacks} op. × ${pack.label}`:pack.label):`${asNeeded?'Do ':''}${n(latest.packages)} op. × ${pack.label}`,
   ].filter(Boolean).join(' · ');
   const saved=savePrescriptionItem(prescriptionCart,{
