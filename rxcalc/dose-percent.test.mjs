@@ -105,5 +105,5 @@ test('presentation escapes data, does not mutate or change arithmetic, and prese
 test('percent runtime files are identical in both hosted copies and cache is bumped',async()=>{
  for(const name of ['dose-regimen.js','dose-safety-view.js','dose-safety.css','sw.js'])
   assert.equal(await readFile(new URL(name,import.meta.url),'utf8'),await readFile(new URL(`../public/rxcalc/${name}`,import.meta.url),'utf8'));
- assert.match(await readFile(new URL('sw.js',import.meta.url),'utf8'),/2026-11-20\.76/);
+ assert.match(await readFile(new URL('sw.js',import.meta.url),'utf8'),/2026-11-20\.77/);
 });

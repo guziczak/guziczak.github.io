@@ -14,11 +14,14 @@ const doseMotionSelector = '.dose-scheme-fill, .dose-reference-fill, .dose-safet
  * measurement basis resets its motion; frequency and numeric bounds do not.
  */
 export function dailyDoseMotionContext({note, form, source, specialty, patientType, species} = {}) {
-  return JSON.stringify([specialty, patientType, species, form?.id, source?.id, note?.ceilingKind,
+  return JSON.stringify([specialty, patientType, species, form?.id, source?.id,
     (note?.rows || []).map((row, index) => {
       const scheme = note.schemeRows?.[index];
+      // A rounding rule can remove a duplicate validation ceiling while the
+      // displayed source comparison stays the same. Only a bare limit meter
+      // uses that ceiling's provenance as its measurement identity.
       return [row.name, row.unit, scheme ? ['scheme', scheme.kind, scheme.perKg]
-        : ['limit', !positive(row.ceiling) && positive(row.ceilingPerKg)]];
+        : ['limit', note.ceilingKind, !positive(row.ceiling) && positive(row.ceilingPerKg)]];
     })]);
 }
 
