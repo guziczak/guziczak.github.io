@@ -9,6 +9,10 @@
 .rx-output > .rx-preview { border: 0; border-radius: 0; background: transparent; }
 html[data-theme="dark"] .rx-output { background: #15251d; }
 .decimal-rounding {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
   margin: 0;
   padding: 2px 12px;
   border-top: 1px solid var(--border);
@@ -16,70 +20,60 @@ html[data-theme="dark"] .rx-output { background: #15251d; }
 .decimal-rounding-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0 8px;
-}
-.decimal-rounding-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  min-width: 0;
   min-height: 36px;
-  cursor: pointer;
+  gap: 0 6px;
 }
-.decimal-rounding-label { color: var(--muted); font-size: 12px; font-weight: 500; }
-.decimal-rounding-control { position: relative; display: inline-flex; flex: 0 0 auto; align-items: center; }
-.decimal-rounding-control input {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-  z-index: 1;
-}
-.decimal-rounding-track {
-  display: block;
-  position: relative;
-  width: 32px;
-  height: 20px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--soft);
-  transition: background .15s ease, border-color .15s ease;
-}
-.decimal-rounding-track::after {
-  content: '';
-  position: absolute;
-  left: 2px;
-  top: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--muted);
-  transition: transform .15s ease, background .15s ease;
-}
-.decimal-rounding-control input:checked + .decimal-rounding-track { background: var(--accent); border-color: var(--accent); }
-.decimal-rounding-control input:checked + .decimal-rounding-track::after { transform: translateX(12px); background: var(--surface); }
-.decimal-rounding-control input:focus-visible + .decimal-rounding-track { outline: 3px solid var(--accent); outline-offset: 4px; }
-.decimal-rounding-control input:disabled { cursor: not-allowed; }
-.decimal-rounding-control input:disabled + .decimal-rounding-track { opacity: .45; }
+.decimal-rounding-label { flex: 0 0 auto; color: var(--muted); font-size: 12px; font-weight: 500; }
+.decimal-rounding-mode { flex: 0 0 91px; min-width: 0; }
+.decimal-rounding-mode .rx-select, .decimal-rounding-mode select { width: 91px; }
 .decimal-rounding-places { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .decimal-rounding-places .rx-select, .decimal-rounding-places select { width: 44px; flex: 0 0 44px; }
-.decimal-rounding-places .rx-select-trigger {
+.decimal-rounding-mode .rx-select-trigger,
+.decimal-rounding-places .rx-select-trigger,
+.decimal-rounding-mode select,
+.decimal-rounding-places select {
   min-height: 36px;
+  height: auto;
   padding: 5px;
   gap: 2px;
-  border-color: transparent;
+  border: 1px solid transparent;
   border-radius: 5px;
   background: transparent;
+  color: var(--ink);
   font-size: 12px;
 }
-.decimal-rounding-places .rx-select-value { text-align: center; white-space: nowrap; }
+.decimal-rounding-mode .rx-select-trigger { font-weight: 600; }
+.decimal-rounding-mode .rx-select-value, .decimal-rounding-places .rx-select-value { white-space: nowrap; }
+.decimal-rounding-places .rx-select-value { text-align: center; }
+.decimal-rounding-mode .rx-select-chevron, .decimal-rounding-mode .rx-select-chevron svg,
 .decimal-rounding-places .rx-select-chevron, .decimal-rounding-places .rx-select-chevron svg { width: 13px; flex-basis: 13px; }
 .decimal-rounding-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
-.decimal-rounding-preview { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
-.decimal-rounding-preview:not(:empty) { margin-bottom: 8px; }
+.decimal-rounding-preview { flex: 1 1 auto; min-width: 0; margin: 0; padding: 3px 0; color: var(--muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.decimal-rounding-preview:empty { display: none; }
+.decimal-rounding-details { min-width: 0; margin: 0; }
+.decimal-rounding-details > summary {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 4px 0;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 500;
+  list-style: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.decimal-rounding-details > summary::-webkit-details-marker { display: none; }
+.decimal-rounding-details[open] { grid-column: 1 / -1; grid-row: 2; }
+.decimal-rounding-details-content { padding: 0 0 10px; color: var(--muted); font-size: 11px; line-height: 1.65; overflow-wrap: anywhere; }
+.decimal-rounding-details-content p { margin: 0 0 6px; }
+.decimal-rounding-details-content p:last-child { margin-bottom: 0; }
+.decimal-rounding-details-content strong { color: var(--ink); font-weight: 600; }
+.decimal-rounding-details-content a { text-underline-offset: 3px; }
+.decimal-rounding-details-content ul { margin: 6px 0; padding-left: 17px; }
 
 /* Entry points in the header and calculation summary. */
 .cart-open {
@@ -197,8 +191,11 @@ html[data-theme="dark"] .cart-button-primary { color: #102d20; }
 
 @media (max-width: 780px) {
   .cart-open { min-height: 44px; padding: 8px 10px; font-size: 12px; }
-  .decimal-rounding-toggle, .decimal-rounding-places .rx-select-trigger { min-height: 44px; }
-  .decimal-rounding-label, .decimal-rounding-places, .decimal-rounding-places .rx-select-trigger { font-size: 12px; }
+  .decimal-rounding-row, .decimal-rounding-details > summary,
+  .decimal-rounding-mode .rx-select-trigger, .decimal-rounding-places .rx-select-trigger,
+  .decimal-rounding-mode select, .decimal-rounding-places select { min-height: 44px; }
+  .decimal-rounding-label, .decimal-rounding-places,
+  .decimal-rounding-mode .rx-select-trigger, .decimal-rounding-places .rx-select-trigger { font-size: 12px; }
   .result-actions .copy-button, .cart-add-button { min-height: 48px; padding: 12px 9px; font-size: 12px; }
   .cart-item-actions button, .cart-mode button { min-height: 44px; }
   .cart-button { min-height: 48px; }
@@ -217,9 +214,6 @@ html[data-theme="dark"] .cart-button-primary { color: #102d20; }
   .cart-export-heading { align-items: stretch; }
   .cart-mode { width: 100%; }
   .cart-mode button { flex: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .decimal-rounding-track, .decimal-rounding-track::after { transition: none; }
 }
 @media print {
   .decimal-rounding, .result-actions, .cart-open, .cart-editing-note, .cart-add-feedback { display: none; }

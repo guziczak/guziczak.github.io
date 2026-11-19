@@ -6,6 +6,11 @@
  */
 export const DECIMAL_PLACES = Object.freeze([0, 1, 2, 3]);
 
+export function normalizeRoundingMode(value, fallback = 'auto') {
+  const modes=['auto','custom','off'];
+  return modes.includes(value)?value:modes.includes(fallback)?fallback:'auto';
+}
+
 const continuousUnits = Object.freeze({
   suspension: 'ml', solution: 'ml', injection: 'ml',
   oralPaste: 'g', oralPowder: 'g', oralGel: 'g', gel: 'g',

@@ -18,12 +18,12 @@ import { createViewportLayout } from './viewport-layout.js';
 import { createCatalogueMotion } from './catalogue-motion.js';
 import { ingredientDailyDose } from './daily-dose.js';
 import { dailyDoseMarkup } from './dose-safety-view.js';
-import { assessDoseRounding, roundingValidationSource, resolveRoundingRegimen, createRoundingReview, roundingAuditText } from './rounding-assessment.js';
+import { assessDoseRounding, hasScopedRoundingEvidence, automaticRoundingStep, applyRoundingPresentation, roundingValidationSource, resolveRoundingRegimen, createRoundingReview, roundingAuditText } from './rounding-assessment.js';
 import { roundingReviewMarkup } from './rounding-review-view.js';
 import { resolveDurationGuidance, durationResultWarning, durationDayChoices } from './duration-guidance.js';
 import { durationGuidanceMarkup, renderDurationGuidance } from './duration-view.js';
 import { editableHumanSource, sourceInitialValues, sourceEditState, sourceEditMarkup } from './regimen-edit.js';
-import { effectiveRoundingStep, normalizeDecimalPlaces, supportsDecimalRounding } from './decimal-rounding.js';
+import { effectiveRoundingStep, normalizeDecimalPlaces, normalizeRoundingMode, supportsDecimalRounding } from './decimal-rounding.js';
 import { createPrescriptionCart, savePrescriptionItem, removePrescriptionItem, assessPrescriptionCart, prescriptionCartText, preparePrescriptionEdit } from './prescription-cart.js';
 import { decimalRoundingMarkup, prescriptionCartMarkup } from './prescription-tools-view.js';
 import { playCartFeedback, cancelCartFeedback } from './cart-feedback.js';
@@ -82,7 +82,7 @@ const state = {
   patientType: 'adult', age: '', weight: '', species: '', vetAgeUnit: 'years', vetRoute: '', foodChainStatus: 'unknown',
   humanAgeUnit: 'years', renalStatus: 'unknown', humanCrCl: '', instructionPacks: '',
   doseMode: 'fixed', dose: '', frequency: '', days: '', roundingStep: '', manualMax: '', regimenId: '',
-  roundDoses: false, roundingPlaces: '1',
+  roundingMode: 'auto', roundDoses: false, roundingPlaces: '1',
   extraInstructions: '', confirmed: false, rxMode: 'full', custom: false,
   customName: '', customForm: 'tablet', customStrength: '', customConcentration: '', customVolume: '5', customPack: '', customFractions: '1', customDrops: '', customContainers: '1',
   demo: false,
@@ -156,14 +156,18 @@ function chooseDrug(id) {
 function resetRegimen() {
   roundingReview = null;
   if (state.demo) Object.assign(state, { age: '', weight: '' });
-  Object.assign(state, { dose: '', frequency: '', days: '', manualMax: '', extraInstructions: '', instructionPacks: '', confirmed: false, demo: false, regimenId: '', roundDoses:false, roundingStep:'' });
+  Object.assign(state, { dose: '', frequency: '', days: '', manualMax: '', extraInstructions: '', instructionPacks: '', confirmed: false, demo: false, regimenId: '', roundingMode:'auto', roundDoses:false, roundingStep:'' });
   ui.manualRegimen = false; ui.regimenExpanded = false; ui.sourceDetailsOpen = false;
   ui.liquidDoseView = null;
 }
 const getSourceRegimen = () => (isVeterinary() ? REGIMENS : HUMAN_SOURCE_OPTIONS).find(r => r.id === state.regimenId);
 function currentRoundingStep() {
-  return effectiveRoundingStep({ enabled:state.roundDoses, places:state.roundingPlaces,
-    form:getForm(), source:getSourceRegimen(), baselineStep:num(state.roundingStep) });
+  const form=getForm(),source=getSourceRegimen();
+  if(state.roundingMode==='auto')return automaticRoundingStep({form,source,
+    context:{...humanContext(),doseMode:state.doseMode,patientKind:isVeterinary()?'animal':'human'}})
+    ?? num(state.roundingStep);
+  return effectiveRoundingStep({ enabled:state.roundingMode==='custom', places:state.roundingPlaces,
+    form, source, baselineStep:num(state.roundingStep) });
 }
 const isReference = f => !!(f?.referenceOnly || f?.calculationBlocked);
 const isInstruction = f => !isVeterinary() && (f?.calculationMode === 'instruction' || getSourceRegimen()?.doseMode === 'instruction');
@@ -191,6 +195,8 @@ function currentDurationGuidance() {
     context:{...(isVeterinary()?regimenContext():humanContext()),specialty:state.specialty,
       doseMode:state.doseMode,dose:num(state.dose),frequency:num(state.frequency),
       roundingStep:currentRoundingStep(),manualMax:num(state.manualMax),
+      roundingMode:state.roundingMode,patientKind:isVeterinary()?'animal':'human',
+      roundingLimits:getForm()?applicableLimit(getForm(),{includeSource:false}):{},
       custom:state.custom,calculationBlocked:!!getForm()?.calculationBlocked}});
 }
 function durationChoices(source, cardio = false) {
@@ -219,7 +225,8 @@ const ageUnitLabel = () => ({ years: 'lat', months: 'mies.', weeks: 'tyg.', days
 function currentRoundingOptions() {
   const form=getForm();
   return {form,source:getSourceRegimen(),context:{...humanContext(),
-    doseMode:state.doseMode,roundingStep:currentRoundingStep(),
+    doseMode:state.doseMode,roundingStep:currentRoundingStep(),roundingMode:state.roundingMode,
+    baselineStep:num(state.roundingStep),
     patientKind:isVeterinary()?'animal':'human'},
     limits:form?applicableLimit(form,{includeSource:false}):{},review:roundingReview};
 }
@@ -232,7 +239,7 @@ function updateRoundingReview() {
   if(slot.innerHTML!==markup)slot.innerHTML=markup;
 }
 const canEditSourceValues = () => !isVeterinary() && !isInstruction(getForm()) && editableHumanSource(getSourceRegimen());
-const sourceIsModified = () => canEditSourceValues() && sourceEditState(getSourceRegimen(), state).modified;
+const sourceIsModified = () => canEditSourceValues() && sourceEditState(getSourceRegimen(), state, assessDoseRounding(currentRoundingOptions())).modified;
 function syncSourceRegimen({ initialize = false } = {}) {
   if (!state.regimenId) return null;
   const source = getSourceRegimen();
@@ -359,7 +366,7 @@ function humanRegimenPanel(f) {
   const frequencies = editable ? [...new Set([1,2,3,4,5,6,8,12,...(source.frequencyOptions || []),...(source.frequency ? [source.frequency] : [])])].sort((a,b)=>a-b) : source?.frequencyOptions;
   const frequencyControl = frequencies ? `<div class="field"><label for="frequency">${source.asNeeded ? 'Maks. liczba podań na dobę' : 'Częstotliwość'}</label><select id="frequency" data-field="frequency"><option value="">Wybierz</option>${frequencies.map(v => `<option value="${v}" ${state.frequency === String(v) ? 'selected' : ''}>${source.asNeeded ? 'Do ' : ''}${v} × na dobę</option>`).join('')}</select></div>` : source?.frequency ? `<div class="source-fact"><small>Częstotliwość</small><strong id="source-frequency-value">${n(source.frequency)} × na dobę</strong></div>` : '';
   const duration = source?.fixedDays ? `<p class="source-duration">Czas tego schematu: <strong>${n(source.fixedDays)} ${source.fixedDays === 1 ? 'dzień' : 'dni'}</strong></p>${durationChoices(source,false)}` : `<div class="duration-field">${field('days',instruction && !source?.minDays && !source?.maxDays ? 'Czas stosowania (jeśli ustalony)' : 'Czas stosowania',state.days,'Ustala lekarz','dni')}${durationHint(source) ? `<p class="small-help">${esc(durationHint(source))}</p>` : ''}${durationChoices(source,false)}</div>`;
-  return `<section class="panel regimen-panel human-regimen" aria-labelledby="regimen-title"><div class="section-heading"><span class="step-number">02</span><h2 id="regimen-title">${instruction ? 'Sposób stosowania' : 'Schemat podawania'}</h2><span class="trailing" id="regimen-provenance">${source ? (sourceIsModified() ? 'Zmodyfikowany' : 'Ze źródła') : ''}</span></div>${sourceRegimenPicker()}${source ? `${patientPanel(f)}<div class="human-source-body">${instruction ? `<div class="instruction-summary">${icon('book')}<p>${esc(source.instructionText || source.administration || '')}</p></div>` : ''}<div class="regimen-fields human-regimen-fields">${doseControl}${frequencyControl}</div>${editable ? `<div class="source-edit-note" id="source-edit-note">${sourceEditMarkup(source,state,doseUnit())}</div>` : ''}${dailyDoseSlot(f)}${source.asNeeded ? `<p class="small-help">W razie potrzeby. ${source.minIntervalHours ? `Odstęp między podaniami: co najmniej ${n(source.minIntervalHours)} godz.` : ''} Zapas pokazuje maksymalne planowane zużycie.</p>` : ''}${duration}${instruction ? `<div class="instruction-supply">${field('instructionPacks','Liczba opakowań (jeśli ustalona)',state.instructionPacks,'Ustala lekarz','op.')}<p class="small-help">Ilości preparatu i liczby opakowań nie wyliczamy z umownej porcji. Wpisana liczba opakowań jest decyzją lekarza.</p></div>` : ''}${source.screening ? `<p class="source-screening">${icon('shield')}<span>${esc(source.screening)}</span></p>` : ''}<details class="advanced" data-disclosure="advancedOpen" ${ui.advancedOpen ? 'open' : ''}><summary>${icon('settings')}Dodatkowe zalecenia${instruction ? '' : ' i limit'}</summary><div class="advanced-grid">${!instruction ? field('manualMax','Własny niższy limit dobowy',state.manualMax,'Opcjonalnie','mg') : ''}<div class="field full"><label for="extraInstructions">Dodatkowe zalecenia</label><input id="extraInstructions" data-field="extraInstructions" value="${esc(state.extraInstructions)}" maxlength="500" placeholder="Ustalone przez lekarza" autocomplete="off"></div></div></details><details class="source-details" data-disclosure="sourceDetailsOpen" ${ui.sourceDetailsOpen ? 'open' : ''}><summary>${icon('book')}Źródło i zakres schematu</summary><ul>${(source.notes || []).map(note => `<li>${esc(note)}</li>`).join('')}</ul>${source.administration ? `<p><strong>Sposób podania w źródle:</strong> ${esc(source.administration)}</p>` : ''}<a href="${esc(source.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(source.sourceLabel)}${source.sourceSection ? ` · ${esc(source.sourceSection)}` : ''} ↗</a>${(source.additionalSources||[]).map(item=>`<p><a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.label)} ↗</a></p>`).join('')}<p class="small-help">Źródło sprawdzone: ${esc(source.sourceCheckedAt)}. Schemat obejmuje opisane warunki, nie pełną ocenę kliniczną.</p>${!instruction ? '<button class="text-button" data-action="manual-regimen">Edytuj jako schemat ręczny</button>' : ''}</details></div>` : ''}</section>`;
+  return `<section class="panel regimen-panel human-regimen" aria-labelledby="regimen-title"><div class="section-heading"><span class="step-number">02</span><h2 id="regimen-title">${instruction ? 'Sposób stosowania' : 'Schemat podawania'}</h2><span class="trailing" id="regimen-provenance">${source ? (sourceIsModified() ? 'Zmodyfikowany' : 'Ze źródła') : ''}</span></div>${sourceRegimenPicker()}${source ? `${patientPanel(f)}<div class="human-source-body">${instruction ? `<div class="instruction-summary">${icon('book')}<p>${esc(source.instructionText || source.administration || '')}</p></div>` : ''}<div class="regimen-fields human-regimen-fields">${doseControl}${frequencyControl}</div>${editable ? `<div class="source-edit-note" id="source-edit-note">${sourceEditMarkup(source,state,doseUnit(),assessDoseRounding(currentRoundingOptions()))}</div>` : ''}${dailyDoseSlot(f)}${source.asNeeded ? `<p class="small-help">W razie potrzeby. ${source.minIntervalHours ? `Odstęp między podaniami: co najmniej ${n(source.minIntervalHours)} godz.` : ''} Zapas pokazuje maksymalne planowane zużycie.</p>` : ''}${duration}${instruction ? `<div class="instruction-supply">${field('instructionPacks','Liczba opakowań (jeśli ustalona)',state.instructionPacks,'Ustala lekarz','op.')}<p class="small-help">Ilości preparatu i liczby opakowań nie wyliczamy z umownej porcji. Wpisana liczba opakowań jest decyzją lekarza.</p></div>` : ''}${source.screening ? `<p class="source-screening">${icon('shield')}<span>${esc(source.screening)}</span></p>` : ''}<details class="advanced" data-disclosure="advancedOpen" ${ui.advancedOpen ? 'open' : ''}><summary>${icon('settings')}Dodatkowe zalecenia${instruction ? '' : ' i limit'}</summary><div class="advanced-grid">${!instruction ? field('manualMax','Własny niższy limit dobowy',state.manualMax,'Opcjonalnie','mg') : ''}<div class="field full"><label for="extraInstructions">Dodatkowe zalecenia</label><input id="extraInstructions" data-field="extraInstructions" value="${esc(state.extraInstructions)}" maxlength="500" placeholder="Ustalone przez lekarza" autocomplete="off"></div></div></details><details class="source-details" data-disclosure="sourceDetailsOpen" ${ui.sourceDetailsOpen ? 'open' : ''}><summary>${icon('book')}Źródło i zakres schematu</summary><ul>${(source.notes || []).map(note => `<li>${esc(note)}</li>`).join('')}</ul>${source.administration ? `<p><strong>Sposób podania w źródle:</strong> ${esc(source.administration)}</p>` : ''}<a href="${esc(source.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(source.sourceLabel)}${source.sourceSection ? ` · ${esc(source.sourceSection)}` : ''} ↗</a>${(source.additionalSources||[]).map(item=>`<p><a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.label)} ↗</a></p>`).join('')}<p class="small-help">Źródło sprawdzone: ${esc(source.sourceCheckedAt)}. Schemat obejmuje opisane warunki, nie pełną ocenę kliniczną.</p>${!instruction ? '<button class="text-button" data-action="manual-regimen">Edytuj jako schemat ręczny</button>' : ''}</details></div>` : ''}</section>`;
 }
 
 function regimenPanel(f) {
@@ -375,7 +382,7 @@ function regimenPanel(f) {
 function resultPanel(f) {
   if (!productReady()) return `<aside class="result-column" id="result" aria-label="Wynik obliczenia"><div class="empty-workflow">${icon('calc')}<h2>Od wyboru do wyniku</h2><p>${isVeterinary() && !state.species ? 'Wybierz gatunek, a następnie preparat.' : ui.productChosen ? 'Wybierz postać i moc preparatu.' : 'Wybierz preparat z katalogu lub ulubionych.'}</p><small>Obliczenie i zapis pojawią się tutaj.</small></div></aside>`;
   if (isReference(f)) return `<aside class="result-column" id="result"><div class="empty-workflow reference-result">${icon('book')}<h2>Karta informacyjna</h2><p>${esc(f.marketStatusLabel || f.calculationNote || 'Dokumentacja tej postaci wymaga osobnej weryfikacji przed zastosowaniem.')}</p><small>Ta pozycja nie uzupełnia dawki ani recepty.</small></div></aside>`;
-  return `<aside class="result-column" id="result" aria-label="Wynik obliczenia"><div class="result-card"><div class="result-top"><div class="result-title">Twoje wyliczenie <span class="live-tag">Na żywo</span></div><div class="dose-output"><span class="number" id="dose-value">—</span><span class="unit" id="dose-unit">${esc(f.unitLabel)}</span></div><p class="frequency-output" id="frequency-output">Uzupełnij schemat podawania</p><div class="dose-equivalent" id="dose-equivalent">Wynik pojawi się automatycznie.</div></div><div class="result-body"><p class="cart-editing-note" id="cart-editing-note" hidden></p><div class="safety-heading"><span>Kontrola dawki</span><span class="status-badge" id="status-badge">${icon('info')} Oczekuje na dane</span></div><div class="dose-meter" id="dose-meter"><span style="width:0%"></span></div><div class="limit-text" id="limit-text"><span>Dawka dobowa</span><span>—</span></div><div class="result-alerts" id="result-alerts"></div><div class="result-review" id="result-review"></div><div class="supply-box"><div class="supply-head">${icon('box')}<span>${state.regimenId ? 'Na wybrany etap' : 'Na całą kurację'}</span><span id="total-units">—</span></div><div class="package-result" id="package-result">— opakowań</div><div class="package-description" id="package-description">Wybierz opakowanie preparatu</div>${!state.custom && f.packOptions.length > 1 ? `<select class="package-select" id="packageId" data-field="packageId" aria-label="Wielkość opakowania">${f.packOptions.map(p => `<option value="${p.id}" ${p.id === state.packageId ? 'selected' : ''}>Opakowanie: ${esc(p.label)}</option>`).join('')}</select>` : ''}<div id="best-package"></div></div><div class="rx-section"><div class="rx-heading"><h3>${isVeterinary() ? 'Zalecenia do dokumentacji' : 'Zapis do dokumentacji'}</h3><div class="rx-tabs"><button data-action="rx-mode" data-value="full" class="${state.rxMode === 'full' ? 'active' : ''}" aria-pressed="${state.rxMode === 'full'}">${isVeterinary() || isInstruction(f) || ['device','cosmetic'].includes(f.productKind) ? 'Preparat + D.S.' : 'Rp. + D.S.'}</button><button data-action="rx-mode" data-value="ds" class="${state.rxMode === 'ds' ? 'active' : ''}" aria-pressed="${state.rxMode === 'ds'}">Zalecenia</button></div></div><div class="rx-output"><pre class="rx-preview placeholder" id="rx-preview">Wprowadź schemat i wymagane dane, aby przygotować zapis.</pre>${decimalRoundingMarkup({supported:supportsDecimalRounding(f,getSourceRegimen()),enabled:state.roundDoses,places:state.roundingPlaces,unit:f.unitLabel})}</div></div><label class="confirm-row"><input id="confirmed" type="checkbox" ${state.confirmed ? 'checked' : ''}><span>${isVeterinary() ? 'Potwierdzam jako lekarz weterynarii wskazanie, etap, drogę podania i schemat dla tego pacjenta. Sprawdziłem przeciwwskazania, inne leki i aktualną dokumentację preparatu.' : 'Potwierdzam dobór preparatu i schemat w aktualnej dokumentacji dla tego pacjenta.'}</span></label><div class="result-actions"><button class="copy-button" id="copy-button" data-action="copy" disabled>${icon('copy')}Kopiuj dawkowanie</button><button class="cart-add-button" id="cart-add" data-action="cart-add" disabled>${icon('cart')}Dodaj do koszyka</button></div><div class="cart-add-feedback" id="cart-add-feedback" role="status" aria-live="polite"></div><p class="copy-caption" id="result-requirements">Uzupełnij dane i potwierdź schemat.</p></div></div><p class="result-footnote">${icon('shield')}Kalkulator wspiera przeliczenie i odczyt instrukcji. Nie ocenia wszystkich przeciwwskazań ani interakcji.</p></aside>`;
+  return `<aside class="result-column" id="result" aria-label="Wynik obliczenia"><div class="result-card"><div class="result-top"><div class="result-title">Twoje wyliczenie <span class="live-tag">Na żywo</span></div><div class="dose-output"><span class="number" id="dose-value">—</span><span class="unit" id="dose-unit">${esc(f.unitLabel)}</span></div><p class="frequency-output" id="frequency-output">Uzupełnij schemat podawania</p><div class="dose-equivalent" id="dose-equivalent">Wynik pojawi się automatycznie.</div></div><div class="result-body"><p class="cart-editing-note" id="cart-editing-note" hidden></p><div class="safety-heading"><span>Kontrola dawki</span><span class="status-badge" id="status-badge">${icon('info')} Oczekuje na dane</span></div><div class="dose-meter" id="dose-meter"><span style="width:0%"></span></div><div class="limit-text" id="limit-text"><span>Dawka dobowa</span><span>—</span></div><div class="result-alerts" id="result-alerts"></div><div class="result-review" id="result-review"></div><div class="supply-box"><div class="supply-head">${icon('box')}<span>${state.regimenId ? 'Na wybrany etap' : 'Na całą kurację'}</span><span id="total-units">—</span></div><div class="package-result" id="package-result">— opakowań</div><div class="package-description" id="package-description">Wybierz opakowanie preparatu</div>${!state.custom && f.packOptions.length > 1 ? `<select class="package-select" id="packageId" data-field="packageId" aria-label="Wielkość opakowania">${f.packOptions.map(p => `<option value="${p.id}" ${p.id === state.packageId ? 'selected' : ''}>Opakowanie: ${esc(p.label)}</option>`).join('')}</select>` : ''}<div id="best-package"></div></div><div class="rx-section"><div class="rx-heading"><h3>${isVeterinary() ? 'Zalecenia do dokumentacji' : 'Zapis do dokumentacji'}</h3><div class="rx-tabs"><button data-action="rx-mode" data-value="full" class="${state.rxMode === 'full' ? 'active' : ''}" aria-pressed="${state.rxMode === 'full'}">${isVeterinary() || isInstruction(f) || ['device','cosmetic'].includes(f.productKind) ? 'Preparat + D.S.' : 'Rp. + D.S.'}</button><button data-action="rx-mode" data-value="ds" class="${state.rxMode === 'ds' ? 'active' : ''}" aria-pressed="${state.rxMode === 'ds'}">Zalecenia</button></div></div><div class="rx-output"><pre class="rx-preview placeholder" id="rx-preview">Wprowadź schemat i wymagane dane, aby przygotować zapis.</pre>${decimalRoundingMarkup({supported:supportsDecimalRounding(f,getSourceRegimen())||hasScopedRoundingEvidence(f,getSourceRegimen()),customSupported:supportsDecimalRounding(f,getSourceRegimen()),mode:state.roundingMode,places:state.roundingPlaces,unit:f.unitLabel})}</div></div><label class="confirm-row"><input id="confirmed" type="checkbox" ${state.confirmed ? 'checked' : ''}><span>${isVeterinary() ? 'Potwierdzam jako lekarz weterynarii wskazanie, etap, drogę podania i schemat dla tego pacjenta. Sprawdziłem przeciwwskazania, inne leki i aktualną dokumentację preparatu.' : 'Potwierdzam dobór preparatu i schemat w aktualnej dokumentacji dla tego pacjenta.'}</span></label><div class="result-actions"><button class="copy-button" id="copy-button" data-action="copy" disabled>${icon('copy')}Kopiuj dawkowanie</button><button class="cart-add-button" id="cart-add" data-action="cart-add" disabled>${icon('cart')}Dodaj do koszyka</button></div><div class="cart-add-feedback" id="cart-add-feedback" role="status" aria-live="polite"></div><p class="copy-caption" id="result-requirements">Uzupełnij dane i potwierdź schemat.</p></div></div><p class="result-footnote">${icon('shield')}Kalkulator wspiera przeliczenie i odczyt instrukcji. Nie ocenia wszystkich przeciwwskazań ani interakcji.</p></aside>`;
 }
 
 function specialtyPicker() {
@@ -529,7 +536,7 @@ function updateSourceEditNotice() {
   const slot=$('#source-edit-note');
   if (!slot || !canEditSourceValues()) return;
   const modified=sourceIsModified();
-  const markup=sourceEditMarkup(getSourceRegimen(),state,doseUnit());
+  const markup=sourceEditMarkup(getSourceRegimen(),state,doseUnit(),assessDoseRounding(currentRoundingOptions()));
   if (slot.innerHTML!==markup) slot.innerHTML=markup;
   if ($('#regimen-provenance')) $('#regimen-provenance').textContent=modified?'Zmodyfikowany':'Ze źródła';
   const confirmation=$('#confirmed + span');
@@ -552,13 +559,13 @@ function currentLiquidDoseView() {
 function currentLiquidDoseChoices() {
   const form=getForm();
   if(!form||!productReady())return [];
-  const source=getSourceRegimen(),limit=applicableLimit(form);
+  const source=getSourceRegimen(),limit=applicableLimit(form,{includeSource:false});
   const eligibility=source&&!isVeterinary()?resolveHumanRegimen(source,{...humanContext(),
     days:source.fixedDays||source.minDays||1,dose:source.dose??source.doseRange?.min??null,
     frequency:source.frequency??source.frequencyOptions?.[0]??null}):null;
   return liquidDoseChoices(form,{doseMode:state.doseMode,weight:num(state.weight),frequency:num(state.frequency),
     source,maxSingleMg:limit.single,maxDailyMg:limit.daily,roundingStep:currentRoundingStep(),veterinary:isVeterinary(),eligibility,
-    roundingContext:currentRoundingOptions(),view:currentLiquidDoseView(),roundDoseChoices:state.roundDoses});
+    roundingContext:currentRoundingOptions(),view:currentLiquidDoseView(),roundDoseChoices:state.roundingMode!=='off'});
 }
 function liquidDoseButtons() {
   return `<div class="liquid-dose-slot">${liquidDoseChoicesMarkup(currentLiquidDoseChoices(),{dose:num(state.dose),unit:doseUnit(),basis:getForm()?.doseBasisIngredient})}</div>`;
@@ -736,7 +743,8 @@ function updateResultContent() {
   }
   const sourceCheck=syncSourceRegimen();
   if(isInstruction(getForm())) { updateInstructionResult(sourceCheck); return; }
-  const f=getForm(),input=makeInput(),r=calculate(input),limit=applicableLimit(f);
+  const f=getForm(),input=makeInput(),roundingAssessment=sourceCheck?.rounding||null,
+    r=applyRoundingPresentation(calculate(input),roundingAssessment),limit=applicableLimit(f);
   updateDailyDoseNote(f,input,sourceCheck,limit);
   if(sourceCheck){r.errors.push(...sourceCheck.errors);r.warnings.push(...sourceCheck.warnings);if(!sourceCheck.valid){r.valid=false;if(r.status!=='critical')r.status='incomplete';}else if(sourceCheck.warnings.length&&r.status==='ok')r.status='warning';}
   if(sourceCheck && !isVeterinary()) {
@@ -756,7 +764,7 @@ function updateResultContent() {
   if(state.custom && !state.customName.trim() && r.valid){r.valid=false;r.status='incomplete';r.errors.push('Wprowadź pełną nazwę, moc i postać preparatu.');}
   if(isVeterinary() && r.valid && !f.routeLabel?.trim()){r.valid=false;r.status='incomplete';r.errors.push('Uzupełnij drogę podania preparatu.');}
   if(!isVeterinary() && f.form==='injection' && r.valid && !state.extraInstructions.trim()){r.valid=false;r.status='incomplete';r.errors.push('Uzupełnij drogę i sposób podania w szczegółach schematu.');}
-  const roundingAssessment=sourceCheck?.rounding||null;
+  r.rounding=roundingAssessment;
   latest=r;
   if($('#source-dose-value')) $('#source-dose-value').textContent=state.dose !== '' ? `${n(num(state.dose),10)} ${doseUnit()}` : 'Po uzupełnieniu danych';
   if($('#source-frequency-value')) $('#source-frequency-value').textContent=state.frequency !== '' ? `${n(num(state.frequency))} × na dobę` : '—';
@@ -776,7 +784,8 @@ function updateResultContent() {
   const showStatus=!!state.regimenId||hasResult||r.status==='critical';
   const badge=$('#status-badge'); badge.className=`status-badge ${showStatus?r.status:''}`;
   badge.innerHTML=icon(r.status==='critical'?'alert':r.status==='ok'?'check':'info')+(showStatus?({ok:'Brak przekroczeń limitów',warning:'Wymaga sprawdzenia',critical:'Sprawdź schemat',incomplete:'Niepełna ocena'})[r.status]:'Oczekuje na dane');
-  if(roundingAssessment&&r.status!=='critical'){badge.innerHTML=icon('info')+(roundingAssessment.state==='reviewed'?'Zaokrąglenie ocenione':'Zaokrąglenie do oceny');badge.classList.add('rounding-'+roundingAssessment.state);}
+  if(roundingAssessment?.state==='rule'&&r.valid&&!r.warnings.length){badge.innerHTML=icon('info')+roundingAssessment.label;badge.classList.add('rounding-rule');}
+  else if(roundingAssessment&&roundingAssessment.state!=='rule'&&r.status!=='critical'){badge.innerHTML=icon('info')+(roundingAssessment.state==='reviewed'?'Zaokrąglenie ocenione':'Zaokrąglenie do oceny');badge.classList.add('rounding-'+roundingAssessment.state);}
   const meter=$('#dose-meter');meter.className=`dose-meter ${r.status}`;
   meter.hidden=!!roundingAssessment&&limit.daily===null;
   meter.firstElementChild.style.width=r.maxRatio!==null?`${Math.min(100,Math.max(0,r.maxRatio*100))}%`:'0%';
@@ -837,28 +846,53 @@ function prescription(r,f,input,mode=state.rxMode) {
   const pack=f.packOptions.find(p=>p.id===state.packageId)||f.packOptions[0];
   const header=`${isVeterinary()||['device','cosmetic'].includes(f.productKind)?'Preparat:':'Rp.'} ${name}\n${n(r.packages)} op. po ${pack.label}${source?.asNeeded?'\nZapas odpowiada maksymalnemu planowanemu zużyciu doraźnemu.':''}${supplyNote(r,f)?'\nZapas: '+supplyNote(r,f):''}`;
   const text=prescriptionText({mode,header,dosing:ds,source,veterinaryContext});
-  const audit=!isVeterinary()?roundingAuditText(assessDoseRounding(currentRoundingOptions())):'';
+  const rounding=!isVeterinary()?assessDoseRounding(currentRoundingOptions()):null;
+  // Rule provenance lives in the inline details and immutable cart snapshot.
+  const audit=rounding?.state==='reviewed'?roundingAuditText(rounding):'';
   return text+(audit&&mode!=='ds'?'\n\n'+audit:'');
 }
 function dirty() { cancelCartFeedback();state.confirmed=false;roundingReview=null;cartFeedback=''; }
 function updateDecimalRounding() {
-  const toggle=$('#roundDoses'), places=$('#roundingPlaces'), preview=$('#rounding-preview');
-  if(!toggle||!places||!preview)return;
-  toggle.checked=state.roundDoses;
-  places.disabled=!state.roundDoses;
+  const mode=$('#roundingMode'),places=$('#roundingPlaces'),preview=$('#rounding-preview');
+  if(!mode||!places||!preview)return;
+  mode.value=normalizeRoundingMode(state.roundingMode);
+  const custom=mode.value==='custom'&&supportsDecimalRounding(getForm(),getSourceRegimen());
+  $('#rounding-custom-controls').hidden=!custom;
+  places.disabled=!custom;
   places.value=String(normalizeDecimalPlaces(state.roundingPlaces,1));
   const suffix=$('#rounding-places-label');
   if(suffix)suffix.textContent=places.value==='1'?'miejsca':'miejsc';
-  const r=latest,unit=getForm()?.unitLabel||'';
+  const r=latest,unit=getForm()?.unitLabel||'',details=$('#rounding-details'),content=$('#rounding-details-content');
+  details.hidden=true;
+  content.textContent='';
   if(!Number.isFinite(r?.theoreticalUnits)){preview.textContent='';return;}
-  if(!state.roundDoses){preview.textContent='';return;}
+  const assessment=r.rounding;
+  if(assessment?.state==='rule') {
+    preview.textContent=`${n(r.singleUnits,3)} ${unit} · według reguły`;
+    details.hidden=false;
+    content.innerHTML=`<p>${esc(`${n(assessment.referenceMl,6)} → ${n(assessment.ml,3)} ${unit} · +${n(assessment.deltaPercent,2)}%. Amoksycylina: ${n(assessment.referenceSingleMg)} → ${n(assessment.singleMg)} mg; kwas klawulanowy: ${n(assessment.companionSingleMg,3)} mg na podanie.`)}</p><p>Reguła dotyczy wybranego przeliczenia 875 mg dla dorosłego ≥40 kg z trudnością połykania tabletek. Nie zmienia częstotliwości ani czasu leczenia. Dobór schematu potwierdza lekarz.</p><p>${(assessment.policy?.evidence||[]).map(source=>`<a href="${esc(source.url)}" target="_blank" rel="noopener noreferrer">${esc(source.label)}</a>`).join(' · ')}</p>`;
+    return;
+  }
+  if(mode.value==='auto') {
+    preview.textContent=assessment?.state==='blocked'?'Sprawdź ograniczenia':'Brak reguły';
+    details.hidden=false;
+    content.textContent=assessment?.state==='blocked'
+      ?'Reguła 11 ml jest rozpoznana, ale wskazane ograniczenia uniemożliwiają jej zastosowanie. Zapis pozostaje zablokowany.'
+      :'Dla tych danych nie ma automatycznej reguły. Ilość pozostaje wyliczona z wpisanej dawki. Własną precyzję można wybrać w trybie „Własne”.';
+    return;
+  }
+  if(mode.value==='off'){preview.textContent='';return;}
   if(!Number.isFinite(r.singleUnits)||r.singleUnits<=0){
-    preview.textContent='Wybrane zaokrąglenie nie daje dodatniej ilości do podania. Zwiększ liczbę miejsc po przecinku.';
+    preview.textContent='Zwiększ precyzję';
+    details.hidden=false;
+    content.textContent='Wybrane zaokrąglenie nie daje dodatniej ilości do podania. Zwiększ liczbę miejsc po przecinku.';
     return;
   }
   const change=r.roundingDifferencePercent;
-  preview.textContent=`${n(r.theoreticalUnits,10)} → ${n(r.singleUnits,3)} ${unit}`
-    +(Number.isFinite(change)&&Math.abs(change)>1e-9?` · ${change>0?'+':''}${n(change,3)}%`:' · bez zmiany ilości');
+  preview.textContent=`${n(r.singleUnits,3)} ${unit}`;
+  details.hidden=false;
+  content.textContent=`${n(r.theoreticalUnits,10)} → ${n(r.singleUnits,3)} ${unit}`
+    +(Number.isFinite(change)&&Math.abs(change)>1e-9?` · ${change>0?'+':''}${n(change,3)}%. Własna precyzja wymaga oceny zmiany dawki.`:' · bez zmiany ilości.');
 }
 function cartPatientLabel() {
   const parts=[isVeterinary()?getAnimal()?.label||'Zwierzę':state.patientType==='child'?'Dziecko':'Dorosły'];
@@ -903,7 +937,10 @@ function addToPrescriptionCart() {
     isInstruction(f)?(state.instructionPacks!==''?`${state.instructionPacks} op. × ${pack.label}`:pack.label):`${asNeeded?'Do ':''}${n(latest.packages)} op. × ${pack.label}`,
   ].filter(Boolean).join(' · ');
   const saved=savePrescriptionItem(prescriptionCart,{
-    snapshot:{...state},label:f.label,summary,texts:{...latestTexts},
+    snapshot:{...state,roundingPolicy:latest.rounding?.state==='rule'?latest.rounding.policy:null,
+      calculation:{singleUnits:latest.singleUnits,singleMg:latest.singleMg,dailyMg:latest.dailyMg,
+        totalUnits:latest.totalUnits,packages:latest.packages,packageSize:pack.quantity}},
+    label:f.label,summary,texts:{...latestTexts},
     valid:latest.valid,confirmed:state.confirmed,demo:state.demo,
   },{replaceId:editingCartId});
   if(!saved.ok){cartDialog(saved.message);return;}
@@ -926,7 +963,9 @@ function editCartItem(id) {
   if(!item)return;
   const edit=preparePrescriptionEdit(item,state);
   if(!edit.ok){cartDialog(edit.message);return;}
-  Object.assign(state,edit.state,{search:'',category:'all',routeFilter:'all'});
+  const {roundingPolicy,calculation,...medicationState}=edit.state;
+  Object.assign(state,medicationState,{search:'',category:'all',routeFilter:'all',
+    roundingMode:normalizeRoundingMode(medicationState.roundingMode,medicationState.roundDoses?'custom':'off')});
   editingCartId=id;cartFeedback='';roundingReview=null;
   Object.assign(ui,{productChosen:true,formChosen:true,productExpanded:false,filtersOpen:false,
     showAll:false,manualRegimen:!state.regimenId,regimenExpanded:false,sourceDetailsOpen:false,
@@ -987,7 +1026,7 @@ function example() {
   state.specialty='dental';state.category='all';state.search='';chooseDrug('amoxicillin-clavulanate');
   selectForm('augmentin-400-57');
   Object.assign(ui,{productChosen:true,formChosen:true,productExpanded:false,manualRegimen:true});
-  Object.assign(state,{patientType:'child',age:'8',weight:'24',doseMode:'perKgDay',dose:'45',frequency:'2',days:'7',roundingStep:'',roundDoses:true,roundingPlaces:'1',demo:true});render();toast('Przykład działania. Rozpocznij własne obliczenie przyciskiem „Nowy pacjent”.');
+  Object.assign(state,{patientType:'child',age:'8',weight:'24',doseMode:'perKgDay',dose:'45',frequency:'2',days:'7',roundingStep:'',roundingMode:'custom',roundDoses:true,roundingPlaces:'1',demo:true});render();toast('Przykład działania. Rozpocznij własne obliczenie przyciskiem „Nowy pacjent”.');
 }
 
  document.addEventListener('click',e=>{
@@ -1035,7 +1074,7 @@ function example() {
     case 'restore-source-values':{
       if(!canEditSourceValues())break;
       Object.assign(state,sourceInitialValues(getSourceRegimen()));
-      state.roundDoses=false;
+      state.roundingMode='auto';state.roundDoses=false;
       dirty();syncSourceRegimen();prefillSourceTabletDose();
       if($('#dose'))$('#dose').value=state.dose;
       if($('#frequency'))$('#frequency').value=state.frequency;
@@ -1122,13 +1161,13 @@ $('#app').addEventListener('input',e=>{
 $('#app').addEventListener('change',e=>{
   if(e.target.id==='confirmed'){state.confirmed=e.target.checked&&!!latest?.valid&&productReady()&&!state.demo;updateResult();return;}
   if(e.target.id==='renalImpairment'){state.renalStatus=e.target.checked?'impaired':'unknown';dirty();updateResult();return;}
-  if(e.target.id==='roundDoses'){state.roundDoses=e.target.checked&&supportsDecimalRounding(getForm(),getSourceRegimen());dirty();updateResult();return;}
   const key=e.target.dataset.field;if(!key||e.target.tagName!=='SELECT')return;
   if(key==='productVariant'){if(e.target.value){if(chooseProduct(e.target.value))renderProductSelection();}else{resetRegimen();ui.formChosen=false;render();}return;}
   if(!Object.hasOwn(state,key))return;
   if(key==='specialty'){switchSpecialty(e.target.value);render();viewportLayout.showStart();return;}
   if(key==='formId'){if(e.target.value){if(selectForm(e.target.value)){ui.productExpanded=false;renderProductSelection();}}else{resetRegimen();ui.formChosen=false;render();}return;}
   if(key==='regimenId'){chooseSourceRegimen(e.target.value);render();return;}
+  if(key==='roundingMode'){state.roundingMode=normalizeRoundingMode(e.target.value);state.roundDoses=state.roundingMode==='custom';dirty();updateResult();return;}
   if(key==='roundingPlaces'){state.roundingPlaces=String(normalizeDecimalPlaces(e.target.value,1));dirty();updateResult();return;}
   if(state.regimenId&&(['doseMode','roundingStep'].includes(key)||(key==='frequency'&&!canEditSourceValues()&&(isVeterinary()||!getSourceRegimen()?.frequencyOptions)))){e.target.value=state[key];return;}
   state[key]=e.target.value;dirty();

@@ -9,6 +9,8 @@ import {calculate} from './engine.js';
 import {ingredientDailyDose} from './daily-dose.js';
 import {humanDosingText} from './dental-output.js';
 import {tabletDoseChoices} from './tablet-doses.js';
+import {LIQUID_STARTER_REGIMENS} from './liquid-starters.js';
+import {assessDoseRounding} from './rounding-assessment.js';
 
 const source=HUMAN_REGIMENS.find(r=>r.id==='dental-augmentin-tablet-500-125-ge40');
 const drug=DRUGS.find(d=>d.id==='amoxicillin-clavulanate');
@@ -141,6 +143,81 @@ test('edit notice retains source amounts, restoration and HTML escaping',()=>{
   assert.match(html,/3 × na dobę/);
   assert.match(html,/Przywróć wartości ze źródła/);
   assert.ok(!html.includes('<script>'));assert.match(html,/&lt;script&gt;/);
+});
+
+const roundedSource=LIQUID_STARTER_REGIMENS.find(r=>r.id==='dental-augmentin-suspension-adult-substitution');
+const roundedForm=drug.forms.find(f=>f.id==='augmentin-400-57');
+const roundedContext={...context,formId:roundedForm.id,patientKind:'human',doseMode:'fixed',
+  dose:875,frequency:2,roundingMode:'auto',roundingStep:1};
+const roundedAssessment=changes=>assessDoseRounding({form:roundedForm,source:roundedSource,
+  context:{...roundedContext,...changes}});
+
+test('the same documented 11 ml has neutral provenance through nominal and explicit-dose paths',()=>{
+  const changes=[{}, {roundingMode:'custom'}, {dose:880,roundingMode:'off',roundingStep:null}];
+  const texts=[];
+  for(const change of changes) {
+    const entered={...roundedContext,...change},assessment=roundedAssessment(change);
+    assert.equal(assessment.state,'rule');
+    const edit=sourceEditState(roundedSource,entered,assessment);
+    assert.equal(edit.rounded,true);assert.equal(edit.modified,false);
+    assert.equal(edit.doseChanged,entered.dose===880);
+    assert.equal(edit.frequencyChanged,false);
+    const markup=sourceEditMarkup(roundedSource,entered,'mg',assessment);
+    assert.match(markup,/Zaokrąglono według reguły/);
+    assert.match(markup,/Źródło: 875 mg · 2 × na dobę/);
+    assert.match(markup,/875 → 880 mg · 10,9375 → 11 ml/);
+    assert.doesNotMatch(markup,/source-edit-status modified|Zmodyfikowany przez użytkownika/);
+    texts.push(humanDosingText({source:roundedSource,sourceModified:edit.modified,
+      amount:'11 ml',route:'doustnie',frequency:2,days:7}));
+  }
+  assert.equal(new Set(texts).size,1);
+  assert.match(texts[0],/z posiłkiem/);assert.match(texts[0],/Wstrząsnąć zawiesinę/);
+});
+
+test('only a matching current rule can replace modified provenance',()=>{
+  const entered={...roundedContext,dose:880},assessment=roundedAssessment({dose:880});
+  for(const invalid of [null, {...assessment,state:'blocked'}, {...assessment,state:'needs-review'},
+    {...assessment,state:'reviewed'}, {...assessment,ruleId:'other'}, {...assessment,revision:'old'},
+    {...assessment,errors:['Niezależny limit']}, {...assessment,singleMg:881},
+    {...assessment,dailyMg:1750}, {...assessment,referenceSingleMg:800}, {...assessment,ml:10.9}]) {
+    const edit=sourceEditState(roundedSource,entered,invalid);
+    assert.equal(edit.rounded,false);assert.equal(edit.modified,true);
+  }
+  for(const change of [{dose:879},{dose:880.1},{frequency:3},{frequency:''},{dose:''}]) {
+    const edit=sourceEditState(roundedSource,{...entered,...change},assessment);
+    assert.equal(edit.rounded,false,JSON.stringify(change));assert.equal(edit.modified,true);
+  }
+  for(const change of [{id:'other'},{roundingConstraintKind:'hard-limit'},
+    {formIds:['other']},{dose:800},{frequency:3}]) {
+    const edit=sourceEditState({...roundedSource,...change},entered,assessment);
+    assert.equal(edit.rounded,false,JSON.stringify(change));assert.equal(edit.modified,true);
+  }
+  const legacy=sourceEditState(roundedSource,entered);
+  assert.equal(legacy.modified,true);assert.equal(legacy.rounded,false);
+  const blocked=roundedAssessment({dose:880,renalStatus:'impaired'});
+  assert.equal(blocked.state,'blocked');
+  assert.equal(sourceEditState(roundedSource,entered,blocked).modified,true);
+});
+
+test('a changed frequency still suppresses conflicting source instructions with a stale rule',()=>{
+  const entered={...roundedContext,dose:880,frequency:3};
+  const assessment=roundedAssessment({dose:880});
+  const edit=sourceEditState(roundedSource,entered,assessment);
+  assert.equal(edit.modified,true);assert.equal(edit.frequencyChanged,true);assert.equal(edit.rounded,false);
+  const text=humanDosingText({source:roundedSource,sourceModified:edit.modified,
+    amount:'11 ml',route:'doustnie',frequency:3,days:7});
+  assert.match(text,/3 razy na dobę/);assert.doesNotMatch(text,/Wstrząsnąć zawiesinę/);
+});
+
+test('rounded provenance leaves input and evidence unchanged and escapes its unit',()=>{
+  const selected=Object.freeze(structuredClone(roundedSource));
+  const entered=Object.freeze({...roundedContext,dose:880});
+  const assessment=Object.freeze(roundedAssessment({dose:880}));
+  const before=structuredClone({selected,entered,assessment});
+  const markup=sourceEditMarkup(selected,entered,'<script>mg</script>',assessment);
+  assert.match(markup,/Zaokrąglono według reguły/);
+  assert.doesNotMatch(markup,/<script>/);assert.match(markup,/&lt;script&gt;/);
+  assert.deepEqual({selected,entered,assessment},before);
 });
 
 test('edits do not mutate frozen source or patient objects',()=>{

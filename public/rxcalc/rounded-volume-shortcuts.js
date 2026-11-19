@@ -1,17 +1,20 @@
-/** A narrowly scoped, explicit input shortcut, NOT a general rounding tolerance.
- * No source dose/limit, input value, regimen or export policy is changed here.
+/** Evidence for one narrowly scoped conversion, not a general rounding tolerance.
+ * The shortcut itself does not change the selected source, patient or regimen.
+ * Automatic application is resolved separately by rounding-assessment.js.
  * HSE describes an off-label substitution in a residential-care pneumonia guide;
  * Cleveland Clinic documents an adult formulary conversion (2020). Neither is
  * a Polish dental-suspension regimen. The UI must keep that scope visible.
  */
 export const ADULT_AUGMENTIN_ROUNDED_SHORTCUT = Object.freeze({
   id:'augmentin-adult-875-to-11ml',
+  policyRevision:'scoped-auto-2026-11-19-v1',
+  evidenceKind:'documented-formulation-conversion',
   formId:'augmentin-400-57',
   sourceId:'dental-augmentin-suspension-adult-substitution',
   referenceMg:875, referenceMl:10.9375,
   ml:11, amoxicillinMg:880, clavulanicMg:125.4,
   deltaPercent:(880/875-1)*100,
-  checkedAt:'2026-11-15',
+  checkedAt:'2026-11-19',
   references:Object.freeze([
     Object.freeze({label:'HSE · zamiana postaci, off-label · s. 5',url:'https://assets.hse.ie/media/documents/Pneumonia_in_residential_care_facilities_guideline.pdf'}),
     Object.freeze({label:'Cleveland Clinic · zamiana w formularzu leków dla dorosłych · 2020, s. 7',url:'https://www.clevelandclinicmeded.com/medicalpubs/pharmacy/September%20October%202020%20Clinical%20Rx%20Forum.pdf'}),

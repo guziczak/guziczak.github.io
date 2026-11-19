@@ -1,8 +1,9 @@
 /** One assessment shared by input shortcuts, source checks, bars and export.
  * Evidence for a conversion is NOT clinical approval of a dental regimen.
- * No percentage tolerance is inferred. Only an exact, individually reviewed
- * 11 ml conversion may replace the two duplicated source-target constraints.
- * All independent limits and the original comparison dose are retained.
+ * Explicit rounding modes use the named, exact conversion after a clinician has
+ * selected its source. The legacy review API remains for callers without a mode.
+ * No percentage tolerance is inferred. Independent limits and the original
+ * comparison dose are retained, including during automatic rounding.
  */
 import { resolveHumanRegimen } from './human-regimen-engine.js';
 import { calculate } from './engine.js';
@@ -15,6 +16,26 @@ const near = (a,b) => typeof a === 'number' && typeof b === 'number'
   && Math.abs(a-b) <= Number.EPSILON*64*Math.max(1,Math.abs(a),Math.abs(b));
 const above = (a,b) => a>b && !near(a,b);
 const revision = 'case-review-2026-11-16-v1';
+const roundingModes = new Set(['auto','custom','off']);
+const usesNamedRule = context => roundingModes.has(context.roundingMode);
+
+const scopedContext = (form,source,context) => hasScopedRoundingEvidence(form,source)
+  && context.patientType === 'adult' && context.patientKind !== 'animal'
+  && context.specialty === 'dental' && context.formId === form.id
+  && context.doseMode === 'fixed' && context.frequency === 2;
+
+function patientErrors(source,context) {
+  const check=resolveHumanRegimen(source,{...context,dose:875,frequency:2,
+    days:source.fixedDays || source.minDays || 1});
+  const errors=[...check.errors];
+  if (present(context.age)) {
+    const years=context.age*({years:1,months:1/12,days:1/365.25}[context.ageUnit]||NaN);
+    if (!Number.isFinite(years) || years<18) errors.push('Wariant zaokrąglenia dotyczy wyłącznie dorosłych.');
+  }
+  if (!positive(context.weight) || context.weight<40 || context.weight>500)
+    errors.push('Potwierdź masę dorosłego co najmniej 40 kg.');
+  return errors;
+}
 
 /** Fail closed if the source, formulation or its constraint semantics change. */
 export function hasScopedRoundingEvidence(form, source) {
@@ -37,16 +58,24 @@ export function hasScopedRoundingEvidence(form, source) {
 
 export function roundingCaseKey({form,source,context={},limits={}}={}) {
   // Include source/form snapshots so later metadata edits also revoke review.
-  return JSON.stringify([revision,form,source,context,limits]);
+  return JSON.stringify([usesNamedRule(context)?rule.policyRevision:revision,form,source,context,limits]);
+}
+
+/** Select only the arithmetic proposal for the known nominal dose. A lower
+ * independent cap or incompatible measuring device must reach assessment as a
+ * blocked 11 ml candidate, never quietly restore the unrounded output instead.
+ * This function does not read application state and cannot recurse via the app.
+ */
+export function automaticRoundingStep({form,source,context={},limits={}}={}) {
+  if (!scopedContext(form,source,context) || context.dose!==rule.referenceMg
+    || patientErrors(source,context).length) return null;
+  return 1;
 }
 
 /** Returns null for cases without this exact documented conversion. An input
  * shortcut may request a preview, but only the current input can use a review. */
 export function assessDoseRounding({form,source,context={},limits={},review=null}={}) {
-  if (!hasScopedRoundingEvidence(form,source) || context.patientType !== 'adult'
-    || context.patientKind === 'animal' || context.specialty !== 'dental'
-    || context.formId !== form.id || context.doseMode !== 'fixed'
-    || context.frequency !== 2) return null;
+  if (!scopedContext(form,source,context)) return null;
   const step=context.roundingStep;
   if (!near(context.dose,rule.amoxicillinMg)) {
     // The decimal control can reach the same exact conversion while retaining
@@ -60,18 +89,15 @@ export function assessDoseRounding({form,source,context={},limits={},review=null
     if (!preview.valid || !near(preview.singleUnits,rule.ml)
       || !near(preview.singleMg,rule.amoxicillinMg)) return null;
   }
-  const errors=[];
-  const check=resolveHumanRegimen(source,{...context,dose:875,frequency:2,
-    days:source.fixedDays || source.minDays || 1});
-  errors.push(...check.errors);
-  if (present(context.age)) {
-    const years=context.age*({years:1,months:1/12,days:1/365.25}[context.ageUnit]||NaN);
-    if (!Number.isFinite(years) || years<18) errors.push('Wariant zaokrąglenia dotyczy wyłącznie dorosłych.');
-  }
-  if (!positive(context.weight) || context.weight<40 || context.weight>500)
-    errors.push('Potwierdź masę dorosłego co najmniej 40 kg.');
+  const errors=patientErrors(source,context);
   if (present(step) && (!positive(step) || !near(Math.round(11/step)*step,11)))
     errors.push('Krok zaokrąglenia zmienia objętość 11 ml. Reguła nie ma zastosowania.');
+  for (const deviceStep of [form.doseStepUnits,source.doseStepUnits,context.doseStepUnits].filter(present)) {
+    const divisions=11/deviceStep;
+    if (!positive(deviceStep) || !Number.isSafeInteger(Math.round(divisions))
+      || Math.round(divisions)<1 || !near(divisions,Math.round(divisions)))
+      errors.push('Objętość 11 ml nie odpowiada pełnym podziałkom opisanego przyrządu.');
+  }
   const breach=(values,actual,label)=>{
     for(const value of values.filter(present)) {
       if(!positive(value))errors.push('Nieprawidłowy niezależny limit.');
@@ -88,24 +114,32 @@ export function assessDoseRounding({form,source,context={},limits={},review=null
     breach([cap.daily],i===0?1760:250.8,'Przekroczony niezależny limit dobowy składnika.');
   }
   const key=roundingCaseKey({form,source,context,limits});
+  const namedRule=usesNamedRule(context);
   const accepted=errors.length===0 && review?.key===key && review.ruleId===rule.id
     && review.revision===revision && review.scopeConfirmed===true && review.measurementConfirmed===true
     && typeof review.reason==='string' && review.reason.trim().length>=10 && review.reason.length<=500;
-  return {ruleId:rule.id,key,revision,state:errors.length?'blocked':accepted?'reviewed':'needs-review',
-    severity:errors.length?'critical':accepted?'reviewed':'warning',
+  const policy=namedRule?Object.freeze({id:rule.id,revision:rule.policyRevision,
+    kind:rule.evidenceKind,evidence:rule.references,
+    referenceMl:rule.referenceMl,ml:rule.ml,referenceSingleMg:rule.referenceMg,
+    singleMg:rule.amoxicillinMg,companionSingleMg:rule.clavulanicMg}):null;
+  return {ruleId:rule.id,key,revision:namedRule?rule.policyRevision:revision,
+    state:errors.length?'blocked':namedRule?'rule':accepted?'reviewed':'needs-review',
+    severity:errors.length?'critical':namedRule?'info':accepted?'reviewed':'warning',
     label:errors.length?'Zaokrąglenie niedostępne — sprawdź ograniczenia'
+      :namedRule?'Zaokrąglono według reguły'
       :accepted?'Zaokrąglenie ocenione indywidualnie':'Zaokrąglenie wymaga indywidualnej oceny',
     errors:[...new Set(errors)],referenceSingleMg:875,referenceDailyMg:1750,
     referenceMl:rule.referenceMl,ml:11,singleMg:880,dailyMg:1760,
     companionSingleMg:125.4,companionDailyMg:250.8,deltaPercent:rule.deltaPercent,
     // Never claim that a case acknowledgement is a clinically validated policy.
-    clinicallyValidated:false,reason:accepted?review.reason.trim():null};
+    clinicallyValidated:false,reason:!namedRule&&accepted?review.reason.trim():null,
+    ...(policy?{policy}:{} )};
 }
 
 /** Sole exception boundary: detach only the exact source-target duplicates.
  * This never changes the original source record or any independent constraint. */
 export function roundingValidationSource(source, assessment) {
-  return assessment && ['needs-review','reviewed'].includes(assessment.state)
+  return assessment && ['rule','needs-review','reviewed'].includes(assessment.state)
     && assessment.ruleId===rule.id && source?.id===rule.sourceId
     && source.roundingConstraintKind==='source-target' && source.dose===875
     && source.maxSingleMg===875 && source.maxDailyMg===1750
@@ -127,6 +161,10 @@ export function resolveRoundingRegimen(options, resolverOptions={allowNumericOve
       result.warnings=result.warnings.filter(t=>!t.startsWith('Dawka została zmieniona względem źródła.'));
       result.warnings.push('Indywidualnie ocenione zaokrąglenie: 11 ml, 880 mg + 125,4 mg na podanie. Nie jest to automatycznie zatwierdzony schemat z polskiej ChPL.');
     }
+    if(assessment.state==='rule') {
+      result.warnings=result.warnings.filter(t=>!t.startsWith('Dawka została zmieniona względem źródła.'));
+      result.notices=[...(result.notices||[]),roundingAuditText(assessment)];
+    }
     result.errors=[...new Set(result.errors)];
     result.valid=result.errors.length===0;
   }
@@ -147,6 +185,28 @@ export function createRoundingReview(options,{reason='',scopeConfirmed=false,mea
 }
 
 export function roundingAuditText(assessment) {
+  if(assessment?.state==='rule')return 'Zaokrąglenie według reguły: 875 mg (10,9375 ml) → 880 mg (11 ml) amoksycyliny na podanie; +0,57%. Kwas klawulanowy: 125,4 mg na podanie. Źródła konwersji: Cleveland Clinic (2020) i HSE (zamiana off-label). Dobór schematu dla pacjenta potwierdza lekarz.';
   if(assessment?.state!=='reviewed')return '';
   return `Ocena zaokrąglenia do dokumentacji: 875 mg (10,9375 ml) → 880 mg (11 ml) amoksycyliny na podanie; +0,57%. Kwas klawulanowy: 125,4 mg na podanie. Indywidualna decyzja lekarza, nie automatyczna walidacja schematu. Uzasadnienie: ${assessment.reason}`;
+}
+
+/** Classify only the engine's two identified arithmetic notices for the exact
+ * recognized conversion. This cannot validate an invalid result, erase a hard
+ * limit, or suppress an unrelated source, duration or supply warning. */
+export function applyRoundingPresentation(result, assessment) {
+  if (!result?.valid || result.errors?.length || result.status==='critical'
+    || assessment?.state!=='rule' || assessment.ruleId!==rule.id
+    || assessment.revision!==rule.policyRevision
+    || !near(result.singleUnits,assessment.ml)
+    || !near(result.singleMg,assessment.singleMg)
+    || !near(result.dailyMg,assessment.dailyMg)) return result;
+  const details=result.warningDetails||[];
+  const informational=details.filter(item=>['dose-rounded','daily-limit-unspecified'].includes(item.code));
+  const messages=new Set(informational.map(item=>item.message));
+  const warnings=result.warnings.filter(message=>!messages.has(message));
+  return {...result,warnings,
+    warningDetails:details.filter(item=>!informational.includes(item)),
+    notices:[...(result.notices||[]),...informational],
+    status:result.status==='warning'&&!warnings.length?'ok':result.status,
+    rounding:assessment};
 }

@@ -1,6 +1,7 @@
 import { calculate } from './engine.js';
 import { resolveHumanRegimen } from './human-regimen-engine.js';
 import { resolveRegimen } from './regimen-engine.js';
+import { assessDoseRounding, roundingValidationSource } from './rounding-assessment.js';
 
 /** Compare the entered, actually administered quantities with the selected
  * source. This does not choose a course or establish clinical suitability.
@@ -71,12 +72,27 @@ function arithmeticInput(source, form, context, veterinary) {
     // shelf life never supply a treatment duration or a recommended endpoint.
     packageSize: context.packageSize ?? form.packOptions?.[0]?.quantity ?? form.singleUseUnitSize ?? 1,
     maxDailyMg: minimumLimit([conditional?.maxDailyMg, form.maxDailyMg, source.maxDailyMg,
-      weightedLimit('maxDailyMgPerKg'), context.manualMax]),
+      weightedLimit('maxDailyMgPerKg'), context.manualMax, context.roundingLimits?.daily]),
     maxSingleMg: minimumLimit([conditional?.maxSingleMg, form.maxSingleMg, source.maxSingleMg,
-      weightedLimit('maxSingleMgPerKg')]),
+      weightedLimit('maxSingleMgPerKg'), context.roundingLimits?.single]),
     foodChainStatus: context.foodChainStatus,
     calculationBlocked: !!(form.calculationBlocked || context.calculationBlocked),
   };
+}
+
+/** Use the same named conversion as the result, retaining separate product,
+ * patient and manual ceilings. This does not transfer its dose evidence to a
+ * duration reference or introduce any tolerance for other rounded doses.
+ */
+function durationRoundingAssessment(source, form, context) {
+  const conditional=conditionalLimit(form,context,ageYears(context));
+  const supplied=context.roundingLimits || {};
+  return assessDoseRounding({source,form,
+    context:{...context,formId:context.formId ?? form.id,
+      patientKind:context.patientKind ?? (Array.isArray(source.species)?'animal':'human')},
+    limits:{...supplied,
+      single:minimumLimit([conditional?.maxSingleMg,form.maxSingleMg,supplied.single]),
+      daily:minimumLimit([conditional?.maxDailyMg,form.maxDailyMg,context.manualMax,supplied.daily])}});
 }
 
 /** Shared actual-dose preview for both the assessment and its source notice.
@@ -84,7 +100,9 @@ function arithmeticInput(source, form, context, veterinary) {
  */
 export function durationDosePreview({ source = null, form = null, context = {} } = {}) {
   if (!source || !form) return null;
-  return calculate(arithmeticInput(source, form, context, Array.isArray(source.species)));
+  const rounding=durationRoundingAssessment(source,form,context);
+  const checkedSource=rounding?.state==='rule'?roundingValidationSource(source,rounding):source;
+  return calculate(arithmeticInput(checkedSource, form, context, Array.isArray(source.species)));
 }
 
 function doseInSourceUnits(source, actual, context) {
@@ -155,6 +173,8 @@ export function assessDurationRegimen({ source = null, form = null, context = {}
   if (!Number.isSafeInteger(context.frequency) || context.frequency < 1 || context.frequency > 48)
     return result('mismatch', ['Podaj całkowitą liczbę podań na dobę od 1 do 48.']);
 
+  const rounding=durationRoundingAssessment(source,form,context);
+  if(rounding?.state==='blocked')return result('mismatch',rounding.errors);
   const actual = durationDosePreview({ source, form, context });
   if (!actual.valid) return result('mismatch', actual.errors);
   const sourceDose = doseInSourceUnits(source, actual, context);
@@ -168,8 +188,13 @@ export function assessDurationRegimen({ source = null, form = null, context = {}
     if (context.frequency !== checked.frequency) differences.push('Liczba podań różni się od wybranego schematu lub etapu.');
     if (differences.length) return result('mismatch', differences);
   } else {
-    const checked = resolveHumanRegimen(source, {
-      ...validationContext, doseMode: source.doseMode, dose: snapToSource(sourceDose, source),
+    // Only the exact named conversion can retain its nominal source comparison.
+    // Actual quantities and every independent cap were checked above; external
+    // duration references below still compare the actual administered amount.
+    const checkedSource=rounding?.state==='rule'?roundingValidationSource(source,rounding):source;
+    const checked = resolveHumanRegimen(checkedSource, {
+      ...validationContext, doseMode: source.doseMode,
+      dose: rounding?.state==='rule'?source.dose:snapToSource(sourceDose, source),
     });
     if (!checked.valid) return result('mismatch', checked.errors);
   }

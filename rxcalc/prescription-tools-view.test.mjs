@@ -13,29 +13,39 @@ const draft = (id = 'rx-1', label = 'Preparat A') => ({
 });
 const cartOptions = { items: [draft()], patientLabel: 'Dorosły · 70 kg', text: 'Rp. A\nD.S. A', canCopy: true };
 
-test('unsupported forms do not expose an unusable rounding switch', () => {
+test('unsupported forms do not expose unusable rounding controls', () => {
   assert.equal(decimalRoundingMarkup(), '');
   assert.equal(decimalRoundingMarkup({ supported: false, enabled: true, places: 2 }), '');
 });
 
-test('rounding has a native labelled switch and disabled precision while off', () => {
+test('Auto is selected by default with hidden custom precision and accessible details', () => {
   const markup = decimalRoundingMarkup({ supported: true });
-  assert.match(opening(markup, 'roundDoses'), /type="checkbox"/);
-  assert.match(opening(markup, 'roundDoses'), /role="switch"/);
-  assert.doesNotMatch(opening(markup, 'roundDoses'), /\bchecked\b/);
-  assert.match(markup, /<label[^>]*for="roundDoses"/);
-  assert.match(markup, /Zaokrąglaj dawki/);
-  assert.match(opening(markup, 'roundingPlaces'), /data-field="roundingPlaces"/);
+  assert.match(opening(markup, 'roundingMode'), /data-field="roundingMode"/);
+  assert.match(markup, /<option value="auto" selected>Auto<\/option>/);
+  assert.match(markup, /<label[^>]*for="roundingMode">Zaokrąglanie<\/label>/);
+  assert.match(opening(markup, 'rounding-custom-controls'), /\bhidden\b/);
   assert.match(opening(markup, 'roundingPlaces'), /\bdisabled\b/);
   assert.match(markup, /<label[^>]*for="roundingPlaces">Do ilu miejsc po przecinku<\/label>/);
   assert.match(opening(markup, 'rounding-preview'), /aria-live="polite"/);
+  assert.match(opening(markup, 'rounding-details'), /^<details.*\bhidden\b/);
   assert.match(markup, /Zaokrąglenie dotyczy ilości na podanie\./);
+});
+
+test('only custom mode exposes precision and explicit mode wins over legacy snapshots', () => {
+  for (const mode of ['auto', 'custom', 'off']) {
+    const markup=decimalRoundingMarkup({supported:true,mode,enabled:true});
+    assert.match(markup,new RegExp(`<option value="${mode}" selected>`));
+    assert.equal(/\bhidden\b/.test(opening(markup,'rounding-custom-controls')),mode!=='custom');
+    assert.equal(/\bdisabled\b/.test(opening(markup,'roundingPlaces')),mode!=='custom');
+  }
+  for(const [enabled,mode] of [[true,'custom'],[false,'off']])
+    assert.match(decimalRoundingMarkup({supported:true,enabled}),new RegExp(`<option value="${mode}" selected>`));
 });
 
 test('zero precision remains a real selected choice and all four choices are available', () => {
   for (const places of [0, 1, 2, 3, '0', '3']) {
     const markup = decimalRoundingMarkup({ supported: true, enabled: true, places });
-    assert.match(opening(markup, 'roundDoses'), /\bchecked\b/);
+    assert.match(markup, /<option value="custom" selected>/);
     assert.doesNotMatch(opening(markup, 'roundingPlaces'), /\bdisabled\b/);
     const options = [...markup.matchAll(/<option value="(\d)"( selected)?>/g)];
     assert.deepEqual(options.map(option => Number(option[1])), [0, 1, 2, 3]);
@@ -43,11 +53,20 @@ test('zero precision remains a real selected choice and all four choices are ava
   }
 });
 
+test('a known rule with device divisions keeps Auto and Off while custom precision is disabled',()=>{
+  const markup=decimalRoundingMarkup({supported:true,customSupported:false,mode:'auto'});
+  assert.match(markup,/<option value="auto" selected>Auto/);
+  assert.match(markup,/<option value="custom" disabled>Własne/);
+  assert.match(markup,/<option value="off">Wyłączone/);
+  assert.match(opening(markup,'roundingPlaces'),/\bdisabled\b/);
+  assert.match(opening(markup,'rounding-custom-controls'),/\bhidden\b/);
+});
+
 test('invalid rounding precision falls back to one decimal place instead of adding options', () => {
   for (const places of [-1, 4, 1.5, NaN, Infinity, '', null, 'bad']) {
     const markup = decimalRoundingMarkup({ supported: true, places });
     assert.match(markup, /<option value="1" selected>/);
-    assert.equal((markup.match(/<option /g) || []).length, 4);
+    assert.equal((markup.match(/<option value="[0-3]"/g) || []).length, 4);
   }
 });
 

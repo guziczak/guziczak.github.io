@@ -4,9 +4,15 @@ Lekki kalkulator dawkowania i zapotrzebowania na preparaty z interfejsem po pols
 
 Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym pliku nie stanowi potwierdzenia publikacji.
 
-## Smukłe zaokrąglanie przy tekście do kopiowania — 18.11.2026
+## Auto i smukłe zaokrąglanie przy kopiowaniu — 19.11.2026
 
-Przełącznik zaokrąglania i wybór liczby miejsc są w jednym wierszu u dołu pola z zapisem do kopiowania, we wspólnej ramce. Osobny panel nad kontrolą dawki został usunięty. Krótki podgląd przed → po i różnica procentowa pojawiają się tylko po włączeniu. Pełne etykiety pozostają dostępne dla czytników ekranu; na telefonie obszary dotykowe mają co najmniej 44 px wysokości. Obliczenia, zawartość kopiowanego tekstu i zapis pozycji koszyka korzystają z dotychczasowej logiki.
+Kontrolka pozostaje w stopce pola z zapisem: **Auto / Własne / Wyłączone**. Domyślny tryb Auto stosuje wyłącznie rozpoznane, wersjonowane reguły. Brak reguły pozostawia wynik bez automatycznej zmiany. Własne odsłania wybór 0–3 miejsc po przecinku; szczegóły zmiany i źródła są rozwijane. Kontrolki mają minimum 44 px wysokości na telefonie.
+
+Pierwsza reguła dotyczy wyłącznie istniejącego schematu `dental-augmentin-suspension-adult-substitution` dla dorosłego ≥40 kg i zawiesiny Augmentin 400/57 mg na 5 ml: **875 mg → 11 ml, czyli 880 mg + 125,4 mg na podanie**. Zachowuje nominalne 875 mg i porównanie rzeczywistej zmiany +0,57%. Źródła dotyczą zamiany postaci, nie zatwierdzenia całego schematu stomatologicznego: [Cleveland Clinic, formularz dla dorosłych, 2020, s. 7](https://www.clevelandclinicmeded.com/medicalpubs/pharmacy/September%20October%202020%20Clinical%20Rx%20Forum.pdf) i [HSE, zamiana off-label, s. 5](https://assets.hse.ie/media/documents/Pneumonia_in_residential_care_facilities_guideline.pdf).
+
+Wspólna ocena w `rounding-assessment.js` jest używana przez kafelki, wynik, składniki i porównanie schematu. Rozpoznana reguła ma neutralny status informacyjny i nie wymaga osobnego formularza uzasadnienia. Silnik zachowuje niezależne limity produktu, pacjenta, lekarza i składników, podziałki oraz ograniczenia nerkowe. Jedynie zduplikowane cele źródłowe 875/1750 mg są oddzielane od limitów niezależnych. Nie ma globalnej tolerancji procentowej. Czas i częstość leczenia nie są zmieniane ani automatycznie zatwierdzane; końcowe potwierdzenie lekarza pozostaje wymagane.
+
+Artymetyczne komunikaty silnika mają jawne kody. Dopiero zgodna ocena konkretnej reguły może potraktować komunikat zaokrąglenia i brak odrębnego maksimum jako informację; pozostałe ostrzeżenia i błędy zachowują działanie. Koszyk przechowuje ilości rzeczywiste, wybraną precyzję/tryb oraz identyfikator, wersję i źródła zastosowanej reguły.
 
 ## Potwierdzenie dodania do koszyka — 18.11.2026
 
@@ -166,7 +172,7 @@ Dokumentacja PWA: [instalowanie aplikacji webowych w Chrome](https://developer.c
 
 ## Zaokrąglanie i koszyk obliczeń
 
-W podsumowaniu ciągłych ilości preparatu (ml/g) przełącznik „Zaokrąglaj dawki” pozwala wybrać 0–3 miejsca po przecinku. Domyślnie pozostaje wyłączony. Po włączeniu zmienia rzeczywistą ilość na podanie w istniejącym silniku, a więc również mg, ilość dobową, zapotrzebowanie, opakowania i zapis Rp./D.S. Podgląd pokazuje ilość wyjściową i wynikową oraz różnicę. Ograniczenia źródłowe są sprawdzane po zaokrągleniu. Tabletki, krople, rozpylenia, instrukcje i postacie z własną podziałką urządzenia zachowują dotychczasowe zasady.
+W podsumowaniu ciągłych ilości preparatu (ml/g) domyślne Auto stosuje wyłącznie regułę opisaną powyżej. Tryb Własne pozwala wybrać 0–3 miejsca po przecinku, a Wyłączone przywraca ilość wynikającą z nominalnej dawki. Rzeczywista ilość na podanie zasila mg, ilość dobową, zapotrzebowanie, opakowania i zapis Rp./D.S. Nieznane reguły nie otrzymują domyślnego zaokrąglenia. Tabletki, krople, rozpylenia, instrukcje i postacie z własną podziałką urządzenia zachowują swoje zasady; sama kontrolka precyzji nie zastępuje podziałki urządzenia.
 
 Potwierdzone obliczenie można dodać do koszyka, edytować, usunąć lub połączyć z kolejnymi preparatami w jeden tekst do skopiowania. Każda pozycja przechowuje niezmienną kopię parametrów i obu formatów zapisu. Zmiana preparatu zachowuje dane pacjenta. Zmiana danych pacjenta oznacza zapisane pozycje jako nieaktualne i blokuje zbiorczy eksport do ich ponownego przeliczenia i potwierdzenia. Edycja pozycji zachowuje nowe dane pacjenta. Powtórny wybór tego samego produktu i postaci kieruje do edycji, bez cichego sumowania opakowań. Zmiana ludzkiej specjalizacji nie zmienia tożsamości pacjenta koszyka.
 

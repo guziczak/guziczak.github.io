@@ -5,6 +5,7 @@ import { HUMAN_REGIMENS } from './human-regimens.js';
 import { REGIMENS } from './regimens.js';
 import { LIQUID_STARTER_REGIMENS } from './liquid-starters.js';
 import { assessDurationRegimen, durationDosePreview } from './duration-regimen.js';
+import { resolveDurationGuidance, assessDuration, durationResultWarning } from './duration-guidance.js';
 
 const records = [...HUMAN_REGIMENS, ...REGIMENS, ...LIQUID_STARTER_REGIMENS];
 const forms = DRUGS.flatMap(drug => drug.forms);
@@ -251,4 +252,54 @@ test('only floating-point noise is accepted for a fixed source dose', () => {
   assert.equal(assessDurationRegimen(scenario).state, 'matched');
   scenario.context.dose = 0.200001;
   assert.equal(assessDurationRegimen(scenario).state, 'mismatch');
+});
+
+const adultRounded = (changes={}) => options('dental-augmentin-suspension-adult-substitution',
+  {roundingMode:'auto',roundingStep:1,days:7,...changes});
+
+test('documented adult rounding uses the same actual amount without a false source mismatch',()=>{
+  for(const change of [{},{roundingMode:'custom'},
+    {roundingMode:'off',dose:880,roundingStep:null}]) {
+    const scenario=adultRounded(change),before=structuredClone(scenario);
+    const preview=durationDosePreview(scenario),assessment=assessDurationRegimen(scenario);
+    assert.equal(preview.valid,true);assert.equal(preview.singleUnits,11);
+    assert.equal(preview.singleMg,880);assert.equal(preview.dailyMg,1760);
+    assert.equal(preview.totalUnits,22,'Duration preview remains a one-day arithmetic preview');
+    assert.equal(assessment.state,'matched');assert.deepEqual(assessment.reasons,[]);
+    assert.deepEqual(scenario,before);assert.equal(scenario.source.dose,875);
+    assert.equal(scenario.source.maxSingleMg,875);assert.equal(scenario.source.maxDailyMg,1750);
+  }
+});
+
+test('named rounding preserves the existing unassessed duration and extension warning',()=>{
+  const scenario=adultRounded(),guidance=resolveDurationGuidance(scenario);
+  assert.equal(guidance.applicable,true);assert.equal(guidance.regimen.state,'matched');
+  assert.equal(assessDuration(7,guidance).state,'unassessed');
+  assert.equal(durationResultWarning(7,guidance),null);
+  assert.equal(assessDuration(15,guidance).tone,'warning');
+  assert.match(durationResultWarning(15,guidance),/14 dni/);
+});
+
+test('duration comparison retains independent caps, devices and patient restrictions for Auto',()=>{
+  for(const change of [{manualMax:1750},{renalStatus:'impaired'},
+    {roundingLimits:{daily:1750}},{roundingLimits:{single:875}},
+    {roundingLimits:{ingredients:[{index:1,daily:250}]}},
+    {doseStepUnits:.3},{age:12}])
+    assert.equal(assessDurationRegimen(adultRounded(change)).state,'mismatch',JSON.stringify(change));
+  for(const change of [{maxDailyMg:1750},{maxSingleMg:875},
+    {conditionalLimits:[{minWeight:40,maxDailyMg:1750}]},{doseStepUnits:.3}]) {
+    const scenario=adultRounded();scenario.form={...scenario.form,...change};
+    assert.equal(assessDurationRegimen(scenario).state,'mismatch',JSON.stringify(change));
+  }
+});
+
+test('duration rounding exception is exact and does not create tolerance for other values or external targets',()=>{
+  for(const change of [{roundingStep:.01},{roundingMode:undefined},{dose:876},
+    {frequency:3},{roundingMode:'custom',roundingStep:.1}])
+    assert.equal(assessDurationRegimen(adultRounded(change)).state,'mismatch',JSON.stringify(change));
+  assert.equal(assessDurationRegimen(adultRounded({roundingMode:'off',roundingStep:null})).state,'matched');
+  const scenario=adultRounded();
+  scenario.reference={comparisonSingleMg:875,comparisonFrequency:2};
+  assert.equal(assessDurationRegimen(scenario).state,'mismatch');
+  assert.match(assessDurationRegimen(scenario).reasons.join(' '),/UCSF/);
 });

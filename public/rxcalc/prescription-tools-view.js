@@ -8,27 +8,32 @@ const precision = value => {
   return Number.isInteger(number) && number >= 0 && number <= 3 ? number : 1;
 };
 
-export function decimalRoundingMarkup({ supported, enabled = false, places = 1, unit = 'ml' } = {}) {
+export function decimalRoundingMarkup({ supported, customSupported = true, mode, enabled, places = 1, unit = 'ml' } = {}) {
   if (!supported) return '';
   const selected = precision(places);
+  // Old calculation snapshots can still supply the previous boolean setting.
+  const selectedMode = ['auto', 'custom', 'off'].includes(mode) ? mode
+    : typeof enabled === 'boolean' ? enabled ? 'custom' : 'off' : 'auto';
+  const custom = selectedMode === 'custom' && customSupported;
   return `<div class="decimal-rounding" id="decimal-rounding">
     <div class="decimal-rounding-row">
-    <label class="decimal-rounding-toggle" for="roundDoses">
-      <span class="decimal-rounding-label">Zaokrąglaj</span>
-      <span class="decimal-rounding-control">
-        <input id="roundDoses" type="checkbox" role="switch" aria-label="Zaokrąglaj dawki ${esc(unit)}" aria-describedby="rounding-help rounding-preview"${enabled ? ' checked' : ''}>
-        <span class="decimal-rounding-track" aria-hidden="true"></span>
-      </span>
-    </label>
-    <div class="decimal-rounding-places">
+    <label class="decimal-rounding-label" for="roundingMode">Zaokrąglanie</label>
+    <div class="decimal-rounding-mode">
+      <select id="roundingMode" data-field="roundingMode" aria-label="Tryb zaokrąglania ${esc(unit)}" aria-describedby="rounding-help rounding-preview">${[['auto', 'Auto'], ['custom', 'Własne'], ['off', 'Wyłączone']].map(([value, label]) => `<option value="${value}"${value === 'custom' && !customSupported ? ' disabled' : ''}${selectedMode === value ? ' selected' : ''}>${label}</option>`).join('')}</select>
+    </div>
+    <div class="decimal-rounding-places" id="rounding-custom-controls"${custom ? '' : ' hidden'}>
       <label class="decimal-rounding-sr-only" for="roundingPlaces">Do ilu miejsc po przecinku</label>
       <span aria-hidden="true">do</span>
-      <select id="roundingPlaces" data-field="roundingPlaces"${enabled ? '' : ' disabled'}>${[0, 1, 2, 3].map(value => `<option value="${value}"${selected === value ? ' selected' : ''}>${value}</option>`).join('')}</select>
+      <select id="roundingPlaces" data-field="roundingPlaces"${custom ? '' : ' disabled'}>${[0, 1, 2, 3].map(value => `<option value="${value}"${selected === value ? ' selected' : ''}>${value}</option>`).join('')}</select>
       <span id="rounding-places-label" aria-hidden="true">${selected === 1 ? 'miejsca' : 'miejsc'}</span>
     </div>
-    </div>
-    <p class="decimal-rounding-sr-only" id="rounding-help">Zaokrąglenie dotyczy ilości na podanie.</p>
     <p class="decimal-rounding-preview" id="rounding-preview" aria-live="polite" aria-atomic="true"></p>
+    </div>
+    <details class="decimal-rounding-details" id="rounding-details" hidden>
+      <summary>Szczegóły</summary>
+      <div class="decimal-rounding-details-content" id="rounding-details-content"></div>
+    </details>
+    <p class="decimal-rounding-sr-only" id="rounding-help">Zaokrąglenie dotyczy ilości na podanie.</p>
   </div>`;
 }
 

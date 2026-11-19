@@ -30,7 +30,7 @@ export function formatNumber(value, maxDecimals = 2) {
 export function calculate(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) input = {};
   const result = {
-    valid: false, errors: [], warnings: [], checks: [], status: 'incomplete',
+    valid: false, errors: [], warnings: [], warningDetails: [], checks: [], status: 'incomplete',
     singleMg: null, dailyMg: null, theoreticalUnits: null, singleUnits: null,
     dailyUnits: null, totalUnits: null, packages: null, providedUnits: null,
     leftoverUnits: null, roundingDifferencePercent: null, maxRatio: null,
@@ -228,7 +228,9 @@ export function calculate(input = {}) {
     return result;
   }
   if (Math.abs(result.roundingDifferencePercent) > 1e-7) {
-    result.warnings.push(`Zaokrąglono ilość z ${formatNumber(theoreticalUnits, 6)} do ${formatNumber(result.singleUnits, 6)} ${result.unitLabel}. Sprawdź zmianę dawki (${formatNumber(result.roundingDifferencePercent, 2)}%).`);
+    const message=`Zaokrąglono ilość z ${formatNumber(theoreticalUnits, 6)} do ${formatNumber(result.singleUnits, 6)} ${result.unitLabel}. Sprawdź zmianę dawki (${formatNumber(result.roundingDifferencePercent, 2)}%).`;
+    result.warnings.push(message);
+    result.warningDetails.push({code:'dose-rounded',message});
   }
 
   if (doseStepUnits !== null) {
@@ -398,7 +400,9 @@ export function calculate(input = {}) {
       result.errors.push(`Dawka dobowa ${formatNumber(result.dailyMg, 4)} mg przekracza wprowadzony limit ${formatNumber(maxDailyMg, 4)} mg.`);
     } else result.checks.push('Dawka dobowa nie przekracza wprowadzonego limitu.');
   } else if (maxDailyMg === null) {
-    result.warnings.push('Nie zdefiniowano limitu dobowego dla tego scenariusza. Potwierdź schemat w ChPL.');
+    const message='Nie zdefiniowano limitu dobowego dla tego scenariusza. Potwierdź schemat w ChPL.';
+    result.warnings.push(message);
+    result.warningDetails.push({code:'daily-limit-unspecified',message});
   }
   if (result.singleMg === null) result.warnings.push('Obliczono ilość preparatu; dawka substancji w mg nie została oceniona.');
 

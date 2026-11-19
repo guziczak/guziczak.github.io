@@ -109,12 +109,15 @@ export function formatRegimenPercent(value) {
 }
 const percentBasis=scheme=>scheme.kind==='fixed'?'dawki dobowej schematu'
   :scheme.kind==='asNeeded'?'pułapu dobowego schematu':'górnej granicy schematu';
+const roundingTone=(assessment,model,allowed)=>assessment&&allowed&&model.value!==null&&!model.limitExceeded
+  &&['rule','needs-review','reviewed','blocked'].includes(assessment.state)?assessment.state:model.state;
+const currentPercent=(value,assessment)=>assessment?.state==='rule'?n(value,2):formatRegimenPercent(value);
 
 export function regimenDosePercentMarkup(row,scheme,allowed=true,roundingAssessment=null) {
   const percentages=regimenPercentModel(row,scheme,allowed);
   if(percentages?.current==null)return '';
   const meter=regimenMeterModel(row,scheme,allowed);
-  return `<span class="dose-scheme-current ${roundingAssessment&&allowed&&!meter.limitExceeded?['needs-review','reviewed'].includes(roundingAssessment.state)?roundingAssessment.state:meter.state:meter.state} ${meter.limitExceeded?'limit-exceeded':''}"><b>${esc(formatRegimenPercent(percentages.current))}%</b><small>${esc(percentBasis(scheme))}</small></span>`;
+  return `<span class="dose-scheme-current ${roundingTone(roundingAssessment,meter,allowed)} ${meter.limitExceeded?'limit-exceeded':''}"><b>${esc(currentPercent(percentages.current,roundingAssessment))}%</b><small>${esc(percentBasis(scheme))}</small></span>`;
 }
 
 function percentTicks(scheme,model,percentages) {
@@ -156,13 +159,14 @@ export function regimenMeterMarkup(row, scheme, allowed=true,roundingAssessment=
     :model.state==='above'?`Powyżej ${scheme.kind==='fixed'?'dawki dobowej':'górnej granicy'} schematu o ${delta(model.value,scheme.maximum)}%`
     :model.state==='below'?`Poniżej ${scheme.kind==='fixed'?'dawki dobowej':'dolnej granicy'} schematu`
     :scheme.kind==='asNeeded'?'Nie przekracza zakresu dobowego; stosowanie doraźne':'Dobowo w zakresie wybranego schematu';
-  if(roundingAssessment&&allowed&&model.value!==null&&!model.limitExceeded&&['needs-review','reviewed'].includes(roundingAssessment.state))status=`${roundingAssessment.label} · +${n(roundingAssessment.deltaPercent,2)}% względem dawki źródłowej`;
-  const tone=roundingAssessment&&allowed&&!model.limitExceeded&&['needs-review','reviewed'].includes(roundingAssessment.state)?roundingAssessment.state:model.state;
+  const tone=roundingTone(roundingAssessment,model,allowed);
+  if(['rule','needs-review','reviewed'].includes(tone))status=`${roundingAssessment.label} · +${n(roundingAssessment.deltaPercent,2)}% względem dawki źródłowej`;
+  if(tone==='blocked')status=roundingAssessment.errors?.[0]||roundingAssessment.label;
   if(model.limitExceeded)status+=' · Przekroczony dodatkowy limit';
   const scaled=allowed;
   const sourceMarkers=scheme.kind==='range'
     ?`<span class="dose-scheme-band" style="left:${model.start}%;width:${model.end-model.start}%"></span><span class="dose-scheme-marker" style="left:${model.start}%"></span>`:'';
-  const percentDescription=percentages?` Wartość 100% jest odniesieniem do ${percentBasis(scheme)}. ${scheme.kind==='range'?`Początek zakresu: ${formatRegimenPercent(percentages.start)}%. `:''}${percentages.current===null?'':`Wpisana dawka: ${formatRegimenPercent(percentages.current)}%. `}${percentages.limit===null?'':`${limitLabel}: ${formatRegimenPercent(percentages.limit)}%. `}Koniec skali: ${formatRegimenPercent(percentages.scale)}%; nie jest limitem dawki.`:'';
+  const percentDescription=percentages?` Wartość 100% jest odniesieniem do ${percentBasis(scheme)}. ${scheme.kind==='range'?`Początek zakresu: ${formatRegimenPercent(percentages.start)}%. `:''}${percentages.current===null?'':`Wpisana dawka: ${currentPercent(percentages.current,roundingAssessment)}%. `}${percentages.limit===null?'':`${limitLabel}: ${formatRegimenPercent(percentages.limit)}%. `}Koniec skali: ${formatRegimenPercent(percentages.scale)}%; nie jest limitem dawki.`:'';
   const graphicLabel=`${row.name}. ${label}: ${range}. ${scheme.limit?`${limitLabel}: ${limitValue}. `:''}${status}.${model.value!==null?` Wpisana ilość: ${n(model.value,6)} ${unit}.`:''}${percentDescription}`;
   const graphic=`${percentTicks(scheme,model,percentages)}<div class="dose-scheme-meter ${scaled?'':'unscaled'} ${tone} ${model.limitExceeded?'limit-exceeded':''}" role="img" aria-label="${esc(graphicLabel)}"><span class="dose-scheme-track"></span>${scaled?`${sourceMarkers}${model.fill===null?'':`<span class="dose-scheme-fill" style="width:${model.fill}%"></span>`}<span class="dose-scheme-marker" style="left:${model.end}%"></span>${model.wall===null?'':`<span class="dose-scheme-wall" style="left:${model.wall}%"></span>`}${model.clipped?'<span class="dose-scheme-overflow">›</span>':''}`:''}</div>`;
   const axis=percentages?`<div class="dose-scheme-axis dose-scheme-percent-axis"><span>0%</span><span><b>${esc(formatRegimenPercent(percentages.scale))}%</b><small>Koniec skali · nie limit</small></span></div>`:'';

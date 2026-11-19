@@ -22,7 +22,7 @@ export const LIQUID_STARTER_REGIMENS=[{
   administration:'Doustnie, z posiłkiem. Wstrząsnąć zawiesinę przed każdym podaniem. Sprawdzić możliwość dokładnego odmierzenia objętości.',
   notes:[
     'Wskazanie i 875 mg amoksycyliny co 12 godzin pochodzą z polskiej ChPL tabletek 875/125 mg. FDA, tabela 6, wskazuje zawiesinę 400/57 jako odpowiednią moc do zamiany u osób niemogących połknąć tabletki. Zastosowanie tych źródeł łącznie jest przeliczeniem wymagającym decyzji lekarza, nie cytatem schematu polskiej ChPL zawiesiny.',
-    '875 mg amoksycyliny w tej zawiesinie to 10,9375 ml i 124,6875 mg kwasu klawulanowego na podanie. Nie podstawiamy 125 mg za rzeczywistą zawartość drugiego składnika. Nie zaokrąglamy automatycznie tego wariantu; możliwość odmierzenia wymaga oceny.',
+    '875 mg amoksycyliny w tej zawiesinie to 10,9375 ml i 124,6875 mg kwasu klawulanowego na podanie. Tryb Auto dla tego wariantu dorosłego proponuje 11 ml: 880 mg amoksycyliny i 125,4 mg kwasu klawulanowego (+0,57% amoksycyliny). Reguła dotyczy zamiany postaci; nie ustala wskazania, częstości ani czasu leczenia. Niezależne limity i możliwość odmierzenia nadal wymagają sprawdzenia.',
     'Uzupełniane są wyłącznie dawka i częstość. Czas terapii pozostaje do ustalenia. Nie wybrano większego schematu 3 razy na dobę.',
     'Wariant dotyczy dorosłych o masie co najmniej 40 kg. Wpisana mniejsza masa lub znane zaburzenia nerek wymagają odrębnej decyzji. Nie wykonujemy automatycznej korekty nerkowej.',
     ...tablet.notes.filter(t=>!t.includes('tabletka')&&!t.includes('tabletki')),

@@ -151,7 +151,10 @@
 .rounding-review-accept:disabled{opacity:.55;cursor:not-allowed}
 .rounding-review-feedback{font-size:11px}.rounding-review :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .dose-scheme-current.needs-review,.dose-scheme-status.needs-review{color:var(--warn)}
-.dose-scheme-current.reviewed,.dose-scheme-status.reviewed,.status-badge.rounding-reviewed{color:var(--rounding-blue)}
+.dose-scheme-current.reviewed,.dose-scheme-status.reviewed,.status-badge.rounding-reviewed,
+.dose-scheme-current.rule:not(.limit-exceeded),.dose-scheme-status.rule:not(.limit-exceeded),.status-badge.rounding-rule{color:var(--rounding-blue)}
 .dose-scheme-meter.needs-review .dose-scheme-fill{background:var(--warn)}
-.dose-scheme-meter.reviewed .dose-scheme-fill{background:var(--rounding-blue)}
-.alert.rounding-reviewed{border-color:var(--rounding-blue);background:var(--rounding-blue-bg);color:var(--ink)}
+.dose-scheme-meter.reviewed .dose-scheme-fill,.dose-scheme-meter.rule:not(.limit-exceeded) .dose-scheme-fill{background:var(--rounding-blue)}
+.alert.rounding-reviewed,.alert.rounding-rule{border-color:var(--rounding-blue);background:var(--rounding-blue-bg);color:var(--ink)}
+.dose-scheme-current.blocked,.dose-scheme-status.blocked{color:var(--red)}
+.dose-scheme-meter.blocked .dose-scheme-fill{background:var(--red)}

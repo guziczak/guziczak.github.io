@@ -4,7 +4,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 
 /** This panel records a local case-specific decision, not a validated rule. */
 export function roundingReviewMarkup(a,{complete=false}={}) {
-  if(!a)return '';
+  if(!a || a.state==='rule')return '';
   const accepted=a.state==='reviewed',blocked=a.state==='blocked';
   const detail=`Źródło: 875 mg → po zaokrągleniu 880 mg (+${n(a.deltaPercent,2)}%). Rzeczywista objętość: 11 ml; kwas klawulanowy: 125,4 mg na podanie.`;
   const references=rule.references.map(r=>`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label)} ↗</a>`).join('');
