@@ -9,10 +9,12 @@ import { EQUINE_NSAID_DRUGS } from './equine-nsaids.js';
 import { EQUINE_ANTIPARASITIC_DRUGS } from './equine-antiparasitics.js';
 import { DENTAL_SYSTEMIC_FORM_ADDITIONS, DENTAL_SYSTEMIC_FORM_PATCHES, DENTAL_SYSTEMIC_DRUG_ADDITIONS } from './dental-systemic.js';
 import { DENTAL_TOPICAL_DRUGS, DENTAL_TOPICAL_FORM_PATCHES } from './dental-topicals.js';
+import { NYSTATIN_FORM_PATCHES } from './nystatin-regimens.js';
+import { PERIODONTAL_FORM_PATCHES } from './periodontal-source-regimens.js';
 
 export const CATALOGUE_META = Object.freeze({
-  version: '2026.11.14.dental.5',
-  updatedAt: '2026-11-14',
+  version: '2026.11.19.sources.1',
+  updatedAt: '2026-11-19',
   sourceCheckedAt: '2026-11-12',
   status: 'Wersja do weryfikacji',
   scope: 'Dane wybranych postaci i opakowań do przeliczeń. Dawka, wskazanie, interakcje i przeciwwskazania wymagają oceny lekarza na podstawie aktualnej ChPL.',
@@ -406,7 +408,8 @@ const BASE_DRUGS = [
   ...DENTAL_TOPICAL_DRUGS,
 ];
 
-const dentalPatches = [...DENTAL_SYSTEMIC_FORM_PATCHES, ...DENTAL_TOPICAL_FORM_PATCHES];
+const dentalPatches = [...DENTAL_SYSTEMIC_FORM_PATCHES, ...DENTAL_TOPICAL_FORM_PATCHES,
+  ...NYSTATIN_FORM_PATCHES, ...PERIODONTAL_FORM_PATCHES];
 export const DRUGS = BASE_DRUGS.map(drug => ({
   ...drug,
   forms: [

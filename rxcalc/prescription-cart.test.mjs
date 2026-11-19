@@ -7,7 +7,7 @@ import {
 } from './prescription-cart.js';
 
 const patient = (patch = {}) => ({ specialty: 'dental', patientType: 'child', age: '5',
-  humanAgeUnit: 'years', weight: '20', renalStatus: 'unknown', humanCrCl: '',
+  humanAgeUnit: 'years', weight: '20', renalStatus: 'unknown', humanCrCl: '', humanSerumCreatinine: '',
   species: '', vetAgeUnit: 'years', foodChainStatus: 'unknown', ...patch });
 const draft = (patch = {}, snapshotPatch = {}) => ({
   valid: true, confirmed: true, demo: false,

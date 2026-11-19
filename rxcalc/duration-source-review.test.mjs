@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { DRUGS } from './catalogue.js';
 import { HUMAN_REGIMENS } from './human-regimens.js';
+import { NYSTATIN_REGIMENS } from './nystatin-regimens.js';
+import { CARDIO_ANTICOAGULANT_REGIMENS } from './cardio-anticoagulant-regimens.js';
+import { CARDIO_MAINTENANCE_REGIMENS } from './cardio-maintenance-regimens.js';
+import { PERIODONTAL_SOURCE_REGIMENS } from './periodontal-source-regimens.js';
 import { LIQUID_STARTER_REGIMENS } from './liquid-starters.js';
 import { REGIMENS } from './regimens.js';
 import { reviewedDurationSources } from './duration-source-review.js';
@@ -42,10 +46,15 @@ function review(id) {
 const notes = item => item.entries.map(entry => `${entry.label} ${entry.note}`).join(' ');
 const markup = (guidance, days = '') => durationGuidanceMarkup({ guidance, days, choices: [3, 5, 7, 10] });
 
-test('additional source reviews are explicitly scoped to the seventeen audited adult dental records', () => {
+test('additional source reviews are explicitly scoped to the seventeen existing and sixty-eight new audited records', () => {
+  const allReviewedIds = [...reviewedIds, ...[
+    ...NYSTATIN_REGIMENS, ...CARDIO_ANTICOAGULANT_REGIMENS,
+    ...CARDIO_MAINTENANCE_REGIMENS, ...PERIODONTAL_SOURCE_REGIMENS,
+  ].map(source => source.id)];
   const actualIds = records.filter(source => reviewedDurationSources(source.id)).map(source => source.id).sort();
-  assert.deepEqual(actualIds, [...reviewedIds].sort());
-  for (const id of reviewedIds) {
+  assert.equal(allReviewedIds.length, 85);
+  assert.deepEqual(actualIds, [...allReviewedIds].sort());
+  for (const id of allReviewedIds) {
     const result = review(id);
     assert.match(result.checkedAt, /^\d{4}-\d{2}-\d{2}$/);
     assert.ok(result.entries.length > 0);

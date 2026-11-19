@@ -4,9 +4,13 @@
  */
 export const DURATION_REVIEW_DATE='2026-11-16';
 const AUDIT_KEYS=["formIds","sourceUrl","sourceSection","indication","doseMode","dose","doseRange","frequency","frequencyOptions","fixedDays","minDays","maxDays","reviewAfterDays","asNeeded","patientTypes","specialties","species","minAgeMonths","maxAgeMonths","minAgeExclusive","maxAgeExclusive","minWeight","maxWeight","maxWeightExclusive","renalPolicy","minCrCl","minCrClExclusive","minimumAge","requiresFoodChainExclusion","weightBands","phaseLabel","maxDailyMg","maxDailyMgPerKg","maxSingleMg","maxSingleMgPerKg","maxUnitsPerDose","maxDailyUnits","minIntervalHours","requireCrCl","requiresDuration","minWeightExclusive","instructionText","amountText","administration","professionalUse"];
+// Only present new fields are appended: absence preserves the 60 earlier audit
+// signatures, while changed renal/phase/confirmation rules invalidate new ones.
+const ADDITIONAL_AUDIT_KEYS=['maxCrCl','maxCrClExclusive','anticoagulantRule','patientFields','selectionRequirements','lockSourceValues'];
 export function durationSourceSignature(source) {
   // Change detector for an audited catalogue record, not a security credential.
-  const text=JSON.stringify(AUDIT_KEYS.map(k=>source?.[k] ?? null));
+  const extra=ADDITIONAL_AUDIT_KEYS.filter(k=>source?.[k]!==undefined).map(k=>[k,source[k]]);
+  const text=JSON.stringify(AUDIT_KEYS.map(k=>source?.[k] ?? null))+(extra.length?JSON.stringify(extra):'');
   let a=2166136261,b=0x9e3779b9;
   for(let i=0;i<text.length;i++){a=Math.imul(a^text.charCodeAt(i),16777619);b=Math.imul(b^text.charCodeAt(i),2246822519);}
   return (a>>>0).toString(16)+':'+(b>>>0).toString(16)+':'+text.length;
@@ -300,6 +304,96 @@ export const DURATION_POLICIES=Object.freeze({
       7,
       10
     ]
+  },
+  "nystatin-individual": {
+    "checkedAt": "2026-11-19", "kind": "individual",
+    "note": "ChPL określa dawkę i częstość dla wybranego wskazania, bez liczbowego czasu kuracji. Siedem dni oznacza trwałość zawiesiny po przygotowaniu, nie zalecaną długość leczenia ani termin odstawienia. Dalszy czas ustala lekarz.",
+    "choices": []
+  },
+  "nystatin-brushing": {
+    "checkedAt": "2026-11-19", "kind": "individual",
+    "note": "Źródło opisuje pędzlowanie jamy ustnej 2–3 razy na dobę, ale nie liczbę dni ani objętość aplikacji. Trwałość przygotowanej zawiesiny przez 7 dni nie wyznacza kuracji. Plan stosowania i liczbę opakowań ustala lekarz.",
+    "choices": []
+  },
+  "ligosan-procedure": {
+    "checkedAt": "2026-11-19", "kind": "procedural",
+    "note": "ChPL opisuje aplikację żelu przez stomatologa do kieszonki. Siedem dni dotyczy ograniczeń mechanicznego czyszczenia po aplikacji, nie codziennego podawania przez tydzień. Jednorazowy wkład nie określa liczby zabiegów; plan ustala stomatolog.",
+    "choices": []
+  },
+  "anticoagulant-nvaf": {
+    "checkedAt": "2026-11-19", "kind": "chronic",
+    "note": "W NVAF źródło przewiduje leczenie długotrwałe z oceną korzyści i ryzyka krwawienia, bez skończonej kuracji w dniach. Wpisana liczba dni jest okresem zapasu, nie zaleceniem odstawienia. Zapas nie wybiera ani nie zmienia wariantu dawkowania.",
+    "choices": [30,60,90,120]
+  },
+  "apixaban-vte-initial7": {
+    "checkedAt": "2026-11-19", "kind": "stage", "minimum": 7, "maximum": 7, "hardMaximum": true,
+    "note": "Pierwsze 7 dni leczenia ostrej ZŻG/ZP apiksabanem 10 mg dwa razy na dobę. Następny etap ma inną dawkę i wymaga osobnego wyboru. Nie rozpoczynaj nowych 7 dni przy kolejnym zapasie w trakcie tej samej fazy.",
+    "choices": []
+  },
+  "rivaroxaban-vte-initial21": {
+    "checkedAt": "2026-11-19", "kind": "stage", "minimum": 21, "maximum": 21, "hardMaximum": true,
+    "note": "Pierwsze 3 tygodnie, czyli 21 dni, leczenia ostrej ZŻG/ZP rywaroksabanem 15 mg dwa razy na dobę. Od dnia 22 wybiera się odrębny etap. Nie przedłużaj dawki początkowej ani nie rozpoczynaj fazy ponownie przez zmianę okresu zapasu.",
+    "choices": []
+  },
+  "apixaban-hip32to38": {
+    "checkedAt": "2026-11-19", "kind": "range", "minimum": 32, "maximum": 38, "hardMaximum": true,
+    "note": "Profilaktyka po planowej endoprotezoplastyce biodra: pełny źródłowy okres 32–38 dni, z rozpoczęciem 12–24 godziny po zabiegu po ocenie ryzyka krwawienia. Nie jest to nowy okres dodawany przy wystawianiu kolejnego zapasu w trakcie profilaktyki.",
+    "choices": [32,35,38]
+  },
+  "apixaban-knee10to14": {
+    "checkedAt": "2026-11-19", "kind": "range", "minimum": 10, "maximum": 14, "hardMaximum": true,
+    "note": "Profilaktyka po planowej endoprotezoplastyce kolana: pełny źródłowy okres 10–14 dni, z rozpoczęciem 12–24 godziny po zabiegu po ocenie ryzyka krwawienia. Nie przeniesiono tu zakresu 32–38 dni po zabiegu biodra ani nie rozpoczyna się odliczania ponownie przy kolejnym zapasie.",
+    "choices": [10,12,14]
+  },
+  "anticoagulant-vte-continuation": {
+    "checkedAt": "2026-11-19", "kind": "individual",
+    "note": "Kontynuacja po odpowiednim początkowym etapie ZŻG/ZP; liczbę dni wpisuje się dla zapasu bieżącej dawki. Całkowity czas zależy od przyczyny, ryzyka nawrotu i krwawienia. Źródłowe co najmniej 3 miesiące w określonych sytuacjach dotyczą całej terapii, nie nowego minimum 90 dni dla tej recepty ani terminu odstawienia.",
+    "choices": [30,60,90,120]
+  },
+  "anticoagulant-vte-extended": {
+    "checkedAt": "2026-11-19", "kind": "chronic",
+    "note": "Ten wariant wymaga wcześniejszego ukończenia odpowiedniej terapii przez co najmniej 6 miesięcy. Jest to warunek wyboru etapu, nie dodatkowe 180 dni ani automatyczny czas kolejnego zapasu. Dalszy okres i ewentualne zakończenie ustala lekarz według korzyści i ryzyka; liczba dni nie jest terminem odstawienia.",
+    "choices": [30,60,90,120]
+  },
+  "betaloc-hf-initial14": {
+    "checkedAt": "2026-11-19", "kind": "stage", "minimum": 14, "maximum": 14, "hardMaximum": true,
+    "note": "Standardowy początkowy etap stabilnej przewlekłej HF: ZOK 25 raz na dobę przez pierwsze 2 tygodnie. To 14 dni wybranej fazy, nie czas całego leczenia. Kolejny etap wymaga osobnej oceny tolerancji i wyboru dawki.",
+    "choices": []
+  },
+  "betaloc-hf-initial7": {
+    "checkedAt": "2026-11-19", "kind": "stage", "minimum": 7, "maximum": 7, "hardMaximum": true,
+    "note": "Szczególny pierwszy tydzień stabilnej HF NYHA III–IV: połowa ZOK 25 raz na dobę. Siedem dni dotyczy tego początku, nie całej terapii ani automatycznego odstawienia. Następny etap wybiera się po ocenie tolerancji.",
+    "choices": []
+  },
+  "betaloc-hf-titration": {
+    "checkedAt": "2026-11-19", "kind": "individual",
+    "note": "ChPL opisuje ocenę tolerancji i podwajanie dawki co 2 tygodnie do dawki docelowej lub maksymalnie tolerowanej. Odstęp miareczkowania nie jest narzuconym końcem leczenia ani automatycznym okresem zapasu bieżącej dawki. Nie zaplanowano kolejnego zwiększenia ani odstawienia; dalszy etap ustala lekarz.",
+    "choices": []
+  },
+  "betaloc-maintenance": {
+    "checkedAt": "2026-11-19", "kind": "chronic",
+    "note": "Dla tego wybranego wskazania lub etapu nie określono skończonej kuracji w dniach. Liczba dni oznacza zapas ustalonej dawki, nie termin odstawienia ani automatycznego zwiększenia. Kontynuacja i zmiany zależą od wskazania, odpowiedzi oraz tolerancji.",
+    "choices": [30,60,90,120]
+  },
+  "ramipril-maintenance": {
+    "checkedAt": "2026-11-19", "kind": "chronic",
+    "note": "Wybrano późniejszą, ustaloną dawkę ramiprylu. Czas w dniach służy planowaniu zapasu, nie wyznacza zakończenia leczenia. Odstępy miareczkowania opisane odrębnie dla nadciśnienia, HF, nefropatii i profilaktyki nie są długością tej recepty ani automatycznym terminem odstawienia.",
+    "choices": [30,60,90,120]
+  },
+  "toramide-hypertension": {
+    "checkedAt": "2026-11-19", "kind": "chronic",
+    "note": "Nadciśnienie: źródło nie wyznacza skończonej kuracji. Około 12 tygodni to czas osiągania maksymalnego efektu hipotensyjnego, nie minimalny lub maksymalny czas stosowania i nie termin zwiększenia dawki. Wpisany okres określa zapas, nie zalecenie odstawienia.",
+    "choices": [30,60,90,120]
+  },
+  "toramide-oedema": {
+    "checkedAt": "2026-11-19", "kind": "response",
+    "note": "Dawkę i kontynuację przy obrzękach ustala się według przyczyny, odpowiedzi, wolemii i monitorowania. ChPL nie podaje tu liczbowego zakresu dni. Wpisany okres dotyczy zapasu bieżącej dawki, nie obowiązku utrzymywania jej ani ustalonego terminu odstawienia.",
+    "choices": []
+  },
+  "atoris-maintenance": {
+    "checkedAt": "2026-11-19", "kind": "chronic",
+    "note": "Atorwastatyna: okres w kalkulatorze planuje zapas wybranej dawki, nie zakończenie leczenia. Co najmniej 4 tygodnie między zmianami dawki i czas osiągania odpowiedzi nie są minimalną długością nowej recepty, maksymalną kuracją ani terminem odstawienia. Dalszy plan zależy od indywidualnego celu i tolerancji.",
+    "choices": [30,60,90,120]
   }
 });
 export const DURATION_BINDINGS=Object.freeze([["dental-ospamox-suspension-ge40-q8","amoxicillin","632780f0:b94f7fb4:548"],
@@ -361,7 +455,77 @@ export const DURATION_BINDINGS=Object.freeze([["dental-ospamox-suspension-ge40-q
 ["iverpraz-horse-mixed-infestation-table","single","d04d02ec:870ae804:1592"],
 ["equimoxin-horse-susceptible-parasites","single","7619c9c6:cde2f002:628"],
 ["pyrantel-vet-planet-horse-nematodes","single","5eff1d3a:8af5fbe2:575"],
-["pyrantel-vet-planet-horse-anoplocephala","single","54f45f6d:d42bde21:476"]]);
+["pyrantel-vet-planet-horse-anoplocephala","single","54f45f6d:d42bde21:476"],
+// Additional source review, 2026-11-19. These literal snapshots are deliberately
+// independent of live regimen imports. A changed record cannot approve itself.
+["nystatin-adult-oral","nystatin-individual","bfa5165d:c67152d:511"],
+["nystatin-child-oral","nystatin-individual","b81e914:66f5cd8:530"],
+["nystatin-adult-gastrointestinal","nystatin-individual","bfbc8cda:7e35bcde:501"],
+["nystatin-child-gastrointestinal","nystatin-individual","d9cff068:efccfee8:536"],
+["nystatin-adult-antibiotic-prophylaxis","nystatin-individual","8d81e4d9:12e4afb5:521"],
+["nystatin-oral-brushing","nystatin-brushing","435ea21a:c880b5d6:609"],
+["cardio-eliquis-nvaf-standard","anticoagulant-nvaf","128c55f8:a3bf72d8:1721"],
+["cardio-eliquis-nvaf-two-criteria","anticoagulant-nvaf","41a8f956:ed42f19e:1741"],
+["cardio-eliquis-nvaf-severe-renal","anticoagulant-nvaf","f40adb51:6a53123d:1729"],
+["cardio-eliquis-vte-initial","apixaban-vte-initial7","df643eb5:6f9374d:1690"],
+["cardio-eliquis-vte-continuation","anticoagulant-vte-continuation","fb916234:43848100:1591"],
+["cardio-eliquis-vte-extended","anticoagulant-vte-extended","32b762c:75e7af18:1602"],
+["cardio-eliquis-post-hip","apixaban-hip32to38","8e4c2844:648aaae0:1699"],
+["cardio-eliquis-post-knee","apixaban-knee10to14","13ce48f0:45f22d1c:1700"],
+["cardio-xarelto-nvaf-standard","anticoagulant-nvaf","b6c03c04:fbc96e58:1106"],
+["cardio-xarelto-nvaf-renal","anticoagulant-nvaf","ec9b7096:3f22916e:1546"],
+["cardio-xarelto-vte-initial","rivaroxaban-vte-initial21","73a3a2b:4f969867:1119"],
+["cardio-xarelto-vte-continuation","anticoagulant-vte-continuation","377afdd4:b367ec98:1061"],
+["cardio-xarelto-vte-renal-reduced","anticoagulant-vte-continuation","deba2161:e5a34e71:1545"],
+["cardio-xarelto-vte-extended-high-risk","anticoagulant-vte-extended","1674e2a8:543fa540:1575"],
+["cardio-betaloc-hypertension-initial","betaloc-maintenance","5dac7630:3cc0b248:1074"],
+["cardio-betaloc-hypertension-increased","betaloc-maintenance","3d5f10bd:92174ad5:1315"],
+["cardio-betaloc-angina","betaloc-maintenance","6c281535:c1ae150d:1127"],
+["cardio-betaloc-arrhythmia","betaloc-maintenance","fa022f61:ebe2da1d:1233"],
+["cardio-betaloc-post-infarction-maintenance","betaloc-maintenance","d3691286:cde6f92:1268"],
+["cardio-betaloc-palpitations-standard","betaloc-maintenance","14dd42a7:85fbcb3f:1092"],
+["cardio-betaloc-palpitations-increased","betaloc-maintenance","cfb9a6ad:f215366d:1239"],
+["cardio-betaloc-migraine-prophylaxis","betaloc-maintenance","4f34634d:31a70601:1130"],
+["cardio-betaloc-hf-initial-standard","betaloc-hf-initial14","a7ce0650:612817bc:1323"],
+["cardio-betaloc-hf-initial-nyha3to4","betaloc-hf-initial7","23bf5685:f70203b9:1343"],
+["cardio-betaloc-hf-titration-zok25","betaloc-hf-titration","ecfa47f3:f541338f:1486"],
+["cardio-betaloc-hf-titration-zok50","betaloc-hf-titration","72219b58:302e2eac:1501"],
+["cardio-betaloc-hf-titration-zok100","betaloc-hf-titration","a77aa0f3:f271ba47:1516"],
+["cardio-betaloc-hf-maintenance-zok200","betaloc-maintenance","d1c24cca:36815bfa:1390"],
+["cardio-ramipril-hypertension-5-crcl-ge60","ramipril-maintenance","a7237e19:c80674f5:1320"],
+["cardio-ramipril-hypertension-10-crcl-ge60","ramipril-maintenance","21978b1f:2f304363:1341"],
+["cardio-ramipril-hypertension-5-crcl10to60","ramipril-maintenance","945fc9f5:843bb17d:1400"],
+["cardio-ramipril-cv-prevention-5","ramipril-maintenance","6ea640b9:d1f91aa5:1396"],
+["cardio-ramipril-cv-prevention-10","ramipril-maintenance","44f23a6f:4af6fb53:1417"],
+["cardio-ramipril-nephropathy-microalbuminuria-5-standard","ramipril-maintenance","899faaef:4c91e22f:1328"],
+["cardio-ramipril-nephropathy-microalbuminuria-5-reduced","ramipril-maintenance","85701b08:c051964c:1368"],
+["cardio-ramipril-nephropathy-nondiabetic-proteinuria-5-standard","ramipril-maintenance","6161761f:9a293e87:1332"],
+["cardio-ramipril-nephropathy-nondiabetic-proteinuria-5-reduced","ramipril-maintenance","a2c2b8:de927954:1372"],
+["cardio-ramipril-diabetic-nephropathy-cv-risk-5","ramipril-maintenance","4ee60867:946bfe37:1366"],
+["cardio-ramipril-diabetic-nephropathy-cv-risk-10","ramipril-maintenance","84cd2435:f9b3323d:1387"],
+["cardio-ramipril-hf-maintenance-5-bid","ramipril-maintenance","b0e6fd40:c19f7f0c:1457"],
+["cardio-ramipril-post-infarction-hf-maintenance-5-bid","ramipril-maintenance","5b8340d5:7aa1f641:1678"],
+["cardio-ramipril-hypertension-haemodialysis-maintenance-5","ramipril-maintenance","bb845e58:74835b2c:1411"],
+["cardio-toramide-hypertension-initial","toramide-hypertension","4d38f234:5623091c:930"],
+["cardio-toramide-hypertension-increased","toramide-hypertension","132af5db:c0cb192b:1109"],
+["cardio-toramide-oedema-initial","toramide-oedema","711de7d0:60efa3f0:984"],
+["cardio-toramide-oedema-adjusted-2-5","toramide-oedema","71c7ae09:b8bcab85:1225"],
+["cardio-toramide-oedema-adjusted-5","toramide-oedema","6eb84397:776034eb:1221"],
+["cardio-toramide-oedema-adjusted-10","toramide-oedema","21b4b8f3:b47db99f:1225"],
+["cardio-atoris-hypercholesterolaemia-initial","atoris-maintenance","36db1e5:a723f8c9:1245"],
+["cardio-atoris-hypercholesterolaemia-maintenance-10","atoris-maintenance","8ea3d6d3:3bb5d8eb:1553"],
+["cardio-atoris-hypercholesterolaemia-maintenance-20","atoris-maintenance","ccb445a1:92816ced:1553"],
+["cardio-atoris-hypercholesterolaemia-maintenance-40","atoris-maintenance","8aaabd45:4873fc09:1553"],
+["cardio-atoris-homozygous-familial-10","atoris-maintenance","bea82436:ec04cf06:1660"],
+["cardio-atoris-homozygous-familial-20","atoris-maintenance","1f19f50:31fca5cc:1660"],
+["cardio-atoris-homozygous-familial-40","atoris-maintenance","22e1e0d4:1867e208:1660"],
+["cardio-atoris-cv-prevention-10","atoris-maintenance","92ecc827:1ca6142b:1233"],
+["cardio-atoris-cv-prevention-adjusted-10","atoris-maintenance","2c0bac19:2488a2b1:1656"],
+["cardio-atoris-cv-prevention-adjusted-20","atoris-maintenance","6fe28ccd:5316bc5d:1656"],
+["cardio-atoris-cv-prevention-adjusted-40","atoris-maintenance","a3899c09:ae0b8d51:1656"],
+["cardio-atoris-interaction-cap20-10","atoris-maintenance","fef0884a:4608e652:1488"],
+["cardio-atoris-interaction-cap20-20","atoris-maintenance","f57fee24:4310a2d8:1488"],
+["ligosan-adult-periodontal-procedure","ligosan-procedure","9247b452:3e3767da:801"]]);
 const bindings=new Map(DURATION_BINDINGS.map(([id,policy,signature])=>[id,{policy,signature}]));
 export function auditedDurationPolicy(source) {
   const binding=bindings.get(source?.id);

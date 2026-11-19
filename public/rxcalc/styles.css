@@ -470,6 +470,13 @@ dl.result-review{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2f
 .source-fact{display:flex;flex-direction:column;gap:4px;padding:8px 0;min-width:0}
 .source-fact small{color:var(--muted);font-size:11px;line-height:1.5}
 .source-fact strong{font-size:17px;line-height:1.5;overflow-wrap:anywhere}
+.source-conditions{min-width:0;margin:18px 0;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface-soft)}
+.source-conditions legend{padding:0 6px;font-size:12px;font-weight:650;color:var(--ink)}
+.source-conditions>.small-help{margin:0 0 10px}
+.source-condition{display:flex;align-items:flex-start;gap:10px;min-height:44px;padding:9px 0;font-size:12px;line-height:1.6;cursor:pointer;color:var(--ink)}
+.source-condition+.source-condition{border-top:1px solid var(--border)}
+.source-condition input{width:18px;height:18px;flex:0 0 18px;margin:3px 0 0;accent-color:var(--accent)}
+.source-condition small{display:block;margin-top:4px;color:var(--muted);font-size:11px;line-height:1.6}
 .source-duration{font-size:13px;color:var(--muted);margin:15px 0}
 .source-duration strong{color:var(--ink)}
 .instruction-summary{display:flex;gap:10px;background:var(--surface-soft);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;line-height:1.75;margin:12px 0;color:var(--ink)}

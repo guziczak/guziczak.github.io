@@ -44,7 +44,7 @@ export function resolveDurationGuidance({source=null,form=null,context={}}={}) {
     fixed:['fixed','single','stage'].includes(p.kind),hardMaximum:!!p.hardMaximum,
     reviewAfterDays:p.reviewAfterDays??null,reviewMode:p.reviewMode||null,
     label:p.label||source.sourceLabel,url:p.url||source.sourceUrl,section:p.section||source.sourceSection,
-    checkedAt:DURATION_REVIEW_DATE,indication:source.indication,
+    checkedAt:p.checkedAt||DURATION_REVIEW_DATE,indication:source.indication,
     primarySourceUrl:source.sourceUrl,primarySourceLabel:source.sourceLabel};
   const keys=['minimum','maximum','reviewAfterDays'];
   if(keys.some(k=>has(rule[k])&&!positiveDay(rule[k]))||!httpUrl(rule.url)||!rule.label||rule.minimum&&rule.maximum&&rule.minimum>rule.maximum)

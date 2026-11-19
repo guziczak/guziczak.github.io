@@ -404,7 +404,11 @@ export function calculate(input = {}) {
     result.warnings.push(message);
     result.warningDetails.push({code:'daily-limit-unspecified',message});
   }
-  if (result.singleMg === null) result.warnings.push('Obliczono ilość preparatu; dawka substancji w mg nie została oceniona.');
+  if (result.singleMg === null) {
+    const message='Obliczono ilość preparatu; dawka substancji w mg nie została oceniona.';
+    result.warnings.push(message);
+    result.warningDetails.push({code:'quantity-without-mg',message});
+  }
 
   for (const key of ['singleMg', 'dailyMg', 'theoreticalUnits', 'singleUnits', 'dailyUnits', 'totalUnits', 'packages', 'providedUnits', 'leftoverUnits', 'roundingDifferencePercent', 'maxRatio', 'expiryWasteUnits', 'singleUseContainers', 'unusedSingleUseVolume', 'unusedSingleUseUnits', 'dosesPerVial', 'discardedMultiDoseVolume']) {
     if (result[key] !== null && !finite(result[key])) {

@@ -8,6 +8,8 @@
  * Final formulation arithmetic and the
  * actual administered-dose checks remain in engine.js.
  */
+import { assessAnticoagulantEligibility } from './cardio-anticoagulant-regimens.js';
+
 const MODES = new Set(['fixed', 'perKgDay', 'perKgDose', 'units', 'instruction']);
 const PATIENT_TYPES = new Set(['adult', 'child']);
 const AGE_UNITS = new Set(['years', 'months', 'days']);
@@ -19,7 +21,7 @@ const present = value => value !== null && value !== undefined;
 const missing = value => !present(value) || value === '';
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const text = value => typeof value === 'string' && value.trim().length > 0;
-const stringList = value => Array.isArray(value) && value.length > 0 && value.every(text)
+const stringList = value => Array.isArray(value) && value.length > 0 && Array.from(value).every(text)
   && new Set(value).size === value.length;
 const clean = value => Number(value.toPrecision(14));
 const tolerance = value => Number.EPSILON * 32 * Math.max(1, Math.abs(value));
@@ -82,7 +84,7 @@ function metadataErrors(record) {
     errors.push('Nieprawidłowa liczba podań w źródle.');
   }
   if (hasOptions && (!Array.isArray(record.frequencyOptions) || !record.frequencyOptions.length
-      || record.frequencyOptions.some(value => !positiveInteger(value) || value > 48)
+      || Array.from(record.frequencyOptions).some(value => !positiveInteger(value) || value > 48)
       || new Set(record.frequencyOptions).size !== record.frequencyOptions.length)) {
     errors.push('Nieprawidłowa lista częstości w źródle.');
   }
@@ -98,7 +100,7 @@ function metadataErrors(record) {
     errors.push('Sprzeczne ograniczenia czasu stosowania w źródle.');
   }
   for (const key of ['minAgeExclusive', 'maxAgeExclusive', 'minWeightExclusive', 'maxWeightExclusive',
-    'minCrClExclusive', 'requiresDuration', 'requireCrCl', 'asNeeded']) {
+    'minCrClExclusive', 'maxCrClExclusive', 'requiresDuration', 'requireCrCl', 'asNeeded', 'lockSourceValues']) {
     if (Object.hasOwn(record, key) && typeof record[key] !== 'boolean') {
       errors.push('Nieprawidłowy warunek schematu w źródle.');
     }
@@ -130,9 +132,21 @@ function metadataErrors(record) {
   if (present(record.renalPolicy) && record.renalPolicy !== 'normal-only') {
     errors.push('Nieobsługiwany warunek czynności nerek w źródle.');
   }
-  if (present(record.minCrCl) && (!finite(record.minCrCl) || record.minCrCl < 0)
-      || record.minCrClExclusive === true && !present(record.minCrCl)) {
+  if (['minCrCl', 'maxCrCl'].some(key => present(record[key]) && (!finite(record[key]) || record[key] < 0))
+      || record.minCrClExclusive === true && !present(record.minCrCl)
+      || record.maxCrClExclusive === true && !present(record.maxCrCl)
+      || present(record.minCrCl) && present(record.maxCrCl) && (record.minCrCl > record.maxCrCl
+        || record.minCrCl === record.maxCrCl && (record.minCrClExclusive || record.maxCrClExclusive))) {
     errors.push('Nieprawidłowy próg klirensu kreatyniny w źródle.');
+  }
+  if (present(record.patientFields) && (!stringList(record.patientFields)
+      || record.patientFields.some(key => !['age', 'weight', 'crcl', 'serumCreatinine'].includes(key)))) {
+    errors.push('Nieprawidłowe wymagane dane pacjenta w źródle.');
+  }
+  if (present(record.selectionRequirements) && (!Array.isArray(record.selectionRequirements)
+      || Array.from(record.selectionRequirements).some(item => !object(item) || !text(item.id) || !text(item.label))
+      || new Set(record.selectionRequirements.map(item => item?.id)).size !== record.selectionRequirements.length)) {
+    errors.push('Nieprawidłowe warunki wyboru schematu w źródle.');
   }
   if (present(record.minIntervalHours) && (!positive(record.minIntervalHours) || record.minIntervalHours > 24)) {
     errors.push('Nieprawidłowy minimalny odstęp między podaniami w źródle.');
@@ -294,7 +308,7 @@ export function resolveHumanRegimen(record, context = {}, { allowNumericOverride
 
   if (present(record.minAgeMonths) || present(record.maxAgeMonths)) result.requirements.push('age');
   checkAge(record, context, result.errors);
-  const weightRequired = ['perKgDay', 'perKgDose'].includes(record.doseMode)
+  const weightRequired = record.patientFields?.includes('weight') || ['perKgDay', 'perKgDose'].includes(record.doseMode)
     || ['minWeight', 'maxWeight', 'maxDailyMgPerKg', 'maxSingleMgPerKg'].some(key => present(record[key]));
   if (weightRequired) result.requirements.push('weight');
   const weight = positive(context.weight) && context.weight <= 500 ? context.weight : null;
@@ -325,8 +339,22 @@ export function resolveHumanRegimen(record, context = {}, { allowNumericOverride
       && (record.minCrClExclusive ? context.crcl <= record.minCrCl : context.crcl < record.minCrCl)) {
     result.errors.push(`CrCl nie spełnia warunku schematu (${record.minCrClExclusive ? 'powyżej' : 'co najmniej'} ${fmt(record.minCrCl)} ml/min). Wymagany jest inny schemat.`);
   }
+  if (positive(context.crcl) && present(record.maxCrCl)
+      && (record.maxCrClExclusive ? context.crcl >= record.maxCrCl : context.crcl > record.maxCrCl)) {
+    result.errors.push(`CrCl nie spełnia warunku schematu (${record.maxCrClExclusive ? 'poniżej' : 'nie więcej niż'} ${fmt(record.maxCrCl)} ml/min). Wymagany jest inny schemat.`);
+  }
+  const confirmations = Array.isArray(context.sourceConfirmations) ? context.sourceConfirmations : [];
+  const unconfirmed = (record.selectionRequirements || []).filter(item => !confirmations.includes(item.id));
+  if (unconfirmed.length) {
+    result.requirements.push('sourceConfirmations');
+    result.errors.push(`Potwierdź warunki wybranego schematu: ${unconfirmed.length} do sprawdzenia.`);
+  }
+  const specialist = assessAnticoagulantEligibility(record, context);
+  result.errors.push(...specialist.errors.filter(message => !result.errors.includes(message)));
+  result.warnings.push(...specialist.warnings);
+  result.requirements.push(...specialist.requirements);
 
-  const editable = allowNumericOverrides === true && record.doseMode !== 'instruction';
+  const editable = allowNumericOverrides === true && record.doseMode !== 'instruction' && record.lockSourceValues !== true;
   if (record.doseMode !== 'instruction') resolveChoice(record, context, result, 'dose', 'doseRange', editable);
   resolveChoice(record, context, result, 'frequency', 'frequencyOptions', editable);
   if (result.frequency !== null && positive(record.minIntervalHours)

@@ -4,6 +4,7 @@ import { availableDrugs } from './catalogue-selection.js';
 import { REGIMENS } from './regimens.js';
 import { availableRegimens, resolveRegimen } from './regimen-engine.js';
 import { patientFieldsFor } from './workflow.js';
+import { applySourceComparisonPresentation } from './source-result.js';
 import { HUMAN_REGIMENS } from './human-regimens.js';
 import { LIQUID_STARTER_REGIMENS, liquidStarterMarkup } from './liquid-starters.js';
 import { supportsLiquidChoices, supportsLiquidDoseView, defaultLiquidDoseView, liquidDoseChoices, liquidDoseChoicesMarkup } from './liquid-doses.js';
@@ -16,7 +17,7 @@ import { tabletDoseChoices } from './tablet-doses.js';
 import { createPatientPickers } from './patient-picker.js';
 import { createViewportLayout } from './viewport-layout.js';
 import { createCatalogueMotion } from './catalogue-motion.js';
-import { ingredientDailyDose } from './daily-dose.js';
+import { ingredientDailyDose, supportsDailyDose } from './daily-dose.js';
 import { dailyDoseMarkup, renderDailyDoseNote } from './dose-safety-view.js';
 import { assessDoseRounding, hasScopedRoundingEvidence, automaticRoundingStep, applyRoundingPresentation, roundingValidationSource, resolveRoundingRegimen, createRoundingReview, roundingAuditText } from './rounding-assessment.js';
 import { roundingReviewMarkup } from './rounding-review-view.js';
@@ -80,7 +81,7 @@ favoriteIds = favoriteIds.filter(id => DRUGS.some(d => d.id === id));
 const state = {
   specialty, category: 'all', routeFilter: 'all', search: '', drugId: '', formId: '', packageId: '',
   patientType: 'adult', age: '', weight: '', species: '', vetAgeUnit: 'years', vetRoute: '', foodChainStatus: 'unknown',
-  humanAgeUnit: 'years', renalStatus: 'unknown', humanCrCl: '', instructionPacks: '',
+  humanAgeUnit: 'years', renalStatus: 'unknown', humanCrCl: '', humanSerumCreatinine: '', instructionPacks: '', sourceConfirmations: [],
   doseMode: 'fixed', dose: '', frequency: '', days: '', roundingStep: '', manualMax: '', regimenId: '',
   roundingMode: 'auto', roundDoses: false, roundingPlaces: '1',
   extraInstructions: '', confirmed: false, rxMode: 'full', custom: false,
@@ -156,7 +157,7 @@ function chooseDrug(id) {
 function resetRegimen() {
   roundingReview = null;
   if (state.demo) Object.assign(state, { age: '', weight: '' });
-  Object.assign(state, { dose: '', frequency: '', days: '', manualMax: '', extraInstructions: '', instructionPacks: '', confirmed: false, demo: false, regimenId: '', roundingMode:'auto', roundDoses:false, roundingStep:'' });
+  Object.assign(state, { dose: '', frequency: '', days: '', manualMax: '', extraInstructions: '', instructionPacks: '', sourceConfirmations: [], confirmed: false, demo: false, regimenId: '', roundingMode:'auto', roundDoses:false, roundingStep:'' });
   ui.manualRegimen = false; ui.regimenExpanded = false; ui.sourceDetailsOpen = false;
   ui.liquidDoseView = null;
 }
@@ -212,11 +213,13 @@ const variantUnit = count => count === 1 ? 'wariant' : count % 10 >= 2 && count 
 const regimenContext = () => ({ formId: getForm()?.id, species: state.species, weight: num(state.weight), age: num(state.age), ageUnit: state.vetAgeUnit, foodChainStatus: state.foodChainStatus, days: num(state.days), calculationBlocked: getForm()?.calculationBlocked === true });
 const humanContext = () => {
   const source=getSourceRegimen();
-  const renalRelevant=source?.renalPolicy || source?.minCrCl != null || source?.requireCrCl;
+  const renalRelevant=source?.renalPolicy || source?.minCrCl != null || source?.maxCrCl != null || source?.requireCrCl;
   return { formId:getForm()?.id, specialty:state.specialty, patientType:state.patientType,
     age:num(state.age), ageUnit:state.humanAgeUnit, weight:num(state.weight), days:num(state.days),
     dose:num(state.dose), frequency:num(state.frequency), renalStatus:state.renalStatus,
-    crcl:renalRelevant ? num(state.humanCrCl) : null };
+    crcl:renalRelevant ? num(state.humanCrCl) : null,
+    serumCreatinine:source?.patientFields?.includes('serumCreatinine') ? num(state.humanSerumCreatinine) : null,
+    sourceConfirmations:state.sourceConfirmations };
 };
 const getAvailableRegimens = () => state.custom || isReference(getForm()) ? [] : isVeterinary()
   ? availableRegimens(REGIMENS, regimenContext()) : availableHumanRegimens(HUMAN_SOURCE_OPTIONS, humanContext());
@@ -307,7 +310,7 @@ function clearCustomProduct() {
   Object.assign(state,{customName:'',customForm:'tablet',customStrength:'',customConcentration:'',customVolume:'5',customPack:'',customFractions:'1',customDrops:'',customContainers:'1',vetRoute:''});
 }
 function clearPatientContext() {
-  Object.assign(state,{age:'',weight:'',patientType:'adult',species:'',vetAgeUnit:'years',foodChainStatus:'unknown',humanAgeUnit:'years',renalStatus:'unknown',humanCrCl:''});
+  Object.assign(state,{age:'',weight:'',patientType:'adult',species:'',vetAgeUnit:'years',foodChainStatus:'unknown',humanAgeUnit:'years',renalStatus:'unknown',humanCrCl:'',humanSerumCreatinine:''});
   resetRegimen();
 }
 function startVeterinary() {
@@ -333,7 +336,7 @@ resetProductView();
 function sourceRegimenPicker() {
   if ((isVeterinary() && !state.species) || isReference(getForm())) return '';
   const choices = getAvailableRegimens(), source = getSourceRegimen();
-  if (!choices.length) return `<p class="small-help">${isInstruction(getForm()) ? 'Brak schematu źródłowego dla tej grupy pacjenta. Sprawdź grupę i dokumentację preparatu.' : `Schemat ręczny · parametry ustala ${isVeterinary() ? 'lekarz weterynarii' : 'lekarz'}.`}</p>`;
+  if (!choices.length) return `<p class="small-help">${isInstruction(getForm()) ? 'Brak schematu źródłowego dla tej grupy pacjenta. Sprawdź grupę i dokumentację preparatu.' : state.specialty==='cardio'&&state.patientType==='child' ? 'Gotowe schematy kardiologiczne obejmują dorosłych. Dla dziecka potrzebny jest odrębny schemat lekarza.' : `Schemat ręczny · parametry ustala ${isVeterinary() ? 'lekarz weterynarii' : 'lekarz'}.`}</p>`;
   if (!source && supportsLiquidChoices(getForm(),isVeterinary()) && !state.custom) return liquidStarterMarkup(choices);
   if (ui.manualRegimen && !source) return `<div class="regimen-summary"><div class="selection-copy"><strong>Schemat ręczny</strong><small>Wartości ustala ${isVeterinary() ? 'lekarz weterynarii' : 'lekarz'}.</small></div><button class="text-button" data-action="source-mode">Wybierz ze źródła</button></div>`;
   if (source && !ui.regimenExpanded) return `<div class="regimen-summary"><div class="selection-copy"><strong>${esc(sourceLabel(source))}</strong>${source.phaseLabel ? `<small>${canEditSourceValues() ? 'Źródło: ' : ''}${esc(source.phaseLabel)}</small>` : ''}</div><button class="text-button" data-action="edit-regimen">Zmień schemat</button></div>`;
@@ -350,23 +353,35 @@ function patientPanel(f) {
   const source = getSourceRegimen();
   const needs = patientFieldsFor({ ...state, form:f, source });
   const weight = required => field('weight', required ? 'Masa ciała' : 'Masa (opcjonalnie)', state.weight, isVeterinary() ? getAnimal()?.weight || 'kg' : state.patientType === 'child' ? 'np. 24' : 'np. 70', 'kg', `data-patient-picker ${required ? 'required' : ''}`);
-  const renalRelevant = !isVeterinary() && (source?.renalPolicy || source?.minCrCl != null || source?.requireCrCl);
-  const renal = renalRelevant ? field('humanCrCl', source.requireCrCl ? 'CrCl ustalony klinicznie' : 'Znany CrCl (opcjonalnie)', state.humanCrCl, 'Wartość CrCl', 'ml/min', `data-patient-picker ${source.requireCrCl ? 'required' : ''}`) : '';
+  const renalRelevant = !isVeterinary() && (source?.renalPolicy || source?.minCrCl != null || source?.maxCrCl != null || source?.requireCrCl);
+  const renal = renalRelevant ? field('humanCrCl', source.requireCrCl ? 'CrCl ustalony klinicznie' : 'Znany CrCl (opcjonalnie)', state.humanCrCl, 'Wartość CrCl', 'ml/min', source.requireCrCl ? 'required' : '') : '';
   const renalImpairment = !isVeterinary() && source?.renalPolicy ? `<div class="field renal-details-field"><label class="renal-impairment-option" for="renalImpairment"><input id="renalImpairment" type="checkbox" ${state.renalStatus === 'impaired' ? 'checked' : ''}><span>Rozpoznane zaburzenia czynności nerek</span></label><small>Opcjonalnie, jeśli dotyczy pacjenta. CrCl podawaj w ml/min, nie jako eGFR na 1,73 m².</small></div>` : '';
-  const essential = `${needs.weight ? weight(true) : ''}${needs.age ? ageFields(true) : ''}${needs.foodChain ? foodChainField() : ''}${source?.requireCrCl ? renal : ''}`;
+  const creatinine = !isVeterinary() && source?.patientFields?.includes('serumCreatinine')
+    ? field('humanSerumCreatinine', 'Kreatynina w surowicy', state.humanSerumCreatinine, 'Wartość w mg/dl', 'mg/dl', 'required') : '';
+  const essential = `${needs.weight ? weight(true) : ''}${needs.age ? ageFields(true) : ''}${needs.foodChain ? foodChainField() : ''}${source?.requireCrCl ? renal : ''}${creatinine}`;
   const additional = `${!needs.age ? ageFields() : ''}${!needs.weight ? weight(false) : ''}${!source?.requireCrCl ? renal : ''}${renalImpairment}`;
-  return `<section class="patient-card embedded-context" aria-labelledby="patient-title"><div class="section-heading"><h3 id="patient-title">Dane pacjenta</h3><span class="trailing">${icon('lock')} Tylko na ten czas</span></div>${essential ? `<div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${essential}</div>` : '<p class="small-help">Wybrane przeliczenie nie wymaga dodatkowych parametrów pacjenta.</p>'}${isVeterinary() ? '<p class="small-help">Masę wpisz w kg: 100 g = 0,1 kg.</p>' : ''}${additional ? `<details class="context-details" data-disclosure="patientDetailsOpen" ${ui.patientDetailsOpen ? 'open' : ''}><summary>Dodatkowe parametry pacjenta</summary><div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${additional}</div></details>` : ''}</section>`;
+  return `<section class="patient-card embedded-context" aria-labelledby="patient-title"><div class="section-heading"><h3 id="patient-title">Dane pacjenta</h3><span class="trailing">${icon('lock')} Tylko na ten czas</span></div>${essential ? `<div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${essential}</div>` : '<p class="small-help">Wybrane przeliczenie nie wymaga dodatkowych parametrów pacjenta.</p>'}${isVeterinary() ? '<p class="small-help">Masę wpisz w kg: 100 g = 0,1 kg.</p>' : renalRelevant ? '<p class="small-help">CrCl podaj w ml/min, bez podstawiania eGFR na 1,73 m². Kreatynina w surowicy, gdy wymagana, jest osobną wartością w mg/dl.</p>' : ''}${additional ? `<details class="context-details" data-disclosure="patientDetailsOpen" ${ui.patientDetailsOpen ? 'open' : ''}><summary>Dodatkowe parametry pacjenta</summary><div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${additional}</div></details>` : ''}</section>`;
+}
+
+function sourceRequirementsMarkup(source) {
+  const conditions=source?.selectionRequirements || [];
+  if(!conditions.length)return '';
+  return `<fieldset class="source-conditions"><legend>Warunki wybranego schematu</legend><p class="small-help">Potwierdź warunki dotyczące tego pacjenta i etapu leczenia.</p>${conditions.map(item=>`<label class="source-condition"><input type="checkbox" data-source-requirement="${esc(item.id)}" ${state.sourceConfirmations.includes(item.id)?'checked':''}><span>${esc(item.label)}${item.detail?`<small>${esc(item.detail)}</small>`:''}</span></label>`).join('')}</fieldset>`;
+}
+function clearSourceConfirmations() {
+  state.sourceConfirmations=[];
+  document.querySelectorAll('[data-source-requirement]').forEach(input=>{input.checked=false;});
 }
 
 function humanRegimenPanel(f) {
   const source = getSourceRegimen();
   const instruction = isInstruction(f);
   const editable = canEditSourceValues();
-  const doseControl = editable ? `<div>${field('dose',doseLabel(),state.dose,source.doseRange ? 'Wybierz dawkę z zakresu' : 'Wpisz dawkę',doseUnit(),'data-patient-picker')}${tabletDoseButtons()}${liquidDoseButtons()}</div>` : '';
+  const doseControl = editable || source?.doseRange ? `<div>${field('dose',doseLabel(),state.dose,source.doseRange ? 'Wybierz dawkę z zakresu' : 'Wpisz dawkę',doseUnit(),'data-patient-picker')}${tabletDoseButtons()}${liquidDoseButtons()}</div>` : !instruction && source?.dose ? `<div class="source-fact"><small>${esc(doseLabel())} · ze źródła</small><strong id="source-dose-value">${n(source.dose,10)} ${esc(doseUnit())}</strong></div>` : '';
   const frequencies = editable ? [...new Set([1,2,3,4,5,6,8,12,...(source.frequencyOptions || []),...(source.frequency ? [source.frequency] : [])])].sort((a,b)=>a-b) : source?.frequencyOptions;
   const frequencyControl = frequencies ? `<div class="field"><label for="frequency">${source.asNeeded ? 'Maks. liczba podań na dobę' : 'Częstotliwość'}</label><select id="frequency" data-field="frequency"><option value="">Wybierz</option>${frequencies.map(v => `<option value="${v}" ${state.frequency === String(v) ? 'selected' : ''}>${source.asNeeded ? 'Do ' : ''}${v} × na dobę</option>`).join('')}</select></div>` : source?.frequency ? `<div class="source-fact"><small>Częstotliwość</small><strong id="source-frequency-value">${n(source.frequency)} × na dobę</strong></div>` : '';
   const duration = source?.fixedDays ? `<p class="source-duration">Czas tego schematu: <strong>${n(source.fixedDays)} ${source.fixedDays === 1 ? 'dzień' : 'dni'}</strong></p>${durationChoices(source,false)}` : `<div class="duration-field">${field('days',instruction && !source?.minDays && !source?.maxDays ? 'Czas stosowania (jeśli ustalony)' : 'Czas stosowania',state.days,'Ustala lekarz','dni')}${durationHint(source) ? `<p class="small-help">${esc(durationHint(source))}</p>` : ''}${durationChoices(source,false)}</div>`;
-  return `<section class="panel regimen-panel human-regimen" aria-labelledby="regimen-title"><div class="section-heading"><span class="step-number">02</span><h2 id="regimen-title">${instruction ? 'Sposób stosowania' : 'Schemat podawania'}</h2><span class="trailing" id="regimen-provenance">${source ? (sourceIsModified() ? 'Zmodyfikowany' : 'Ze źródła') : ''}</span></div>${sourceRegimenPicker()}${source ? `${patientPanel(f)}<div class="human-source-body">${instruction ? `<div class="instruction-summary">${icon('book')}<p>${esc(source.instructionText || source.administration || '')}</p></div>` : ''}<div class="regimen-fields human-regimen-fields">${doseControl}${frequencyControl}</div>${editable ? `<div class="source-edit-note" id="source-edit-note">${sourceEditMarkup(source,state,doseUnit(),assessDoseRounding(currentRoundingOptions()))}</div>` : ''}${dailyDoseSlot(f)}${source.asNeeded ? `<p class="small-help">W razie potrzeby. ${source.minIntervalHours ? `Odstęp między podaniami: co najmniej ${n(source.minIntervalHours)} godz.` : ''} Zapas pokazuje maksymalne planowane zużycie.</p>` : ''}${duration}${instruction ? `<div class="instruction-supply">${field('instructionPacks','Liczba opakowań (jeśli ustalona)',state.instructionPacks,'Ustala lekarz','op.')}<p class="small-help">Ilości preparatu i liczby opakowań nie wyliczamy z umownej porcji. Wpisana liczba opakowań jest decyzją lekarza.</p></div>` : ''}${source.screening ? `<p class="source-screening">${icon('shield')}<span>${esc(source.screening)}</span></p>` : ''}<details class="advanced" data-disclosure="advancedOpen" ${ui.advancedOpen ? 'open' : ''}><summary>${icon('settings')}Dodatkowe zalecenia${instruction ? '' : ' i limit'}</summary><div class="advanced-grid">${!instruction ? field('manualMax','Własny niższy limit dobowy',state.manualMax,'Opcjonalnie','mg') : ''}<div class="field full"><label for="extraInstructions">Dodatkowe zalecenia</label><input id="extraInstructions" data-field="extraInstructions" value="${esc(state.extraInstructions)}" maxlength="500" placeholder="Ustalone przez lekarza" autocomplete="off"></div></div></details><details class="source-details" data-disclosure="sourceDetailsOpen" ${ui.sourceDetailsOpen ? 'open' : ''}><summary>${icon('book')}Źródło i zakres schematu</summary><ul>${(source.notes || []).map(note => `<li>${esc(note)}</li>`).join('')}</ul>${source.administration ? `<p><strong>Sposób podania w źródle:</strong> ${esc(source.administration)}</p>` : ''}<a href="${esc(source.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(source.sourceLabel)}${source.sourceSection ? ` · ${esc(source.sourceSection)}` : ''} ↗</a>${(source.additionalSources||[]).map(item=>`<p><a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.label)} ↗</a></p>`).join('')}<p class="small-help">Źródło sprawdzone: ${esc(source.sourceCheckedAt)}. Schemat obejmuje opisane warunki, nie pełną ocenę kliniczną.</p>${!instruction ? '<button class="text-button" data-action="manual-regimen">Edytuj jako schemat ręczny</button>' : ''}</details></div>` : ''}</section>`;
+  return `<section class="panel regimen-panel human-regimen" aria-labelledby="regimen-title"><div class="section-heading"><span class="step-number">02</span><h2 id="regimen-title">${instruction ? 'Sposób stosowania' : 'Schemat podawania'}</h2><span class="trailing" id="regimen-provenance">${source ? (sourceIsModified() ? 'Zmodyfikowany' : 'Ze źródła') : ''}</span></div>${sourceRegimenPicker()}${source ? `${patientPanel(f)}${sourceRequirementsMarkup(source)}<div class="human-source-body">${instruction ? `<div class="instruction-summary">${icon('book')}<p>${esc(source.instructionText || source.administration || '')}</p></div>` : ''}<div class="regimen-fields human-regimen-fields">${doseControl}${frequencyControl}</div>${editable ? `<div class="source-edit-note" id="source-edit-note">${sourceEditMarkup(source,state,doseUnit(),assessDoseRounding(currentRoundingOptions()))}</div>` : ''}${dailyDoseSlot(f)}${source.asNeeded ? `<p class="small-help">W razie potrzeby. ${source.minIntervalHours ? `Odstęp między podaniami: co najmniej ${n(source.minIntervalHours)} godz.` : ''} Zapas pokazuje maksymalne planowane zużycie.</p>` : ''}${duration}${instruction ? `<div class="instruction-supply">${field('instructionPacks','Liczba opakowań (jeśli ustalona)',state.instructionPacks,'Ustala lekarz','op.')}<p class="small-help">Ilości preparatu i liczby opakowań nie wyliczamy z umownej porcji. Wpisana liczba opakowań jest decyzją lekarza.</p></div>` : ''}${source.screening ? `<p class="source-screening">${icon('shield')}<span>${esc(source.screening)}</span></p>` : ''}<details class="advanced" data-disclosure="advancedOpen" ${ui.advancedOpen ? 'open' : ''}><summary>${icon('settings')}Dodatkowe zalecenia${instruction ? '' : ' i limit'}</summary><div class="advanced-grid">${!instruction && !f.unitOnly ? field('manualMax','Własny niższy limit dobowy',state.manualMax,'Opcjonalnie','mg') : ''}<div class="field full"><label for="extraInstructions">Dodatkowe zalecenia</label><input id="extraInstructions" data-field="extraInstructions" value="${esc(state.extraInstructions)}" maxlength="500" placeholder="Ustalone przez lekarza" autocomplete="off"></div></div></details><details class="source-details" data-disclosure="sourceDetailsOpen" ${ui.sourceDetailsOpen ? 'open' : ''}><summary>${icon('book')}Źródło i zakres schematu</summary><ul>${(source.notes || []).map(note => `<li>${esc(note)}</li>`).join('')}</ul>${source.administration ? `<p><strong>Sposób podania w źródle:</strong> ${esc(source.administration)}</p>` : ''}<a href="${esc(source.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(source.sourceLabel)}${source.sourceSection ? ` · ${esc(source.sourceSection)}` : ''} ↗</a>${(source.additionalSources||[]).map(item=>`<p><a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.label)} ↗</a></p>`).join('')}<p class="small-help">Źródło sprawdzone: ${esc(source.sourceCheckedAt)}. Schemat obejmuje opisane warunki, nie pełną ocenę kliniczną.</p>${!instruction ? '<button class="text-button" data-action="manual-regimen">Edytuj jako schemat ręczny</button>' : ''}</details></div>` : ''}</section>`;
 }
 
 function regimenPanel(f) {
@@ -376,7 +391,7 @@ function regimenPanel(f) {
   const manual = !isVeterinary() || ui.manualRegimen || !getAvailableRegimens().length;
   const instructions = `<div class="field" style="grid-column:1/-1"><label for="extraInstructions">${!isVeterinary() && f.form === 'injection' ? 'Droga i sposób podania (wymagane)' : 'Dodatkowe zalecenia do D.S.'}</label><input id="extraInstructions" data-field="extraInstructions" value="${esc(state.extraInstructions)}" placeholder="Np. wstrząsnąć przed użyciem" maxlength="500" autocomplete="off" ${!isVeterinary() && f.form === 'injection' ? 'required' : ''}></div>`;
   const requiredInstructions = !isVeterinary() && f.form === 'injection';
-  return `<section class="panel regimen-panel" aria-labelledby="regimen-title"><div class="section-heading"><span class="step-number">02</span><h2 id="regimen-title">Schemat podawania</h2><span class="trailing">${sourceLocked ? 'Ze źródła' : manual ? 'Wg decyzji lekarza' : ''}</span></div>${sourceRegimenPicker()}${patientPanel(f)}${sourceLocked || manual ? `<fieldset class="regimen-body">${sourceLocked ? `<div class="regimen-facts"><div><small>${esc(doseLabel())}</small><strong id="source-dose-value">${state.dose !== '' ? `${n(num(state.dose),10)} ${esc(doseUnit())}` : 'Po uzupełnieniu danych'}</strong></div><div><small>Częstotliwość</small><strong id="source-frequency-value">${state.frequency !== '' ? `${n(num(state.frequency))} × na dobę` : '—'}</strong></div>${source?.fixedDays ? `<div><small>Czas tego etapu</small><strong>${n(source.fixedDays)} ${source.fixedDays === 1 ? 'dzień' : 'dni'}</strong></div>` : ''}</div>` : `<div class="field mode-field"><label for="doseMode">Sposób przeliczenia</label><select id="doseMode" data-field="doseMode">${modeOptions(f)}</select></div><div class="regimen-fields"><div class="tablet-dose-field">${field('dose',doseLabel(),state.dose,'Wpisz dawkę',doseUnit(),'data-patient-picker')}${tabletDoseButtons()}${liquidDoseButtons()}</div><div class="field"><label for="frequency">Częstotliwość</label><select id="frequency" data-field="frequency"><option value="">Wybierz</option>${[1,2,3,4,5,6,8,12].map(v => `<option value="${v}" ${state.frequency === String(v) ? 'selected' : ''}>${v} × na dobę</option>`).join('')}</select></div></div>`}${dailyDoseSlot(f)}${!source?.fixedDays ? `<div class="duration-field">${field('days','Czas stosowania',state.days,'Wpisz czas','dni')}${durationHint(source) ? `<p class="small-help">${esc(durationHint(source))}</p>` : ''}${durationChoices(source,state.specialty === 'cardio')}</div>` : durationChoices(source,state.specialty === 'cardio')}${f.measurementNote ? `<p class="measurement-note">${icon('info')}<span>${esc(f.measurementNote)}</span></p>` : ''}${f.combinationNote ? `<p class="small-help">${esc(f.combinationNote)}</p>` : ''}${source?.screening ? `<p class="source-screening">${icon('shield')}<span>${esc(source.screening)}</span></p>` : ''}${requiredInstructions ? instructions : ''}<details class="advanced" data-disclosure="advancedOpen" ${ui.advancedOpen ? 'open' : ''}><summary>${icon('settings')}Szczegóły przeliczenia i zalecenia</summary><div class="advanced-grid">${field('manualMax','Limit dobowy z ChPL (opcjonalnie)',state.manualMax,'Ustalony przez lekarza','mg')}${!requiredInstructions ? instructions : ''}</div><p class="small-help">Limit ręczny może zaostrzyć limit katalogowy. Uwzględnienie innych leków z tą samą substancją wymaga oceny lekarza.</p></details>${source ? `<details class="source-details" data-disclosure="sourceDetailsOpen" ${ui.sourceDetailsOpen ? 'open' : ''}><summary>${icon('book')}Źródło i objaśnienia schematu</summary><ul>${(source.notes || []).map(t => `<li>${esc(t)}</li>`).join('')}</ul><a href="${esc(source.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(source.sourceLabel)} · sekcje ${esc(source.sourceSection)} ↗</a><p class="small-help">Sprawdzenie źródła: ${esc(source.sourceCheckedAt)}. Potwierdź aktualność dla preparatu.</p><button class="text-button" data-action="manual-regimen">Edytuj schemat ręcznie</button></details>` : ''}</fieldset>` : ''}</section>`;
+  return `<section class="panel regimen-panel" aria-labelledby="regimen-title"><div class="section-heading"><span class="step-number">02</span><h2 id="regimen-title">Schemat podawania</h2><span class="trailing">${sourceLocked ? 'Ze źródła' : manual ? 'Wg decyzji lekarza' : ''}</span></div>${sourceRegimenPicker()}${patientPanel(f)}${sourceLocked || manual ? `<fieldset class="regimen-body">${sourceLocked ? `<div class="regimen-facts"><div><small>${esc(doseLabel())}</small><strong id="source-dose-value">${state.dose !== '' ? `${n(num(state.dose),10)} ${esc(doseUnit())}` : 'Po uzupełnieniu danych'}</strong></div><div><small>Częstotliwość</small><strong id="source-frequency-value">${state.frequency !== '' ? `${n(num(state.frequency))} × na dobę` : '—'}</strong></div>${source?.fixedDays ? `<div><small>Czas tego etapu</small><strong>${n(source.fixedDays)} ${source.fixedDays === 1 ? 'dzień' : 'dni'}</strong></div>` : ''}</div>` : `<div class="field mode-field"><label for="doseMode">Sposób przeliczenia</label><select id="doseMode" data-field="doseMode">${modeOptions(f)}</select></div><div class="regimen-fields"><div class="tablet-dose-field">${field('dose',doseLabel(),state.dose,'Wpisz dawkę',doseUnit(),'data-patient-picker')}${tabletDoseButtons()}${liquidDoseButtons()}</div><div class="field"><label for="frequency">Częstotliwość</label><select id="frequency" data-field="frequency"><option value="">Wybierz</option>${[1,2,3,4,5,6,8,12].map(v => `<option value="${v}" ${state.frequency === String(v) ? 'selected' : ''}>${v} × na dobę</option>`).join('')}</select></div></div>`}${dailyDoseSlot(f)}${!source?.fixedDays ? `<div class="duration-field">${field('days','Czas stosowania',state.days,'Wpisz czas','dni')}${durationHint(source) ? `<p class="small-help">${esc(durationHint(source))}</p>` : ''}${durationChoices(source,state.specialty === 'cardio')}</div>` : durationChoices(source,state.specialty === 'cardio')}${f.measurementNote ? `<p class="measurement-note">${icon('info')}<span>${esc(f.measurementNote)}</span></p>` : ''}${f.combinationNote ? `<p class="small-help">${esc(f.combinationNote)}</p>` : ''}${source?.screening ? `<p class="source-screening">${icon('shield')}<span>${esc(source.screening)}</span></p>` : ''}${requiredInstructions ? instructions : ''}<details class="advanced" data-disclosure="advancedOpen" ${ui.advancedOpen ? 'open' : ''}><summary>${icon('settings')}Szczegóły przeliczenia i zalecenia</summary><div class="advanced-grid">${!f.unitOnly?field('manualMax','Limit dobowy z ChPL (opcjonalnie)',state.manualMax,'Ustalony przez lekarza','mg'):''}${!requiredInstructions ? instructions : ''}</div><p class="small-help">Limit ręczny może zaostrzyć limit katalogowy. Uwzględnienie innych leków z tą samą substancją wymaga oceny lekarza.</p></details>${source ? `<details class="source-details" data-disclosure="sourceDetailsOpen" ${ui.sourceDetailsOpen ? 'open' : ''}><summary>${icon('book')}Źródło i objaśnienia schematu</summary><ul>${(source.notes || []).map(t => `<li>${esc(t)}</li>`).join('')}</ul><a href="${esc(source.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(source.sourceLabel)} · sekcje ${esc(source.sourceSection)} ↗</a><p class="small-help">Sprawdzenie źródła: ${esc(source.sourceCheckedAt)}. Potwierdź aktualność dla preparatu.</p><button class="text-button" data-action="manual-regimen">Edytuj schemat ręcznie</button></details>` : ''}</fieldset>` : ''}</section>`;
 }
 
 function resultPanel(f) {
@@ -403,7 +418,7 @@ function render() {
   $('#app').innerHTML = `
     <aside class="sidebar" aria-label="Nawigacja główna"><a class="brand" href="./" aria-label="RxCalc — strona główna"><span class="brand-mark"><img src="./icons/icon.svg" width="512" height="512" alt="" aria-hidden="true"></span><span class="brand-word">Rx<span class="brand-calc">Calc</span><span class="pro">BETA</span></span></a><p class="nav-label">TWÓJ GABINET</p><nav class="nav"><button class="active" data-action="calculator">${icon('calc')}<span>Kalkulator</span></button><button data-action="favorites">${icon('star')}<span>Ulubione</span><span class="nav-count">${visibleFavorites().length}</span></button><button data-action="cart-open">${icon('cart')}<span>Koszyk</span><span class="nav-count" data-cart-count>${prescriptionCart.items.length}</span></button></nav><div class="sidebar-bottom"><div class="install-card"><span class="icon-holder">${icon('phone')}</span><h3>Pod ręką.<br>Także offline.</h3><p>Dodaj RxCalc do ekranu głównego telefonu.</p><button data-action="install">Dodaj aplikację ${icon('arrow')}</button></div><div class="sidebar-meta"><span class="dot"></span>RxCalc <span style="margin-left:auto">v1.0 beta</span></div></div></aside>
     <div class="workspace"><header class="topbar"><div class="topbar-title">Twój gabinet ${icon('arrow')} <strong>Kalkulator dawkowania</strong></div><a href="./" class="brand mobile-brand" aria-label="RxCalc — strona główna"><span class="brand-mark"><img src="./icons/icon.svg" width="512" height="512" alt="" aria-hidden="true"></span><span class="brand-word">Rx<span class="brand-calc">Calc</span></span></a><div class="topbar-actions"><button class="cart-open" data-action="cart-open" aria-label="Koszyk recepty">${icon('cart')}<span>Koszyk</span><span class="cart-count" data-cart-count>${prescriptionCart.items.length}</span></button><span class="online-status" id="online-status"><span class="dot"></span><span id="connection-text">Obliczenia na urządzeniu</span></span><button class="icon-button" data-action="theme" aria-label="Zmień motyw" title="Zmień motyw">${icon(theme === 'dark' ? 'sun' : 'moon')}</button><button class="new-patient" data-action="reset" aria-label="Nowy pacjent — wyczyść dane, schemat i koszyk" title="Nowy pacjent — wyczyść dane, schemat i koszyk">${icon('plus')}<span>Nowy pacjent</span></button></div></header>
-      <main id="main"><div id="update-slot"></div><section class="context-bar" aria-label="Profil pracy"><div class="context-heading"><h1>Kalkulator dawkowania</h1><span>${icon('lock')} Dane pacjenta pozostają w tej karcie</span></div><div class="context-selectors">${specialtyPicker()}${vet ? `<div class="field"><label for="species">Gatunek zwierzęcia</label><select id="species" data-field="species" required><option value="">Wybierz gatunek</option>${ANIMALS.map(a => `<option value="${a.id}" ${state.species === a.id ? 'selected' : ''}>${a.label}</option>`).join('')}</select></div>` : state.specialty === 'dental' ? `<div class="patient-type"><div class="field-label">Grupa pacjenta</div><div class="segmented patient-segmented" data-patient-type="${state.patientType}" role="group" aria-label="Grupa pacjenta"><span class="patient-type-thumb" aria-hidden="true"></span><button data-action="patient-type" data-value="adult" class="${state.patientType === 'adult' ? 'active' : ''}" aria-pressed="${state.patientType === 'adult'}">Dorosły</button><button data-action="patient-type" data-value="child" class="${state.patientType === 'child' ? 'active' : ''}" aria-pressed="${state.patientType === 'child'}">Dziecko</button></div></div>` : ''}</div></section><div class="clinical-note">${icon('info')}<span>${state.demo ? '<strong>Przykład arytmetyczny.</strong> Dane demonstracyjne; kopiowanie wyłączone.' : vet ? 'Wskazanie i schemat potwierdza lekarz weterynarii w aktualnej dokumentacji.' : 'Schemat ustala lekarz. Potwierdź go w aktualnej ChPL.'}</span><button data-action="about">Zakres kalkulatora</button></div>
+      <main id="main"><div id="update-slot"></div><section class="context-bar" aria-label="Profil pracy"><div class="context-heading"><h1>Kalkulator dawkowania</h1><span>${icon('lock')} Dane pacjenta pozostają w tej karcie</span></div><div class="context-selectors">${specialtyPicker()}${vet ? `<div class="field"><label for="species">Gatunek zwierzęcia</label><select id="species" data-field="species" required><option value="">Wybierz gatunek</option>${ANIMALS.map(a => `<option value="${a.id}" ${state.species === a.id ? 'selected' : ''}>${a.label}</option>`).join('')}</select></div>` : `<div class="patient-type"><div class="field-label">Grupa pacjenta</div><div class="segmented patient-segmented" data-patient-type="${state.patientType}" role="group" aria-label="Grupa pacjenta"><span class="patient-type-thumb" aria-hidden="true"></span><button data-action="patient-type" data-value="adult" class="${state.patientType === 'adult' ? 'active' : ''}" aria-pressed="${state.patientType === 'adult'}">Dorosły</button><button data-action="patient-type" data-value="child" class="${state.patientType === 'child' ? 'active' : ''}" aria-pressed="${state.patientType === 'child'}">Dziecko</button></div></div>`}</div></section><div class="clinical-note">${icon('info')}<span>${state.demo ? '<strong>Przykład arytmetyczny.</strong> Dane demonstracyjne; kopiowanie wyłączone.' : vet ? 'Wskazanie i schemat potwierdza lekarz weterynarii w aktualnej dokumentacji.' : 'Schemat ustala lekarz. Potwierdź go w aktualnej ChPL.'}</span><button data-action="about">Zakres kalkulatora</button></div>
       <div class="calculator-grid${catalogueExpanded() ? ' catalogue-browsing' : ''}"><div class="left-stack"><section class="panel product-panel" aria-labelledby="drug-title"><div class="section-heading"><span class="step-number">01</span><h2 id="drug-title">${ui.productChosen ? 'Wybrany preparat' : 'Wybierz preparat'}</h2><span class="trailing">${vet && !state.species ? '' : `${getSpeciesCatalogue().length} w katalogu`}</span></div>${productPicker(f)}</section>${regimenPanel(f)}${productReady() ? `<div class="source-row">${icon('book')}<span>${f.sourceUrl ? `<a href="${esc(f.sourceUrl)}" target="_blank" rel="noopener noreferrer">${esc(f.sourceLabel)} ↗</a> · ` : ''}<button data-action="source" class="text-button">Uwagi do preparatu</button><br>${state.custom ? 'Dane preparatu wprowadzone ręcznie.' : `Dane katalogowe: ${esc(f.sourceCheckedAt || CATALOGUE_META.sourceCheckedAt)}.`}</span></div>` : ''}</div>${resultPanel(f)}</div><footer class="page-footer"><span>RxCalc · podręczny kalkulator dawkowania</span><div class="footer-links">${!vet ? '<button data-action="example">Przykład obliczenia</button>' : ''}<button data-action="favorites">Ulubione</button><button data-action="cart-open">Koszyk</button><button data-action="install">Zainstaluj</button><button data-action="about">O aplikacji</button></div></footer></main></div><div class="mobile-action-bar" id="mobile-action-bar" ${!productReady() || isReference(f) ? 'hidden' : ''}><button class="mobile-action-summary" data-action="result" aria-label="Przejdź do podsumowania obliczenia"><small id="mobile-action-label">Sprawdź wynik</small><strong id="mobile-action-value">Uzupełnij dane</strong></button><button class="copy-button" id="mobile-copy" data-action="copy" disabled>${icon('copy')}Kopiuj</button></div>`;
   selectMenus.enhance($('#app'));
   patientPickers.enhance($('#app'));
@@ -474,7 +489,7 @@ const doseLabel = () => {
 const doseUnit = () => ({ fixed:'mg', perKgDay:'mg/kg/d', perKgDose:'mg/kg', units:getForm().unitLabel }[state.doseMode]);
 
 function dailyDoseSlot(form) {
-  return (form.form === 'suspension' || !isVeterinary() && form.form === 'tablet') && !isInstruction(form) && !isReference(form)
+  return supportsDailyDose(form) && !isInstruction(form) && !isReference(form)
     ? '<div id="rounding-review-slot"></div><div class="daily-dose-note" id="daily-dose-note" aria-labelledby="daily-dose-title"></div>' : '';
 }
 
@@ -489,7 +504,7 @@ function suspensionLimitContext(form) {
     return 'Wybierz schemat ze źródła, aby zobaczyć jego granicę dobową. ChPL amoksycyliny określa różne zakresy zależnie od wskazania i masy pacjenta.';
   }
   if (form.id === 'nystatyna-teva') {
-    return 'Dawki nystatyny są wyrażane w j.m. ChPL podaje odrębne schematy dla jamy ustnej i przewodu pokarmowego; temu schematowi ręcznemu nie przypisano wspólnego limitu dobowego.';
+    return 'Ilość nystatyny pokazujemy w j.m. Punkt odniesienia zależy od wybranego wskazania; ChPL nie ustanawia jednego wspólnego maksimum dobowego.';
   }
   return getSourceRegimen()
     ? 'Wybrany schemat nie określa osobnego liczbowego maksimum dobowego. Obowiązują jego dawka, częstość i warunki stosowania.'
@@ -502,12 +517,9 @@ function updateDailyDoseNote(form,input,sourceCheck,limit) {
   const source=getSourceRegimen();
   const manual=num(state.manualMax);
   const kind=manual>0 && limit.daily===manual ? 'manual' : 'catalogue';
-  // RPL 20512, ChPL sections 2 and 4.2, checked 2026-11-14. IU must never be
-  // converted into mg or borrowed from an unrelated nystatin formulation.
-  const ingredientOverride=form.id==='nystatyna-teva'
-    ? [{name:'Nystatyna',amount:100000,perMl:1,unit:'j.m.'}] : null;
+  const ingredientOverride=form.activityIngredients || null;
   const roundingAssessment=assessDoseRounding(currentRoundingOptions());
-  const note=ingredientDailyDose({form,drug:getDrug(),input,source:roundingValidationSource(source,roundingAssessment),sourceCheck,limit:{...limit,kind},ingredientOverride});
+  const note=ingredientDailyDose({form,drug:getDrug(),input,source:roundingValidationSource(source,roundingAssessment),sourceCheck,limit:{...limit,kind},ingredientOverride,sourceContext:isVeterinary()?regimenContext():humanContext()});
   if (!note) { node.hidden=true;return; }
   node.hidden=false;
   // A source-valid probe checks patient eligibility separately from the dose.
@@ -533,6 +545,7 @@ function updateDailyDoseNote(form,input,sourceCheck,limit) {
   const meterContext = JSON.stringify([state.specialty, state.patientType, state.species, form.id, source?.id,
     note.ceilingKind, note.rows.map(row => [row.name, row.unit, row.ceiling, row.ceilingPerKg]), note.schemeRows]);
   renderDailyDoseNote(node, markup, meterContext);
+  return note;
 }
 
 function updateSourceEditNotice() {
@@ -586,7 +599,7 @@ function updateLiquidDoseButtons() {
 }
 function prefillSourceTabletDose() {
   // One-time convenience within an explicitly selected source range, never a weight-based dose.
-  if(state.dose!==''||isVeterinary()||state.custom||!getSourceRegimen()?.doseRange)return;
+  if(state.dose!==''||isVeterinary()||state.custom||!getSourceRegimen()?.doseRange||getSourceRegimen()?.lockSourceValues)return;
   const whole=currentTabletDoseChoices().find(choice=>choice.tablets===1&&choice.allowed);
   if(whole)state.dose=String(whole.value);
 }
@@ -750,7 +763,7 @@ function updateResultContent() {
   if(isInstruction(getForm())) { updateInstructionResult(sourceCheck); return; }
   const f=getForm(),input=makeInput(),roundingAssessment=sourceCheck?.rounding||null,
     r=applyRoundingPresentation(calculate(input),roundingAssessment),limit=applicableLimit(f);
-  updateDailyDoseNote(f,input,sourceCheck,limit);
+  const dailyNote=updateDailyDoseNote(f,input,sourceCheck,limit);
   if(sourceCheck){r.errors.push(...sourceCheck.errors);r.warnings.push(...sourceCheck.warnings);if(!sourceCheck.valid){r.valid=false;if(r.status!=='critical')r.status='incomplete';}else if(sourceCheck.warnings.length&&r.status==='ok')r.status='warning';}
   if(sourceCheck && !isVeterinary()) {
     if(sourceCheck.maxUnitsPerDose != null && r.singleUnits > sourceCheck.maxUnitsPerDose + 1e-9) { r.errors.push('Ilość na podanie przekracza limit tego schematu.');r.valid=false;r.status='critical'; }
@@ -769,6 +782,7 @@ function updateResultContent() {
   if(state.custom && !state.customName.trim() && r.valid){r.valid=false;r.status='incomplete';r.errors.push('Wprowadź pełną nazwę, moc i postać preparatu.');}
   if(isVeterinary() && r.valid && !f.routeLabel?.trim()){r.valid=false;r.status='incomplete';r.errors.push('Uzupełnij drogę podania preparatu.');}
   if(!isVeterinary() && f.form==='injection' && r.valid && !state.extraInstructions.trim()){r.valid=false;r.status='incomplete';r.errors.push('Uzupełnij drogę i sposób podania w szczegółach schematu.');}
+  Object.assign(r,applySourceComparisonPresentation(r,{source:selectedSource,sourceCheck,note:dailyNote,modified:sourceIsModified()}));
   r.rounding=roundingAssessment;
   latest=r;
   if($('#source-dose-value')) $('#source-dose-value').textContent=state.dose !== '' ? `${n(num(state.dose),10)} ${doseUnit()}` : 'Po uzupełnieniu danych';
@@ -781,6 +795,7 @@ function updateResultContent() {
   $('#dose-unit').textContent=divisions!==null?divisionUnit(divisions):f.unitLabel;
   $('#frequency-output').textContent=hasResult?`${getSourceRegimen()?.asNeeded ? 'Doraźnie, do ' : ''}${n(input.frequency)} × na dobę · przez ${n(input.days)} ${input.days===1?'dzień':'dni'}`:'Uzupełnij schemat podawania';
   let equivalent=hasResult?(r.singleMg!==null?`${n(r.singleMg,4)} mg${f.doseBasisIngredient?' '+f.doseBasisIngredient:''} na podanie`:`Ilość preparatu na jedno podanie`):'Dawka, częstotliwość i czas stosowania.';
+  if(hasResult && f.activityIngredients?.length) equivalent=f.activityIngredients.map(i=>`${n(r.singleUnits*i.amount/i.perMl,4)} ${i.unit} ${i.name.toLowerCase()} na podanie`).join(' · ');
   if(f.ingredients && hasResult) equivalent+=` · ${n(r.singleUnits*f.ingredients[1].amountMg/f.ingredients[1].perMl,3)} mg kw. klawulanowego`;
   if(hasResult && f.activeIngredients?.length>1) equivalent+=' · '+f.activeIngredients.slice(1).map(i=>`${n(r.singleUnits*i.strengthMg,4)} mg (${i.substanceLabel})`).join(' · ');
   if(divisions!==null) equivalent+=` · około ${n(r.singleUnits,6)} ${f.unitLabel} preparatu · ${f.doseStepLabel || 'podziałka przyrządu'}`;
@@ -789,15 +804,18 @@ function updateResultContent() {
   const showStatus=!!state.regimenId||hasResult||r.status==='critical';
   const badge=$('#status-badge'); badge.className=`status-badge ${showStatus?r.status:''}`;
   badge.innerHTML=icon(r.status==='critical'?'alert':r.status==='ok'?'check':'info')+(showStatus?({ok:'Brak przekroczeń limitów',warning:'Wymaga sprawdzenia',critical:'Sprawdź schemat',incomplete:'Niepełna ocena'})[r.status]:'Oczekuje na dane');
+  if(r.sourceComparison&&r.status==='ok')badge.innerHTML=icon('info')+'Zgodność liczbowa ze schematem';
   if(roundingAssessment?.state==='rule'&&r.valid&&!r.warnings.length){badge.innerHTML=icon('info')+roundingAssessment.label;badge.classList.add('rounding-rule');}
   else if(roundingAssessment&&roundingAssessment.state!=='rule'&&r.status!=='critical'){badge.innerHTML=icon('info')+(roundingAssessment.state==='reviewed'?'Zaokrąglenie ocenione':'Zaokrąglenie do oceny');badge.classList.add('rounding-'+roundingAssessment.state);}
   const meter=$('#dose-meter');meter.className=`dose-meter ${r.status}`;
-  meter.hidden=!!roundingAssessment&&limit.daily===null;
-  meter.firstElementChild.style.width=r.maxRatio!==null?`${Math.min(100,Math.max(0,r.maxRatio*100))}%`:'0%';
-  $('#limit-text').innerHTML=`<span>${quantitiesAvailable&&r.dailyMg!==null?`${n(r.dailyMg,3)} mg / dobę`:quantitiesAvailable&&r.dailyUnits!==null?`${n(r.dailyUnits,3)} ${esc(f.unitLabel)} / dobę`:'Dawka dobowa'}</span><span>${limit.daily!==null?`limit ${n(limit.daily)} mg/dobę${sourceCheck?.maxDailyMgPerKg ? ` · ${n(sourceCheck.maxDailyMgPerKg)} mg/kg/dobę` : ''}`:sourceCheck?.maxDailyUnits ? `limit ${n(sourceCheck.maxDailyUnits)} ${esc(f.unitLabel)}/dobę`:'Brak liczbowego limitu'}</span>`;
-  $('#limit-text').title=limit.daily!==null?limit.label:'Brak limitu nie oznacza potwierdzenia bezpieczeństwa.';
+  const comparison=r.sourceComparison;
+  const meterRatio=r.maxRatio??comparison?.ratio??null;
+  meter.hidden=meterRatio===null;
+  meter.firstElementChild.style.width=meterRatio!==null?`${Math.min(100,Math.max(0,meterRatio*100))}%`:'0%';
+  $('#limit-text').innerHTML=`<span>${comparison?`${n(comparison.daily,3)} ${esc(comparison.unit)} / dobę`:quantitiesAvailable&&r.dailyMg!==null?`${n(r.dailyMg,3)} mg / dobę`:quantitiesAvailable&&r.dailyUnits!==null?`${n(r.dailyUnits,3)} ${esc(f.unitLabel)} / dobę`:'Dawka dobowa'}</span><span>${limit.daily!==null?`limit ${n(limit.daily)} mg/dobę${sourceCheck?.maxDailyMgPerKg ? ` · ${n(sourceCheck.maxDailyMgPerKg)} mg/kg/dobę` : ''}`:sourceCheck?.maxDailyUnits ? `limit ${n(sourceCheck.maxDailyUnits)} ${esc(f.unitLabel)}/dobę`:comparison?`${n(comparison.referenceDaily,3)} ${esc(comparison.unit)}/dobę · ${esc(comparison.label)}`:'Brak liczbowego limitu'}</span>`;
+  $('#limit-text').title=limit.daily!==null?limit.label:comparison?'Punkt odniesienia dla wybranego schematu; nie jest uniwersalnym maksimum.':'Brak limitu nie oznacza potwierdzenia bezpieczeństwa.';
   const started=!!state.regimenId||f.calculationBlocked||r.status==='critical'||state.dose!==''||state.frequency!==''||state.days!=='';
-  let messages=[...r.errors.map(t=>[t,r.status==='critical'?'critical':'neutral']),...r.warnings.map(t=>[t,'warning'])];
+  let messages=[...r.errors.map(t=>[t,r.status==='critical'?'critical':'neutral']),...r.warnings.map(t=>[t,'warning']),...(r.notices||[]).filter(item=>item.sourceComparison===true).map(item=>[item.message,'neutral'])];
   if(hasResult && f.unmodelledShelfLifeMonths && input.days>180)messages.push([`Po otwarciu preparat zachowuje trwałość przez ${f.unmodelledShelfLifeMonths} miesięcy. Wyliczenie opakowań opiera się na pojemności; przy tej długości terapii trzeba je sprawdzić z datami otwarcia i ważności.`, 'warning']);
   const pack=f.packOptions.find(p=>p.id===state.packageId)||f.packOptions[0];
   if($('#selected-package')) $('#selected-package').textContent=pack.label;
@@ -1044,7 +1062,7 @@ function example() {
       // Keep the thumb's current visual position when a fast tap reverses a slide.
       const thumb=$('.patient-type-thumb');
       const from=thumb?.getBoundingClientRect(), fromTrack=thumb?.parentElement.getBoundingClientRect();
-      state.patientType=value;state.age='';state.weight='';state.humanAgeUnit='years';state.renalStatus='unknown';state.humanCrCl='';resetRegimen();render();
+      state.patientType=value;state.age='';state.weight='';state.humanAgeUnit='years';state.renalStatus='unknown';state.humanCrCl='';state.humanSerumCreatinine='';resetRegimen();render();
       const next=$('.patient-type-thumb');
       if(from&&fromTrack?.width&&next?.animate&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
         const to=next.getBoundingClientRect(), toTrack=next.parentElement.getBoundingClientRect();
@@ -1089,7 +1107,7 @@ function example() {
     case 'edit-regimen':ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
     case 'daily-dose-source':ui.manualRegimen=false;ui.regimenExpanded=true;dirty();render();selectMenus.focus('regimenId');break;
     case 'source-mode':resetRegimen();ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
-    case 'manual-regimen':if(isInstruction(getForm()))break;state.regimenId='';ui.manualRegimen=true;ui.regimenExpanded=false;ui.sourceDetailsOpen=false;dirty();render();toast('Tryb ręczny — wartości wymagają własnej weryfikacji.');break;
+    case 'manual-regimen':if(isInstruction(getForm()))break;clearSourceConfirmations();state.regimenId='';ui.manualRegimen=true;ui.regimenExpanded=false;ui.sourceDetailsOpen=false;dirty();render();toast('Tryb ręczny — wartości wymagają własnej weryfikacji.');break;
     case 'days':if(getSourceRegimen()?.fixedDays)break;state.days=value;dirty();if($('#days'))$('#days').value=value;document.querySelectorAll('[data-action=days]').forEach(x=>{x.classList.toggle('active',x.dataset.value===value);x.setAttribute('aria-pressed',String(x.dataset.value===value));});updateResult();break;
     case 'custom':{
       editingCartId=null;cartFeedback='';
@@ -1162,11 +1180,18 @@ $('#app').addEventListener('input',e=>{
   if(e.target.id==='search'){state.search=e.target.value;ui.showAll=false;renderDrugs();return;}
   const key=e.target.dataset.field;if(!key || e.target.tagName==='SELECT')return;
   if(state.regimenId&&((key==='dose'&&!canEditSourceValues()&&(isVeterinary()||!getSourceRegimen()?.doseRange))||(key==='days'&&getSourceRegimen()?.fixedDays))){e.target.value=state[key];return;}
-  if(Object.hasOwn(state,key)){state[key]=e.target.value;dirty();updateResult();}
+  if(Object.hasOwn(state,key)){state[key]=e.target.value;if(['age','weight','humanCrCl','humanSerumCreatinine'].includes(key))clearSourceConfirmations();dirty();updateResult();}
 });
 $('#app').addEventListener('change',e=>{
   if(e.target.id==='confirmed'){state.confirmed=e.target.checked&&!!latest?.valid&&productReady()&&!state.demo;updateResult();return;}
-  if(e.target.id==='renalImpairment'){state.renalStatus=e.target.checked?'impaired':'unknown';dirty();updateResult();return;}
+  if(e.target.id==='renalImpairment'){state.renalStatus=e.target.checked?'impaired':'unknown';clearSourceConfirmations();dirty();updateResult();return;}
+  if(e.target.dataset.sourceRequirement){
+    const id=e.target.dataset.sourceRequirement;
+    if(!getSourceRegimen()?.selectionRequirements?.some(item=>item.id===id))return;
+    const confirmed=new Set(state.sourceConfirmations);
+    if(e.target.checked)confirmed.add(id);else confirmed.delete(id);
+    state.sourceConfirmations=[...confirmed];dirty();updateResult();return;
+  }
   const key=e.target.dataset.field;if(!key||e.target.tagName!=='SELECT')return;
   if(key==='productVariant'){if(e.target.value){if(chooseProduct(e.target.value))renderProductSelection();}else{resetRegimen();ui.formChosen=false;render();}return;}
   if(!Object.hasOwn(state,key))return;
@@ -1176,7 +1201,7 @@ $('#app').addEventListener('change',e=>{
   if(key==='roundingMode'){state.roundingMode=normalizeRoundingMode(e.target.value);state.roundDoses=state.roundingMode==='custom';dirty();updateResult();return;}
   if(key==='roundingPlaces'){state.roundingPlaces=String(normalizeDecimalPlaces(e.target.value,1));dirty();updateResult();return;}
   if(state.regimenId&&(['doseMode','roundingStep'].includes(key)||(key==='frequency'&&!canEditSourceValues()&&(isVeterinary()||!getSourceRegimen()?.frequencyOptions)))){e.target.value=state[key];return;}
-  state[key]=e.target.value;dirty();
+  state[key]=e.target.value;if(['humanAgeUnit','vetAgeUnit','foodChainStatus'].includes(key))clearSourceConfirmations();dirty();
   if(key==='species'){state.age='';state.weight='';state.foodChainStatus='unknown';state.vetAgeUnit=['hamster','rat'].includes(state.species)?'months':'years';startVeterinary();render();}
   else if(key==='vetAgeUnit'){state.age='';render();}
   else if(key==='humanAgeUnit'){state.age='';render();}

@@ -6,7 +6,7 @@
 
 export const PATIENT_CONTEXT_FIELDS = Object.freeze([
   'specialty', 'patientType', 'age', 'weight', 'species', 'vetAgeUnit',
-  'humanAgeUnit', 'renalStatus', 'humanCrCl', 'foodChainStatus',
+  'humanAgeUnit', 'renalStatus', 'humanCrCl', 'humanSerumCreatinine', 'foodChainStatus',
 ]);
 
 const plainObject = value => value !== null && typeof value === 'object'
@@ -44,6 +44,7 @@ export function normalizePatientContext(state = {}) {
     ageUnit: (animal ? state.vetAgeUnit : state.humanAgeUnit) || 'years',
     renalStatus: animal ? null : state.renalStatus || 'unknown',
     crcl: animal ? null : numeric(state.humanCrCl),
+    serumCreatinine: animal ? null : numeric(state.humanSerumCreatinine),
     foodChainStatus: animal ? state.foodChainStatus || 'unknown' : null,
   });
 }
@@ -145,11 +146,12 @@ export function preparePrescriptionEdit(item, currentState = {}) {
   catch { return { ok: false, message: 'Nie można przywrócić danych tej pozycji.' }; }
   const patient = pickPatientContext({
     patientType: 'adult', age: '', weight: '', species: '', vetAgeUnit: 'years',
-    humanAgeUnit: 'years', renalStatus: 'unknown', humanCrCl: '', foodChainStatus: 'unknown',
+    humanAgeUnit: 'years', renalStatus: 'unknown', humanCrCl: '', humanSerumCreatinine: '', foodChainStatus: 'unknown',
     ...currentState,
   });
   return { ok: true, state: {
     ...snapshot, ...patient, specialty: snapshot.specialty, confirmed: false, demo: false,
+    sourceConfirmations: item.patientKey === patientContextKey(currentState) ? (snapshot.sourceConfirmations || []) : [],
   } };
 }
 

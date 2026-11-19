@@ -36,6 +36,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 export function liquidStarterMarkup(choices) {
   if(!choices.length)return '';
   const doseLabel=s=>{
+    if(s.doseMode==='instruction')return `Instrukcja miejscowa${s.frequencyOptions?` · ${s.frequencyOptions.join(' / ')} ×/dobę`:''}`;
     const unit=({fixed:'mg',perKgDay:'mg/kg/dobę',perKgDose:'mg/kg/podanie',units:'ml'})[s.doseMode]||'';
     const dose=s.dose!=null?n(s.dose):s.doseRange?`${n(s.doseRange.min)}–${n(s.doseRange.max)}`:'Wybierz dawkę';
     return `${dose} ${unit} · ${s.frequency?`${n(s.frequency)} ×/dobę`:'wybierz częstość'}`;

@@ -4,6 +4,14 @@ Lekki kalkulator dawkowania i zapotrzebowania na preparaty z interfejsem po pols
 
 Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym pliku nie stanowi potwierdzenia publikacji.
 
+## Pokrycie schematami źródłowymi — 19.11.2026
+
+Wszystkie **56 aktywnych postaci** z obecnego katalogu mają przynajmniej jeden jawnie wybierany schemat źródłowy dla opisanego zastosowania: 19 stomatologicznych, 15 kardiologicznych i 22 weterynaryjne. Dodano 6 wariantów Nystatyny Teva, 61 wariantów kardiologicznych dla dorosłych oraz instrukcję profesjonalną Ligosanu. Nie oznacza to pokrycia wszystkich wskazań ani sytuacji klinicznych. Dwa warianty Chlo-Site, historyczny Dentomycin oraz koncentrat Enrobactin pozostają kartami referencyjnymi lub zablokowanymi z opisanym powodem.
+
+Paski porównują rzeczywistą ilość do dawki albo zakresu wybranego schematu. Wartość 100% oznacza źródłowy punkt odniesienia, a nie powszechny próg bezpieczeństwa. Odrębne limity pozostają osobno opisane. Widok obejmuje także preparaty weterynaryjne, pasty, żele, proszki, iniekcje i ilościowe postacie miejscowe; pasma masy rozwiązywane są dokładnie, bez interpolowania luk. Nystatyna jest przedstawiana w j.m.; instrukcjom bez liczbowej porcji nie dopisano ml, gramów ani fikcyjnego paska dawki.
+
+Nowe schematy pozostają przy źródłowej częstości i stałej dawce etapu. Dawka z zakresu wymaga wyboru. Kardiologia ma jawne fazy leczenia, warunki nerkowe oraz — dla odpowiednich wariantów apiksabanu — osobne pola masy, wieku i kreatyniny w mg/dl. CrCl podawany w ml/min nie jest zastępowany eGFR. Zmiana danych pacjenta usuwa potwierdzenia warunków i unieważnia wcześniejszy koszyk do ponownego sprawdzenia. Dokumentacja: [audyt katalogu](catalogue-coverage-review.md), [antykoagulanty](cardio-anticoagulant-notes.md), [pozostałe leki kardiologiczne](cardio-maintenance-notes.md).
+
 ## Płynna zmiana pasków dawki — 19.11.2026
 
 Przy zmianie dawki w obrębie tego samego preparatu i schematu paski porównania płynnie rosną lub maleją przez 240 ms. Kolejna zmiana zaczyna się od aktualnie widocznej szerokości, także w trakcie poprzedniej animacji. Liczby, procenty, kolory i komunikaty są aktualizowane natychmiast. Pierwszy wynik, nowy preparat lub schemat oraz powrót z brakujących danych pojawiają się bez animacji od zera. Systemowe ograniczenie animacji wyłącza ruch; brak obsługi animacji pozostawia od razu wynik końcowy.

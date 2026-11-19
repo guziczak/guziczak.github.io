@@ -8,7 +8,7 @@ const same = (a, b) => Number.isFinite(a) && Number.isFinite(b)
   && Math.abs(a - b) <= Number.EPSILON * 32 * Math.max(1, Math.abs(a), Math.abs(b));
 const esc = value => String(value ?? '').replace(/[&<>"']/g,
   char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-export const editableHumanSource = source => !!source && source.doseMode !== 'instruction';
+export const editableHumanSource = source => !!source && source.doseMode !== 'instruction' && source.lockSourceValues !== true;
 
 /** Fixed choices are filled only on selection/restore. Ranges stay unchosen. */
 export function sourceInitialValues(source) {

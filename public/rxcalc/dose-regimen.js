@@ -1,7 +1,10 @@
 import { formatNumber as n } from './engine.js';
 
 const positive = v => typeof v === 'number' && Number.isFinite(v) && v > 0;
-const near = (a,b) => Math.abs(a-b) <= Number.EPSILON*64*Math.max(1,Math.abs(a),Math.abs(b));
+// The engine publishes physical quantities at 14 significant digits before
+// deriving active amounts. Allow that arithmetic noise in display comparisons;
+// clinically meaningful edits still remain above/below the unchanged source.
+const near = (a,b) => Math.abs(a-b) <= Number.EPSILON*512*Math.max(1,Math.abs(a),Math.abs(b));
 const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const frequency = v => Number.isInteger(v) && v > 0 && v <= 48;
 
@@ -10,7 +13,7 @@ const frequency = v => Number.isInteger(v) && v > 0 && v <= 48;
  * A variable frequency must be explicitly chosen from the source's options.
  */
 export function regimenComparisonRows({source, input={}, ingredients=[], weight=null, limit=null}={}) {
-  if (!source || input.patientKind==='animal' || source.doseMode==='instruction') return null;
+  if (!source || source.doseMode==='instruction') return null;
   const primary=ingredients.find(i=>i.index===0);
   if (!primary || !positive(primary.amount) || !positive(primary.perMl)) return null;
   const low=source.doseRange?.min ?? source.dose;

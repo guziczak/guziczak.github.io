@@ -27,7 +27,9 @@ test('the screenshot case preserves rounded doses and explains the volume change
   const html=dailyDoseMarkup({note,input,context:'Sprawdź właściwą postać.'});
   assert.equal((html.match(/class="dose-safety-row"/g)||[]).length,2);
   assert.ok(html.includes('16,25 → 16,3 ml'));
-  assert.ok(html.includes('Brak limitu nie oznacza bezpieczeństwa'));
+  assert.ok(html.includes('Podgląd ilości dobowej'));
+  assert.ok(!html.includes('Brak zweryfikowanego limitu'));
+  assert.ok(!html.includes('class="dose-safety-notice"'));
   assert.ok(!html.includes('dose-safety-wall'));
   assert.ok(!html.includes('% granicy'));
 });
