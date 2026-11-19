@@ -60,6 +60,8 @@ export function prescriptionCartMarkup({
   const list = Array.isArray(items) ? items : [];
   const stale = new Set(staleIds.map(String));
   const selectedMode = mode === 'ds' ? 'ds' : 'full';
+  const fullLabel = list.every(item => /^Rp\.(?:\s|$)/.test(item.texts?.full || ''))
+    ? 'Rp. + D.S.' : 'Pełny zapis';
   const copyAllowed = canCopy === true && !demo && list.length > 0
     && !list.some(item => stale.has(String(item.id))) && String(text).trim().length > 0;
   const context = `<div class="cart-context">
@@ -84,7 +86,7 @@ export function prescriptionCartMarkup({
       <div class="cart-export-heading">
         <h3 id="cart-export-title">Wspólny zapis</h3>
         <div class="cart-mode" role="group" aria-label="Format wspólnego zapisu">
-          <button type="button" data-action="cart-mode" data-value="full" aria-pressed="${selectedMode === 'full'}"${selectedMode === 'full' ? ' class="active"' : ''}>Rp. + D.S.</button>
+          <button type="button" data-action="cart-mode" data-value="full" aria-pressed="${selectedMode === 'full'}"${selectedMode === 'full' ? ' class="active"' : ''}>${fullLabel}</button>
           <button type="button" data-action="cart-mode" data-value="ds" aria-pressed="${selectedMode === 'ds'}"${selectedMode === 'ds' ? ' class="active"' : ''}>Zalecenia</button>
         </div>
       </div>

@@ -55,7 +55,7 @@ const foreign = {
 export const DENTAL_TOPICAL_DRUGS = [
   drug('dentinox-n', 'Dentinox N', 'Nalewka z rumianku + lidokainy chlorowodorek + lauromakrogol 400', [
     instructionForm('dentinox-n-gel', 'Dentinox N · 15% + 0,34% + 0,32%, żel', 'medicine', SOURCE.dentinox,
-      [pack('10g', 'tuba 10 g')], {
+      [pack('10g', 'tuba 10 g', { prescriptionLabel: '10 g' })], {
         routeLabel: 'na dziąsła', minAge: 0.25, amountText: 'Niewielka ilość wielkości ziarnka grochu',
         notes: [
           'Wskazanie: objawy bolesnego wyrzynania zębów mlecznych. Nie jest uniwersalnym żelem na afty.',
@@ -68,7 +68,7 @@ export const DENTAL_TOPICAL_DRUGS = [
 
   drug('baikadent', 'Baikadent', 'Zespół flawonów korzenia tarczycy bajkalskiej', [
     instructionForm('baikadent-gel', 'Baikadent · 5,77 mg/g, żel', 'medicine', SOURCE.baikadent,
-      [pack('15g', 'tuba 15 g', { sourceUrl: SOURCE.baikadentPack })], {
+      [pack('15g', 'tuba 15 g', { sourceUrl: SOURCE.baikadentPack, prescriptionLabel: '15 g' })], {
         minAge: 18, amountText: 'Pasek około 2 cm',
         notes: [
           'Moc 5,77 mg/g dotyczy zespołu flawonów, nie samej bajkaliny.',
@@ -91,7 +91,7 @@ export const DENTAL_TOPICAL_DRUGS = [
 
   drug('metronidazole-dental', 'Metronidazol Chema', 'Metronidazol', [
     instructionForm('metronidazol-chema-ointment', 'Metronidazol Chema · 100 mg/g, maść', 'medicine', SOURCE.metronidazole,
-      [pack('5g', 'tuba z kaniulą 5 g')], {
+      [pack('5g', 'tuba z kaniulą 5 g', { prescriptionLabel: '5 g (tuba z kaniulą)' })], {
         professionalUse: true, routeLabel: 'na dziąsła i zęby; aplikacja zależna od zabiegu',
         notes: [
           'Schemat zależy od rozpoznania i procedury. Brak źródłowej ilości gramów na kieszonkę lub kanał.',

@@ -3,6 +3,21 @@ import { formatNumber as n } from './engine.js';
 const durationText = days => Number.isFinite(days) && days > 0
   ? ` przez ${n(days)} ${days === 1 ? 'dzień' : 'dni'}` : '';
 
+/** Legacy and custom human medicines may not have an explicit productKind. */
+export function prescriptionPrefix(form, veterinary = false) {
+  return !veterinary && (form?.productKind == null || form.productKind === 'medicine')
+    ? 'Rp.' : 'Preparat:';
+}
+
+/** Share the full medicine format without inferring an instruction-only package's contents or count. */
+export function prescriptionHeader({ form, name = form?.label || '', pack, packages, veterinary = false }) {
+  const prefix = prescriptionPrefix(form, veterinary);
+  const label = prefix === 'Rp.' ? pack.prescriptionLabel || pack.label : pack.label;
+  const supply = Number.isFinite(packages) && packages > 0
+    ? `${n(packages)} op. po ${label}` : `Opakowanie: ${pack.label}`;
+  return `${prefix} ${name}\n${supply}`;
+}
+
 /** Full prescriptions contain dispensing and dosing; human advice also names the chosen indication. */
 export function prescriptionText({ mode = 'full', header, dosing, source, veterinaryContext = '' }) {
   const lines = [];
