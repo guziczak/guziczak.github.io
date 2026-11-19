@@ -157,6 +157,142 @@
   });
   document.documentElement.classList.add('js');
 
+  // Enhance native details only where WAAPI is available. Summary keeps its native
+  // Enter/Space activation; without JavaScript the original disclosure still works.
+  function initializeServiceAccordions() {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const controllers = [];
+    const numeric = value => parseFloat(value) || 0;
+
+    document.querySelectorAll('details.service').forEach(details => {
+      const summary = details.querySelector('summary');
+      const content = details.querySelector('.service-content');
+      if (!summary || !content || typeof details.animate !== 'function') return;
+
+      let animation = null;
+      let targetOpen = details.open;
+      let targetHeight = 0;
+      const originalStyles = ['height', 'overflow'].map(name => ({
+        name, value: details.style.getPropertyValue(name),
+        priority: details.style.getPropertyPriority(name)
+      }));
+
+      // Child boxes retain their natural height while the details box is clipped.
+      // Observing these children, rather than the animated box, avoids resize loops.
+      const measure = () => {
+        const box = window.getComputedStyle(details);
+        const chrome = numeric(box.borderTopWidth) + numeric(box.borderBottomWidth) +
+          numeric(box.paddingTop) + numeric(box.paddingBottom);
+        const outerHeight = element => {
+          const style = window.getComputedStyle(element);
+          return element.getBoundingClientRect().height + numeric(style.marginTop) + numeric(style.marginBottom);
+        };
+        const offset = box.boxSizing === 'border-box' ? 0 : chrome;
+        const closed = chrome + outerHeight(summary) - offset;
+        return { closed, expanded: closed + outerHeight(content), offset };
+      };
+
+      const cancelAnimation = () => {
+        if (!animation) return;
+        const previous = animation;
+        animation = null;
+        previous.onfinish = previous.oncancel = null;
+        previous.cancel();
+      };
+
+      const settle = open => {
+        cancelAnimation();
+        targetOpen = open;
+        details.open = open;
+        originalStyles.forEach(({ name, value, priority }) => {
+          if (value) details.style.setProperty(name, value, priority);
+          else details.style.removeProperty(name);
+        });
+        details.removeAttribute('data-accordion-state');
+      };
+
+      const animateTo = open => {
+        targetOpen = open;
+        const box = measure();
+        const startHeight = details.getBoundingClientRect().height - box.offset;
+        // Pin the currently painted height before cancelling an interrupted run.
+        details.style.height = `${startHeight}px`;
+        cancelAnimation();
+        details.open = true; // Keep the content rendered until a closing run ends.
+        details.style.overflow = 'hidden';
+        details.setAttribute('data-accordion-state', open ? 'opening' : 'closing');
+        const size = measure();
+        targetHeight = open ? size.expanded : size.closed;
+        const distance = Math.abs(targetHeight - startHeight);
+        if (preference.matches || distance < 0.5) { settle(open); return; }
+
+        const duration = Math.max(100, Math.min(340,
+          340 * distance / Math.max(size.expanded - size.closed, 1)));
+        const current = details.animate([
+          { height: `${startHeight}px` },
+          { height: `${targetHeight}px` }
+        ], { duration, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' });
+        animation = current;
+        // A stale callback from a cancelled run cannot overwrite the latest intent.
+        current.onfinish = () => { if (animation === current) settle(targetOpen); };
+        current.oncancel = () => { if (animation === current) settle(targetOpen); };
+      };
+
+      const onClick = event => {
+        if (event.defaultPrevented || (event.button !== undefined && event.button !== 0)) return;
+        const interactive = event.target.closest && event.target.closest('a, button, input, select, textarea, label, [contenteditable="true"]');
+        if (interactive && interactive !== summary) return;
+        if (preference.matches) {
+          if (animation) settle(targetOpen);
+          return; // Native immediate toggling, including keyboard activation.
+        }
+        event.preventDefault();
+        animateTo(animation ? !targetOpen : !details.open);
+      };
+
+      const onResize = () => {
+        if (!animation) return;
+        const size = measure();
+        const end = targetOpen ? size.expanded : size.closed;
+        if (Math.abs(end - targetHeight) > 0.5) animateTo(targetOpen);
+      };
+      const onToggle = () => {
+        // Honor an external/native close (for example find-in-page or another script).
+        if (animation && !details.open) settle(false);
+      };
+      const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(onResize) : null;
+      if (observer) { observer.observe(summary); observer.observe(content); }
+      else window.addEventListener('resize', onResize, { passive: true });
+      summary.addEventListener('click', onClick);
+      details.addEventListener('toggle', onToggle);
+      controllers.push({
+        finish: () => { if (animation) settle(targetOpen); },
+        destroy: () => {
+          if (animation) settle(targetOpen);
+          summary.removeEventListener('click', onClick);
+          details.removeEventListener('toggle', onToggle);
+          if (observer) observer.disconnect();
+          else window.removeEventListener('resize', onResize);
+        }
+      });
+    });
+
+    const finishAll = () => controllers.forEach(controller => controller.finish());
+    const onPreferenceChange = () => { if (preference.matches) finishAll(); };
+    if (preference.addEventListener) preference.addEventListener('change', onPreferenceChange);
+    else if (preference.addListener) preference.addListener(onPreferenceChange);
+    window.addEventListener('beforeprint', finishAll);
+
+    return () => {
+      controllers.forEach(controller => controller.destroy());
+      if (preference.removeEventListener) preference.removeEventListener('change', onPreferenceChange);
+      else if (preference.removeListener) preference.removeListener(onPreferenceChange);
+      window.removeEventListener('beforeprint', finishAll);
+    };
+  }
+
+  initializeServiceAccordions();
+
   function updateOpening() {
     const status = openingStatus(new Date());
     write('[data-opening-status]', status.label);
@@ -223,18 +359,41 @@
 
   const mapButton = document.querySelector('[data-load-map]');
   const mapContainer = document.querySelector('[data-map-container]');
-  if (mapButton && mapContainer) {
+  const mapPreview = document.querySelector('[data-map-preview]');
+  const mapInteractive = document.querySelector('[data-map-interactive]');
+  const mapEmbed = document.querySelector('[data-map-embed]');
+  const mapStatus = document.querySelector('[data-map-status]');
+  const mapClose = document.querySelector('[data-unload-map]');
+  if (mapButton && mapContainer && mapPreview && mapInteractive && mapEmbed && mapStatus && mapClose) {
+    // The preview is a local image. No Google element or request exists before consent.
+    // Consent lasts for this page view; reloading starts with the static map again.
     mapButton.addEventListener('click', () => {
+      if (mapEmbed.firstChild) return;
       const iframe = document.createElement('iframe');
       iframe.src = `https://www.google.com/maps?q=${encodeURIComponent(ADDRESS)}&z=15&output=embed`;
       iframe.title = 'Dojazd do przychodni Cztery Łapy i Ty, Chabrowa 2D, Wysoka';
-      iframe.loading = 'lazy';
-      iframe.referrerPolicy = 'no-referrer-when-downgrade';
+      iframe.referrerPolicy = 'no-referrer';
       iframe.setAttribute('allowfullscreen', '');
-      iframe.style.cssText = 'display:block;width:100%;height:100%;min-height:360px;border:0;';
-      mapContainer.replaceChildren(iframe);
-      iframe.focus();
-    }, { once: true });
+      iframe.addEventListener('load', () => {
+        if (iframe.isConnected) mapStatus.textContent = 'Mapa Google jest włączona.';
+      }, { once: true });
+      mapStatus.textContent = 'Ładowanie mapy Google…';
+      mapContainer.style.setProperty('--map-height', `${mapPreview.getBoundingClientRect().height}px`);
+      mapEmbed.appendChild(iframe);
+      mapPreview.hidden = true;
+      mapInteractive.hidden = false;
+      mapButton.setAttribute('aria-expanded', 'true');
+      mapClose.focus({ preventScroll: true });
+    });
+    mapClose.addEventListener('click', () => {
+      mapEmbed.replaceChildren();
+      mapInteractive.hidden = true;
+      mapContainer.style.removeProperty('--map-height');
+      mapPreview.hidden = false;
+      mapButton.setAttribute('aria-expanded', 'false');
+      mapStatus.textContent = '';
+      mapButton.focus({ preventScroll: true });
+    });
   }
 
   const form = document.getElementById('reminder-form');

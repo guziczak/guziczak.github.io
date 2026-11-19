@@ -6,8 +6,8 @@ Statyczna strona przychodni w nowej oprawie wizualnej. Adres publikacji: https:/
 
 - `index.html` — treść, semantyczny układ i formularz.
 - `styles.css` — responsywny wygląd i obsługa ograniczenia ruchu.
-- `site.js` — status otwarcia w Europe/Warsaw, menu, przypomnienia Google Calendar / ICS oraz mapa wczytywana po kliknięciu.
-- `assets/` — lokalne zdjęcia WebP, fonty i licencje OFL.
+- `site.js` — płynne akordeony usług, status otwarcia w Europe/Warsaw, menu, przypomnienia Google Calendar / ICS oraz mapa wczytywana po wyraźnej zgodzie.
+- `assets/` — lokalne zdjęcia i mapa WebP, fonty i licencje OFL.
 
 Nie wymaga kompilacji ani bibliotek JavaScript. Katalog jest publikowany bezpośrednio przez istniejący GitHub Pages z gałęzi main.
 
@@ -15,7 +15,11 @@ Nie wymaga kompilacji ani bibliotek JavaScript. Katalog jest publikowany bezpoś
 
 Strona zachowuje dane kontaktowe, godziny i zakres usług z projektu /4lapy/. Dane pochodzą z publicznych źródeł oznaczonych jako październik 2026 i wymagają potwierdzenia przez przychodnię. Propozycja jest oznaczona jako poglądowa i ma noindex/nofollow.
 
-Formularz nie wysyła i nie zapisuje danych na serwerze. Wybranie Google Calendar otwiera przygotowane wydarzenie w usłudze Google; ICS powstaje lokalnie. Oba warianty planują kontakt o 9:00 czasu polskiego przed terminem szczepienia. Mapa Google wymaga kliknięcia. Brak analityki.
+Formularz nie wysyła i nie zapisuje danych na serwerze. Wybranie Google Calendar otwiera przygotowane wydarzenie w usłudze Google; ICS powstaje lokalnie. Oba warianty planują kontakt o 9:00 czasu polskiego przed terminem szczepienia. Brak analityki.
+
+Domyślny podgląd mapy jest lokalnym plikiem i nie łączy przeglądarki z dostawcą map. Iframe Google Maps powstaje dopiero po wybraniu przycisku „Zezwól na mapę Google”. Przycisk „Wyłącz mapę Google” usuwa iframe i przywraca statyczny podgląd. Zgoda obowiązuje tylko w bieżącym wyświetleniu strony; nie jest zapisywana w localStorage ani w cookies.
+
+Akordeony zachowują semantykę natywnych details/summary. Animowana jest ich rzeczywista wysokość, również podczas zamykania i zmiany kierunku w trakcie ruchu. Zmiana szerokości lub wysokości treści aktualizuje cel animacji. Preferencja ograniczonego ruchu wyłącza animację; bez JavaScript akordeony nadal działają natywnie.
 
 ## Materiały wizualne
 
@@ -24,3 +28,7 @@ Portrety psa i kota są ilustracyjnymi zdjęciami wygenerowanymi przy użyciu wb
 Prompty: spokojny golden retriever i szary kot w pionowym portrecie na ciemnozielonym tle, naturalne ciepłe boczne światło, redakcyjna fotografia, realistyczna sierść, bez tekstów i logo; jasny kot delikatnie głaskany przez właściciela pod brodą, twarz człowieka poza kadrem, neutralne szałwiowe tło, miękkie dzienne światło, naturalna anatomia.
 
 Fonty DM Serif Display i Manrope pobrano z Google Fonts. Licencje znajdują się w assets/fonts/.
+
+Statyczna mapa `assets/map-wysoka.webp` powstała z rzeczywistych geometrii OpenStreetMap pobranych 19 listopada 2026. Użyty punkt adresowy Chabrowa 2D to [OSM node 12862580150](https://www.openstreetmap.org/node/12862580150), współrzędne 51.0480638, 16.9997411. Dane źródłowe: [OSM API, obszar Wysokiej](https://api.openstreetmap.org/api/0.6/map?bbox=16.9880,51.0435,17.0115,51.0526). Kartografia dopasowana do strony; dane © autorzy OpenStreetMap, [licencja ODbL](https://www.openstreetmap.org/copyright). Podgląd nie jest obrazem wygenerowanym przez model ani mapą Google.
+
+Wariant `assets/map-wysoka-mobile.webp` pokazuje bliższy kadr dla telefonów. Generator `tools/render_map.py` odtwarza mapę z oficjalnego eksportu OSM; wymaga Pythona, Pillow i fontu DejaVu Sans. Uruchomienie: `python tools/render_map.py`, a wariant mobilny: `python tools/render_map.py --mobile`.

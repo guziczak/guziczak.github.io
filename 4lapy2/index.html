@@ -15,8 +15,8 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preload" as="image" href="assets/hero-pets.webp" imagesrcset="assets/hero-pets-640.webp 640w, assets/hero-pets.webp 1122w" imagesizes="(max-width: 760px) 92vw, 46vw" fetchpriority="high">
   <link rel="stylesheet" href="assets/fonts.css">
-  <link rel="stylesheet" href="styles.css">
-  <script src="site.js" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261119b">
+  <script src="site.js?v=20261119b" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#tresc">Przejdź do treści</a>
@@ -188,9 +188,27 @@
         </div>
       </div>
       <div class="address-note"><span>Ważny szczegół</span><p>Nasz adres to <strong>Chabrowa 2D.</strong> W części katalogów internetowych wciąż widnieje poprzedni: Chabrowa 95BC. Dojazd jest bez szlabanu.</p></div>
-      <div class="map-panel" data-map-container>
-        <div class="map-art" aria-hidden="true"><span></span><span></span><span></span><svg><use href="#i-pin"/></svg></div>
-        <div class="map-content"><span class="eyebrow">DO ZOBACZENIA W WYSOKIEJ</span><h3>Chabrowa 2D.</h3><button class="button button-dark" data-load-map><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg>Pokaż mapę Google</button><p>Mapa wczyta się po kliknięciu.<br>Wtedy połączysz się z usługą Google Maps.</p></div>
+      <div class="map-panel" id="mapa" data-map-container>
+        <div class="map-fallback" data-map-preview>
+          <figure class="map-preview">
+            <picture>
+              <source media="(max-width: 760px)" srcset="assets/map-wysoka-mobile.webp">
+              <img src="assets/map-wysoka.webp" width="1800" height="1200" loading="lazy" decoding="async" alt="Mapa okolicy przychodni Cztery Łapy i Ty przy ulicy Chabrowej 2D w Wysokiej, z zaznaczoną lokalizacją.">
+            </picture>
+            <figcaption class="map-attribution">Dane mapy: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a></figcaption>
+          </figure>
+          <div class="map-content">
+            <span class="eyebrow">DO ZOBACZENIA W WYSOKIEJ</span>
+            <h3>Chabrowa 2D.</h3>
+            <p class="map-place">Cztery Łapy i Ty<br>52-200 Wysoka</p>
+            <button class="button button-dark" type="button" data-load-map aria-controls="interactive-map" aria-expanded="false" aria-describedby="map-consent-note"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg>Zezwól na mapę Google</button>
+            <p id="map-consent-note">Teraz widzisz statyczną mapę.<br>Mapa interaktywna połączy się z Google dopiero po Twojej zgodzie.</p>
+          </div>
+        </div>
+        <div class="map-interactive" id="interactive-map" data-map-interactive hidden>
+          <div class="map-embed" data-map-embed></div>
+          <div class="map-toolbar"><p role="status" data-map-status></p><button class="text-link" type="button" data-unload-map>Wyłącz mapę Google</button></div>
+        </div>
       </div>
     </section>
   </main>
