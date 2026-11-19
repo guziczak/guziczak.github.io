@@ -17,7 +17,7 @@ import { createPatientPickers } from './patient-picker.js';
 import { createViewportLayout } from './viewport-layout.js';
 import { createCatalogueMotion } from './catalogue-motion.js';
 import { ingredientDailyDose } from './daily-dose.js';
-import { dailyDoseMarkup } from './dose-safety-view.js';
+import { dailyDoseMarkup, renderDailyDoseNote } from './dose-safety-view.js';
 import { assessDoseRounding, hasScopedRoundingEvidence, automaticRoundingStep, applyRoundingPresentation, roundingValidationSource, resolveRoundingRegimen, createRoundingReview, roundingAuditText } from './rounding-assessment.js';
 import { roundingReviewMarkup } from './rounding-review-view.js';
 import { resolveDurationGuidance, durationResultWarning, durationDayChoices } from './duration-guidance.js';
@@ -529,7 +529,10 @@ function updateDailyDoseNote(form,input,sourceCheck,limit) {
     context:suspensionLimitContext(form),
     canChooseSource:!source&&getAvailableRegimens().length>0,
     veterinary:isVeterinary(),icon});
-  if (node.innerHTML!==markup) node.innerHTML=markup;
+  // A new source, unit or scale is a different comparison, not a dose change.
+  const meterContext = JSON.stringify([state.specialty, state.patientType, state.species, form.id, source?.id,
+    note.ceilingKind, note.rows.map(row => [row.name, row.unit, row.ceiling, row.ceilingPerKg]), note.schemeRows]);
+  renderDailyDoseNote(node, markup, meterContext);
 }
 
 function updateSourceEditNotice() {

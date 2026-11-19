@@ -4,6 +4,10 @@ Lekki kalkulator dawkowania i zapotrzebowania na preparaty z interfejsem po pols
 
 Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym pliku nie stanowi potwierdzenia publikacji.
 
+## Płynna zmiana pasków dawki — 19.11.2026
+
+Przy zmianie dawki w obrębie tego samego preparatu i schematu paski porównania płynnie rosną lub maleją przez 240 ms. Kolejna zmiana zaczyna się od aktualnie widocznej szerokości, także w trakcie poprzedniej animacji. Liczby, procenty, kolory i komunikaty są aktualizowane natychmiast. Pierwszy wynik, nowy preparat lub schemat oraz powrót z brakujących danych pojawiają się bez animacji od zera. Systemowe ograniczenie animacji wyłącza ruch; brak obsługi animacji pozostawia od razu wynik końcowy.
+
 ## Auto i smukłe zaokrąglanie przy kopiowaniu — 19.11.2026
 
 Kontrolka pozostaje w stopce pola z zapisem: **Auto / Własne / Wyłączone**. Domyślny tryb Auto stosuje wyłącznie rozpoznane, wersjonowane reguły. Brak reguły pozostawia wynik bez automatycznej zmiany. Własne odsłania wybór 0–3 miejsc po przecinku; szczegóły zmiany i źródła są rozwijane. Kontrolki mają minimum 44 px wysokości na telefonie.

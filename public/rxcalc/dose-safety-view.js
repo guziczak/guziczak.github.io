@@ -7,6 +7,60 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g,
 const positive = value => typeof value === 'number' && Number.isFinite(value) && value > 0;
 const tolerance = (a, b) => Number.EPSILON * 64 * Math.max(1, Math.abs(a), Math.abs(b));
 
+const dailyDoseViews = new WeakMap();
+const doseFillSelector = '.dose-scheme-fill, .dose-reference-fill, .dose-safety-fill, .dose-safety-excess';
+
+function doseFills(node) {
+  return [...node.querySelectorAll('.dose-safety-row')].flatMap((row, index) =>
+    [...row.querySelectorAll(doseFillSelector)].map(fill => ({
+      fill, key: `${index}:${row.querySelector('dt')?.textContent}:${fill.className}`,
+    })));
+}
+
+/** Update numbers and warnings immediately; only the bar's width interpolates.
+ * Sample the visible width before replacing markup so interrupted animations
+ * continue from their current position, rather than a previous target or zero.
+ */
+export function renderDailyDoseNote(node, markup, context = '') {
+  const previous = dailyDoseViews.get(node);
+  if (previous?.markup === markup && previous.context === context) return;
+  const view = node.ownerDocument.defaultView;
+  const reducedMotion = view?.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const canAnimate = previous?.context === context && !reducedMotion?.matches;
+  const widths = new Map();
+  if (canAnimate) {
+    for (const {fill, key} of doseFills(node)) {
+      const track = fill.parentElement.getBoundingClientRect();
+      if (track.width > 0 && track.height > 0)
+        widths.set(key, fill.getBoundingClientRect().width / track.width * 100);
+    }
+  }
+  previous?.cancel();
+  node.innerHTML = markup;
+
+  const animations = [];
+  const cancel = () => {
+    for (const animation of animations) animation.cancel();
+    reducedMotion?.removeEventListener?.('change', cancel);
+  };
+  dailyDoseViews.set(node, {markup, context, cancel});
+  if (!canAnimate) return;
+  for (const {fill, key} of doseFills(node)) {
+    const from = widths.get(key), to = Number.parseFloat(fill.style.width);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || Math.abs(from - to) < .01 || !fill.animate) continue;
+    try {
+      animations.push(fill.animate([{width: `${from}%`}, {width: fill.style.width}], {
+        duration: 240, easing: 'ease-out',
+      }));
+    } catch { /* Older browsers still display the final, current value. */ }
+  }
+  if (animations.length) {
+    reducedMotion?.addEventListener?.('change', cancel, {once: true});
+    Promise.allSettled(animations.map(animation => animation.finished))
+      .then(() => reducedMotion?.removeEventListener?.('change', cancel));
+  }
+}
+
 /** Fixed display scale: 0–125% of the supplied boundary, with a wall at 80%.
  * This is a measurement, not a treatment target or an assessment of safety.
  * Unknown boundaries/amounts never become zero or a fabricated percentage.
