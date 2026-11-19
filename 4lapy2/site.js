@@ -242,6 +242,14 @@
         if (event.defaultPrevented || (event.button !== undefined && event.button !== 0)) return;
         const interactive = event.target.closest && event.target.closest('a, button, input, select, textarea, label, [contenteditable="true"]');
         if (interactive && interactive !== summary) return;
+        // Dragging to select a heading must not activate the disclosure on release.
+        // Keyboard activation (detail === 0) still toggles it normally.
+        const selection = window.getSelection ? window.getSelection() : null;
+        if (event.detail > 0 && selection && !selection.isCollapsed && selection.rangeCount > 0 &&
+          selection.getRangeAt(0).intersectsNode(summary)) {
+          event.preventDefault();
+          return;
+        }
         if (preference.matches) {
           if (animation) settle(targetOpen);
           return; // Native immediate toggling, including keyboard activation.
