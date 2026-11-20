@@ -600,7 +600,7 @@ function updateLiquidDoseButtons() {
 function prefillSourceTabletDose() {
   // One-time convenience within an explicitly selected source range, never a weight-based dose.
   if(state.dose!==''||isVeterinary()||state.custom||!getSourceRegimen()?.doseRange||getSourceRegimen()?.lockSourceValues)return;
-  const whole=currentTabletDoseChoices().find(choice=>choice.tablets===1&&choice.allowed);
+  const whole=currentTabletDoseChoices().find(choice=>choice.tablets===1&&choice.withinLimits);
   if(whole)state.dose=String(whole.value);
 }
 const tabletChoiceLabel = choice => `${choice.tablets===0.5?'½':choice.tablets} ${getForm()?.unitLabel||'tabl.'}`;
@@ -618,17 +618,27 @@ function tabletAmountIcon(tablets, splittable=tabletCanSplitInHalf()) {
 }
 function tabletChoiceReason(choice) {
   if(choice.reason==='Brak podziału na połowy'&&getForm()?.unitLabel==='kaps.')return 'Kapsułki stosuje się w całości';
-  const range=getSourceRegimen()?.doseRange;
-  if(choice.reason!=='Poza zakresem schematu'||!range)return choice.reason;
-  const above=choice.value>range.max;
-  return `Schemat: ${above?'do':'od'} ${n(above?range.max:range.min,6)} ${doseUnit()}`;
+  return choice.reason;
+}
+function tabletChoiceDetail(choice) {
+  const warning=choice.warnings.find(item=>item.message===choice.reason);
+  if(!warning)return '';
+  if(warning.limit)return `${n(warning.actual,6)} ${warning.unit} · limit ${n(warning.limit,6)}`;
+  const source=getSourceRegimen(),range=source?.doseRange;
+  if(range)return `Zakres: ${n(range.min,6)}–${n(range.max,6)} ${doseUnit()}`;
+  if(source?.dose)return `Źródło: ${n(source.dose,6)} ${doseUnit()}`;
+  return '';
+}
+function tabletChoiceTitle(choice) {
+  return [tabletChoiceReason(choice),tabletChoiceDetail(choice)].filter(Boolean).join(' · ')
+    ||`${tabletChoiceLabel(choice)} = ${n(choice.mg,6)} mg`;
 }
 function tabletDoseButtons() {
   return `<div class="tablet-dose-slot">${tabletDoseChoicesMarkup(currentTabletDoseChoices())}</div>`;
 }
 function tabletDoseChoicesMarkup(choices) {
   if(!choices.length)return '';
-  return `<div class="tablet-dose-choices" role="group" aria-label="Dawka jednorazowa według liczby ${getForm()?.unitLabel==='kaps.'?'kapsułek':'tabletek'}">${choices.map(choice=>`<button type="button" class="tablet-dose-choice ${tabletChoiceSelected(choice)?'active':''}" data-action="tablet-dose" data-value="${choice.tablets}" aria-pressed="${tabletChoiceSelected(choice)}" ${choice.allowed?'':'disabled'} title="${esc(tabletChoiceReason(choice)||`${tabletChoiceLabel(choice)} = ${n(choice.mg,6)} mg`)}">${tabletAmountIcon(choice.tablets)}<strong><span class="tablet-dose-amount">${n(choice.mg,6)}</span> <small>mg</small></strong><span>${esc(tabletChoiceLabel(choice))}</span><small class="tablet-dose-reason">${esc(tabletChoiceReason(choice))}</small></button>`).join('')}</div>`;
+  return `<div class="tablet-dose-choices" role="group" aria-label="Dawka jednorazowa według liczby ${getForm()?.unitLabel==='kaps.'?'kapsułek':'tabletek'}">${choices.map(choice=>`<button type="button" class="tablet-dose-choice ${tabletChoiceSelected(choice)?'active':''} ${choice.severity?'tablet-dose-'+choice.severity:''}" data-action="tablet-dose" data-value="${choice.tablets}" aria-pressed="${tabletChoiceSelected(choice)}" ${choice.allowed?'':'disabled'} title="${esc(tabletChoiceTitle(choice))}">${tabletAmountIcon(choice.tablets)}<strong><span class="tablet-dose-amount">${n(choice.mg,6)}</span> <small>mg</small></strong><span>${esc(tabletChoiceLabel(choice))}</span><small class="tablet-dose-reason">${esc(tabletChoiceReason(choice))}</small><small class="tablet-dose-detail">${esc(tabletChoiceDetail(choice))}</small></button>`).join('')}</div>`;
 }
 function updateTabletDoseButtons() {
   const slot=document.querySelector('.tablet-dose-slot');
@@ -642,10 +652,13 @@ function updateTabletDoseButtons() {
     if(!choice){button.disabled=true;return;}
     button.disabled=!choice.allowed;
     button.classList.toggle('active',tabletChoiceSelected(choice));
+    button.classList.toggle('tablet-dose-critical',choice.severity==='critical');
+    button.classList.toggle('tablet-dose-warning',choice.severity==='warning');
     button.setAttribute('aria-pressed',String(tabletChoiceSelected(choice)));
-    button.title=tabletChoiceReason(choice)||`${tabletChoiceLabel(choice)} = ${n(choice.mg,6)} mg`;
+    button.title=tabletChoiceTitle(choice);
     button.querySelector('.tablet-dose-amount').textContent=n(choice.mg,6);
     button.querySelector('.tablet-dose-reason').textContent=tabletChoiceReason(choice);
+    button.querySelector('.tablet-dose-detail').textContent=tabletChoiceDetail(choice);
     const doseIcon=button.querySelector('.tablet-dose-icon');
     if(doseIcon&&doseIcon.dataset.splittable!==String(splittable))doseIcon.outerHTML=tabletAmountIcon(choice.tablets,splittable);
   });

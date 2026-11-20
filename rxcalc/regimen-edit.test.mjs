@@ -100,7 +100,9 @@ test('fixed source selection can expose tablet shortcuts without disabling safet
   assert.deepEqual(tabletDoseChoices(form,{source}),[]);
   const choices=tabletDoseChoices(form,{source,allowFixedSource:true,frequency:3,maxDailyMg:1500,maxSingleMg:500});
   assert.equal(choices.find(c=>c.tablets===1).allowed,true);
-  assert.equal(choices.find(c=>c.tablets===2).allowed,false);
+  assert.equal(choices.find(c=>c.tablets===2).allowed,true);
+  assert.equal(choices.find(c=>c.tablets===2).withinLimits,false);
+  assert.equal(choices.find(c=>c.tablets===2).severity,'critical');
   assert.equal(choices.find(c=>c.tablets===0.5).allowed,false);
 });
 
