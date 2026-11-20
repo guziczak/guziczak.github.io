@@ -29,6 +29,8 @@ Strona zachowuje dane kontaktowe, godziny i zakres usług z projektu /4lapy/. Da
 
 Formularz nie wysyła i nie zapisuje danych na serwerze. Wybranie Google Calendar otwiera przygotowane wydarzenie w usłudze Google; ICS powstaje lokalnie. Oba warianty planują kontakt o 9:00 czasu polskiego przed terminem szczepienia. Brak analityki.
 
+Podgląd przypomnienia stosuje tę samą walidację daty co eksport: po wybraniu przeszłego terminu od razu pokazuje ostrzeżenie, a komunikat przed przyciskami wyjaśnia, co poprawić. Gdy krótsze wyprzedzenie również nie jest już możliwe, formularz sugeruje kontakt telefoniczny. Powrót do karty ponownie sprawdza ważność daty; poprawa lub wyczyszczenie pola usuwa nieaktualny błąd. Pole daty zachowuje natywny systemowy kalendarz, a jego rozmiary i wyrównanie są dopasowane do pozostałych pól także w iOS.
+
 Domyślny podgląd mapy jest lokalnym plikiem i nie łączy przeglądarki z dostawcą map. Iframe Google Maps powstaje dopiero po wybraniu przycisku „Zezwól na mapę Google”. Przycisk „Wyłącz mapę Google” usuwa iframe i przywraca statyczny podgląd. Zgoda obowiązuje tylko w bieżącym wyświetleniu strony; nie jest zapisywana w localStorage ani w cookies.
 
 Akordeony zachowują semantykę natywnych details/summary. Animowana jest ich rzeczywista wysokość, również podczas zamykania i zmiany kierunku w trakcie ruchu. Zmiana szerokości lub wysokości treści aktualizuje cel animacji. Preferencja ograniczonego ruchu wyłącza animację; bez JavaScript akordeony nadal działają natywnie.

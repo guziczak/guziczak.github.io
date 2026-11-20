@@ -70,6 +70,15 @@
 .essential strong{font-size:1rem}.essential small{font-size:.875rem;letter-spacing:0}
 .form-field label,.form-field label span,.field-help,.reminder-preview p,.reminder-preview small:not(.small-label),#reminder-message{font-size:.875rem}
 .form-field input,.form-field select{font-size:1rem}.form-field input::placeholder{font-size:.875rem}
+/* Use one outer box for every field. Reset the iOS date skin without replacing
+   its native picker; its intrinsic padding can otherwise enlarge the field. */
+.reminder-card,.form-row,.form-field,.select-wrap{min-inline-size:0}
+.form-field{--form-control-height:50px}
+.form-field input,.form-field select{box-sizing:border-box;inline-size:100%;min-inline-size:0;max-inline-size:100%;block-size:var(--form-control-height);min-block-size:var(--form-control-height);margin:0}
+.form-field input[type='date']{-webkit-appearance:none;appearance:none;text-align:start}
+.form-field input[type='date']::-webkit-date-and-time-value{min-height:1.6em;font:inherit;text-align:inherit}
+.reminder-preview [data-reminder-note][data-state='error']{color:#a03c2c}
+@media(max-width:760px){.form-field{--form-control-height:51px}}
 .privacy-note p,.hours-note,.opening-state small,.address-note p,.address-note>span,.map-content p{font-size:.875rem}
 .reminder-preview .small-label{font-size:.75rem}
 @media(min-width:761px) and (max-width:950px){.site-menu>a{font-size:.875rem}}
@@ -163,6 +172,7 @@
   [data-theme='dark'] .form-field input::placeholder{color:#afbfaf}
   [data-theme='dark'] .form-field input:focus,[data-theme='dark'] .form-field select:focus{border-color:#c5d8ae}
   [data-theme='dark'] #reminder-message[data-state='error']{color:#ffb4a2}
+  [data-theme='dark'] .reminder-preview [data-reminder-note][data-state='error']{color:#ffb4a2}
   [data-theme='dark'] #reminder-message[data-state='success']{color:#c5d8ae}
   [data-theme='dark'] [aria-invalid='true']{border-color:#ffb4a2!important}
   [data-theme='dark'] .contact-email{border-bottom-color:#637662}

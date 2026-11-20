@@ -5,7 +5,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  parseDate, atWarsawNine, openingStatus, buildReminder, googleUrl, calendarFile, calendarFilename
+  parseDate, atWarsawNine, openingStatus, buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename
 } = require('../site.js');
 
 const now = new Date('2026-01-01T00:00:00Z');
@@ -101,6 +101,56 @@ test('09:00 remains in Europe/Warsaw across both daylight-saving changes', () =>
     assert.equal(autumn.start.toISOString(), '2026-10-25T08:00:00.000Z');
     const leap = buildReminder({ ...values, date: '2028-03-01', days: 1 }, now, language);
     assert.equal(leap.start.toISOString(), '2028-02-29T08:00:00.000Z');
+  }
+});
+
+test('preview warns immediately for the past reminder shown in the iPhone report', () => {
+  const screenshotTime = new Date('2026-11-20T04:50:00Z');
+  for (const language of ['pl', 'en']) {
+    const selected = { name: '', date: '2026-11-20', days: 7 };
+    const preview = reminderPreview(selected, screenshotTime, language);
+    assert.equal(preview.error, buildReminder(selected, screenshotTime, language).error);
+    assert.equal(preview.field, 'alarm');
+    assert.equal(preview.note, language === 'pl' ? 'Termin przypomnienia już minął.' : 'The reminder time has passed.');
+    assert.match(preview.error, language === 'pl' ? /Zadzwoń/ : /Call to book/);
+    assert.doesNotMatch(preview.note, /13 listopada|13 November|9:00/);
+    assert.equal(preview.date, language === 'pl' ? '20 listopada 2026' : '20 November 2026');
+  }
+});
+
+test('preview recovers after a shorter lead or a new date and stays neutral when cleared', () => {
+  const current = new Date('2026-11-20T10:00:00Z');
+  for (const language of ['pl', 'en']) {
+    const selected = { name: 'Luna', date: '2026-11-25', days: 7 };
+    const invalid = reminderPreview(selected, current, language);
+    assert.match(invalid.error, language === 'pl' ? /krótsze wyprzedzenie/ : /shorter lead/);
+    const shorter = reminderPreview({ ...selected, days: 1 }, current, language);
+    assert.equal(shorter.error, '');
+    assert.equal(shorter.field, '');
+    assert.match(shorter.note, language === 'pl' ? /24 listopada, o 9:00/ : /24 November at 09:00/);
+    assert.equal(shorter.title, language === 'pl' ? 'Umów szczepienie — Luna' : 'Book a vaccination — Luna');
+    const future = reminderPreview({ ...selected, date: '2026-12-10' }, current, language);
+    assert.equal(future.error, '');
+    assert.match(future.note, language === 'pl' ? /3 grudnia/ : /3 December/);
+    const cleared = reminderPreview({ ...selected, date: '' }, current, language);
+    assert.equal(cleared.error, '');
+    assert.equal(cleared.field, '');
+    assert.equal(cleared.date, language === 'pl' ? 'Wybierz datę szczepienia' : 'Choose the vaccination date');
+    assert.match(cleared.note, language === 'pl' ? /tydzień wcześniej/ : /one week before/);
+  }
+});
+
+test('preview validity changes at Warsaw 09:00 and rejects past vaccination dates', () => {
+  const selected = { name: '', date: '2026-11-21', days: 1 };
+  for (const language of ['pl', 'en']) {
+    assert.equal(reminderPreview(selected, new Date('2026-11-20T07:59:59.999Z'), language).error, '');
+    const due = reminderPreview(selected, new Date('2026-11-20T08:00:00Z'), language);
+    assert.equal(due.field, 'alarm');
+    assert.ok(due.error);
+    const yesterday = reminderPreview({ ...selected, date: '2026-11-19' }, new Date('2026-11-20T04:50:00Z'), language);
+    assert.equal(yesterday.field, 'date');
+    assert.equal(yesterday.note, language === 'pl' ? 'Sprawdź datę szczepienia.' : 'Check the vaccination date.');
+    assert.match(yesterday.error, language === 'pl' ? /Ta data już minęła/ : /That date has passed/);
   }
 });
 

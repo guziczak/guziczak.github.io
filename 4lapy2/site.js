@@ -22,7 +22,8 @@
       dateRequired: 'Wybierz datę szczepienia z książeczki zdrowia.',
       datePast: 'Ta data już minęła. Wpisz datę kolejnego szczepienia.',
       leadRequired: 'Wybierz termin przypomnienia z listy.',
-      reminderPast: 'Wybrany termin przypomnienia już minął. Wybierz krótsze wyprzedzenie lub późniejszą datę szczepienia.',
+      reminderPast: 'Wybrany termin przypomnienia już minął. Wybierz krótsze wyprzedzenie.',
+      reminderTooSoon: 'Dla tej daty jest już za późno na przypomnienie z wyprzedzeniem. Zadzwoń, aby umówić wizytę.',
       reminderTitle: name => name ? `Umów szczepienie — ${name}` : 'Umów szczepienie zwierzaka',
       vaccinationDate: date => `Data szczepienia z książeczki zdrowia: ${date}.`,
       bookingPhone: `Zadzwoń, żeby umówić wizytę: ${PHONE}.`,
@@ -30,6 +31,8 @@
       alarmDescription: title => `${title}. Zadzwoń: ${PHONE}.`,
       selectDate: 'Wybierz datę szczepienia',
       previewNote: dateOrLead => `Przypomnienie: ${dateOrLead}, o 9:00`,
+      previewDateInvalid: 'Sprawdź datę szczepienia.',
+      previewReminderInvalid: 'Termin przypomnienia już minął.',
       googleSuccess: 'W Kalendarzu Google zapisz przygotowane wydarzenie. Termin wizyty ustal telefonicznie.',
       icsSuccess: 'Otwórz pobrany plik i zatwierdź wydarzenie w swoim kalendarzu. Termin wizyty ustal telefonicznie.',
       filenamePrefix: 'przypomnienie-szczepienie', calendarProduct: 'Przypomnienie//PL',
@@ -49,7 +52,8 @@
       dateRequired: 'Choose the vaccination date from your pet’s health record.',
       datePast: 'That date has passed. Enter the date of the next vaccination.',
       leadRequired: 'Choose a reminder time from the list.',
-      reminderPast: 'The selected reminder time has passed. Choose a shorter lead time or a later vaccination date.',
+      reminderPast: 'The selected reminder time has passed. Choose a shorter lead time.',
+      reminderTooSoon: 'It is too late to set an advance reminder for this date. Call to book an appointment.',
       reminderTitle: name => name ? `Book a vaccination — ${name}` : 'Book your pet’s vaccination',
       vaccinationDate: date => `Vaccination date from your pet’s health record: ${date}.`,
       bookingPhone: `Call to book an appointment: +48 ${PHONE}.`,
@@ -57,6 +61,8 @@
       alarmDescription: title => `${title}. Call: +48 ${PHONE}.`,
       selectDate: 'Choose the vaccination date',
       previewNote: dateOrLead => `Reminder: ${dateOrLead} at 09:00 (Poland time)`,
+      previewDateInvalid: 'Check the vaccination date.',
+      previewReminderInvalid: 'The reminder time has passed.',
       googleSuccess: 'Save the prepared event in Google Calendar. Arrange the appointment by phone.',
       icsSuccess: 'Open the downloaded file and add the event to your calendar. Arrange the appointment by phone.',
       filenamePrefix: 'vaccination-reminder', calendarProduct: 'Vaccination reminder//EN',
@@ -152,7 +158,9 @@
     const reminderDay = addDays(vaccination, -days);
     const start = atWarsawNine(reminderDay);
     if (start.getTime() <= current.getTime()) {
-      return { error: copy.reminderPast, field: 'alarm' };
+      const shorterLeadAvailable = LEAD_DAYS.some(lead => lead < days &&
+        atWarsawNine(addDays(vaccination, -lead)).getTime() > current.getTime());
+      return { error: shorterLeadAvailable ? copy.reminderPast : copy.reminderTooSoon, field: 'alarm' };
     }
     const name = cleanName(values.name);
     const title = copy.reminderTitle(name);
@@ -160,6 +168,33 @@
       `${copy.bookingPhone}\n${copy.clinic}\n${copy.address}\n${copy.appointmentByPhone}`;
     return { vaccination, reminderDay, start, end: new Date(start.getTime() + 15 * 60000),
       name, title, description, days, language, location: `${copy.clinic}, ${copy.address}` };
+  }
+
+  // The preview and exports use the same validation. A past reminder must never
+  // appear as a ready calendar event while the user is filling in the form.
+  function reminderPreview(values, now, language = 'pl') {
+    language = normalizeLanguage(language);
+    const copy = MESSAGES[language];
+    const formats = dateFormats[language];
+    const vaccination = parseDate(values.date);
+    const preview = {
+      title: copy.reminderTitle(cleanName(values.name)),
+      date: vaccination ? formats.full.format(vaccination) : copy.selectDate,
+      note: copy.previewNote(copy.leads[Number(values.days)] || copy.leads[7]),
+      error: '', field: ''
+    };
+    // Keep an untouched or cleared date field neutral; submit still requires it.
+    if (!values.date) return preview;
+    const reminder = buildReminder(values, now, language);
+    if (reminder.error) {
+      preview.error = reminder.error;
+      preview.field = reminder.field;
+      preview.note = reminder.field === 'date' ? copy.previewDateInvalid
+        : LEAD_DAYS.includes(Number(values.days)) ? copy.previewReminderInvalid : copy.leadRequired;
+    } else {
+      preview.note = copy.previewNote(formats.short.format(reminder.reminderDay));
+    }
+    return preview;
   }
 
   function googleUrl(reminder) {
@@ -216,13 +251,12 @@
 
   // Pure functions are available to offline boundary checks, never exposed on window.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseDate, atWarsawNine, openingStatus, buildReminder, googleUrl, calendarFile, calendarFilename };
+    module.exports = { parseDate, atWarsawNine, openingStatus, buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename };
   }
   if (typeof document === 'undefined') return;
 
   const pageLanguage = normalizeLanguage(document.documentElement.lang);
   const copy = MESSAGES[pageLanguage];
-  const { full: fullDate, short: shortDate } = dateFormats[pageLanguage];
 
   const all = selector => Array.from(document.querySelectorAll(selector));
   const write = (selector, value) => all(selector).forEach(element => {
@@ -528,39 +562,41 @@
   const dateInput = form.querySelector('#vacc-date');
   const alarmInput = form.querySelector('#vacc-alarm');
   const message = form.querySelector('#reminder-message');
+  const previewNote = document.querySelector('[data-reminder-note]');
   if (!nameInput || !dateInput || !alarmInput || !message) return;
   const readValues = () => ({ name: nameInput.value, date: dateInput.value, days: alarmInput.value });
   const setMessage = (text, isError) => {
-    message.textContent = text;
+    if (message.textContent !== text) message.textContent = text;
     message.dataset.state = isError ? 'error' : 'success';
   };
   const updateMinimum = () => { dateInput.min = warsawDateKey(new Date()); };
-  const clearErrors = () => {
+  const renderReminder = () => {
+    const preview = reminderPreview(readValues(), undefined, pageLanguage);
     dateInput.removeAttribute('aria-invalid');
     alarmInput.removeAttribute('aria-invalid');
-    setMessage('', false);
-  };
-  const renderReminder = () => {
-    const name = cleanName(nameInput.value);
-    const date = parseDate(dateInput.value);
-    const days = Number(alarmInput.value);
-    write('[data-reminder-title]', copy.reminderTitle(name));
-    write('[data-reminder-date]', date ? fullDate.format(date) : copy.selectDate);
-    write('[data-reminder-note]', copy.previewNote(date && copy.leads[days]
-      ? shortDate.format(addDays(date, -days))
-      : copy.leads[days] || copy.leads[7]));
+    write('[data-reminder-title]', preview.title);
+    write('[data-reminder-date]', preview.date);
+    write('[data-reminder-note]', preview.note);
+    if (previewNote) previewNote.dataset.state = preview.error ? 'error' : 'ready';
+    if (preview.error) {
+      const field = preview.field === 'date' ? dateInput : alarmInput;
+      field.setAttribute('aria-invalid', 'true');
+    }
+    setMessage(preview.error, Boolean(preview.error));
     updateMinimum();
   };
   updateMinimum();
   dateInput.addEventListener('focus', updateMinimum);
   [nameInput, dateInput, alarmInput].forEach(input => {
-    input.addEventListener('input', () => { clearErrors(); renderReminder(); });
-    input.addEventListener('change', () => { clearErrors(); renderReminder(); });
+    input.addEventListener('input', renderReminder);
+    input.addEventListener('change', renderReminder);
   });
+  // Re-check dates restored by the browser or after returning to an open tab.
+  window.addEventListener('pageshow', renderReminder);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) renderReminder(); });
   form.addEventListener('submit', event => {
     event.preventDefault();
-    clearErrors();
-    updateMinimum();
+    renderReminder();
     const reminder = buildReminder(readValues(), undefined, pageLanguage);
     if (reminder.error) {
       const field = reminder.field === 'date' ? dateInput : alarmInput;
