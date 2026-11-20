@@ -19,6 +19,8 @@ Przełączniki języka i motywu są stale widoczne w nagłówku, również na te
 
 Polska i angielska wersja mają osobne dokumenty HTML, wspólne style i skrypty oraz wzajemne odnośniki `hreflang`. Zmiana języka zachowuje bieżącą sekcję. Powrót na główny adres uwzględnia zapamiętany język; bez wcześniejszego wyboru strona otwiera się po polsku. Jawny wybór w przełączniku ma pierwszeństwo nad zapamiętaną preferencją.
 
+Otwarcie strony z kotwicą, odświeżenie i zmiana języka pokazują wskazaną sekcję bez animowanego przewijania od góry. Płynny ruch jest włączany wyłącznie przy zwykłym kliknięciu lub aktywacji klawiaturą odnośnika do istniejącej sekcji w tym samym dokumencie. Nawigacja, fokus i historia pozostają natywne. Ustawienie jest czyszczone po nawigacji i przy przywracaniu strony z pamięci przeglądarki; preferencja ograniczenia ruchu wyłącza tę animację.
+
 Tłumaczenie obejmuje opisy usług, nawigację, etykiety dostępności, formularz, walidację, podgląd przypomnienia, wydarzenia Google Calendar i ICS oraz komunikaty mapy i godzin otwarcia. Nazwa przychodni i adres pozostają niezmienione. W obu językach godziny odnoszą się do Polski, a przypomnienie powstaje o 9:00 w strefie Europe/Warsaw, z uwzględnieniem czasu letniego i zimowego.
 
 W `localStorage` zapisywane są wyłącznie preferencje `4lapy2-theme` i `4lapy2-language`. Wyłączenie tej pamięci nie blokuje strony ani jej przełączników. Dane formularza i zgoda na mapę nie są zapisywane.

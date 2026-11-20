@@ -249,9 +249,41 @@
     return `${copy.filenamePrefix}${safeName ? `-${safeName}` : ''}.ics`;
   }
 
-  // Pure functions are available to offline boundary checks, never exposed on window.
+  function initializeAnchorNavigation(doc, page, motionPreference) {
+    const root = doc.documentElement;
+    const reset = () => { root.style.scrollBehavior = 'auto'; };
+    reset();
+
+    // Let the browser keep its native fragment, focus and history behavior.
+    // Only a deliberate link within this document opts into animated scrolling.
+    doc.addEventListener('click', event => {
+      reset();
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
+        event.ctrlKey || event.shiftKey || event.altKey || motionPreference.matches) return;
+      const link = event.target.closest && event.target.closest('a[href]');
+      if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
+      let target, current, id;
+      try {
+        current = new URL(page.location.href);
+        target = new URL(link.href, current);
+        id = decodeURIComponent(target.hash.slice(1));
+      } catch (_) { return; }
+      if (target.origin !== current.origin || target.pathname !== current.pathname ||
+        target.search !== current.search || !id || !doc.getElementById(id)) return;
+      root.style.scrollBehavior = 'smooth';
+    });
+
+    // The browser has already chosen the behavior when hashchange is delivered.
+    // Clear the opt-in for later focus changes and restored or translated pages.
+    ['hashchange', 'pagehide', 'pageshow', 'popstate'].forEach(type => page.addEventListener(type, reset));
+    doc.addEventListener('scrollend', reset);
+    if (motionPreference.addEventListener) motionPreference.addEventListener('change', reset);
+    else if (motionPreference.addListener) motionPreference.addListener(reset);
+  }
+
+  // Offline checks exercise these functions directly; none is exposed on window.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseDate, atWarsawNine, openingStatus, buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename };
+    module.exports = { parseDate, atWarsawNine, openingStatus, buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename, initializeAnchorNavigation };
   }
   if (typeof document === 'undefined') return;
 
@@ -453,6 +485,7 @@
   }
 
   const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  initializeAnchorNavigation(document, window, motionPreference);
   const openingSign = document.querySelector('[data-opening-sign]');
   if (openingSign && !motionPreference.matches && 'IntersectionObserver' in window &&
     typeof openingSign.animate === 'function' && typeof CSS !== 'undefined' &&
