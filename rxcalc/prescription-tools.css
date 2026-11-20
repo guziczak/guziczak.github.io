@@ -177,6 +177,9 @@ dialog.cart-dialog { width: min(720px, calc(100vw - 24px)); max-width: 720px; ma
 .cart-preview { max-height: 340px; overflow: auto; font-size: 12px; line-height: 1.8; }
 .cart-preview:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .cart-manual-copy { display: block; width: 100%; min-height: 240px; max-height: 60dvh; padding: 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-soft); color: var(--ink); font-family: "SFMono-Regular", Consolas, monospace; font-size: 13px; line-height: 1.75; resize: vertical; }
+.dialog-content .copy-feedback { min-height: 1.6em; margin: 10px 0 0; color: var(--accent); font-size: 13px; line-height: 1.6; }
+.dialog-content .copy-feedback[data-state="manual"] { color: var(--warn); }
+.manual-copy-label { display: block; margin: 14px 0 7px; color: var(--ink); font-size: 13px; font-weight: 600; }
 .cart-dialog-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 16px; }
 .cart-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; min-height: 44px; border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; font-size: 12px; font-weight: 600; line-height: 1.5; }
 .cart-button-primary { background: var(--accent); border-color: var(--accent); color: #fff; }

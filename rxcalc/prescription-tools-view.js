@@ -93,8 +93,9 @@ export function prescriptionCartMarkup({
       <pre class="rx-preview cart-preview" id="cart-preview" tabindex="0" aria-label="Podgląd wspólnego zapisu">${esc(text)}</pre>
       <div class="cart-dialog-actions">
         <button type="button" class="cart-button cart-button-secondary" data-action="cart-next">Dodaj kolejny preparat</button>
-        <button type="button" class="cart-button cart-button-primary" data-action="cart-copy"${copyAllowed ? '' : ' disabled'}>Kopiuj całość</button>
+        <button type="button" class="cart-button cart-button-primary" data-action="cart-copy" aria-describedby="cart-copy-status"${copyAllowed ? '' : ' disabled'}>Kopiuj całość</button>
       </div>
+      <p class="copy-feedback" id="cart-copy-status" role="status" aria-live="polite" aria-atomic="true"></p>
     </section>
   </section>`;
 }

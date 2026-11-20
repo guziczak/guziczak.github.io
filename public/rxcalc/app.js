@@ -28,6 +28,7 @@ import { effectiveRoundingStep, normalizeDecimalPlaces, normalizeRoundingMode, s
 import { createPrescriptionCart, savePrescriptionItem, removePrescriptionItem, assessPrescriptionCart, prescriptionCartText, preparePrescriptionEdit } from './prescription-cart.js';
 import { decimalRoundingMarkup, prescriptionCartMarkup } from './prescription-tools-view.js';
 import { playCartFeedback, cancelCartFeedback } from './cart-feedback.js';
+import { copyText, selectCopyText } from './clipboard.js';
 
 const $ = (q, root = document) => root.querySelector(q);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -997,14 +998,52 @@ function editCartItem(id) {
   $('#dialog').close();render();
   $('#regimen-title')?.scrollIntoView({block:'start',behavior:'smooth'});
 }
-async function copyCart() {
+const copyRequests = new WeakMap();
+async function copyPreparedText({text,button,feedback,container,label,successMessage,isCurrent=()=>true,onManualCopy,onStale,preferSelection=false}) {
+  if (!button || copyRequests.get(button)?.isCurrent()) return;
+  const request={isCurrent:()=>button.isConnected&&isCurrent()};
+  copyRequests.set(button,request);
+  const current=()=>copyRequests.get(button)===request&&request.isCurrent();
+  button.disabled=true;
+  button.setAttribute('aria-busy','true');
+  button.textContent='Kopiowanie…';
+  if(feedback){feedback.textContent='';delete feedback.dataset.state;}
+  try {
+    const copied=await copyText(text,{container,preferSelection,isCurrent:current});
+    if(!current())return;
+    button.disabled=false;
+    button.textContent=copied?'Skopiowano':label;
+    if(copied){
+      if(feedback){feedback.dataset.state='success';feedback.textContent=successMessage;}
+      else toast(successMessage);
+    } else if(onManualCopy) onManualCopy();
+    else if(feedback){feedback.dataset.state='manual';feedback.textContent='Nie skopiowano automatycznie. Przytrzymaj tekst i wybierz „Kopiuj” lub użyj Ctrl+C / ⌘C.';}
+  } finally {
+    if(copyRequests.get(button)===request){
+      copyRequests.delete(button);button.removeAttribute('aria-busy');
+      if(!request.isCurrent()&&button.isConnected){button.disabled=false;button.textContent=label;onStale?.();}
+    }
+  }
+}
+function manualCopyDialog(text,{cart=false}={}) {
+  openDialog(cart?'Skopiuj cały koszyk':'Skopiuj zapis',`<p id="manual-copy-help">Nie udało się skopiować automatycznie. Możesz spróbować ponownie albo przytrzymać zaznaczony tekst i wybrać „Kopiuj”. Na komputerze użyj Ctrl+C / ⌘C.</p><label class="manual-copy-label" for="manual-copy">Cały zapis</label><textarea id="manual-copy" class="cart-manual-copy" aria-describedby="manual-copy-help" readonly>${esc(text)}</textarea><div class="cart-dialog-actions"><button type="button" class="cart-button cart-button-secondary" data-action="manual-select">Zaznacz cały tekst</button><button type="button" class="cart-button cart-button-primary" data-action="manual-copy">Spróbuj ponownie</button></div><p class="copy-feedback" id="manual-copy-status" role="status" aria-live="polite" aria-atomic="true"></p>${cart?'<button type="button" class="text-button" data-action="cart-open">Wróć do koszyka</button>':''}`,{cart});
+  selectCopyText($('#manual-copy'));
+}
+function retryManualCopy(button) {
+  const field=$('#manual-copy'),dialog=$('#dialog');
+  if(!field||!dialog.open)return;
+  copyPreparedText({text:field.value,button,feedback:$('#manual-copy-status'),container:dialog,
+    label:'Spróbuj ponownie',successMessage:'Cały zapis skopiowany. Możesz go wkleić.',preferSelection:true,
+    isCurrent:()=>dialog.open&&field.isConnected});
+}
+function copyCart(button) {
   const output=prescriptionCartText(prescriptionCart,state,{mode:cartMode});
   if(!output.ok){cartDialog(output.message);return;}
-  try { await navigator.clipboard.writeText(output.text);toast('Cały koszyk skopiowany.'); }
-  catch {
-    openDialog('Skopiuj cały koszyk',`<p>Zaznacz i skopiuj przygotowany zapis.</p><textarea id="manual-copy" class="cart-manual-copy" readonly>${esc(output.text)}</textarea>`,{cart:true});
-    $('#manual-copy').focus();$('#manual-copy').select();
-  }
+  const scope=button?.closest('.prescription-cart'),dialog=$('#dialog');
+  copyPreparedText({text:output.text,button,feedback:$('#cart-copy-status'),container:dialog,
+    label:'Kopiuj całość',successMessage:'Cały koszyk skopiowany. Możesz go wkleić.',
+    isCurrent:()=>dialog.open&&scope?.isConnected,
+    onManualCopy:()=>manualCopyDialog(output.text,{cart:true})});
 }
 function toast(message) { clearTimeout(toastTimer); const el=$('#toast');el.textContent=message;el.classList.add('show');toastTimer=setTimeout(()=>el.classList.remove('show'),3500); }
 function openDialog(title,content,{cart=false}={}) {
@@ -1032,10 +1071,17 @@ async function installApp() {
   if(deferredInstall){await deferredInstall.prompt();const choice=await deferredInstall.userChoice;deferredInstall=null;if(choice.outcome==='accepted'){toast('Dodawanie RxCalc do urządzenia.');return;}}
   openDialog('RxCalc na Twoim telefonie',`<p>Na Androidzie otwórz stronę w <strong>Chrome</strong>.</p><ol><li>Dotknij menu <strong>⋮</strong> w prawym górnym rogu.</li><li>Wybierz <strong>„Dodaj do ekranu głównego”</strong> lub <strong>„Zainstaluj aplikację”</strong>.</li><li>Potwierdź przyciskiem <strong>„Zainstaluj”</strong> albo „Dodaj”.</li></ol><p>Ikona RxCalc pojawi się na ekranie głównym. Po zainstalowaniu aplikacja może otwierać się we własnym oknie.</p><p><strong>${offlineReady?'Pliki zapisane — tryb offline jest gotowy.':'Pozostań chwilę online, aby pobrać komplet plików do pracy offline.'}</strong> Przeglądarka może usunąć dane witryny przy czyszczeniu pamięci; wtedy otwórz ją ponownie z internetem.</p><p>Na iPhonie: Safari → Udostępnij → Do ekranu głównego.</p>`);
 }
-async function copyPrescription() {
+function copyPrescription(button) {
   if(!productReady()||!latest?.valid||!state.confirmed||state.demo||!latestText)return;
-  try { await navigator.clipboard.writeText(latestText);toast('Dawkowanie skopiowane. Możesz wkleić je do dokumentacji.'); }
-  catch { openDialog('Skopiuj dawkowanie',`<p>Przeglądarka nie udostępniła schowka. Zaznacz tekst poniżej i skopiuj go ręcznie.</p><textarea id="manual-copy" style="width:100%;height:220px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink)" readonly>${esc(latestText)}</textarea>`);$('#manual-copy').focus();$('#manual-copy').select(); }
+  const text=latestText,dialog=$('#dialog'),dialogContent=dialog.firstElementChild;
+  copyPreparedText({text,button,label:button.id==='mobile-copy'?'Kopiuj':state.rxMode==='ds'?'Kopiuj zalecenia':'Kopiuj zapis',
+    successMessage:'Dawkowanie skopiowane. Możesz wkleić je do dokumentacji.',
+    isCurrent:()=>!dialog.open&&dialog.firstElementChild===dialogContent&&latestText===text&&latest?.valid&&state.confirmed&&!state.demo,
+    onStale:()=>{
+      button.disabled=!productReady()||!latest?.valid||!state.confirmed||state.demo||!latestText;
+      button.innerHTML=`${icon('copy')}${button.id==='mobile-copy'?'Kopiuj':state.rxMode==='ds'?'Kopiuj zalecenia':'Kopiuj zapis'}`;
+    },
+    onManualCopy:()=>manualCopyDialog(text)});
 }
 function resetPatient() {
   $('#dialog').close(); $('#dialog').replaceChildren();
@@ -1148,7 +1194,9 @@ function example() {
       if(!choice?.allowed||!$('#dose'))break;
       state.dose=String(choice.value);$('#dose').value=state.dose;dirty();updateResult();break;
     }
-    case 'copy':copyPrescription();break;
+    case 'copy':copyPrescription(b);break;
+    case 'manual-copy':retryManualCopy(b);break;
+    case 'manual-select':selectCopyText($('#manual-copy'));break;
     case 'cart-open':cartDialog();break;
     case 'cart-add':addToPrescriptionCart();break;
     case 'cart-next':nextCartProduct();break;
@@ -1163,7 +1211,7 @@ function example() {
       break;
     }
     case 'cart-mode':if(['full','ds'].includes(value)){cartMode=value;cartDialog();$('#dialog [data-action="cart-mode"][aria-pressed="true"]')?.focus({preventScroll:true});}break;
-    case 'cart-copy':copyCart();break;
+    case 'cart-copy':copyCart(b);break;
     case 'reset':resetPatient();break;
     case 'theme':theme=theme==='dark'?'light':'dark';document.documentElement.dataset.theme=theme;window.RxCalcTheme?.apply(theme);savePreference('theme',theme);b.innerHTML=icon(theme==='dark'?'sun':'moon');break;
     case 'install':installApp();break;
