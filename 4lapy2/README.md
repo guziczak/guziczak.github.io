@@ -15,7 +15,7 @@ Nie wymaga kompilacji ani bibliotek JavaScript. Katalog jest publikowany bezpoś
 
 ## Język i wygląd
 
-Przełączniki języka i motywu znajdują się w nawigacji; przy węższym ekranie są dostępne po otwarciu menu. Pierwszy wybór motywu odpowiada ustawieniu systemowemu. Ręczny wybór jasnego albo ciemnego motywu jest zapamiętywany na tym urządzeniu. Zmiana ustawienia systemowego wpływa na stronę tylko do momentu ręcznego wyboru.
+Przełączniki języka i motywu są stale widoczne w nagłówku, również na telefonie. Rozwijane menu zawiera wyłącznie nawigację do sekcji. Na telefonie kontakt pozostaje dostępny przez stały dolny przycisk „Umów wizytę”. Pierwszy wybór motywu odpowiada ustawieniu systemowemu. Ręczny wybór jasnego albo ciemnego motywu jest zapamiętywany na tym urządzeniu. Zmiana ustawienia systemowego wpływa na stronę tylko do momentu ręcznego wyboru.
 
 Polska i angielska wersja mają osobne dokumenty HTML, wspólne style i skrypty oraz wzajemne odnośniki `hreflang`. Zmiana języka zachowuje bieżącą sekcję. Powrót na główny adres uwzględnia zapamiętany język; bez wcześniejszego wyboru strona otwiera się po polsku. Jawny wybór w przełączniku ma pierwszeństwo nad zapamiętaną preferencją.
 
