@@ -7,7 +7,7 @@ Statyczna strona przychodni w nowej oprawie wizualnej. Adres publikacji: https:/
 - `index.html` — polska treść, semantyczny układ i formularz.
 - `en/index.html` — pełna angielska wersja pod `/4lapy2/en/`, dostępna również bez JavaScript.
 - `styles.css` — responsywny wygląd, jasny i ciemny motyw oraz obsługa ograniczenia ruchu.
-- `preferences.js` — wybór i zapamiętywanie motywu oraz języka, wczesne ustawienie kolorów przed wyświetleniem strony.
+- `preferences.js` — wybór i zapamiętywanie motywu oraz języka, wczesne ustawienie kolorów oraz dyskretne przejście przy przełączeniu PL/EN.
 - `entry.js` — ustawienie sekcji z adresu przed pokazaniem treści przy pierwszym wczytaniu dokumentu.
 - `site.js` — płynne akordeony usług, status otwarcia w Europe/Warsaw, menu, przypomnienia Google Calendar / ICS oraz mapa wczytywana po wyraźnej zgodzie. Teksty dynamiczne odpowiadają językowi dokumentu.
 - `assets/` — lokalne zdjęcia i mapa WebP, fonty i licencje OFL.
@@ -25,6 +25,10 @@ Otwarcie strony z kotwicą, odświeżenie i zmiana języka pokazują wskazaną s
 Przy wejściu z rozpoznaną kotwicą skrypt w nagłówku chwilowo wstrzymuje pokazanie treści, zachowując jej układ. Po parsowaniu dokumentu i krótkim oczekiwaniu na fonty ustawia sekcję bez animacji, a następnie odsłania ją bez wcześniejszego pokazania hero. Nie czeka na zdjęcia ani pełne zdarzenie `load`. Oczekiwanie na fonty ma limit 350 ms, a cała osłona bezwarunkowo znika po 1500 ms, błędzie lub działaniu użytkownika. Anulowanie unieważnia także późniejsze callbacki, aby nie przesuwały czytelnika. Zwykłe wejście na początek, nieznane kotwice i historia Wstecz/Dalej nie używają osłony. Mechanizm ustawia początek wskazanej sekcji; nie zapisuje własnej historii pozycji przewijania.
 
 Po ręcznym przewinięciu na samą górę nieaktualny fragment adresu jest usuwany przez `replaceState`, bez dodawania wpisu do historii i bez zmiany parametrów adresu. Pozwala to odświeżyć początek strony bez powrotu do dawnej sekcji. Automatyczne wejście do kotwicy, samo dotknięcie ekranu oraz edycja pól formularza nie uruchamiają tego mechanizmu. Link językowy od razu uwzględnia oczyszczony adres. Gesty odświeżania i przewijania przeglądarki zachowują natywne działanie.
+
+Zmiana języka korzysta z natywnych przejść między dokumentami (cross-document View Transitions), jeżeli przeglądarka je obsługuje. Stara treść unosi się o 8 px i znika, a nowa delikatnie opada do swojej pozycji; całość trwa 300 ms. Animowane są obrazy widoków, dzięki czemu rzeczywista geometria kotwicy pozostaje bez zmian. Nagłówek i dolny przycisk telefonu mają osobne, nieruchome widoki. Przejście jest uruchamiane tylko przez zwykły odnośnik PL/EN, bez opóźniania nawigacji, przechwytywania kliknięcia ani zapisu dodatkowych danych. Odświeżenia, Wstecz/Dalej i wejścia bezpośrednie zachowują zwykłe działanie.
+
+Nowy widok językowy czeka na sparsowanie końca dokumentu przez `rel="expect"`, po czym `pagereveal` ustawia istniejącą kotwicę synchronicznie, przed przechwyceniem widoku. Gdy układ nie jest gotowy lub fonty jeszcze się ładują, animacja jest pomijana i działa sprawdzona osłona wejścia. Preferencja ograniczenia ruchu i brak obsługi API również pozostawiają zwykłą nawigację. Nie ma animacji wyjścia, która zostawiałaby pustą stronę podczas pobierania dokumentu.
 
 Tłumaczenie obejmuje opisy usług, nawigację, etykiety dostępności, formularz, walidację, podgląd przypomnienia, wydarzenia Google Calendar i ICS oraz komunikaty mapy i godzin otwarcia. Nazwa przychodni i adres pozostają niezmienione. W obu językach godziny odnoszą się do Polski, a przypomnienie powstaje o 9:00 w strefie Europe/Warsaw, z uwzględnieniem czasu letniego i zimowego.
 

@@ -204,3 +204,27 @@
 
 /* Initial section links are positioned before their content is revealed. */
 html[data-entry-pending] main,html[data-entry-pending] .site-footer{visibility:hidden}
+
+/* Language changes move snapshots, leaving layout and anchor geometry intact. */
+@media(prefers-reduced-motion:no-preference){
+  @view-transition{navigation:auto}
+  html[data-language-transition] .site-header{view-transition-name:language-header}
+  html[data-language-transition] .mobile-contact{view-transition-name:language-contact}
+  html[data-language-transition]::view-transition-group(root),
+  html[data-language-transition]::view-transition-group(language-header),
+  html[data-language-transition]::view-transition-group(language-contact){animation:none}
+  html[data-language-transition]::view-transition-old(root){animation:language-leave 130ms cubic-bezier(.4,0,1,1) both;mix-blend-mode:normal}
+  html[data-language-transition]::view-transition-new(root){animation:language-enter 210ms cubic-bezier(.16,1,.3,1) 90ms both;mix-blend-mode:normal}
+  html[data-language-transition]::view-transition-group(language-header),
+  html[data-language-transition]::view-transition-group(language-contact){z-index:1}
+  html[data-language-transition]::view-transition-old(language-header),
+  html[data-language-transition]::view-transition-old(language-contact){animation:none;opacity:0}
+  html[data-language-transition]::view-transition-new(language-header),
+  html[data-language-transition]::view-transition-new(language-contact){animation:none;mix-blend-mode:normal}
+}
+@keyframes language-leave{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-8px)}}
+@keyframes language-enter{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){
+  @view-transition{navigation:none}
+  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
+}

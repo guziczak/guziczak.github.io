@@ -76,7 +76,7 @@ function fakeClock() {
 }
 
 function setup({ hash = '#przypomnienie', readyState = 'loading', hidden = false,
-  navigationType = 'navigate', fonts = true, missingTarget = false } = {}) {
+  navigationType = 'navigate', fonts = true, fontStatus = 'loading', missingTarget = false } = {}) {
   const clock = fakeClock();
   let resolveFonts, rejectFonts;
   const fontPromise = new Promise((resolve, reject) => { resolveFonts = resolve; rejectFonts = reject; });
@@ -99,7 +99,7 @@ function setup({ hash = '#przypomnienie', readyState = 'loading', hidden = false
     documentElement: { dataset: {} },
     getElementById: () => missingTarget ? null : target
   };
-  if (fonts) doc.fonts = { ready: fontPromise };
+  if (fonts) doc.fonts = { ready: fontPromise, status: fontStatus };
   const page = {
     ...eventHost(),
     location: new URL(`https://guziczak.github.io/4lapy2/?preview=1${hash}`),
@@ -119,7 +119,11 @@ function setup({ hash = '#przypomnienie', readyState = 'loading', hidden = false
   const originalUrl = page.location.href;
   const active = initializeFragmentEntry(doc, page);
   return {
-    active, doc, page, clock, target, child, calls, resolveFonts, rejectFonts,
+    active, doc, page, clock, target, child, calls, rejectFonts,
+    resolveFonts() {
+      if (doc.fonts) doc.fonts.status = 'loaded';
+      resolveFonts();
+    },
     pending: () => doc.documentElement.dataset.entryPending === 'true',
     scrolls: () => calls.filter(call => call.type === 'scroll'),
     ready() { doc.readyState = 'interactive'; doc.emit('DOMContentLoaded'); },
@@ -308,4 +312,167 @@ test('missing targets, changed fragments and layout failures fail open without s
   brokenLayout.ready();
   assert.equal(brokenLayout.pending(), false);
   assert.equal(brokenLayout.scrolls().length, 0);
+});
+
+function languageReveal(app) {
+  let skipped = 0;
+  app.doc.documentElement.dataset.languageTransition = 'incoming';
+  app.page.emit('pagereveal', { viewTransition: { skipTransition() { skipped++; } } });
+  return skipped;
+}
+
+test('an incoming language snapshot positions and reveals synchronously, before DOMContentLoaded', async () => {
+  const app = setup({ fontStatus: 'loaded' });
+  assert.equal(languageReveal(app), 0);
+  assert.equal(app.pending(), false, 'The new snapshot must not capture the hidden guard state');
+  assert.deepEqual(app.scrolls(), [{ type: 'scroll', options: { behavior: 'instant', block: 'start' } }]);
+  for (const element of [app.target, app.child]) {
+    assert.equal(element.classes.has('will-reveal'), false);
+    assert.equal(element.classes.has('is-visible'), true);
+  }
+  app.ready();
+  app.resolveFonts();
+  await Promise.resolve();
+  app.clock.advance(5000);
+  app.clock.frame();
+  app.clock.frame();
+  languageReveal(app);
+  assert.equal(app.scrolls().length, 1, 'Neither late readiness nor another reveal can scroll again');
+  app.assertNavigationUntouched();
+});
+
+test('a prepared snapshot invalidates pending fonts, font timers and an already queued position frame', async () => {
+  for (const queuedFrame of [false, true]) {
+    const app = setup({ fonts: !queuedFrame, fontStatus: 'loaded' });
+    app.ready();
+    const staleFrame = queuedFrame ? app.clock.takeFrame() : null;
+    assert.equal(languageReveal(app), 0);
+    assert.equal(app.pending(), false);
+    assert.equal(app.scrolls().length, 1);
+    if (staleFrame) staleFrame();
+    app.resolveFonts();
+    await Promise.resolve();
+    app.clock.advance(5000);
+    app.clock.frame();
+    app.clock.frame();
+    assert.equal(app.scrolls().length, 1, 'No second scroll is allowed after the snapshot is ready');
+    assert.equal(app.clock.pendingFrames(), 0);
+    app.assertNavigationUntouched();
+  }
+});
+
+test('only a marked incoming language transition uses synchronous snapshot positioning', () => {
+  for (const marker of [undefined, 'outgoing', 'other']) {
+    const app = setup({ fonts: false });
+    if (marker) app.doc.documentElement.dataset.languageTransition = marker;
+    let skipped = 0;
+    app.page.emit('pagereveal', { viewTransition: { skipTransition() { skipped++; } } });
+    assert.equal(skipped, 0);
+    assert.equal(app.pending(), true);
+    assert.equal(app.scrolls().length, 0);
+    app.ready();
+    app.clock.frame();
+    app.clock.frame();
+    assert.equal(app.scrolls().length, 1, 'Ordinary entry behavior remains unchanged');
+  }
+  const noTransition = setup({ fontStatus: 'loaded' });
+  noTransition.doc.documentElement.dataset.languageTransition = 'incoming';
+  noTransition.page.emit('pagereveal', { viewTransition: null });
+  assert.equal(noTransition.pending(), true);
+  assert.equal(noTransition.scrolls().length, 0);
+});
+
+test('cold fonts skip the language animation and retain the bounded ordinary entry path', async () => {
+  for (const useFontTimeout of [false, true]) {
+    const app = setup({ fontStatus: 'loading' });
+    app.ready();
+    assert.equal(languageReveal(app), 1);
+    assert.equal(app.pending(), true, 'Skipping the transition must leave ordinary positioning available');
+    assert.equal(app.scrolls().length, 0);
+    if (useFontTimeout) app.clock.advance(350);
+    else {
+      app.resolveFonts();
+      await Promise.resolve();
+    }
+    app.clock.frame();
+    app.clock.frame();
+    assert.equal(app.pending(), false);
+    assert.equal(app.scrolls().length, 1);
+    app.resolveFonts();
+    await Promise.resolve();
+    app.clock.advance(5000);
+    app.clock.frame();
+    assert.equal(app.scrolls().length, 1);
+    app.assertNavigationUntouched();
+  }
+});
+
+test('layout-discovered font loading is checked before capturing a language snapshot', () => {
+  const app = setup({ fontStatus: 'loaded' });
+  app.target.getBoundingClientRect = () => { app.doc.fonts.status = 'loading'; return { top: 1000 }; };
+  assert.equal(languageReveal(app), 1);
+  assert.equal(app.pending(), true);
+  assert.equal(app.scrolls().length, 0);
+  app.clock.advance(1500);
+  assert.equal(app.pending(), false, 'The existing deadline still releases an unready page');
+  app.assertNavigationUntouched();
+});
+
+test('missing or superseded fragment targets skip the transition without navigating elsewhere', () => {
+  for (const missingTarget of [true, false]) {
+    const app = setup({ missingTarget, fontStatus: 'loaded' });
+    if (!missingTarget) app.page.location.hash = '#kontakt';
+    assert.equal(languageReveal(app), 1);
+    assert.equal(app.scrolls().length, 0);
+    assert.equal(app.pending(), true);
+    app.ready();
+    app.clock.advance(5000);
+    app.clock.frame();
+    assert.equal(app.pending(), false);
+    assert.equal(app.scrolls().length, 0);
+    if (missingTarget) app.assertNavigationUntouched();
+    else assert.equal(app.page.location.hash, '#kontakt');
+  }
+});
+
+test('snapshot layout or positioning errors skip the transition and release the guard', async () => {
+  for (const method of ['getBoundingClientRect', 'querySelectorAll', 'scrollIntoView']) {
+    const app = setup({ fontStatus: 'loaded' });
+    let attempts = 0;
+    app.target[method] = () => { attempts++; throw new Error(`Unavailable ${method}`); };
+    assert.equal(languageReveal(app), 1);
+    assert.equal(attempts, 1);
+    assert.equal(app.pending(), false);
+    app.ready();
+    app.resolveFonts();
+    await Promise.resolve();
+    app.clock.advance(5000);
+    app.clock.frame();
+    assert.equal(attempts, 1, 'An error must not leave a delayed retry behind');
+    assert.equal(app.scrolls().length, 0);
+    app.assertNavigationUntouched();
+  }
+});
+
+test('user, lifecycle and deadline cancellations cannot be restarted by pagereveal', () => {
+  const cancellations = [
+    app => app.doc.emit('wheel'),
+    app => app.page.emit('site:fragmentchange'),
+    app => app.page.emit('pagehide'),
+    app => app.page.emit('pageshow', { persisted: true }),
+    app => app.clock.advance(1500)
+  ];
+  for (const cancel of cancellations) {
+    const app = setup({ fonts: false });
+    app.ready();
+    const staleFrame = app.clock.takeFrame();
+    cancel(app);
+    assert.equal(app.pending(), false);
+    assert.equal(languageReveal(app), 0, 'The cancelled guard no longer participates in the transition');
+    staleFrame();
+    app.clock.advance(5000);
+    app.clock.frame();
+    assert.equal(app.scrolls().length, 0);
+    app.assertNavigationUntouched();
+  }
 });
