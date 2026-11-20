@@ -137,9 +137,20 @@ test('missing, malformed and non-link targets do not leave smooth behavior behin
   assert.equal(app.behavior(), 'auto', 'A target without closest is harmless');
 });
 
-test('fragment completion, history and BFCache lifecycle clear the per-click opt-in', () => {
+test('native fragment events do not cancel the smooth request before it starts', () => {
   const app = setup();
-  for (const type of ['hashchange', 'pagehide', 'pageshow', 'popstate']) {
+  app.click();
+  for (const type of ['popstate', 'hashchange']) {
+    app.page.emit(type);
+    assert.equal(app.behavior(), 'smooth', type);
+  }
+  app.doc.emit('scrollend');
+  assert.equal(app.behavior(), 'auto');
+});
+
+test('scroll completion and BFCache lifecycle clear the per-click opt-in', () => {
+  const app = setup();
+  for (const type of ['pagehide', 'pageshow']) {
     app.click();
     app.page.emit(type, { persisted: true });
     assert.equal(app.behavior(), 'auto', type);
@@ -147,6 +158,18 @@ test('fragment completion, history and BFCache lifecycle clear the per-click opt
   app.click();
   app.doc.emit('scrollend');
   assert.equal(app.behavior(), 'auto', 'scrollend also handles a same-hash scroll');
+});
+
+test('the next pointer or keyboard interaction clears any remaining smooth opt-in', () => {
+  for (const type of ['pointerdown', 'keydown']) {
+    const app = setup();
+    app.click();
+    // A same-hash no-op need not dispatch hashchange or scrollend.
+    app.doc.emit(type, { key: 'Tab', button: 0 });
+    assert.equal(app.behavior(), 'auto', type);
+    app.click('#kontakt', { detail: type === 'keydown' ? 0 : 1 });
+    assert.equal(app.behavior(), 'smooth', 'A subsequent real anchor may opt in again');
+  }
 });
 
 test('reduced motion is honored initially and after live preference changes', () => {

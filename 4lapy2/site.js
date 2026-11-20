@@ -273,10 +273,11 @@
       root.style.scrollBehavior = 'smooth';
     });
 
-    // The browser has already chosen the behavior when hashchange is delivered.
-    // Clear the opt-in for later focus changes and restored or translated pages.
-    ['hashchange', 'pagehide', 'pageshow', 'popstate'].forEach(type => page.addEventListener(type, reset));
-    doc.addEventListener('scrollend', reset);
+    // Keep the opt-in through native fragment events: clearing it on hashchange
+    // or popstate can turn the requested animation into a jump before it starts.
+    // Reset after the scroll, before the next interaction, or on page lifecycle.
+    ['pagehide', 'pageshow'].forEach(type => page.addEventListener(type, reset));
+    ['scrollend', 'pointerdown', 'keydown'].forEach(type => doc.addEventListener(type, reset));
     if (motionPreference.addEventListener) motionPreference.addEventListener('change', reset);
     else if (motionPreference.addListener) motionPreference.addListener(reset);
   }
