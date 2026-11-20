@@ -115,6 +115,7 @@
       updateLanguageLinks();
     }));
     window.addEventListener('hashchange', updateLanguageLinks);
+    window.addEventListener('site:fragmentchange', updateLanguageLinks);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeControls, { once: true });

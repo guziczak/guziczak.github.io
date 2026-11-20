@@ -282,9 +282,81 @@
     else if (motionPreference.addListener) motionPreference.addListener(reset);
   }
 
+  function initializeManualTop(doc, page) {
+    let manualIntent = false;
+    let touchStart = null;
+    const passive = { passive: true };
+    const reset = () => { manualIntent = false; touchStart = null; };
+    const entryPending = () => {
+      if (!doc.documentElement.dataset.entryPending) return false;
+      reset();
+      return true;
+    };
+    const isEditing = target => target && (target.isContentEditable ||
+      (target.closest && target.closest('input, textarea, select, [contenteditable], [role="textbox"]')));
+    const isManualInput = event => !entryPending() && !event.defaultPrevented && event.isTrusted !== false && !isEditing(event.target);
+
+    const clearAtTop = () => {
+      if (entryPending() || !manualIntent || !Number.isFinite(page.scrollY) || page.scrollY > 1) return;
+      let current;
+      try {
+        current = new URL(page.location.href);
+        if (!current.hash) return;
+        current.hash = '';
+        page.history.replaceState(page.history.state, '', current.href);
+      } catch (_) { return; }
+      page.dispatchEvent(new page.Event('site:fragmentchange'));
+    };
+    const confirmManualIntent = () => {
+      manualIntent = true;
+      // A pull at the top may refresh without another scroll event or touchend.
+      clearAtTop();
+    };
+
+    doc.addEventListener('wheel', event => {
+      if (!isManualInput(event) || event.ctrlKey || event.shiftKey ||
+        Math.abs(event.deltaY) <= Math.abs(event.deltaX || 0)) return;
+      if (event.deltaY) confirmManualIntent();
+    }, passive);
+
+    doc.addEventListener('touchstart', event => {
+      touchStart = null;
+      if (!isManualInput(event) || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      touchStart = { id: touch.identifier, x: touch.clientX, y: touch.clientY };
+    }, passive);
+    doc.addEventListener('touchmove', event => {
+      if (!touchStart) return;
+      if (!isManualInput(event) || event.touches.length !== 1) { touchStart = null; return; }
+      const touch = event.touches[0];
+      if (touch.identifier !== touchStart.id) { touchStart = null; return; }
+      const x = Math.abs(touch.clientX - touchStart.x);
+      const y = Math.abs(touch.clientY - touchStart.y);
+      if (y > 6 && y > x) confirmManualIntent();
+    }, passive);
+    ['touchend', 'touchcancel'].forEach(type => doc.addEventListener(type, () => { touchStart = null; }, passive));
+
+    const scrollKeys = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Spacebar']);
+    doc.addEventListener('keydown', event => {
+      if (!isManualInput(event) || !scrollKeys.has(event.key) || event.altKey ||
+        ((event.ctrlKey || event.metaKey) && event.key !== 'Home' && event.key !== 'End')) return;
+      if ((event.key === ' ' || event.key === 'Spacebar') && event.target.closest &&
+        event.target.closest('button, summary, [role="button"]')) return;
+      confirmManualIntent();
+    }, passive);
+
+    page.addEventListener('scroll', clearAtTop, passive);
+    // Navigation owns the next scroll, including same-hash links and BFCache.
+    // Neither startup nor a reset checks the initial top frame.
+    doc.addEventListener('click', event => {
+      if (event.target.closest && event.target.closest('a[href]')) reset();
+    }, { passive: true, capture: true });
+    ['popstate', 'hashchange', 'pagehide', 'pageshow'].forEach(type => page.addEventListener(type, reset, passive));
+  }
+
   // Offline checks exercise these functions directly; none is exposed on window.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseDate, atWarsawNine, openingStatus, buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename, initializeAnchorNavigation };
+    module.exports = { parseDate, atWarsawNine, openingStatus, buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename, initializeAnchorNavigation, initializeManualTop };
   }
   if (typeof document === 'undefined') return;
 
@@ -487,6 +559,7 @@
 
   const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
   initializeAnchorNavigation(document, window, motionPreference);
+  initializeManualTop(document, window);
   const openingSign = document.querySelector('[data-opening-sign]');
   if (openingSign && !motionPreference.matches && 'IntersectionObserver' in window &&
     typeof openingSign.animate === 'function' && typeof CSS !== 'undefined' &&

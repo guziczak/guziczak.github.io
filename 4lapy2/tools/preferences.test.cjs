@@ -62,6 +62,7 @@ function visit(options = {}) {
     systemTheme(dark) { media.matches = dark; mediaEvents.get('change')?.({ matches: dark }); },
     clickTheme() { button.events.get('click')(); },
     hash(value) { current.hash = value; windowEvents.get('hashchange')?.(); },
+    replaceFragment(value) { current.hash = value; windowEvents.get('site:fragmentchange')?.(); },
     otherTabTheme(value) { windowEvents.get('storage')?.({ key: '4lapy2-theme', newValue: value }); }
   };
 }
@@ -139,6 +140,21 @@ test('blocked storage still permits the theme switch and direct language links',
   assert.equal(page.root.dataset.theme, 'light');
   assert.equal(page.link.attributes.href, 'https://example.test/projects/4lapy2/en/?lang=en');
   page.link.events.get('click')();
+});
+
+test('manual return to the top updates the language link after the stale fragment is replaced', () => {
+  for (const language of ['pl', 'en']) {
+    const path = language === 'en' ? 'en/' : '';
+    const page = visit({ language, url: `https://example.test/projects/4lapy2/${path}?ref=local#przypomnienie` });
+    page.ready();
+    assert.match(page.link.attributes.href, /#przypomnienie$/);
+    page.replaceFragment('');
+    const target = new URL(page.link.attributes.href);
+    assert.equal(target.hash, '');
+    assert.equal(target.searchParams.get('ref'), 'local');
+    assert.equal(target.searchParams.get('lang'), language === 'en' ? 'pl' : 'en');
+    assert.equal(page.redirects.length, 0);
+  }
 });
 
 test('cross-tab theme preference updates, and clearing it resumes the system theme', () => {

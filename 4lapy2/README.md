@@ -8,6 +8,7 @@ Statyczna strona przychodni w nowej oprawie wizualnej. Adres publikacji: https:/
 - `en/index.html` — pełna angielska wersja pod `/4lapy2/en/`, dostępna również bez JavaScript.
 - `styles.css` — responsywny wygląd, jasny i ciemny motyw oraz obsługa ograniczenia ruchu.
 - `preferences.js` — wybór i zapamiętywanie motywu oraz języka, wczesne ustawienie kolorów przed wyświetleniem strony.
+- `entry.js` — ustawienie sekcji z adresu przed pokazaniem treści przy pierwszym wczytaniu dokumentu.
 - `site.js` — płynne akordeony usług, status otwarcia w Europe/Warsaw, menu, przypomnienia Google Calendar / ICS oraz mapa wczytywana po wyraźnej zgodzie. Teksty dynamiczne odpowiadają językowi dokumentu.
 - `assets/` — lokalne zdjęcia i mapa WebP, fonty i licencje OFL.
 
@@ -20,6 +21,10 @@ Przełączniki języka i motywu są stale widoczne w nagłówku, również na te
 Polska i angielska wersja mają osobne dokumenty HTML, wspólne style i skrypty oraz wzajemne odnośniki `hreflang`. Zmiana języka zachowuje bieżącą sekcję. Powrót na główny adres uwzględnia zapamiętany język; bez wcześniejszego wyboru strona otwiera się po polsku. Jawny wybór w przełączniku ma pierwszeństwo nad zapamiętaną preferencją.
 
 Otwarcie strony z kotwicą, odświeżenie i zmiana języka pokazują wskazaną sekcję bez animowanego przewijania od góry. Płynny ruch jest włączany wyłącznie przy zwykłym kliknięciu lub aktywacji klawiaturą odnośnika do istniejącej sekcji w tym samym dokumencie. Nawigacja, fokus i historia pozostają natywne. Ustawienie jest czyszczone po nawigacji i przy przywracaniu strony z pamięci przeglądarki; preferencja ograniczenia ruchu wyłącza tę animację.
+
+Przy wejściu z rozpoznaną kotwicą skrypt w nagłówku chwilowo wstrzymuje pokazanie treści, zachowując jej układ. Po parsowaniu dokumentu i krótkim oczekiwaniu na fonty ustawia sekcję bez animacji, a następnie odsłania ją bez wcześniejszego pokazania hero. Nie czeka na zdjęcia ani pełne zdarzenie `load`. Oczekiwanie na fonty ma limit 350 ms, a cała osłona bezwarunkowo znika po 1500 ms, błędzie lub działaniu użytkownika. Anulowanie unieważnia także późniejsze callbacki, aby nie przesuwały czytelnika. Zwykłe wejście na początek, nieznane kotwice i historia Wstecz/Dalej nie używają osłony. Mechanizm ustawia początek wskazanej sekcji; nie zapisuje własnej historii pozycji przewijania.
+
+Po ręcznym przewinięciu na samą górę nieaktualny fragment adresu jest usuwany przez `replaceState`, bez dodawania wpisu do historii i bez zmiany parametrów adresu. Pozwala to odświeżyć początek strony bez powrotu do dawnej sekcji. Automatyczne wejście do kotwicy, samo dotknięcie ekranu oraz edycja pól formularza nie uruchamiają tego mechanizmu. Link językowy od razu uwzględnia oczyszczony adres. Gesty odświeżania i przewijania przeglądarki zachowują natywne działanie.
 
 Tłumaczenie obejmuje opisy usług, nawigację, etykiety dostępności, formularz, walidację, podgląd przypomnienia, wydarzenia Google Calendar i ICS oraz komunikaty mapy i godzin otwarcia. Nazwa przychodni i adres pozostają niezmienione. W obu językach godziny odnoszą się do Polski, a przypomnienie powstaje o 9:00 w strefie Europe/Warsaw, z uwzględnieniem czasu letniego i zimowego.
 

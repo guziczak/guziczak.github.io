@@ -201,3 +201,6 @@
   [data-theme='dark'] .service summary:hover h3{color:#d0e1b8}
 }
 @media print{:root{color-scheme:light!important}}
+
+/* Initial section links are positioned before their content is revealed. */
+html[data-entry-pending] main,html[data-entry-pending] .site-footer{visibility:hidden}
