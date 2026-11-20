@@ -23,8 +23,6 @@
 .single-dose-result .single-dose-pack-field{margin:12px 0 16px}
 .single-dose-result .single-dose-pack-field .package-select{margin:0}
 .single-dose-result .result-alerts:empty{display:none}
-.single-dose-result .result-actions{grid-template-columns:minmax(0,1fr)}
-.single-dose-result .copy-button{width:100%}
 @media(max-width:780px){.single-dose-reference{flex-wrap:wrap}.single-dose-panel .single-dose-scope,.single-dose-reference,.single-dose-entered,.single-dose-comparison-status{font-size:13px}.single-dose-comparison{padding:16px}.single-dose-comparison h3{font-size:14px}}
 @media(prefers-reduced-motion:reduce){.single-dose-fill{transition:none}}
 @media(forced-colors:active){.single-dose-fill{background:Highlight;forced-color-adjust:none}.single-dose-marker{border-color:CanvasText}.single-dose-meter{outline:1px solid CanvasText}}

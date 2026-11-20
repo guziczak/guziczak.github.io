@@ -41,17 +41,17 @@ export function singleDoseRegimenMarkup({ form, source, choices, state, patientM
 export function singleDoseResultMarkup({ form, state, icon } = {}) {
   return `<aside class="result-column single-dose-result" id="result" aria-label="Wynik pojedynczego podania"><div class="result-card">
     <div class="result-top"><div class="result-title">Objętość jednego podania <span class="live-tag">Na żywo</span></div><div class="dose-output"><span class="number" id="single-dose-value">—</span><span class="unit">ml</span></div><p class="frequency-output" id="single-dose-equivalent">Wybierz etap i wpisz dawkę.</p><div class="dose-equivalent">${amount(form.concentrationMicrogramsPerMl)} µg/ml · dożylnie</div></div>
-    <div class="result-body"><div class="safety-heading"><span>Kontrola przeliczenia</span><span class="status-badge" id="single-dose-badge">Oczekuje na dane</span></div><div class="result-alerts" id="single-dose-alerts" aria-live="polite"></div>
+    <div class="result-body"><p class="cart-editing-note" id="cart-editing-note" hidden></p><div class="safety-heading"><span>Kontrola przeliczenia</span><span class="status-badge" id="single-dose-badge">Oczekuje na dane</span></div><div class="result-alerts" id="single-dose-alerts" aria-live="polite"></div>
       <div class="supply-box"><div class="supply-head">${icon('box')}<span>Ampułki do jednego podania</span></div><div class="field single-dose-pack-field"><label for="packageId">Opakowanie i rozmiar ampułki</label><select class="package-select" id="packageId" data-field="packageId">${form.packOptions.map(pack => `<option value="${esc(pack.id)}" ${pack.id === state.packageId ? 'selected' : ''}>${esc(pack.label)}</option>`).join('')}</select></div><div class="package-result" id="single-dose-containers">— amp.</div><div class="package-description" id="single-dose-waste">Liczba ampułek wynika z objętości jednego podania.</div></div>
       <div class="result-review" id="single-dose-review"></div>
-      <div class="rx-section"><div class="rx-heading"><h3>Zapis pojedynczego podania</h3></div><div class="rx-output"><pre class="rx-preview placeholder" id="rx-preview">Wybierz etap, wpisz dawkę i sprawdź warunki.</pre></div></div>
+      <div class="rx-section"><div class="rx-heading"><h3>Zapis do dokumentacji</h3><div class="rx-tabs"><button data-action="rx-mode" data-value="full" class="${state.rxMode === 'ds' ? '' : 'active'}" aria-pressed="${state.rxMode !== 'ds'}">Rp. + D.S.</button><button data-action="rx-mode" data-value="ds" class="${state.rxMode === 'ds' ? 'active' : ''}" aria-pressed="${state.rxMode === 'ds'}">Zalecenia</button></div></div><div class="rx-output"><pre class="rx-preview placeholder" id="rx-preview">Wybierz etap, wpisz dawkę i sprawdź warunki.</pre></div></div>
       <label class="confirm-row"><input id="confirmed" type="checkbox" ${state.confirmed ? 'checked' : ''}><span>Potwierdzam dawkę, drogę podania, stężenie i możliwość dokładnego odmierzenia dla tego pacjenta.</span></label>
-      <div class="result-actions"><button class="copy-button" id="copy-button" data-action="copy" disabled>${icon('copy')}Kopiuj zapis</button></div><p class="copy-caption" id="result-requirements">Uzupełnij dane i potwierdź pojedyncze podanie.</p>
+      <div class="result-actions"><button class="copy-button" id="copy-button" data-action="copy" disabled>${icon('copy')}${state.rxMode === 'ds' ? 'Kopiuj zalecenia' : 'Kopiuj zapis'}</button><button class="cart-add-button" id="cart-add" data-action="cart-add" disabled>${icon('cart')}Dodaj do koszyka</button></div><div class="cart-add-feedback" id="cart-add-feedback" role="status" aria-live="polite"></div><p class="copy-caption" id="result-requirements">Uzupełnij dane i potwierdź pojedyncze podanie.</p>
     </div></div><p class="result-footnote">${icon('info')}Przeliczenie jednego podania. Kolejna dawka wymaga ponownej oceny; widok nie ustala odstępu ani sumy dawek.</p></aside>`;
 }
 
 /** Update existing meter nodes so edits animate from their current position. */
-export function updateSingleDoseView(root, { form, source, context, result, confirmed, demo, text } = {}) {
+export function updateSingleDoseView(root, { form, source, context, result, confirmed, demo, text, rxMode = 'full', icon = () => '' } = {}) {
   const $ = selector => root.querySelector(selector);
   const setText = (selector, value) => { const node = $(selector); if (node) node.textContent = value; };
   const hasVolume = finite(result.volumeMl) && result.volumeMl > 0;
@@ -81,8 +81,9 @@ export function updateSingleDoseView(root, { form, source, context, result, conf
   control.disabled = !result.valid || demo;
   const canCopy = result.valid && confirmed && !demo && !!text;
   $('#copy-button').disabled = !canCopy;
+  $('#copy-button').innerHTML = `${icon('copy')}${rxMode === 'ds' ? 'Kopiuj zalecenia' : 'Kopiuj zapis'}`;
   if ($('#mobile-copy')) $('#mobile-copy').disabled = !canCopy;
-  setText('#result-requirements', !result.valid ? 'Uzupełnij wskazane dane i warunki.' : !confirmed ? 'Sprawdź i potwierdź pojedyncze podanie przed skopiowaniem.' : 'Zapis gotowy do skopiowania.');
+  setText('#result-requirements', !result.valid ? 'Uzupełnij wskazane dane i warunki.' : !confirmed ? 'Sprawdź i potwierdź pojedyncze podanie przed skopiowaniem.' : 'Gotowe do skopiowania lub dodania do koszyka.');
   setText('#mobile-action-value', hasVolume ? `${amount(result.volumeMl)} ml` : 'Uzupełnij dane');
   setText('#mobile-action-label', 'Pojedyncze podanie');
   const meter = $('#single-dose-meter');

@@ -33,6 +33,8 @@ function numberText(value) {
   }).format(value);
 }
 
+export { numberText as formatSingleDoseNumber };
+
 function sourceMetadataValid(source) {
   if (!object(source) || typeof source.phase !== 'string' || !Object.hasOwn(PHASES, source.phase)) return false;
   const phase = PHASES[source.phase];
@@ -209,10 +211,14 @@ export function resolveSingleDose(form, source, context = {}) {
   return finish();
 }
 
-/** A single-administration record, never an outpatient prescription. A stale
- * preview or revoked confirmation cannot be exported by reusing valid:true.
+/** Rp./D.S. for one administration, with the required ampoules rather than
+ * commercial cartons. A stale preview or revoked confirmation cannot be
+ * exported by reusing valid:true; both text modes use the same validation.
  */
-export function buildSingleDoseText(drug, form, source, result, context = {}) {
+export function buildSingleDoseText(drug, form, source, result, context = {}, options = {}) {
+  if (!object(options)) return '';
+  const mode = options.mode === undefined ? 'full' : options.mode;
+  if (mode !== 'full' && mode !== 'ds') return '';
   if (!object(result) || result.valid !== true || !string(result.contextKey)) return '';
   const current = resolveSingleDose(form, source, context);
   if (!current.valid || current.contextKey !== result.contextKey) return '';
@@ -220,19 +226,18 @@ export function buildSingleDoseText(drug, form, source, result, context = {}) {
     'volumeWasteMl', 'containerMl', 'containerMicrograms', 'concentrationMicrogramsPerMl'];
   if (amounts.some(key => !same(result[key], current[key]))) return '';
   const label = string(form?.label) ? form.label.trim() : string(drug?.name) ? drug.name.trim() : 'Fentanyl WZF';
-  return [
-    'Zlecenie pojedynczego podania dożylnego — zapis do dokumentacji.',
-    `Preparat: ${label}.`,
-    `Stężenie nierozcieńczonego roztworu: ${numberText(current.concentrationMicrogramsPerMl)} mikrogramów/ml.`,
-    `Faza: ${source.phaseLabel}.`,
-    'Zakres: dorosły pacjent oddychający spontanicznie; pojedyncze podanie dożylne.',
-    `Dawka jednorazowa: ${numberText(current.activeDrugMicrograms)} mikrogramów fentanylu.`,
-    `Objętość do podania: ${numberText(current.volumeMl)} ml nierozcieńczonego roztworu, dożylnie.`,
-    `Ampułki jednorazowe do otwarcia: ${numberText(current.containersNeeded)} × ${numberText(current.containerMl)} ml; jedna ampułka zawiera ${numberText(current.containerMicrograms)} mikrogramów.`,
-    `Pozostałość po tym podaniu: ${numberText(current.volumeWasteMl)} ml — do usunięcia.`,
-    source.administration.trim(),
-    `Nadzór: ${source.monitoringText.trim()}`,
+  const dosing = [
+    `D.S. Podać jednorazowo ${numberText(current.activeDrugMicrograms)} mikrogramów fentanylu (${numberText(current.volumeMl)} ml nierozcieńczonego roztworu ${numberText(current.concentrationMicrogramsPerMl)} mikrogramów/ml), dożylnie, wolno.`,
+    `${source.phaseLabel.trim()}${source.phase === 'additional' ? ' po ponownej ocenie pacjenta' : ''}; dorosły oddychający spontanicznie.`,
+    source.monitoringText.trim(),
+    'Niewykorzystaną zawartość otwartych ampułek usunąć.',
     ...current.warnings.map(warning => `Uwaga: ${warning}`),
-    'Zapis dotyczy jednego podania. Nie wyznacza kolejnej dawki ani odstępu do jej podania.',
+  ].join(' ');
+  if (mode === 'ds') return dosing;
+  return [
+    'Rp. Fentanylum',
+    label,
+    `${numberText(current.containersNeeded)} amp. po ${numberText(current.containerMl)} ml — na pojedyncze podanie.`,
+    dosing,
   ].join('\n');
 }

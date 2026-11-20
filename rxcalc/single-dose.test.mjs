@@ -5,7 +5,7 @@ import { availableSingleDoseSources, resolveSingleDose, buildSingleDoseText } fr
 import { calculate } from './engine.js';
 import { supportsDailyDose } from './daily-dose.js';
 import { supportsDecimalRounding } from './decimal-rounding.js';
-import { singleDoseRegimenMarkup, updateSingleDoseView } from './single-dose-view.js';
+import { singleDoseRegimenMarkup, singleDoseResultMarkup, updateSingleDoseView } from './single-dose-view.js';
 
 const drug = CARDIO_FENTANYL_DRUGS.find(item => item.id === 'fentanyl');
 const form = drug.forms.find(item => item.id === 'fentanyl-wzf-50');
@@ -202,16 +202,24 @@ test('invalid dose, concentration, pack or blocked formulation cannot produce an
   }
 });
 
-test('administration text preserves the concentration, microgram dose, ml volume and IV route without a prescription or course', () => {
+test('Rp. and D.S. preserve the concentration, microgram dose, ml volume and IV route for one administration', () => {
   const context = contextFor(initial, { doseMicrograms:100 });
   const result = resolveSingleDose(form, initial, context);
   const text = buildSingleDoseText(drug, form, initial, result, context);
+  assert.match(text, /^Rp\. Fentanylum(?:\n|\s)/);
+  assert.equal((text.match(/^Rp\./gm) || []).length, 1);
+  assert.equal((text.match(/^D\.S\./gm) || []).length, 1);
   assert.match(text, /Fentanyl WZF/);
   assert.match(text, /50\s*(?:[µμ]g|mikrogramów)\s*\/\s*ml/);
   assert.match(text, /100\s*(?:[µμ]g|mikrogramów)/);
   assert.match(text, /2\s*ml/);
   assert.match(text, /dożyln|i\.v\./i);
-  assert.doesNotMatch(text, /(?:^|\n)\s*Rp\.|mg\/dobę|\d+\s*(?:razy? na dobę|dni)|przez\s+\d+/i);
+  assert.doesNotMatch(text, /mg\/dobę|\d+\s*(?:razy? na dobę|dni)|przez\s+\d+/i);
+  const ds = buildSingleDoseText(drug, form, initial, result, context, { mode:'ds' });
+  assert.match(ds, /^D\.S\./);
+  assert.doesNotMatch(ds, /^Rp\./m);
+  assert.equal(text.slice(text.indexOf('D.S.')), ds, 'both modes must preserve the same administration instructions');
+  assert.equal(buildSingleDoseText(drug, form, initial, result, context, { mode:'unknown' }), '');
   for (const key of ['frequency', 'days', 'dailyMg', 'dailyUnits', 'packages', 'totalUnits']) {
     assert.equal(Object.hasOwn(result, key), false, `single-administration output must not invent ${key}`);
   }
@@ -221,14 +229,16 @@ test('export revalidates dose, patient, source confirmations and selected ampoul
   const context = contextFor();
   const result = resolveSingleDose(form, initial, context);
   assert.ok(buildSingleDoseText(drug, form, initial, result, context));
-  for (const overrides of [
-    { doseMicrograms:200 }, { packId:'10x10ml' }, { age:17 }, { age:36 },
-    { sourceConfirmations:[] }, { specialty:'dental' },
-  ]) {
-    assert.equal(buildSingleDoseText(drug, form, initial, result, { ...context, ...overrides }), '', JSON.stringify(overrides));
+  for (const mode of ['full', 'ds']) {
+    for (const overrides of [
+      { doseMicrograms:200 }, { packId:'10x10ml' }, { age:17 }, { age:36 },
+      { sourceConfirmations:[] }, { specialty:'dental' },
+    ]) {
+      assert.equal(buildSingleDoseText(drug, form, initial, result, { ...context, ...overrides }, { mode }), '', `${mode}: ${JSON.stringify(overrides)}`);
+    }
+    assert.equal(buildSingleDoseText(drug, form, additional, result, contextFor(additional, { doseMicrograms:50 }), { mode }), '');
+    assert.equal(buildSingleDoseText(drug, { ...form, concentrationMicrogramsPerMl:500 }, initial, result, context, { mode }), '');
   }
-  assert.equal(buildSingleDoseText(drug, form, additional, result, contextFor(additional, { doseMicrograms:50 })), '');
-  assert.equal(buildSingleDoseText(drug, { ...form, concentrationMicrogramsPerMl:500 }, initial, result, context), '');
 });
 
 test('resolution and text do not modify frozen source, formulation or patient inputs', () => {
@@ -262,11 +272,43 @@ function viewFixture(context, source = initial) {
     return nodes.get(selector);
   };
   const result = resolveSingleDose(form, source, context);
-  const text = buildSingleDoseText(drug, form, source, result, context);
-  updateSingleDoseView({ querySelector }, { form, source, context, result,
-    confirmed:true, demo:false, text });
-  return { result, text, node:querySelector };
+  let text;
+  const update = (rxMode = 'full') => {
+    text = buildSingleDoseText(drug, form, source, result, context, { mode:rxMode });
+    updateSingleDoseView({ querySelector }, { form, source, context, result,
+      confirmed:true, demo:false, text, rxMode });
+  };
+  update();
+  return { result, get text() { return text; }, node:querySelector, update };
 }
+
+test('result markup exposes normal Rp./D.S. tabs and basket controls, and live mode changes update copy labels and content', () => {
+  const fixture = viewFixture(contextFor());
+  const fullText = fixture.text;
+  for (const mode of ['full', 'ds', 'full']) {
+    const markup = singleDoseResultMarkup({ form, state:{ rxMode:mode, packageId:'10x2ml', confirmed:false }, icon:() => '' });
+    const tabs = [...markup.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/g)].map(([, attributes, label]) => ({
+      ...Object.fromEntries([...attributes.matchAll(/([\w-]+)="([^"]*)"/g)].map(([, key, value]) => [key, value])), label,
+    })).filter(button => button['data-action'] === 'rx-mode');
+    assert.equal(tabs.length, 2);
+    assert.equal(tabs.find(tab => tab['data-value'] === mode)['aria-pressed'], 'true');
+    assert.equal(tabs.find(tab => tab['data-value'] !== mode)['aria-pressed'], 'false');
+    assert.equal(tabs.find(tab => tab['data-value'] === 'full').label, 'Rp. + D.S.');
+    assert.equal(tabs.find(tab => tab['data-value'] === 'ds').label, 'Zalecenia');
+    assert.match(markup, /id="cart-add"[^>]*data-action="cart-add"[^>]*disabled/);
+    assert.match(markup, /id="cart-editing-note"/);
+    assert.doesNotMatch(markup, /id="(?:frequency|days)"/);
+    fixture.update(mode);
+    assert.equal(fixture.node('#copy-button').innerHTML, mode === 'ds' ? 'Kopiuj zalecenia' : 'Kopiuj zapis');
+    assert.equal(fixture.node('#copy-button').disabled, false);
+    assert.equal(fixture.node('#rx-preview').textContent, fixture.text);
+    if (mode === 'full') assert.equal(fixture.text, fullText);
+    else {
+      assert.match(fixture.text, /^D\.S\./);
+      assert.doesNotMatch(fixture.text, /^Rp\./m);
+    }
+  }
+});
 
 test('an inherited age of 17 leaves the source and patient controls accessible, but copying waits for an eligible age', () => {
   const childAge = contextFor(initial, { age:17 });
@@ -300,7 +342,7 @@ test('a tiny positive entered amount remains positive in the real UI and export 
   assert.equal(fixture.result.volumeMl, 2e-11);
   const displayedVolume = Number(fixture.node('#single-dose-value').textContent.replace(',', '.').replace('−', '-'));
   assert.equal(displayedVolume, 2e-11);
-  const exportedVolume = /Objętość do podania: (\S+) ml/.exec(fixture.text)?.[1];
+  const exportedVolume = /\((\S+) ml nierozcieńczonego/.exec(fixture.text)?.[1];
   assert.equal(Number(exportedVolume?.replace(',', '.').replace('−', '-')), 2e-11);
   assert.doesNotMatch(fixture.node('#single-dose-current').textContent, /^0\s*µg$/);
 });

@@ -8,7 +8,7 @@ Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym
 
 Kategoria **Analgezja szpitalna** obejmuje Fentanyl WZF 50 mikrogramów/ml, w osobnym przeliczniku pojedynczego podania IV dla dorosłych oddychających spontanicznie. Lekarz wybiera etap (początkowy albo dodatkowy) i wpisuje dawkę w mikrogramach. Wynik pokazuje ml nierozcieńczonego roztworu, liczbę ampułek 2 albo 10 ml do otwarcia i pozostałość do usunięcia. Kartony 10/50 ampułek są oddzielone od wielkości pojedynczej ampułki.
 
-Odniesienie pochodzi z ogólnej tabeli ChPL, a nie osobnego protokołu OZW. Dawka nie jest ustawiana automatycznie. Widok nie wyznacza odstępu powtarzania, sumy dawek, wlewu, rozcieńczenia, dobowego schematu ani pediatrii. Kopiowany jest zapis jednego podania do dokumentacji, bez recepty `Rp.` i bez dodawania do koszyka kuracji. Granice tego wariantu i warunki monitorowania pozostają jawne. Szczegóły: [źródła i zakres fentanylu](cardio-fentanyl-notes.md).
+Odniesienie pochodzi z ogólnej tabeli ChPL, a nie osobnego protokołu OZW. Dawka nie jest ustawiana automatycznie. Widok nie wyznacza odstępu powtarzania, sumy dawek, wlewu, rozcieńczenia, dobowego schematu ani pediatrii. Zapis korzysta ze wspólnego formatu **Rp. + D.S.**, zakładki **Zalecenia** oraz koszyka recepty z edycją i kopiowaniem całości. Pełny zapis zaczyna się od `Rp. Fentanylum`, podaje liczbę ampułek do pojedynczego podania i dokładną ilość roztworu w `D.S.`. Liczba ampułek pozostaje odrębna od zawartości wybranego kartonu. Granice tego wariantu i warunki monitorowania pozostają jawne. Szczegóły: [źródła i zakres fentanylu](cardio-fentanyl-notes.md).
 
 ## Pokrycie schematami źródłowymi — 20.11.2026
 

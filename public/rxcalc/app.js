@@ -30,7 +30,7 @@ import { decimalRoundingMarkup, prescriptionCartMarkup } from './prescription-to
 import { playCartFeedback, cancelCartFeedback } from './cart-feedback.js';
 import { copyText, selectCopyText } from './clipboard.js';
 import { FENTANYL_SINGLE_DOSE_SOURCES } from './cardio-fentanyl.js';
-import { availableSingleDoseSources, resolveSingleDose, buildSingleDoseText } from './single-dose.js';
+import { availableSingleDoseSources, resolveSingleDose, buildSingleDoseText, formatSingleDoseNumber } from './single-dose.js';
 import { singleDoseRegimenMarkup, singleDoseResultMarkup, updateSingleDoseView } from './single-dose-view.js';
 
 const $ = (q, root = document) => root.querySelector(q);
@@ -784,11 +784,13 @@ function updateSingleDoseResult() {
   const form=getForm(),source=getSourceRegimen(),context=singleDoseContext();
   const result=resolveSingleDose(form,source,context);
   latest=result;
-  latestText=buildSingleDoseText(getDrug(),form,source,result,context);
-  latestTexts={full:latestText,ds:latestText};
+  latestTexts=Object.fromEntries(['full','ds'].map(mode=>[
+    mode,buildSingleDoseText(getDrug(),form,source,result,context,{mode}),
+  ]));
+  latestText=latestTexts[state.rxMode];
   if(!result.valid)state.confirmed=false;
   updateSingleDoseView(document,{form,source,context,result,confirmed:state.confirmed,
-    demo:state.demo,text:latestText});
+    demo:state.demo,text:latestText,rxMode:state.rxMode,icon});
 }
 function updateResult() {
   try { updateResultContent(); } finally {
@@ -982,7 +984,7 @@ function updateCartControls() {
   });
   const add=$('#cart-add');
   if(add){
-    add.disabled=isSingleDose(getForm())||!productReady()||!latest?.valid||!state.confirmed||state.demo;
+    add.disabled=!productReady()||!latest?.valid||!state.confirmed||state.demo||!latestTexts.full||!latestTexts.ds;
     add.innerHTML=icon('cart')+(editingCartId?'Zapisz zmiany w koszyku':'Dodaj do koszyka');
   }
   const editing=$('#cart-editing-note');
@@ -1004,17 +1006,29 @@ function cartDialog(notice='') {
   }),{cart:true});
 }
 function addToPrescriptionCart() {
-  if(isSingleDose(getForm())||!productReady()||!latest?.valid||!state.confirmed||state.demo)return;
-  const f=getForm(),pack=currentPackage(f),asNeeded=getSourceRegimen()?.asNeeded===true;
-  const summary=[isInstruction(f)?'Instrukcja stosowania':`${n(latest.singleUnits,10)} ${f.unitLabel} na podanie`,
+  if(!productReady()||!latest?.valid||!state.confirmed||state.demo||!latestTexts.full||!latestTexts.ds)return;
+  const f=getForm(),pack=currentPackage(f),source=getSourceRegimen(),asNeeded=source?.asNeeded===true;
+  const singleDose=isSingleDose(f);
+  const summary=singleDose?[
+    `${formatSingleDoseNumber(latest.doseMicrograms)} µg (${formatSingleDoseNumber(latest.volumeMl)} ml) jednorazowo`,
+    source?.phaseLabel,
+    `${formatSingleDoseNumber(latest.containersNeeded)} amp. × ${formatSingleDoseNumber(latest.containerMl)} ml`,
+  ].filter(Boolean).join(' · '):[isInstruction(f)?'Instrukcja stosowania':`${n(latest.singleUnits,10)} ${f.unitLabel} na podanie`,
     state.frequency!==''?`${asNeeded?'Doraźnie, do ':''}${n(num(state.frequency))} × na dobę`:'',
     dosingDuration({source:getSourceRegimen(),days:num(state.days)}).summary,
     isInstruction(f)?(state.instructionPacks!==''?`${state.instructionPacks} op. × ${pack.label}`:pack.label):`${asNeeded?'Do ':''}${n(latest.packages)} op. × ${pack.label}`,
   ].filter(Boolean).join(' · ');
+  const calculation=singleDose?{
+    calculationMode:'single-dose',doseMicrograms:latest.doseMicrograms,
+    activeDrugMicrograms:latest.activeDrugMicrograms,volumeMl:latest.volumeMl,
+    containersNeeded:latest.containersNeeded,containerMl:latest.containerMl,
+    volumeWasteMl:latest.volumeWasteMl,concentrationMicrogramsPerMl:latest.concentrationMicrogramsPerMl,
+    sourceId:latest.sourceId,packId:latest.packId,contextKey:latest.contextKey,
+    containersPerPack:pack.containersPerPack,packageVolumeMl:pack.quantity,
+  }:{singleUnits:latest.singleUnits,singleMg:latest.singleMg,dailyMg:latest.dailyMg,
+    totalUnits:latest.totalUnits,packages:latest.packages,packageSize:pack.quantity};
   const saved=savePrescriptionItem(prescriptionCart,{
-    snapshot:{...state,roundingPolicy:latest.rounding?.state==='rule'?latest.rounding.policy:null,
-      calculation:{singleUnits:latest.singleUnits,singleMg:latest.singleMg,dailyMg:latest.dailyMg,
-        totalUnits:latest.totalUnits,packages:latest.packages,packageSize:pack.quantity}},
+    snapshot:{...state,roundingPolicy:latest.rounding?.state==='rule'?latest.rounding.policy:null,calculation},
     label:f.label,summary,texts:{...latestTexts},
     valid:latest.valid,confirmed:state.confirmed,demo:state.demo,
   },{replaceId:editingCartId});
@@ -1124,13 +1138,14 @@ async function installApp() {
 function copyPrescription(button) {
   if(!productReady()||!latest?.valid||!state.confirmed||state.demo||!latestText)return;
   const text=latestText,dialog=$('#dialog'),dialogContent=dialog.firstElementChild;
-  const label=button.id==='mobile-copy'?'Kopiuj':!isSingleDose(getForm())&&state.rxMode==='ds'?'Kopiuj zalecenia':'Kopiuj zapis';
+  const currentLabel=()=>button.id==='mobile-copy'?'Kopiuj':state.rxMode==='ds'?'Kopiuj zalecenia':'Kopiuj zapis';
+  const label=currentLabel();
   copyPreparedText({text,button,label,
-    successMessage:isSingleDose(getForm())?'Zapis pojedynczego podania skopiowany.':'Dawkowanie skopiowane. Możesz wkleić je do dokumentacji.',
+    successMessage:'Dawkowanie skopiowane. Możesz wkleić je do dokumentacji.',
     isCurrent:()=>!dialog.open&&dialog.firstElementChild===dialogContent&&latestText===text&&latest?.valid&&state.confirmed&&!state.demo,
     onStale:()=>{
       button.disabled=!productReady()||!latest?.valid||!state.confirmed||state.demo||!latestText;
-      button.innerHTML=`${icon('copy')}${label}`;
+      button.innerHTML=`${icon('copy')}${currentLabel()}`;
     },
     onManualCopy:()=>manualCopyDialog(text)});
 }
@@ -1218,7 +1233,7 @@ function example() {
       const d=visibleFavorites().find(x=>x.id===value);if(!d)break;
       state.category='all';state.search='';state.routeFilter='all';chooseDrug(value);$('#dialog').close();renderProductSelection();break;
     }
-    case 'rx-mode':if(isSingleDose(getForm()))break;state.rxMode=value;document.querySelectorAll('[data-action=rx-mode]').forEach(x=>{x.classList.toggle('active',x.dataset.value===value);x.setAttribute('aria-pressed',String(x.dataset.value===value));});updateResult();break;
+    case 'rx-mode':if(!['full','ds'].includes(value))break;state.rxMode=value;document.querySelectorAll('[data-action=rx-mode]').forEach(x=>{x.classList.toggle('active',x.dataset.value===value);x.setAttribute('aria-pressed',String(x.dataset.value===value));});updateResult();break;
     case 'best-package':state.packageId=value;dirty();if($('#packageId'))$('#packageId').value=value;updateResult();break;
     case 'liquid-dose-view':{
       if(!['dose','volume'].includes(value)||!supportsLiquidDoseView(getForm(),{doseMode:state.doseMode,veterinary:isVeterinary()}))break;
