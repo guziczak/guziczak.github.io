@@ -17,11 +17,11 @@ export function dailyDoseMotionContext({note, form, source, specialty, patientTy
   return JSON.stringify([specialty, patientType, species, form?.id, source?.id,
     (note?.rows || []).map((row, index) => {
       const scheme = note.schemeRows?.[index];
-      // A rounding rule can remove a duplicate validation ceiling while the
-      // displayed source comparison stays the same. Only a bare limit meter
-      // uses that ceiling's provenance as its measurement identity.
-      return [row.name, row.unit, scheme ? ['scheme', scheme.kind, scheme.perKg]
-        : ['limit', note.ceilingKind, !positive(row.ceiling) && positive(row.ceilingPerKg)]];
+      const perKg = scheme?.perKg ?? (!positive(row.ceiling) && positive(row.ceilingPerKg));
+      // An out-of-source frequency can replace the source range with its known
+      // limit. It is still the same ingredient and measurement: the drawing's
+      // family is not a new identity. Bare limits keep their own provenance.
+      return [row.name, row.unit, source ? ['source', perKg] : ['limit', note.ceilingKind, perKg]];
     })]);
 }
 
@@ -31,8 +31,12 @@ function doseGeometry(node) {
       const classes = element.className.split(/\s+/);
       const band = classes.includes('dose-scheme-band');
       const centered = classes.some(name => ['dose-scheme-marker', 'dose-scheme-wall', 'dose-scheme-tick'].includes(name));
+      const fillPart = classes.includes('dose-safety-fill') ? 'base'
+        : classes.includes('dose-safety-excess') ? 'excess'
+        : classes.some(name => ['dose-scheme-fill', 'dose-reference-fill'].includes(name)) ? 'whole' : null;
+      const rowKey = `${index}:${row.querySelector('dt')?.textContent}`;
       return {element, centered, properties: band ? ['left', 'width'] : centered ? ['left'] : ['width'],
-        key: `${index}:${row.querySelector('dt')?.textContent}:${element.dataset?.doseMotion || element.className}`};
+        rowKey, fillPart, key: `${rowKey}:${element.dataset?.doseMotion || element.className}`};
     }));
 }
 
@@ -51,6 +55,27 @@ function geometryValues({element, centered, properties}, target = false) {
   }));
 }
 
+function rememberFillEdge(edges, entry, values) {
+  if (!entry.fillPart || !Number.isFinite(values?.width)) return;
+  // Zero excess must not turn a short base into a fictitious 80% fill.
+  const edge = entry.fillPart === 'excess' ? (values.width > 0 ? 80 + values.width : 0) : values.width;
+  edges.set(entry.rowKey, Math.max(edges.get(entry.rowKey) || 0, edge));
+}
+
+function fillFrames(from, to, part) {
+  const width = value => part === 'base' ? Math.min(value, 80)
+    : part === 'excess' ? Math.max(0, value - 80) : value;
+  const frames = [{width:`${width(from)}%`}, {width:`${width(to)}%`}];
+  const crossing = (80 - from) / (to - from);
+  // Both pieces follow one eased edge. Without this shared breakpoint, excess
+  // would grow from 80% before a shorter base had reached it, leaving a gap.
+  if (part !== 'whole' && crossing > 0 && crossing < 1) {
+    frames[0].offset = 0; frames[1].offset = 1;
+    frames.splice(1, 0, {width:`${width(80)}%`, offset:crossing});
+  }
+  return frames;
+}
+
 /** Numbers and warnings update immediately. The fill, source band, boundaries
  * and their labels interpolate together, including when the scale changes.
  * Read visible geometry before cancellation so rapid edits continue in place.
@@ -61,11 +86,12 @@ export function renderDailyDoseNote(node, markup, context = '') {
   const view = node.ownerDocument.defaultView;
   const reducedMotion = view?.matchMedia?.('(prefers-reduced-motion: reduce)');
   const canAnimate = previous?.context === context && !reducedMotion?.matches;
-  const geometry = new Map();
+  const geometry = new Map(), visibleEdges = new Map();
   if (canAnimate) {
     for (const entry of doseGeometry(node)) {
       const values = geometryValues(entry);
       if (values) geometry.set(entry.key, values);
+      rememberFillEdge(visibleEdges, entry, values);
     }
   }
   previous?.cancel();
@@ -78,14 +104,25 @@ export function renderDailyDoseNote(node, markup, context = '') {
   };
   dailyDoseViews.set(node, {markup, context, cancel});
   if (!canAnimate) return;
-  for (const entry of doseGeometry(node)) {
-    const from = geometry.get(entry.key), to = geometryValues(entry, true);
-    if (!from || !to || !entry.element.animate) continue;
-    const properties = entry.properties.filter(property => Number.isFinite(from[property]) && Number.isFinite(to[property]));
-    if (!properties.some(property => Math.abs(from[property] - to[property]) >= .01)) continue;
-    const frame = values => Object.fromEntries(properties.map(property => [property, `${values[property]}%`]));
+  const entries = doseGeometry(node).map(entry => ({...entry, to:geometryValues(entry, true)}));
+  const targetEdges = new Map();
+  for (const entry of entries) rememberFillEdge(targetEdges, entry, entry.to);
+  for (const entry of entries) {
+    if (!entry.to || !entry.element.animate) continue;
+    let frames;
+    if (entry.fillPart && visibleEdges.has(entry.rowKey) && targetEdges.has(entry.rowKey)) {
+      frames = fillFrames(visibleEdges.get(entry.rowKey), targetEdges.get(entry.rowKey), entry.fillPart);
+      if (!frames.some(frame => Math.abs(Number.parseFloat(frame.width) - Number.parseFloat(frames[0].width)) >= .01)) continue;
+    } else {
+      const from = geometry.get(entry.key), to = entry.to;
+      if (!from) continue;
+      const properties = entry.properties.filter(property => Number.isFinite(from[property]) && Number.isFinite(to[property]));
+      if (!properties.some(property => Math.abs(from[property] - to[property]) >= .01)) continue;
+      const frame = values => Object.fromEntries(properties.map(property => [property, `${values[property]}%`]));
+      frames = [frame(from), frame(to)];
+    }
     try {
-      animations.push(entry.element.animate([frame(from), frame(to)], {
+      animations.push(entry.element.animate(frames, {
         duration: 240, easing: 'ease-out',
       }));
     } catch { /* Older browsers still display the final, current value. */ }
@@ -160,7 +197,7 @@ function meterMarkup(row, note, comparisonAllowed) {
   const scaled = !['unknown','unconfirmed'].includes(model.state);
   const graphicLabel = model.ratio === null ? stateText
     : `${row.name}: ${n(model.value, 6)} ${unit}. ${label}: ${n(model.ceiling, 4)} ${unit}. ${percentText(model.ratio)}% granicy. ${model.clipped ? 'Pasek kończy się na 125%; rzeczywista wartość jest większa.' : ''}`;
-  const graphic = `<div class="dose-safety-meter ${scaled ? '' : 'unscaled'} ${model.state}" role="img" aria-label="${esc(graphicLabel)}"><span class="dose-safety-track"></span>${scaled ? `${model.fill === null ? '' : `<span class="dose-safety-fill" style="width:${model.fill}%"></span>${model.excess > 0 ? `<span class="dose-safety-excess" style="width:${model.excess}%"></span>` : ''}`}<span class="dose-safety-wall" aria-hidden="true"></span>${model.clipped ? '<span class="dose-safety-overflow" aria-hidden="true">›</span>' : ''}` : ''}</div>`;
+  const graphic = `<div class="dose-safety-meter ${scaled ? '' : 'unscaled'} ${model.state}" role="img" aria-label="${esc(graphicLabel)}"><span class="dose-safety-track"></span>${scaled ? `${model.fill === null ? '' : `<span class="dose-safety-fill" style="width:${model.fill}%"></span><span class="dose-safety-excess" style="width:${model.excess}%"></span>`}<span class="dose-safety-wall" aria-hidden="true"></span>${model.clipped ? '<span class="dose-safety-overflow" aria-hidden="true">›</span>' : ''}` : ''}</div>`;
   const axis = scaled ? '<div class="dose-safety-axis" aria-hidden="true"><span>0</span><span class="dose-safety-axis-limit">100% · granica</span><span>125%</span></div>' : '';
   const derived = row.derivedCeiling ? '<p class="dose-safety-derived">Z proporcji składników preparatu — nie jest to niezależne maksimum tej substancji.</p>' : '';
   return `${boundary}${weightBoundary}${graphic}${axis}<div class="dose-safety-status ${model.state}"><span>${esc(stateText)}</span>${comparison}</div>${derived}`;
