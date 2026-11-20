@@ -41,6 +41,10 @@ export function calculate(input = {}) {
   };
   // Some catalogue entries are reference-only concentrates. Unit mode must not
   // bypass a preparation requirement or expose their undiluted volume as a dose.
+  if (input.calculationMode === 'single-dose') {
+    result.errors.push('Ta postać wymaga przelicznika pojedynczego podania z jednostką właściwą dla preparatu. Nie jest schematem kuracji.');
+    return result;
+  }
   if (input.calculationBlocked === true) {
     result.errors.push('Preparat wymaga przygotowania przed podaniem. Automatyczne przeliczenie dawki i ilości preparatu jest niedostępne — sprawdź sposób przygotowania w aktualnej ChPL.');
     return result;

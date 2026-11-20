@@ -23,7 +23,7 @@ const proportional=(value,from,to)=>positive(value)===null||!from?null
 /** One slot policy for the app and the arithmetic preview. Qualitative topical
  * instructions and reference concentrates cannot become numeric calculations. */
 export function supportsDailyDose(form) {
-  return !!form && NUMERIC_FORMS.has(form.form) && form.calculationMode!=='instruction'
+  return !!form && NUMERIC_FORMS.has(form.form) && form.calculationMode!=='instruction' && form.calculationMode!=='single-dose'
     && form.referenceOnly!==true && form.calculationBlocked!==true;
 }
 

@@ -1,0 +1,30 @@
+.single-dose-panel .single-dose-scope{font-size:12px;line-height:1.65;color:var(--muted);margin:0 0 20px}
+.single-dose-panel .embedded-context{margin-top:24px}
+.single-dose-input{margin-top:22px}
+.single-dose-input .input-unit input{font-size:24px;font-weight:650;height:56px}
+.single-dose-input .input-unit>span{font-size:15px;font-weight:600}
+.single-dose-comparison{margin:24px 0;padding:20px;border:1px solid var(--border);border-radius:12px;background:var(--surface-soft)}
+.single-dose-comparison .section-heading{margin-bottom:16px}
+.single-dose-comparison h3{font-size:13px;margin:0}
+.single-dose-reference,.single-dose-entered{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12px;line-height:1.65;color:var(--muted)}
+.single-dose-reference strong{color:var(--ink);white-space:nowrap}
+.single-dose-entered{margin:16px 0}
+.single-dose-entered strong{font-size:23px;color:var(--ink);font-variant-numeric:tabular-nums}
+.single-dose-meter{height:10px;position:relative;isolation:isolate;background:var(--border);border-radius:6px;margin:22px 0 13px}
+.single-dose-fill{position:absolute;inset:0 auto 0 0;border-radius:6px;background:var(--accent);transition:width 240ms cubic-bezier(.22,1,.36,1),background-color 160ms ease}
+.single-dose-source-band{position:absolute;top:-5px;bottom:-5px;background:var(--accent);opacity:.13;border-radius:2px}
+.single-dose-marker{position:absolute;top:-7px;bottom:-7px;border-left:2px dashed var(--ink);z-index:1}
+.single-dose-meter.below .single-dose-fill{background:var(--warn)}
+.single-dose-meter.above .single-dose-fill{background:var(--red)}
+.single-dose-axis{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:10px}
+.single-dose-comparison-status{font-size:12px;line-height:1.6;margin:16px 0 8px;color:var(--ink)}
+.single-dose-comparison-status.below{color:var(--warn)}
+.single-dose-comparison-status.above{color:var(--red);font-weight:600}
+.single-dose-result .single-dose-pack-field{margin:12px 0 16px}
+.single-dose-result .single-dose-pack-field .package-select{margin:0}
+.single-dose-result .result-alerts:empty{display:none}
+.single-dose-result .result-actions{grid-template-columns:minmax(0,1fr)}
+.single-dose-result .copy-button{width:100%}
+@media(max-width:780px){.single-dose-reference{flex-wrap:wrap}.single-dose-panel .single-dose-scope,.single-dose-reference,.single-dose-entered,.single-dose-comparison-status{font-size:13px}.single-dose-comparison{padding:16px}.single-dose-comparison h3{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.single-dose-fill{transition:none}}
+@media(forced-colors:active){.single-dose-fill{background:Highlight;forced-color-adjust:none}.single-dose-marker{border-color:CanvasText}.single-dose-meter{outline:1px solid CanvasText}}

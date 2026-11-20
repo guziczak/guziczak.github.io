@@ -31,6 +31,7 @@ export function normalizeDecimalPlaces(value, fallback = 2) {
 export function supportsDecimalRounding(form, source = null) {
   if (!form || typeof form !== 'object' || Array.isArray(form)
     || form.referenceOnly || form.calculationBlocked
+    || form.calculationMode === 'single-dose'
     || form.calculationMode === 'instruction' || source?.doseMode === 'instruction') return false;
   const expected = continuousUnits[form.form];
   if (!expected || typeof form.unitLabel !== 'string'

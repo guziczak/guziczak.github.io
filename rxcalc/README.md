@@ -4,9 +4,15 @@ Lekki kalkulator dawkowania i zapotrzebowania na preparaty z interfejsem po pols
 
 Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym pliku nie stanowi potwierdzenia publikacji.
 
-## Pokrycie schematami źródłowymi — 19.11.2026
+## Fentanyl w kardiologii — 20.11.2026
 
-Wszystkie **56 aktywnych postaci** z obecnego katalogu mają przynajmniej jeden jawnie wybierany schemat źródłowy dla opisanego zastosowania: 19 stomatologicznych, 15 kardiologicznych i 22 weterynaryjne. Dodano 6 wariantów Nystatyny Teva, 61 wariantów kardiologicznych dla dorosłych oraz instrukcję profesjonalną Ligosanu. Nie oznacza to pokrycia wszystkich wskazań ani sytuacji klinicznych. Dwa warianty Chlo-Site, historyczny Dentomycin oraz koncentrat Enrobactin pozostają kartami referencyjnymi lub zablokowanymi z opisanym powodem.
+Kategoria **Analgezja szpitalna** obejmuje Fentanyl WZF 50 mikrogramów/ml, w osobnym przeliczniku pojedynczego podania IV dla dorosłych oddychających spontanicznie. Lekarz wybiera etap (początkowy albo dodatkowy) i wpisuje dawkę w mikrogramach. Wynik pokazuje ml nierozcieńczonego roztworu, liczbę ampułek 2 albo 10 ml do otwarcia i pozostałość do usunięcia. Kartony 10/50 ampułek są oddzielone od wielkości pojedynczej ampułki.
+
+Odniesienie pochodzi z ogólnej tabeli ChPL, a nie osobnego protokołu OZW. Dawka nie jest ustawiana automatycznie. Widok nie wyznacza odstępu powtarzania, sumy dawek, wlewu, rozcieńczenia, dobowego schematu ani pediatrii. Kopiowany jest zapis jednego podania do dokumentacji, bez recepty `Rp.` i bez dodawania do koszyka kuracji. Granice tego wariantu i warunki monitorowania pozostają jawne. Szczegóły: [źródła i zakres fentanylu](cardio-fentanyl-notes.md).
+
+## Pokrycie schematami źródłowymi — 20.11.2026
+
+Wszystkie **57 aktywnych postaci** z obecnego katalogu mają przynajmniej jeden jawnie wybierany schemat źródłowy albo tryb pojedynczego podania dla opisanego zastosowania: 19 stomatologicznych, 16 kardiologicznych i 22 weterynaryjne. Obejmuje to 6 wariantów Nystatyny Teva, 61 kuracyjnych wariantów kardiologicznych dla dorosłych, 2 etapy pojedynczego podania fentanylu oraz instrukcję profesjonalną Ligosanu. Nie oznacza to pokrycia wszystkich wskazań ani sytuacji klinicznych. Dwa warianty Chlo-Site, historyczny Dentomycin oraz koncentrat Enrobactin pozostają kartami referencyjnymi lub zablokowanymi z opisanym powodem.
 
 Paski porównują rzeczywistą ilość do dawki albo zakresu wybranego schematu. Wartość 100% oznacza źródłowy punkt odniesienia, a nie powszechny próg bezpieczeństwa. Odrębne limity pozostają osobno opisane. Widok obejmuje także preparaty weterynaryjne, pasty, żele, proszki, iniekcje i ilościowe postacie miejscowe; pasma masy rozwiązywane są dokładnie, bez interpolowania luk. Nystatyna jest przedstawiana w j.m.; instrukcjom bez liczbowej porcji nie dopisano ml, gramów ani fikcyjnego paska dawki.
 

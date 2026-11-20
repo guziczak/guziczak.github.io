@@ -7,12 +7,14 @@ import { availableHumanRegimens, resolveHumanRegimen } from './human-regimen-eng
 import { availableRegimens, resolveRegimen } from './regimen-engine.js';
 import { assessAnticoagulantEligibility } from './cardio-anticoagulant-regimens.js';
 import { calculate } from './engine.js';
+import { FENTANYL_SINGLE_DOSE_SOURCES } from './cardio-fentanyl.js';
+import { availableSingleDoseSources, resolveSingleDose } from './single-dose.js';
 
 const entries = DRUGS.flatMap(drug => drug.forms.map(form => ({ drug, form })));
 const byForm = new Map(entries.map(entry => [entry.form.id, entry]));
 const blocked = form => form.referenceOnly === true || form.calculationBlocked === true;
 const active = entries.filter(({ form }) => !blocked(form));
-const allRecords = [...HUMAN_REGIMENS, ...REGIMENS];
+const allRecords = [...HUMAN_REGIMENS, ...REGIMENS, ...FENTANYL_SINGLE_DOSE_SOURCES];
 
 // Deliberate example contexts establish usable coverage, not a treatment choice.
 // Every offered record is still selected explicitly and resolved separately.
@@ -42,12 +44,12 @@ function selectedHumanContext(record, context) {
     sourceConfirmations: (record.selectionRequirements || []).map(item => item.id) };
 }
 
-test('the current catalogue has 56 active formulations across all three specialties and four explicit exceptions', () => {
-  assert.equal(entries.length, 60);
-  assert.equal(active.length, 56);
+test('the current catalogue has 57 active formulations across all three specialties and four explicit exceptions', () => {
+  assert.equal(entries.length, 61);
+  assert.equal(active.length, 57);
   assert.deepEqual(Object.fromEntries(['dental', 'cardio', 'veterinary'].map(specialty => [specialty,
     active.filter(({ drug }) => drug.specialties.includes(specialty)).length])),
-  { dental: 19, cardio: 15, veterinary: 22 });
+  { dental: 19, cardio: 16, veterinary: 22 });
   assert.equal(new Set(DRUGS.map(drug => drug.id)).size, DRUGS.length);
   assert.equal(new Set(entries.map(({ form }) => form.id)).size, entries.length);
   assert.equal(new Set(allRecords.map(record => record.id)).size, allRecords.length);
@@ -58,7 +60,16 @@ test('every active formulation has an available source that resolves for an expl
   for (const { drug, form } of active) {
     let usable = false;
     const diagnostics = [];
-    if (drug.specialties.includes('veterinary')) {
+    if (form.calculationMode === 'single-dose') {
+      const context = { ...humanContext(form, drug.specialties[0]), packId:form.packOptions[0].id };
+      for (const record of availableSingleDoseSources(FENTANYL_SINGLE_DOSE_SOURCES, context)) {
+        const result = resolveSingleDose(form, record, { ...context,
+          doseMicrograms:record.referenceDoseMicrograms ?? record.minMicrograms,
+          sourceConfirmations:record.selectionRequirements.map(item => item.id) });
+        if (result.valid) usable = true;
+        else diagnostics.push(`${record.id}: ${result.errors.join(' ')}`);
+      }
+    } else if (drug.specialties.includes('veterinary')) {
       for (const species of form.targetSpecies || []) {
         const context = animalContext(form, species);
         const candidates = availableRegimens(REGIMENS, context);
@@ -109,7 +120,8 @@ test('all source assignments reference real active formulations and match their 
         for (const specialty of record.specialties) {
           assert.ok(entry.drug.specialties.includes(specialty), `${record.id}/${formId}: wrong specialty ${specialty}`);
           for (const patientType of record.patientTypes || ['adult', 'child']) {
-            assert.equal(availableHumanRegimens([record], { formId, specialty, patientType }).length, 1,
+            const available = record.calculationMode === 'single-dose' ? availableSingleDoseSources : availableHumanRegimens;
+            assert.equal(available([record], { formId, specialty, patientType }).length, 1,
               `${record.id}/${formId}: invalid source metadata or patient scope`);
           }
         }
@@ -149,6 +161,13 @@ test('four documented reference exceptions remain unavailable and cannot yield a
 test('an empty context or an absent explicit source never chooses a regimen or returns a dose', () => {
   assert.deepEqual(availableHumanRegimens(HUMAN_REGIMENS, {}), []);
   assert.deepEqual(availableRegimens(REGIMENS, {}), []);
+  assert.deepEqual(availableSingleDoseSources(FENTANYL_SINGLE_DOSE_SOURCES, {}), []);
+  for (const record of FENTANYL_SINGLE_DOSE_SOURCES) {
+    const result = resolveSingleDose(byForm.get(record.formIds[0]).form, record, {});
+    assert.equal(result.valid, false, record.id);
+    assert.equal(result.doseMicrograms, null, record.id);
+    assert.equal(result.volumeMl, null, record.id);
+  }
   for (const record of HUMAN_REGIMENS) {
     const result = resolveHumanRegimen(record, {});
     assert.equal(result.valid, false, record.id);

@@ -11,10 +11,11 @@ import { DENTAL_SYSTEMIC_FORM_ADDITIONS, DENTAL_SYSTEMIC_FORM_PATCHES, DENTAL_SY
 import { DENTAL_TOPICAL_DRUGS, DENTAL_TOPICAL_FORM_PATCHES } from './dental-topicals.js';
 import { NYSTATIN_FORM_PATCHES } from './nystatin-regimens.js';
 import { PERIODONTAL_FORM_PATCHES } from './periodontal-source-regimens.js';
+import { CARDIO_FENTANYL_DRUGS } from './cardio-fentanyl.js';
 
 export const CATALOGUE_META = Object.freeze({
-  version: '2026.11.19.sources.1',
-  updatedAt: '2026-11-19',
+  version: '2026.11.20.sources.2',
+  updatedAt: '2026-11-20',
   sourceCheckedAt: '2026-11-12',
   status: 'Wersja do weryfikacji',
   scope: 'Dane wybranych postaci i opakowań do przeliczeń. Dawka, wskazanie, interakcje i przeciwwskazania wymagają oceny lekarza na podstawie aktualnej ChPL.',
@@ -28,6 +29,7 @@ export const CATEGORIES = Object.freeze({
     { id: 'mucosa', label: 'Jama ustna' },
   ],
   cardio: [
+    { id: 'cardio-analgesia', label: 'Analgezja szpitalna' },
     { id: 'anticoagulants', label: 'Antykoagulanty' },
     { id: 'beta', label: 'Beta-blokery' },
     { id: 'bloodpressure', label: 'ACE-I / ARB' },
@@ -406,6 +408,7 @@ const BASE_DRUGS = [
   ...EQUINE_ANTIPARASITIC_DRUGS,
   ...DENTAL_SYSTEMIC_DRUG_ADDITIONS,
   ...DENTAL_TOPICAL_DRUGS,
+  ...CARDIO_FENTANYL_DRUGS,
 ];
 
 const dentalPatches = [...DENTAL_SYSTEMIC_FORM_PATCHES, ...DENTAL_TOPICAL_FORM_PATCHES,
