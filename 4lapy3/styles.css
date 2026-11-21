@@ -228,12 +228,15 @@
 /* Initial section links are positioned before their content is revealed. */
 html[data-entry-pending] main,html[data-entry-pending] .site-footer{visibility:hidden}
 
-/* Language changes keep content still; only translated header labels animate. */
+/* Language changes animate translated content while image snapshots stay still. */
 .site-menu [data-header-label],.language-switch [data-header-label]{display:inline-block}
 @media(prefers-reduced-motion:no-preference){
   @view-transition{navigation:auto}
   html[data-language-transition] .site-header{view-transition-name:language-header}
   html[data-language-transition] .mobile-contact{view-transition-name:language-contact}
+  html[data-language-transition] .hero-image{view-transition-name:language-hero-image}
+  html[data-language-transition] .about-photo{view-transition-name:language-about-image}
+  html[data-language-transition] .map-preview{view-transition-name:language-map-image}
   html[data-language-transition] .site-header [data-header-label='tagline']{view-transition-name:language-header-tagline}
   html[data-language-transition] .site-header [data-header-label='about']{view-transition-name:language-header-about}
   html[data-language-transition] .site-header [data-header-label='care']{view-transition-name:language-header-care}
@@ -246,11 +249,20 @@ html[data-entry-pending] main,html[data-entry-pending] .site-footer{visibility:h
   html[data-language-transition]::view-transition-group(language-header),
   html[data-language-transition]::view-transition-group(language-contact){animation:none}
   html[data-language-transition]::view-transition-image-pair(root){isolation:isolate}
-  /* Replace the page snapshot immediately, without moving or fading its images. */
-  html[data-language-transition]::view-transition-old(root){animation:none;opacity:0;mix-blend-mode:normal}
-  html[data-language-transition]::view-transition-new(root){animation:none;opacity:1;transform:none;mix-blend-mode:normal}
+  /* Text leaves before its translation enters; images are separate stationary layers. */
+  html[data-language-transition]::view-transition-old(root){animation:language-leave 280ms ease-in-out both;mix-blend-mode:normal}
+  html[data-language-transition]::view-transition-new(root){animation:language-enter 380ms ease-in-out 280ms both;mix-blend-mode:normal}
+  html[data-language-transition]::view-transition-group(language-hero-image),
+  html[data-language-transition]::view-transition-group(language-about-image),
+  html[data-language-transition]::view-transition-group(language-map-image){animation:none;z-index:1}
+  html[data-language-transition]::view-transition-old(language-hero-image),
+  html[data-language-transition]::view-transition-old(language-about-image),
+  html[data-language-transition]::view-transition-old(language-map-image){animation:none;opacity:0}
+  html[data-language-transition]::view-transition-new(language-hero-image),
+  html[data-language-transition]::view-transition-new(language-about-image),
+  html[data-language-transition]::view-transition-new(language-map-image){animation:none;opacity:1;transform:none;mix-blend-mode:normal}
   html[data-language-transition]::view-transition-group(language-header),
-  html[data-language-transition]::view-transition-group(language-contact){z-index:1}
+  html[data-language-transition]::view-transition-group(language-contact){z-index:2}
   html[data-language-transition]::view-transition-old(language-header),
   html[data-language-transition]::view-transition-old(language-contact){animation:none;opacity:0}
   html[data-language-transition]::view-transition-new(language-header),
@@ -262,7 +274,7 @@ html[data-entry-pending] main,html[data-entry-pending] .site-footer{visibility:h
   html[data-language-transition]::view-transition-group(language-header-reminder),
   html[data-language-transition]::view-transition-group(language-header-contact),
   html[data-language-transition]::view-transition-group(language-header-switch),
-  html[data-language-transition]::view-transition-group(language-header-call){animation-duration:280ms;animation-timing-function:steps(1,end);animation-fill-mode:both;z-index:2}
+  html[data-language-transition]::view-transition-group(language-header-call){animation-duration:280ms;animation-timing-function:steps(1,end);animation-fill-mode:both;z-index:3}
   html[data-language-transition]::view-transition-old(language-header-about),
   html[data-language-transition]::view-transition-old(language-header-care),
   html[data-language-transition]::view-transition-old(language-header-reminder),
@@ -293,6 +305,8 @@ html[data-entry-pending] main,html[data-entry-pending] .site-footer{visibility:h
     }
   }
 }
+@keyframes language-leave{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-10px)}}
+@keyframes language-enter{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes language-label-leave{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-3px)}}
 @keyframes language-label-enter{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
 @keyframes language-tagline-leave{from{opacity:1}to{opacity:0}}
