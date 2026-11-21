@@ -210,12 +210,14 @@ html[data-entry-pending] main,html[data-entry-pending] .site-footer{visibility:h
   @view-transition{navigation:auto}
   html[data-language-transition] .site-header{view-transition-name:language-header}
   html[data-language-transition] .mobile-contact{view-transition-name:language-contact}
+  html[data-language-transition]::view-transition{background:var(--paper)}
   html[data-language-transition]::view-transition-group(root),
   html[data-language-transition]::view-transition-group(language-header),
   html[data-language-transition]::view-transition-group(language-contact){animation:none}
   html[data-language-transition]::view-transition-image-pair(root){isolation:isolate}
-  html[data-language-transition]::view-transition-old(root){animation:language-fade-out 400ms ease-in-out both,language-lift 320ms cubic-bezier(.4,0,.2,1) both;mix-blend-mode:plus-lighter}
-  html[data-language-transition]::view-transition-new(root){animation:language-fade-in 400ms ease-in-out both,language-settle 460ms cubic-bezier(.4,0,.2,1) 80ms both;mix-blend-mode:plus-lighter}
+  /* Finish the old language before revealing the new one; no overlapping text. */
+  html[data-language-transition]::view-transition-old(root){animation:language-leave 280ms ease-in-out both;mix-blend-mode:normal}
+  html[data-language-transition]::view-transition-new(root){animation:language-enter 380ms ease-in-out 280ms both;mix-blend-mode:normal}
   html[data-language-transition]::view-transition-group(language-header),
   html[data-language-transition]::view-transition-group(language-contact){z-index:1}
   html[data-language-transition]::view-transition-old(language-header),
@@ -223,10 +225,8 @@ html[data-entry-pending] main,html[data-entry-pending] .site-footer{visibility:h
   html[data-language-transition]::view-transition-new(language-header),
   html[data-language-transition]::view-transition-new(language-contact){animation:none;mix-blend-mode:normal}
 }
-@keyframes language-fade-out{from{opacity:1}to{opacity:0}}
-@keyframes language-fade-in{from{opacity:0}to{opacity:1}}
-@keyframes language-lift{from{transform:translateY(0)}to{transform:translateY(-4px)}}
-@keyframes language-settle{from{transform:translateY(-4px)}to{transform:translateY(0)}}
+@keyframes language-leave{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-10px)}}
+@keyframes language-enter{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){
   @view-transition{navigation:none}
   ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
