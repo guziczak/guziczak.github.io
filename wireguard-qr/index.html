@@ -10,11 +10,11 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Plik ↔ QR — lokalny konwerter</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=4">
+  <link rel="stylesheet" href="./styles.css?v=5">
   <script src="./assets/qr-core.js" defer></script>
-  <script src="./assets/qr-transfer.js" defer></script>
-  <script src="./assets/zip-core.js" defer></script>
-  <script src="./app.js?v=6" defer></script>
+  <script src="./assets/qr-transfer.js?v=2" defer></script>
+  <script src="./assets/zip-core.js?v=2" defer></script>
+  <script src="./app.js?v=7" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#converter">Przejdź do konwertera</a>
@@ -61,9 +61,9 @@
             <p class="drop-subtitle">Kilka plików spakujemy razem do ZIP.</p>
             <button id="choose-file" class="button primary" type="button">Wybierz pliki</button>
             <input id="file-input" class="visually-hidden" type="file" multiple tabindex="-1" aria-label="Wybierz pliki do zakodowania">
-            <span class="drop-footnote">Plik lub gotowy ZIP do 256 KiB</span>
+            <span class="drop-footnote">Plik lub gotowy ZIP do 10 MiB</span>
           </div>
-          <p class="multi-file-help">Do spakowania: maks. 100 plików i 8 MiB łącznie. Gotowe archiwum musi zmieścić się w 256 KiB.</p>
+          <p class="multi-file-help">Do spakowania: maks. 100 plików i 32 MiB łącznie. Gotowe archiwum musi zmieścić się w 10 MiB.</p>
           <div class="sample-row"><span>Wypróbuj:</span><button id="sample-file" type="button" class="text-button">Jeden QR</button><span aria-hidden="true">·</span><button id="series-sample" type="button" class="text-button">Serię 5 kodów</button><span aria-hidden="true">·</span><button id="zip-sample" type="button" class="text-button">ZIP z 3 plików</button></div>
           <p id="encode-message" class="message" role="status" aria-live="polite"></p>
           <div id="source-details" class="file-details" hidden>
@@ -86,6 +86,14 @@
           <div id="qr-result" class="qr-result" hidden>
             <div class="qr-paper"><canvas id="qr-canvas" aria-label="Kod QR zawierający wybrany plik"></canvas></div>
             <p id="qr-caption" class="result-caption"></p>
+            <div id="transfer-estimate" class="transfer-estimate" hidden>
+              <p class="estimate-title">Czas jednego obiegu serii</p>
+              <div class="estimate-grid">
+                <div id="estimate-five-cell" class="estimate-cell"><span>5 kodów/s</span><strong id="estimate-five"></strong></div>
+                <div id="estimate-ten-cell" class="estimate-cell"><span>10 kodów/s</span><strong id="estimate-ten"></strong></div>
+              </div>
+              <p class="estimate-note">Szacunek. Pełny transfer może potrwać dłużej, jeśli kamera pominie część kodów.</p>
+            </div>
             <div id="series-controls" class="series-controls" hidden>
               <div class="playback-row"><button id="animation-toggle" class="button primary" type="button" aria-pressed="false">Odtwórz serię</button><fieldset id="frame-rate" class="rate-field"><legend>Tempo</legend><div class="rate-switch"><label><input class="visually-hidden" type="radio" name="frame-rate" value="5" aria-label="5 kodów na sekundę" checked><span>5/s</span></label><label><input class="visually-hidden" type="radio" name="frame-rate" value="10" aria-label="10 kodów na sekundę"><span>10/s</span></label></div></fieldset></div>
               <div class="frame-navigation"><button id="previous-frame" class="button secondary" type="button">Poprzedni</button><span id="frame-position">Fragment 1 z 1</span><button id="next-frame" class="button secondary" type="button">Następny</button></div>
@@ -155,11 +163,11 @@
     <aside class="privacy-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg><p><strong>QR z konfiguracją jest tak samo poufny jak plik.</strong> Może zawierać klucz prywatny VPN. Udostępniaj go wyłącznie swoim urządzeniom; po użyciu wybierz „Wyczyść”.</p></aside>
 
     <section class="help-section" aria-label="Jak to działa">
-      <details><summary>Czy mogę przesłać kilka plików w ZIP-ie?</summary><p>Tak. Wybierz lub przeciągnij kilka plików naraz, a strona skompresuje je lokalnie do jednego archiwum <code>pliki.zip</code> i przygotuje serię QR. Możesz też wybrać gotowy ZIP — jego zawartość zostanie przesłana bez zmian.</p><p>Na drugim urządzeniu otwórz tę stronę, wybierz „Odczytaj QR” i zeskanuj serię. Po zebraniu kompletu pobierzesz ZIP do rozpakowania na swoim urządzeniu. Gotowe archiwum może mieć do 256 KiB. Do pakowania przyjmujemy maksymalnie 100 plików o łącznym rozmiarze 8 MiB; stopień kompresji zależy od zawartości.</p><p>Pliki trafiają do głównego katalogu archiwum. Powtarzające się nazwy otrzymują kolejne numery, aby zachować wszystkie pliki.</p></details>
+      <details><summary>Czy mogę przesłać kilka plików w ZIP-ie?</summary><p>Tak. Wybierz lub przeciągnij kilka plików naraz, a strona skompresuje je lokalnie do jednego archiwum <code>pliki.zip</code> i przygotuje serię QR. Możesz też wybrać gotowy ZIP — jego zawartość zostanie przesłana bez zmian.</p><p>Na drugim urządzeniu otwórz tę stronę, wybierz „Odczytaj QR” i zeskanuj serię. Po zebraniu kompletu pobierzesz ZIP do rozpakowania na swoim urządzeniu. Gotowe archiwum może mieć do 10 MiB. Do pakowania przyjmujemy maksymalnie 100 plików o łącznym rozmiarze 32 MiB; stopień kompresji zależy od zawartości.</p><p>Pliki trafiają do głównego katalogu archiwum. Powtarzające się nazwy otrzymują kolejne numery, aby zachować wszystkie pliki.</p></details>
       <details><summary>Jak przenieść konfigurację WireGuarda na telefon?</summary><p>Wybierz gotowy plik konfiguracji klienta <code>.conf</code>. Jeśli mieści się w jednym zwykłym QR, otwórz na telefonie aplikację WireGuard, dodaj tunel i wybierz skanowanie QR.</p><p>Dla większego pliku uruchom serię. Na telefonie otwórz tę stronę, wybierz „Odczytaj QR” i uruchom kamerę. Po zebraniu wszystkich fragmentów pobierz odtworzony <code>.conf</code> i zaimportuj go z pliku w WireGuardzie. Skaner WireGuarda nie składa serii kodów. Konwerter obsługuje istniejące konfiguracje; nie tworzy serwera VPN ani nowych kluczy.</p></details>
       <details><summary>Jak działa seria i jakie tempo wybrać?</summary><p>Plik jest dzielony na fragmenty po 600 bajtów. Każdy ma osobny QR, a strona powtarza serię. Telefon zbiera fragmenty w dowolnej kolejności i pomija powtórzenia. Liczba kodów zależy od rozmiaru: 3 000 bajtów to 5 kodów, a 6 000 bajtów to 10.</p><p>Zacznij od 5 kodów na sekundę. Przełącznik „5/s · 10/s” pozwala zmienić tempo również podczas odtwarzania. Wyższe tempo pomaga wtedy, gdy kamera nadąża. Jeśli postęp stoi, wróć do 5/s, popraw ostrość albo zatrzymaj serię na brakującym fragmencie. Kamera pozostaje włączona do zakończenia odbioru lub wybrania „Zatrzymaj kamerę”.</p><p>Po zebraniu całości sprawdzana jest suma SHA-256. Dopiero po zgodnym wyniku można pobrać plik. Obca seria nie nadpisze odbieranej; „Reset odbioru” pozwala rozpocząć nową.</p></details>
       <details><summary>Czy pliki i klucze trafiają na serwer?</summary><p>Nie. Odczyt pliku, tworzenie QR i skanowanie wykonuje kod w Twojej przeglądarce. Ta strona nie wysyła zawartości, nie zapisuje jej w pamięci trwałej przeglądarki i nie korzysta z analityki ani zewnętrznych skryptów. GitHub Pages dostarcza jedynie pliki strony.</p><p>Pobrane pliki i obrazy pozostają tam, gdzie je zapiszesz. „Wyczyść” usuwa wyniki z otwartej strony, ale nie usuwa Twoich pobranych plików ani zrzutów ekranu.</p></details>
-      <details><summary>Jak duży plik mogę przesłać?</summary><p>Jeden zwykły QR mieści do 2 953 bajtów. Seria obsługuje tutaj pliki do 256 KiB, czyli 262 144 bajtów i maksymalnie 437 fragmentów. Większy plik oznacza dłuższe skanowanie; to narzędzie sprawdza się przy konfiguracjach, kluczach i niedużych dokumentach.</p><p>Odtworzona zawartość zachowuje bajty pliku, w tym polskie znaki i zakończenia linii. Serię trzeba odczytać na tej stronie. Pojedyncza zapisana klatka serii zawiera tylko jej fragment — do odtworzenia pliku potrzebny jest komplet.</p></details>
+      <details><summary>Jak duży plik mogę przesłać?</summary><p>Jeden zwykły QR mieści do 2 953 bajtów. Seria obsługuje plik lub gotowy ZIP do 10 MiB, czyli 10 485 760 bajtów i maksymalnie 17 477 fragmentów. To limit całej jednej paczki po kompresji. Kolejne paczki możesz przesyłać oddzielnie.</p><p>Przed odtwarzaniem zobaczysz szacowany czas jednego obiegu przy 5 i 10 kodach/s. Dla 10 MiB wynosi on około 58 lub 29 minut. Pominięte fragmenty i powtórki mogą wydłużyć odbiór.</p><p>Odtworzona zawartość zachowuje bajty pliku, w tym polskie znaki i zakończenia linii. Serię trzeba odczytać na tej stronie. Pojedyncza zapisana klatka serii zawiera tylko jej fragment — do odtworzenia pliku potrzebny jest komplet.</p></details>
     </section>
     <noscript><p class="noscript-message">Włącz JavaScript, aby konwertować pliki. Cała konwersja odbywa się lokalnie w przeglądarce.</p></noscript>
   </main>

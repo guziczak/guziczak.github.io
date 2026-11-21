@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
 
-  const MAX_FILE_BYTES = 262144;
+  const MAX_FILE_BYTES = 10 * 1024 * 1024;
   const CHUNK_BYTES = 600;
   const MAX_NAME_BYTES = 120;
   const FIXED_HEADER_BYTES = 72;
@@ -90,7 +90,7 @@
   async function createTransfer(bytes, filename) {
     if (!isBytes(bytes)) throw fail('INVALID_INPUT', 'Oczekiwano tablicy bajtów Uint8Array.');
     if (bytes.length === 0) throw fail('EMPTY_INPUT', 'Plik jest pusty.');
-    if (bytes.length > MAX_FILE_BYTES) throw fail('FILE_TOO_LARGE', 'Maksymalny rozmiar pliku to 256 KiB.');
+    if (bytes.length > MAX_FILE_BYTES) throw fail('FILE_TOO_LARGE', 'Maksymalny rozmiar pliku to 10 MiB.');
     const crypto = requireCrypto();
     // Copy before the asynchronous digest so callers cannot change data mid-transfer.
     const content = new Uint8Array(bytes);
@@ -142,7 +142,7 @@
     const total = view.getUint16(34);
     const chunkBytes = view.getUint16(36);
     const nameLength = view.getUint16(38);
-    if (size > MAX_FILE_BYTES) throw fail('FILE_TOO_LARGE', 'Kod deklaruje plik większy niż 256 KiB.');
+    if (size > MAX_FILE_BYTES) throw fail('FILE_TOO_LARGE', 'Kod deklaruje plik większy niż 10 MiB.');
     if (bytes[9] !== 0 || size === 0 || chunkBytes !== CHUNK_BYTES
       || total !== Math.ceil(size / CHUNK_BYTES) || index >= total
       || nameLength < 1 || nameLength > MAX_NAME_BYTES

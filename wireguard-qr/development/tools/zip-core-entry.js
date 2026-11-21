@@ -1,9 +1,9 @@
 import { deflateSync, Zip, ZipPassThrough } from 'fflate/browser';
 
 export const MAX_FILES = 100;
-export const MAX_INPUT_BYTES = 8 * 1024 * 1024;
+export const MAX_INPUT_BYTES = 32 * 1024 * 1024;
 // The caller enforces this transfer limit after compression, not before it.
-export const MAX_OUTPUT_BYTES = 256 * 1024;
+export const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
 const MAX_NAME_BYTES = 240;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
@@ -94,7 +94,7 @@ function validateFiles(files) {
       throw fail('INVALID_FILE', 'Wybrany element nie jest prawidłowym plikiem.');
     }
     inputBytes += file.size;
-    if (inputBytes > MAX_INPUT_BYTES) throw fail('INPUT_TOO_LARGE', 'Łączny rozmiar plików nie może przekroczyć 8 MiB.');
+    if (inputBytes > MAX_INPUT_BYTES) throw fail('INPUT_TOO_LARGE', 'Łączny rozmiar plików nie może przekroczyć 32 MiB.');
     pending.push({
       name: uniqueName(safeName(file.name), used),
       size: file.size,

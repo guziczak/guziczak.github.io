@@ -4,7 +4,7 @@
 
 ## API
 
-- `MAX_FILE_BYTES = 262144` (256 KiB).
+- `MAX_FILE_BYTES = 10485760` (10 MiB).
 - `CHUNK_BYTES = 600`.
 - `await createTransfer(Uint8Array, filename)` returns `{id, name, size, total, frames, digest}`. `id` and `digest` are lowercase hexadecimal strings; every element of `frames` is a binary `Uint8Array` ready for `WGQR.encodeBytes()`. The input is copied before the asynchronous digest.
 - `createCollector()` returns an object with `accept(bytes)`, `reset()`, and a read-only `state` getter. `state` is `null` or a detached snapshot containing `{id, name, size, total, received, missing, complete}`. `missing` uses **one-based** frame numbers.
@@ -33,7 +33,7 @@ All integers are unsigned and **big-endian**. Wire indices are zero-based. Every
 | 9 | 1 | Reserved flags: `0` |
 | 10 | 2 | Header length: `72 + filenameLength` |
 | 12 | 16 | Random transfer ID |
-| 28 | 4 | Total original file bytes, `1..262144` |
+| 28 | 4 | Total original file bytes, `1..10485760` |
 | 32 | 2 | Chunk index, `0..count-1` |
 | 34 | 2 | Chunk count, exactly `ceil(fileBytes / 600)` |
 | 36 | 2 | Nominal chunk size: `600` |
@@ -47,7 +47,9 @@ The payload is exactly `min(600, fileBytes - index * 600)` bytes. CRC uses the r
 
 The filename is reduced to its final path component; controls, bidirectional override/isolate characters, and BOM are removed; characters unsuitable for common filesystems are replaced; trailing spaces/dots are removed; reserved or empty names fall back to `plik.bin`. It is capped at 120 UTF-8 bytes without splitting a Unicode code point. Receivers reject invalid UTF-8 or a name that is not already in this safe form. Filename changes never alter the file bytes.
 
-A frame is at most **796 bytes**, comfortably within the QR core's correction-level M capacity. A 256 KiB file uses **437 frames**. The animation may loop at approximately five frames per second; receivers retain valid chunks across loops, skip identical duplicates, and report missing indices. The helper does not schedule the animation or read the camera.
+A frame is at most **796 bytes**, comfortably within the QR core's correction-level M capacity. A 10 MiB file uses **17,477 frames**, which fits the unchanged unsigned 16-bit count/index fields. The animation may loop at approximately five frames per second; receivers retain valid chunks across loops, skip identical duplicates, and report missing indices. The helper does not schedule the animation or read the camera. A complete uninterrupted cycle at that maximum size takes about 58 minutes at five frames per second; capture losses may require further cycles.
+
+Version 1 and the wire layout are unchanged. Small transfers produced by the earlier 256 KiB implementation remain valid. Older receivers retain their original size cap and must be updated to receive larger files.
 
 ## Validation and interoperability
 

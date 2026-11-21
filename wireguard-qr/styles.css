@@ -252,6 +252,14 @@ select:focus-visible { outline: 3px solid #489c7a; outline-offset: 3px; }
 .format-field>p { font-size: .875rem; color: #65765d; line-height: 1.6; margin: 9px 0 0; }
 .sample-row { flex-wrap: wrap; }
 .series-controls { width: min(100%, 390px); margin: 0 0 16px; }
+.transfer-estimate { width: min(100%, 390px); margin: 0 0 20px; text-align: left; }
+.estimate-title { margin: 0 0 8px; font-size: .875rem; font-weight: 600; color: #52684a; }
+.estimate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.estimate-cell { padding: 10px 12px; border: 1px solid #dce4d4; border-radius: 9px; background: #fff; }
+.estimate-cell>span { display: block; color: #65765d; font-size: .875rem; line-height: 1.4; }
+.estimate-cell>strong { display: block; margin-top: 4px; font-size: 1rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.estimate-cell.is-selected { background: #edf4e4; border-color: #7c9c63; }
+.estimate-note { margin: 8px 0 0; font-size: .875rem; color: #65765d; line-height: 1.6; }
 .playback-row { display: grid; grid-template-columns: 1fr 130px; align-items: end; gap: 12px; margin-bottom: 16px; }
 .playback-row>.button { min-height: 44px; }
 .rate-field { min-width: 0; padding: 0; margin: 0; border: 0; }

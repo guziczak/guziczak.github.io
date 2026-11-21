@@ -52,7 +52,7 @@ async function collectAll(collector, frames) {
 }
 
 test('transfer API has fixed limits, SHA-256, random identifiers, and valid frame CRCs', async () => {
-  assert.equal(transfer.MAX_FILE_BYTES, 262144);
+  assert.equal(transfer.MAX_FILE_BYTES, 10 * 1024 * 1024);
   assert.equal(transfer.CHUNK_BYTES, 600);
   assert.equal(typeof transfer.browser.fetch, 'undefined');
   assert.equal(typeof transfer.browser.localStorage, 'undefined');
@@ -279,13 +279,44 @@ test('file names are safe UTF-8 basenames capped at 120 bytes, including emoji b
   await assert.rejects(transfer.createCollector().accept(changed(normal.frames[0], bytes => { bytes[72] = 47; })), { code: 'MALFORMED_FRAME' });
 });
 
-test('maximum 256 KiB file assembles exactly with a dynamic count of 437 frames', async () => {
+test('maximum 10 MiB file assembles exactly with a dynamic count of 17477 frames', async context => {
   const bytes = pattern(transfer.MAX_FILE_BYTES);
+  const started = performance.now();
   const file = await transfer.createTransfer(bytes, 'duży-plik.bin');
-  assert.equal(file.total, 437);
+  const created = performance.now();
+  assert.equal(file.total, 17477);
+  assert.equal(new DataView(file.frames.at(-1).buffer).getUint16(32), 17476);
   const completed = await collectAll(transfer.createCollector(), [...file.frames].reverse());
+  const collected = performance.now();
   assertBytes(completed.bytes, bytes);
   assert.equal(completed.size, transfer.MAX_FILE_BYTES);
+  context.diagnostic(`10 MiB timing: create ${(created - started).toFixed(1)} ms; collect ${(collected - created).toFixed(1)} ms; ${file.total} frames.`);
+});
+
+test('legacy small version-1 frame remains accepted after the cap increase', async () => {
+  // Captured from the shipped 256 KiB implementation before increasing its cap.
+  const frame = Buffer.from('V0dRUi1YRlIBAABSlEBocNGfZgKXB1k4IpoYFwAAACAAAAABAlgACgAAeTD+ii78v0LLvsVpa5XdIPvqRPznTjsOGhRooGk2c3RhcnkuY29uZltJbnRlcmZhY2VdDQojIFphxbzDs8WCxIcg8J+UkQ0KI6GTEw==', 'base64');
+  const expected = Buffer.from('W0ludGVyZmFjZV0NCiMgWmHFvMOzxYLEhyDwn5SRDQo=', 'base64');
+  const result = await transfer.createCollector().accept(frame);
+  assert.equal(result.kind, 'complete');
+  assert.equal(result.name, 'stary.conf');
+  assert.equal(result.id, '94406870d19f660297075938229a1817');
+  assertBytes(result.bytes, expected);
+});
+
+test('a received declaration exactly one byte above 10 MiB is rejected before buffering', async () => {
+  const file = await transfer.createTransfer(pattern(1201), 'mały.conf');
+  const tooLarge = changed(file.frames[0], (_bytes, view) => {
+    view.setUint32(28, transfer.MAX_FILE_BYTES + 1);
+    view.setUint16(34, Math.ceil((transfer.MAX_FILE_BYTES + 1) / transfer.CHUNK_BYTES));
+  });
+  const collector = transfer.createCollector();
+  await assert.rejects(collector.accept(tooLarge), { code: 'FILE_TOO_LARGE' });
+  assert.equal(collector.state, null);
+  await collector.accept(file.frames[0]);
+  await assert.rejects(collector.accept(tooLarge), { code: 'FILE_TOO_LARGE' });
+  assert.equal(collector.state.received, 1);
+  assert.equal(collector.state.size, file.size);
 });
 
 test('invalid or excessive create input and missing Web Crypto produce explicit coded errors', async () => {

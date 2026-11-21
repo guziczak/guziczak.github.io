@@ -75,8 +75,8 @@ function assertContents(result, expected) {
 
 test('ZIP bundle exports bounded creation and magic detection without network, workers, extraction or eval', () => {
   assert.equal(zip.MAX_FILES, 100);
-  assert.equal(zip.MAX_INPUT_BYTES, 8 * 1024 * 1024);
-  assert.equal(zip.MAX_OUTPUT_BYTES, 262144);
+  assert.equal(zip.MAX_INPUT_BYTES, 32 * 1024 * 1024);
+  assert.equal(zip.MAX_OUTPUT_BYTES, 10 * 1024 * 1024);
   assert.deepEqual(Object.keys(zip.browser.WGZip).sort(), [
     'MAX_FILES', 'MAX_INPUT_BYTES', 'MAX_OUTPUT_BYTES', 'createArchive', 'isZip'
   ]);
@@ -131,8 +131,8 @@ test('unsafe paths and controls become flat basenames, while all duplicate and U
   }
 });
 
-test('compressible input larger than 256 KiB fits and DEFLATE is used only when it saves bytes', async () => {
-  const content = [new Uint8Array(512 * 1024).fill(65), new Uint8Array(randomBytes(4096)), new Uint8Array()];
+test('compressible input larger than 10 MiB fits and DEFLATE is used only when it saves bytes', async () => {
+  const content = [new Uint8Array(11 * 1024 * 1024).fill(65), new Uint8Array(randomBytes(4096)), new Uint8Array()];
   const result = await zip.createArchive(content.map((bytes, index) => file(['duży.txt', 'losowy.bin', 'pusty.bin'][index], bytes)));
   assert.ok(result.inputBytes > zip.MAX_OUTPUT_BYTES);
   assert.ok(result.bytes.length < zip.MAX_OUTPUT_BYTES);
@@ -161,7 +161,7 @@ test('count and cumulative raw-size limits are enforced before reading any file'
   assert.equal(reads, 0);
 });
 
-test('exact input boundaries support 8 MiB of compressible content and 100 zero-byte files', async () => {
+test('exact input boundaries support 32 MiB of compressible content and 100 zero-byte files', async () => {
   const bytes = new Uint8Array(zip.MAX_INPUT_BYTES).fill(97);
   const large = await zip.createArchive([file('limit.txt', bytes)]);
   assert.equal(large.inputBytes, zip.MAX_INPUT_BYTES);

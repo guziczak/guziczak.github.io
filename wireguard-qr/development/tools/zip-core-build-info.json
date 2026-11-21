@@ -3,8 +3,8 @@
   "dependencies": {
     "fflate": "0.8.2"
   },
-  "bundleBytes": 14359,
-  "bundleSha256": "d166dceec412968450b97753cf4604822a4f2e1019f5ab056c64843faf197846",
+  "bundleBytes": 14365,
+  "bundleSha256": "2b468a76732e706d6d55fda447534a0a31f9d5b0c2fa875626ca2b273efebcd8",
   "inputs": [
     "node_modules/fflate/esm/browser.js",
     "tools/zip-core-entry.js"

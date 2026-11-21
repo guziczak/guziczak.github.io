@@ -18,7 +18,7 @@ Dostępne są przykłady pojedynczego QR, serii pięciu kodów (3 000 bajtów) o
 
 Wybór lub przeciągnięcie co najmniej dwóch plików uruchamia kompresję ZIP w przeglądarce. Po spakowaniu interfejs pokazuje nazwy plików i rozmiar gotowego archiwum. Przycisk **Pobierz ZIP** pozwala zachować kopię po stronie nadawcy. Odbiornik pobiera jedno archiwum, które rozpakowuje się standardowymi narzędziami urządzenia; strona nie wyodrębnia ani nie uruchamia zawartości archiwów.
 
-Do pakowania można wybrać maksymalnie **100 plików** o łącznym rozmiarze do **8 MiB przed kompresją**. Gotowy ZIP musi mieć najwyżej **256 KiB**, razem z nagłówkami i nazwami. Kompresja może pozwolić na wysłanie większej ilości tekstu; dane już skompresowane mogą się niewiele zmniejszyć. Pliki zbyt duże po spakowaniu są odrzucane przed tworzeniem serii QR.
+Do pakowania można wybrać maksymalnie **100 plików** o łącznym rozmiarze do **32 MiB przed kompresją**. Gotowy ZIP musi mieć najwyżej **10 MiB**, razem z nagłówkami i nazwami. Kompresja może pozwolić na wysłanie większej ilości tekstu; dane już skompresowane mogą się niewiele zmniejszyć. Pliki zbyt duże po spakowaniu są odrzucane przed tworzeniem serii QR.
 
 Pliki znajdują się w głównym katalogu ZIP-a. Nazwy są oczyszczane z elementów ścieżek i niedozwolonych znaków. Powtarzające się nazwy dostają numery, aby nie zastępować innych wpisów. Zawartość każdego pliku jest zachowana bajt po bajcie, także dla pustych plików wewnątrz paczki. ZIP nie jest szyfrowany.
 
@@ -37,7 +37,9 @@ Pliki znajdują się w głównym katalogu ZIP-a. Nazwy są oczyszczane z element
 
 Jeden zwykły kod: maksymalnie **2 953 bajty**. Do 2 331 bajtów używana jest korekcja M, powyżej korekcja L. Limit dotyczy bajtów, a nie liczby liter. Duże kody wymagają ostrego obrazu i odpowiedniej wielkości na ekranie.
 
-Seria: maksymalnie **256 KiB (262 144 bajty)**, po **600 bajtów pliku na fragment**; liczba fragmentów wynika z rozmiaru. Plik 3 000 B ma 5 kodów, a maksymalny — 437. Pełne ramki z metadanymi mają do 796 bajtów i mieszczą się w korekcji M. Opuszczone klatki wracają w następnych obiegach. 5 lub 10 kodów/s jest ustawieniem tempa wyświetlania; skuteczna szybkość zależy od kamery, ekranu, oświetlenia, ostrości oraz powtórzeń. Nie obiecujemy odczytania każdej klatki w pierwszym obiegu.
+Seria: maksymalnie **10 MiB (10 485 760 bajtów)**, po **600 bajtów pliku na fragment**; liczba fragmentów wynika z rozmiaru. Plik 3 000 B ma 5 kodów, a maksymalny — 17 477. To limit jednego pliku lub całego ZIP-a po kompresji. Kolejne paczki można wysyłać oddzielnie, resetując odbiornik pomiędzy transferami. Pełne ramki z metadanymi mają do 796 bajtów i mieszczą się w korekcji M. Opuszczone klatki wracają w następnych obiegach. 5 lub 10 kodów/s jest ustawieniem tempa wyświetlania; skuteczna szybkość zależy od kamery, ekranu, oświetlenia, ostrości oraz powtórzeń. Nie obiecujemy odczytania każdej klatki w pierwszym obiegu.
+
+Przed odtwarzaniem strona pokazuje **szacowany czas jednego pełnego obiegu** dla 5 i 10 kodów/s, obliczony jako liczba fragmentów podzielona przez tempo. Wyróżnia wybrane tempo, bez automatycznego uruchamiania odtwarzania. Dla maksymalnych 10 MiB to około 58 minut 16 sekund przy 5/s albo 29 minut 8 sekund przy 10/s. To szacunek nadawcy, bez informacji zwrotnej z odbiornika; brakujące fragmenty mogą wymagać następnych obiegów. Nie jest to odliczanie do gwarantowanego zakończenia.
 
 Protokół jest opisany w [protocol.md](protocol.md). Jest przeznaczony do przesyłania między dwoma egzemplarzami tej strony i nie implementuje standardu UR ani kodów fountain. Zachowuje nazwę pliku po usunięciu niebezpiecznych znaków i ograniczeniu jej długości. Nazwa nie wpływa na zawartość pliku.
 

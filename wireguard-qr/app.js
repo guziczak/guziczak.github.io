@@ -18,12 +18,13 @@
     'download-qr-label', 'receiving-progress', 'receiving-name',
     'receiving-count', 'receiving-progressbar', 'receiving-missing',
     'reset-receiver', 'receiving-help', 'zip-sample', 'zip-details',
-    'zip-count', 'zip-entries', 'download-source-zip'
+    'zip-count', 'zip-entries', 'download-source-zip', 'transfer-estimate',
+    'estimate-five', 'estimate-ten', 'estimate-five-cell', 'estimate-ten-cell'
   ].forEach((id) => { ui[id] = $(id); });
 
   const MAX_BYTES = 2953;
   const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-  const DEFAULT_CAPACITY = 'Jeden QR: do 2953 B. Seria QR: do 256 KiB. Odtwarzanie serii zaczyna się od pauzy.';
+  const DEFAULT_CAPACITY = 'Jeden QR: do 2953 B. Seria QR: do 10 MiB. Odtwarzanie serii zaczyna się od pauzy.';
   let mode = 'encode';
   let sourceBytes = null;
   let decodedBytes = null;
@@ -147,6 +148,7 @@
     ui['zip-entries'].replaceChildren();
     ui['zip-entries'].hidden = true;
     ui['download-source-zip'].disabled = true;
+    updateTransferEstimate();
   }
   function clearDecoded() {
     if (decodedBytes) decodedBytes.fill(0);
@@ -263,6 +265,23 @@
   function selectedFrameRate() {
     return ui['frame-rate'].querySelector('input:checked')?.value === '10' ? 10 : 5;
   }
+  function formatPassTime(frames, rate) {
+    const nominalSeconds = frames / rate;
+    if (nominalSeconds < 1) return '< 1 s';
+    const totalSeconds = Math.ceil(nominalSeconds);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor(totalSeconds % 3600 / 60);
+    const seconds = totalSeconds % 60;
+    return [hours ? `${hours} h` : '', minutes ? `${minutes} min` : '', seconds ? `${seconds} s` : ''].filter(Boolean).join(' ');
+  }
+  function updateTransferEstimate() {
+    ui['transfer-estimate'].hidden = !series;
+    ui['estimate-five'].textContent = series ? formatPassTime(series.total, 5) : '';
+    ui['estimate-ten'].textContent = series ? formatPassTime(series.total, 10) : '';
+    const rate = series ? selectedFrameRate() : null;
+    ui['estimate-five-cell'].classList.toggle('is-selected', rate === 5);
+    ui['estimate-ten-cell'].classList.toggle('is-selected', rate === 10);
+  }
   function startAnimation() {
     if (!series || mode !== 'encode' || document.hidden) return;
     pauseAnimation();
@@ -341,7 +360,7 @@
     }
     const inputBytes = files.reduce((total, file) => total + file.size, 0);
     if (inputBytes > window.WGZip.MAX_INPUT_BYTES) {
-      message('encode-message', 'Wybrane pliki mają łącznie więcej niż 8 MiB. Wybierz mniejszy zestaw.', 'error');
+      message('encode-message', 'Wybrane pliki mają łącznie więcej niż 32 MiB. Wybierz mniejszy zestaw.', 'error');
       status('Przekroczono limit plików przed spakowaniem');
       return;
     }
@@ -354,7 +373,7 @@
       archive = await window.WGZip.createArchive(files, { isCurrent });
       if (!isCurrent()) return;
       if (archive.bytes.length > window.WGTransfer.MAX_FILE_BYTES) {
-        message('encode-message', `Gotowy ZIP ma ${byteCount(archive.bytes.length)} i przekracza limit serii 256 KiB. Wybierz mniej lub mniejsze pliki. Archiwum nie zostało przesłane ani skrócone.`, 'error');
+        message('encode-message', `Gotowy ZIP ma ${byteCount(archive.bytes.length)} i przekracza limit serii 10 MiB. Wybierz mniej lub mniejsze pliki. Archiwum nie zostało przesłane ani skrócone.`, 'error');
         status('Archiwum ZIP jest za duże na serię QR');
         return;
       }
@@ -370,7 +389,7 @@
       if (!isCurrent() || error.code === 'CANCELLED') return;
       clearSource();
       const text = error.code === 'TOO_MANY_FILES' ? 'Do archiwum można dodać najwyżej 100 plików.'
-        : error.code === 'INPUT_TOO_LARGE' ? 'Wybrane pliki przekraczają łącznie 8 MiB.'
+        : error.code === 'INPUT_TOO_LARGE' ? 'Wybrane pliki przekraczają łącznie 32 MiB.'
           : error.code === 'READ_FAILED' || error.code === 'FILE_SIZE_CHANGED'
             ? 'Nie udało się w całości odczytać jednego z plików. Wybierz je ponownie.'
             : 'Nie udało się utworzyć archiwum ZIP. Wybierz pliki ponownie.';
@@ -395,7 +414,7 @@
     const requestedMode = ui['transfer-mode'].value;
     let useSeries = requestedMode === 'series' || (requestedMode === 'auto' && file.size > MAX_BYTES);
     if (file.size > window.WGTransfer.MAX_FILE_BYTES) {
-      message('encode-message', `Plik ma ${byteCount(file.size)}. Maksymalny rozmiar serii to 256 KiB. Wybierz mniejszy plik.`, 'error');
+      message('encode-message', `Plik ma ${byteCount(file.size)}. Maksymalny rozmiar serii to 10 MiB. Wybierz mniejszy plik.`, 'error');
       status('Plik przekracza limit serii QR');
       return;
     }
@@ -439,6 +458,7 @@
         ui['frame-slider'].max = String(series.total);
         ui['frame-slider'].value = '1';
         showFrame(0);
+        updateTransferEstimate();
         ui['download-qr-label'].textContent = 'Pobierz tę klatkę';
         ui['transfer-info'].textContent = inputIsZip
           ? 'Na drugim urządzeniu wybierz „Odczytaj QR”. Po odebraniu całości pobierzesz ZIP do rozpakowania.'
@@ -915,6 +935,7 @@
   ui['next-frame'].addEventListener('click', () => { if (series) manualFrame((frameIndex + 1) % series.total); });
   ui['frame-slider'].addEventListener('input', () => manualFrame(Number(ui['frame-slider'].value) - 1));
   ui['frame-rate'].addEventListener('change', () => {
+    updateTransferEstimate();
     if (animationPlaying) startAnimation();
     else status(`Ustawiono ${selectedFrameRate()} kodów/s — naciśnij „Odtwórz serię”`);
   });
