@@ -19,7 +19,13 @@
     'receiving-count', 'receiving-progressbar', 'receiving-missing',
     'reset-receiver', 'receiving-help', 'zip-sample', 'zip-details',
     'zip-count', 'zip-entries', 'download-source-zip', 'transfer-estimate',
-    'estimate-five', 'estimate-ten', 'estimate-five-cell', 'estimate-ten-cell'
+    'estimate-one', 'estimate-two', 'estimate-five', 'estimate-ten',
+    'estimate-one-cell', 'estimate-two-cell', 'estimate-five-cell', 'estimate-ten-cell',
+    'qr-density', 'scan-metrics', 'scan-rate', 'scan-latency', 'scan-advice',
+    'expand-qr', 'close-expanded', 'show-feedback', 'feedback-canvas',
+    'feedback-panel', 'feedback-caption', 'close-feedback', 'resume-receiving',
+    'scan-feedback', 'feedback-scan-panel', 'feedback-video', 'stop-feedback-camera',
+    'feedback-message', 'feedback-image-input', 'choose-feedback-image'
   ].forEach((id) => { ui[id] = $(id); });
 
   const MAX_BYTES = 2953;
@@ -34,27 +40,44 @@
   let decodeEpoch = 0;
   let cameraEpoch = 0;
   let cameraStream = null;
+  let cameraScanner = null;
   let cancelCameraScan = null;
+  let feedbackEpoch = 0;
+  let feedbackStream = null;
+  let feedbackScanner = null;
+  let cancelFeedbackScan = null;
+  let feedbackImageBusy = false;
   let pendingImageCancel = null;
   let series = null;
   let frameIndex = 0;
   let animationTimer = null;
   let animationPlaying = false;
-  let animationCycle = 0;
-  let animationOrder = [];
-  let animationPosition = 0;
+  let transmissionPhase = 'source';
+  let sourcePassShown = 0;
+  let nextSourceFrame = 0;
+  let repairBlocks = [];
+  let repairCursor = 0;
+  let repairSerial = 0;
+  let currentRepair = null;
+  let animationTick = 0;
   let receiverEpoch = 0;
   let receiverChain = Promise.resolve();
   let collector = null;
+  let receiverSnapshot = null;
+  let progressTimer = null;
+  let pendingProgress = null;
+  let lastProgressPaint = 0;
+  let expandedReturnFocus = null;
+  let metrics = { started: 0, lastPaint: 0, latency: 0, attempts: 0, successes: 0, events: [], rate: 0, recommended: 2 };
   const matrixCache = new Map();
   const pendingUrls = new Set();
   const scanCanvas = document.createElement('canvas');
   const scanContext = scanCanvas.getContext('2d', { willReadFrequently: true });
 
-  function status(text) { ui['status-bar'].textContent = text; }
+  function status(text) { if (ui['status-bar'].textContent !== text) ui['status-bar'].textContent = text; }
   function message(target, text = '', kind = '') {
-    ui[target].textContent = text;
-    ui[target].dataset.kind = kind;
+    if (ui[target].textContent !== text) ui[target].textContent = text;
+    if (ui[target].dataset.kind !== kind) ui[target].dataset.kind = kind;
   }
   function byteCount(count) { return `${count.toLocaleString('pl-PL')} B`; }
   function fileCount(count) {
@@ -96,11 +119,35 @@
     ui['source-preview'].textContent = '';
     ui['decoded-preview'].textContent = '';
   }
+  function openExpanded() {
+    if (!sourceBytes || ui['qr-result'].hidden) return;
+    expandedReturnFocus = document.activeElement;
+    document.body.classList.add('qr-expanded');
+    ui['qr-result'].setAttribute('role', 'dialog');
+    ui['qr-result'].setAttribute('aria-modal', 'true');
+    ui['qr-result'].setAttribute('aria-label', 'Powiększony kod QR i sterowanie transferem');
+    ui['close-expanded'].hidden = false;
+    ui['close-expanded'].focus();
+  }
+  function closeExpanded(restoreFocus = true) {
+    const wasExpanded = document.body.classList.contains('qr-expanded');
+    document.body.classList.remove('qr-expanded');
+    ui['qr-result'].removeAttribute('role');
+    ui['qr-result'].removeAttribute('aria-modal');
+    ui['qr-result'].removeAttribute('aria-label');
+    ui['close-expanded'].hidden = true;
+    if (wasExpanded && restoreFocus) {
+      const target = expandedReturnFocus && expandedReturnFocus.isConnected ? expandedReturnFocus : ui['expand-qr'];
+      target.focus();
+    }
+    expandedReturnFocus = null;
+  }
   function encodeBusy(busy) {
     ui['choose-file'].disabled = busy;
     ui['sample-file'].disabled = busy;
     ui['series-sample'].disabled = busy;
     ui['zip-sample'].disabled = busy;
+    ui['qr-density'].disabled = busy;
     ui['download-source-zip'].disabled = busy || !sourceBytes || !window.WGZip.isZip(sourceBytes);
     ui['transfer-mode'].disabled = busy;
     ui['file-drop'].setAttribute('aria-busy', String(busy));
@@ -112,13 +159,17 @@
   }
   function clearSource() {
     pauseAnimation();
-    if (series) series.frames.forEach((frame) => frame.fill(0));
+    stopFeedbackCamera();
+    closeExpanded(false);
+    if (series) series.dispose();
     series = null;
     matrixCache.forEach((matrix) => matrix.data.fill(0));
     matrixCache.clear();
     frameIndex = 0;
-    animationOrder = [];
-    animationCycle = animationPosition = 0;
+    transmissionPhase = 'source';
+    sourcePassShown = nextSourceFrame = repairCursor = repairSerial = animationTick = 0;
+    repairBlocks = [];
+    currentRepair = null;
     if (sourceBytes) sourceBytes.fill(0);
     sourceBytes = null;
     sourceName = '';
@@ -148,6 +199,10 @@
     ui['zip-entries'].replaceChildren();
     ui['zip-entries'].hidden = true;
     ui['download-source-zip'].disabled = true;
+    ui['animation-toggle'].disabled = false;
+    ui['scan-feedback'].disabled = true;
+    ui['feedback-message'].textContent = '';
+    ui['feedback-image-input'].value = '';
     updateTransferEstimate();
   }
   function clearDecoded() {
@@ -171,6 +226,8 @@
     cameraEpoch += 1;
     if (cancelCameraScan) cancelCameraScan();
     cancelCameraScan = null;
+    if (cameraScanner) cameraScanner.dispose();
+    cameraScanner = null;
     if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
     cameraStream = null;
     ui['camera-video'].pause();
@@ -193,6 +250,8 @@
     clearSource();
     clearDecoded();
     resetCollector();
+    hideFeedback();
+    resetMetrics();
     encodeBusy(false);
     decodeBusy(false);
     pendingUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -208,6 +267,9 @@
       decodeEpoch += 1;
       cancelImageRead();
       stopCamera();
+      stopFeedbackCamera();
+      hideFeedback();
+      closeExpanded(false);
       pauseAnimation();
       encodeBusy(false);
       closePreviews();
@@ -226,22 +288,25 @@
     if (animationTimer !== null) window.clearTimeout(animationTimer);
     animationTimer = null;
     animationPlaying = false;
-    ui['animation-toggle'].textContent = 'Odtwórz serię';
+    ui['animation-toggle'].textContent = transmissionPhase === 'confirmed' ? 'Odbiór potwierdzony' : 'Odtwórz serię';
     ui['animation-toggle'].setAttribute('aria-pressed', 'false');
-    if (series && mode === 'encode') {
+    if (series && mode === 'encode' && transmissionPhase !== 'confirmed') {
       message('encode-message', 'Seria jest wstrzymana. Możesz ją wznowić lub wybrać brakujący fragment ręcznie.', 'success');
       status('Seria QR — odtwarzanie wstrzymane');
     }
   }
-  function frameMatrix(index) {
-    if (matrixCache.has(index)) {
-      const cached = matrixCache.get(index);
-      matrixCache.delete(index);
-      matrixCache.set(index, cached);
+  function frameMatrix(key, makeBytes) {
+    if (matrixCache.has(key)) {
+      const cached = matrixCache.get(key);
+      matrixCache.delete(key);
+      matrixCache.set(key, cached);
       return cached;
     }
-    const matrix = window.WGQR.encodeBytes(series.frames[index]);
-    matrixCache.set(index, matrix);
+    const bytes = makeBytes();
+    let matrix;
+    try { matrix = window.WGQR.encodeBytes(bytes); }
+    finally { bytes.fill(0); }
+    matrixCache.set(key, matrix);
     if (matrixCache.size > 32) {
       const oldest = matrixCache.keys().next().value;
       matrixCache.get(oldest).data.fill(0);
@@ -249,21 +314,38 @@
     }
     return matrix;
   }
-  function showFrame(index) {
+  function showFrame(index, resetPass = true) {
     if (!series) return;
     frameIndex = Math.max(0, Math.min(series.total - 1, Math.round(index)));
-    drawQR(frameMatrix(frameIndex));
-    ui['frame-position'].textContent = `Fragment ${frameIndex + 1} z ${series.total}`;
+    if (resetPass) {
+      transmissionPhase = 'source';
+      sourcePassShown = 1;
+      nextSourceFrame = (frameIndex + 1) % series.total;
+      repairBlocks = Array.from({ length: series.blockCount }, (_, index) => index);
+      repairCursor = 0;
+      ui['animation-toggle'].disabled = false;
+      ui['animation-toggle'].textContent = 'Odtwórz serię';
+    }
+    currentRepair = null;
+    drawQR(frameMatrix(`source:${frameIndex}`, () => series.frame(frameIndex)));
+    ui['frame-position'].textContent = `Dane · fragment ${frameIndex + 1} z ${series.total}`;
     ui['frame-slider'].value = String(frameIndex + 1);
-    ui['qr-caption'].textContent = `${byteCount(series.size)} · ${fragmentCount(series.total)} QR`;
+    ui['qr-caption'].textContent = `${byteCount(series.size)} · pierwszy przebieg: ${fragmentCount(series.total)}`;
   }
-  function makeAnimationOrder(start) {
-    const direction = animationCycle % 2 ? -1 : 1;
-    animationOrder = Array.from({ length: series.total }, (_, i) => (start + direction * i + series.total) % series.total);
-    animationPosition = 0;
+  function showRepairFrame() {
+    if (!series || !repairBlocks.length) return;
+    transmissionPhase = 'repair';
+    const block = repairBlocks[repairCursor % repairBlocks.length];
+    repairCursor = (repairCursor + 1) % repairBlocks.length;
+    const serial = repairSerial++;
+    currentRepair = { block, serial };
+    drawQR(frameMatrix(`repair:${block}:${serial}`, () => series.repairFrame(block, serial)));
+    ui['frame-position'].textContent = `Naprawa · blok ${block + 1} z ${series.blockCount}`;
+    ui['qr-caption'].textContent = `${byteCount(series.size)} · nowe pakiety naprawcze, także dla pominiętych kodów`;
   }
   function selectedFrameRate() {
-    return ui['frame-rate'].querySelector('input:checked')?.value === '10' ? 10 : 5;
+    const value = Number(ui['frame-rate'].querySelector('input:checked')?.value);
+    return [1, 2, 5, 10].includes(value) ? value : 2;
   }
   function formatPassTime(frames, rate) {
     const nominalSeconds = frames / rate;
@@ -276,38 +358,38 @@
   }
   function updateTransferEstimate() {
     ui['transfer-estimate'].hidden = !series;
-    ui['estimate-five'].textContent = series ? formatPassTime(series.total, 5) : '';
-    ui['estimate-ten'].textContent = series ? formatPassTime(series.total, 10) : '';
     const rate = series ? selectedFrameRate() : null;
-    ui['estimate-five-cell'].classList.toggle('is-selected', rate === 5);
-    ui['estimate-ten-cell'].classList.toggle('is-selected', rate === 10);
+    for (const [label, value] of [['one', 1], ['two', 2], ['five', 5], ['ten', 10]]) {
+      ui[`estimate-${label}`].textContent = series ? formatPassTime(series.total, value) : '';
+      ui[`estimate-${label}-cell`].classList.toggle('is-selected', rate === value);
+    }
   }
   function startAnimation() {
-    if (!series || mode !== 'encode' || document.hidden) return;
+    if (!series || transmissionPhase === 'confirmed' || mode !== 'encode' || document.hidden) return;
     pauseAnimation();
     animationPlaying = true;
-    animationCycle = 0;
-    makeAnimationOrder(frameIndex);
     ui['animation-toggle'].textContent = 'Wstrzymaj serię';
     ui['animation-toggle'].setAttribute('aria-pressed', 'true');
     const token = sourceEpoch;
     const schedule = () => {
       const fps = selectedFrameRate();
       // Small deterministic timing variations avoid locking onto the same camera phase.
-      const jitter = [1, 1.12, 0.91, 1.06, 0.94][(animationPosition + animationCycle) % 5];
+      const jitter = [1, 1.12, 0.91, 1.06, 0.94][animationTick % 5];
       animationTimer = window.setTimeout(tick, Math.round((1000 / fps) * jitter));
     };
     const tick = () => {
       if (!animationPlaying || token !== sourceEpoch || !series || mode !== 'encode' || document.hidden) return;
-      animationPosition += 1;
-      if (animationPosition >= animationOrder.length) {
-        animationCycle += 1;
-        makeAnimationOrder((animationCycle + frameIndex + 1) % series.total);
+      animationTick += 1;
+      if (transmissionPhase === 'source' && sourcePassShown < series.total) {
+        showFrame(nextSourceFrame, false);
+        nextSourceFrame = (nextSourceFrame + 1) % series.total;
+        sourcePassShown += 1;
+      } else {
+        showRepairFrame();
       }
-      showFrame(animationOrder[animationPosition]);
       schedule();
     };
-    message('encode-message', 'Seria jest odtwarzana w pętli. Skieruj na ekran kamerę drugiego urządzenia i zaczekaj na wszystkie fragmenty.', 'success');
+    message('encode-message', 'Nadaję dane, a potem nowe pakiety naprawcze. Odbiornik może uzupełnić pominięte kody bez czekania na pełną powtórkę.', 'success');
     status(`Odtwarzanie serii QR — ${selectedFrameRate()} kodów/s`);
     schedule();
   }
@@ -316,11 +398,11 @@
     showFrame(index);
     status('Seria wstrzymana — wybrano fragment ręcznie');
   }
-  function drawQR(qr) {
+  function drawQR(qr, canvas = ui['qr-canvas']) {
     const margin = 4;
     const scale = Math.max(6, Math.floor(960 / (qr.size + margin * 2)));
-    const canvas = ui['qr-canvas'];
-    canvas.width = canvas.height = (qr.size + margin * 2) * scale;
+    const size = (qr.size + margin * 2) * scale;
+    if (canvas.width !== size || canvas.height !== size) canvas.width = canvas.height = size;
     const context = canvas.getContext('2d');
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
@@ -435,8 +517,11 @@
         status('Plik jest za duży na pojedynczy QR');
         return;
       }
-      const reservedPrefix = [87, 71, 81, 82, 45, 88, 70, 82]; // WGQR-XFR protocol marker
-      const protocolLike = bytes.length >= 8 && reservedPrefix.every((value, index) => bytes[index] === value);
+      const reservedPrefixes = [
+        [87, 71, 81, 82, 45, 88, 70, 82], // WGQR-XFR transfer marker
+        [87, 71, 81, 82, 45, 65, 67, 75] // WGQR-ACK feedback marker
+      ];
+      const protocolLike = bytes.length >= 8 && reservedPrefixes.some((prefix) => prefix.every((value, index) => bytes[index] === value));
       if (protocolLike && requestedMode === 'single') {
         bytes.fill(0);
         message('encode-message', 'Plik zaczyna się od znacznika protokołu serii. Wybierz „Seria QR” lub „Automatycznie” i ponownie wskaż plik, aby odtworzyć go bez zmian.', 'error');
@@ -447,13 +532,15 @@
       const filename = cleanName(file.name, 'plik');
       let qr;
       if (useSeries) {
-        transfer = await window.WGTransfer.createTransfer(bytes, filename);
+        const chunkBytes = ui['qr-density'].value === '600' ? 600 : 384;
+        transfer = await window.WGResilient.createTransfer(bytes, filename, { chunkBytes });
         if (token !== sourceEpoch || mode !== 'encode') {
-          transfer.frames.forEach((frame) => frame.fill(0));
+          transfer.dispose();
           bytes.fill(0);
           return;
         }
         series = transfer;
+        ui['scan-feedback'].disabled = false;
         ui['series-controls'].hidden = false;
         ui['frame-slider'].max = String(series.total);
         ui['frame-slider'].value = '1';
@@ -463,7 +550,7 @@
         ui['transfer-info'].textContent = inputIsZip
           ? 'Na drugim urządzeniu wybierz „Odczytaj QR”. Po odebraniu całości pobierzesz ZIP do rozpakowania.'
           : 'Serię odczytasz na tej stronie na drugim urządzeniu. Aplikacja WireGuard nie importuje jej bezpośrednio.';
-        ui['capacity-note'].textContent = `${fragmentCount(series.total)} po maksymalnie 600 B danych. Odtwarzaj w pętli lub wybieraj brakujące numery ręcznie.`;
+        ui['capacity-note'].textContent = `${fragmentCount(series.total)} danych po maksymalnie ${series.chunkBytes} B. Po pierwszym przebiegu nadawane są nowe pakiety naprawcze.`;
       } else {
         qr = window.WGQR.encodeBytes(bytes);
         drawQR(qr);
@@ -491,7 +578,7 @@
       status(useSeries ? 'Seria QR gotowa — odtwarzanie wstrzymane' : 'Kod QR utworzony lokalnie');
     } catch {
       if (bytes && bytes !== sourceBytes) bytes.fill(0);
-      if (transfer && transfer !== series) transfer.frames.forEach((frame) => frame.fill(0));
+      if (transfer && transfer !== series) transfer.dispose();
       if (token === sourceEpoch) {
         clearSource();
         message('encode-message', 'Nie udało się odczytać pliku lub utworzyć QR. Spróbuj ponownie. Seria wymaga przeglądarki z obsługą bezpiecznej kryptografii i strony HTTPS.', 'error');
@@ -528,7 +615,7 @@
     if (mode === 'decode') status(verified ? 'Plik odtworzony i sprawdzony' : 'QR odczytany lokalnie');
     return true;
   }
-  function showReceiving(state = collector && collector.state) {
+  function renderReceiving(state) {
     if (!state) {
       ui['receiving-progress'].hidden = true;
       ui['decoded-empty'].hidden = Boolean(decodedBytes);
@@ -538,6 +625,7 @@
       ui['receiving-progressbar'].value = 0;
       ui['receiving-missing'].textContent = '';
       ui['receiving-help'].textContent = '';
+      ui['show-feedback'].hidden = true;
       return;
     }
     const received = state.complete || state.kind === 'complete' ? state.total : state.received;
@@ -545,32 +633,101 @@
     ui['receiving-progress'].hidden = false;
     ui['decoded-empty'].hidden = true;
     ui['receiving-name'].textContent = state.name;
-    ui['receiving-count'].textContent = `${received} z ${state.total} fragmentów · ${byteCount(state.size)}`;
+    const resilient = state.version === 2;
+    ui['receiving-count'].textContent = `${received} z ${state.total} fragmentów danych · ${byteCount(state.size)}${resilient ? ` · bloki ${state.blocksComplete}/${state.blockCount}` : ''}`;
     ui['receiving-progressbar'].max = state.total;
     ui['receiving-progressbar'].value = received;
     const missing = state.missing || [];
+    const missingCount = state.missingCount ?? missing.length;
     ui['receiving-missing'].textContent = missing.length
-      ? `Brakuje: ${missing.slice(0, 18).join(', ')}${missing.length > 18 ? ` i jeszcze ${missing.length - 18}` : ''}.`
+      ? `Niepełne bloki: ${missing.slice(0, 18).join(', ')}${missingCount > 18 ? ` i jeszcze ${missingCount - 18}` : ''}.`
       : complete ? 'Odebrano całą serię.' : 'Sprawdzanie integralności pliku…';
     ui['receiving-help'].textContent = complete
       ? 'Zachowano nazwę oraz bajty pliku. Aby odebrać inny plik, rozpocznij nowy odczyt.'
-      : 'Kolejność nie ma znaczenia. Powtórzone fragmenty są pomijane; możesz pokazać brakujące klatki ręcznie.';
+      : resilient ? 'Nowe pakiety naprawcze uzupełniają brakujące dane. Kod zwrotny pozwoli nadajnikowi skupić się na niepełnych blokach.'
+        : 'To starsza seria v1. Powtórzenia są pomijane; potrzebne są wszystkie oryginalne fragmenty.';
+    ui['show-feedback'].hidden = !resilient;
+    if (!complete) {
+      message('decode-message', `Odebrano ${received} z ${state.total} fragmentów danych.`, 'success');
+      if (mode === 'decode') status(`Odbieranie serii: ${received} / ${state.total}`);
+    }
+  }
+  function showReceiving(state = receiverSnapshot, force = false) {
+    const now = window.performance.now();
+    if (!state || force || state.complete || !lastProgressPaint || now - lastProgressPaint >= 250) {
+      if (progressTimer !== null) window.clearTimeout(progressTimer);
+      progressTimer = null;
+      pendingProgress = null;
+      lastProgressPaint = now;
+      renderReceiving(state);
+      return;
+    }
+    pendingProgress = state;
+    if (progressTimer === null) {
+      const epoch = receiverEpoch;
+      progressTimer = window.setTimeout(() => {
+        progressTimer = null;
+        if (epoch !== receiverEpoch || !pendingProgress) return;
+        const pending = pendingProgress;
+        pendingProgress = null;
+        showReceiving(pending, true);
+      }, Math.max(0, 250 - (now - lastProgressPaint)));
+    }
+  }
+  function resetMetrics() {
+    metrics = { started: window.performance.now(), lastPaint: 0, latency: 0, attempts: 0, successes: 0, events: [], rate: 0, recommended: 2 };
+    ui['scan-metrics'].hidden = true;
+    ui['scan-rate'].textContent = '';
+    ui['scan-latency'].textContent = '';
+    ui['scan-advice'].textContent = '';
+  }
+  function recordScan(sample, delta = 0, force = false) {
+    const now = window.performance.now();
+    metrics.attempts += 1;
+    if (sample.result) metrics.successes += 1;
+    metrics.latency = metrics.attempts === 1 ? sample.decodeMs : metrics.latency * 0.8 + sample.decodeMs * 0.2;
+    if (delta > 0) metrics.events.push({ time: now, delta });
+    metrics.events = metrics.events.filter((event) => now - event.time <= 5000);
+    const elapsed = Math.max(1, Math.min(5, (now - metrics.started) / 1000));
+    metrics.rate = metrics.events.reduce((sum, event) => sum + event.delta, 0) / elapsed;
+    if (metrics.attempts >= 8 && now - metrics.started >= 1500) {
+      let safeRate = 0.55 * 1000 / (metrics.latency + 20);
+      const successRatio = metrics.successes / metrics.attempts;
+      if (successRatio < 0.5) safeRate = Math.min(safeRate, 2);
+      if (successRatio < 0.2) safeRate = 1;
+      metrics.recommended = [10, 5, 2, 1].find((rate) => rate <= safeRate) || 1;
+    }
+    if (!force && metrics.lastPaint && now - metrics.lastPaint < 250) return;
+    metrics.lastPaint = now;
+    ui['scan-metrics'].hidden = false;
+    ui['scan-rate'].textContent = `${metrics.rate.toLocaleString('pl-PL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} /s`;
+    ui['scan-latency'].textContent = `${Math.round(metrics.latency)} ms`;
+    ui['scan-advice'].textContent = metrics.attempts < 8 || now - metrics.started < 1500
+      ? 'Zbieram pomiary. Licznik pokazuje nowe, użyteczne fragmenty — powtórzenia nie zwiększają wyniku.'
+      : `Propozycja: ${metrics.recommended} kodów/s. Przekaż ją nadajnikowi kodem zwrotnym; tempo nie zmienia się automatycznie na drugim urządzeniu.`;
   }
   function resetCollector() {
     receiverEpoch += 1;
     if (collector) collector.reset();
-    showReceiving(null);
+    receiverSnapshot = null;
+    showReceiving(null, true);
+    hideFeedback();
+    resetMetrics();
   }
   function prepareReceiver() {
-    if (collector.state && collector.state.complete) resetCollector();
+    if (receiverSnapshot && receiverSnapshot.complete) resetCollector();
     clearDecoded();
-    showReceiving();
+    showReceiving(receiverSnapshot, true);
   }
   function receiverError(error) {
     if (error.code === 'TRANSFER_RESET') return;
-    const state = collector.state;
-    showReceiving(state);
-    const text = error.code === 'CRYPTO_UNAVAILABLE'
+    receiverSnapshot = collector.state;
+    showReceiving(receiverSnapshot, true);
+    const text = error.code === 'FEEDBACK_FRAME'
+      ? 'To kod zwrotny odbiornika. Na urządzeniu nadającym wybierz „Zeskanuj potwierdzenie”. Ten kod nie jest plikiem.'
+      : error.code === 'UNSUPPORTED_VERSION'
+        ? 'Nieobsługiwana wersja kodu. Odśwież tę stronę na obu urządzeniach i rozpocznij odbiór ponownie.'
+      : error.code === 'CRYPTO_UNAVAILABLE'
       ? 'Sprawdzenie serii wymaga HTTPS i obsługi Web Crypto. Otwórz stronę w aktualnym Safari lub Chrome.'
       : /HASH|DIGEST/i.test(error.code || '')
         ? 'Suma pliku nie zgadza się. Odrzucono tę serię; zeskanuj ją ponownie od początku.'
@@ -583,9 +740,9 @@
     const payload = Uint8Array.from(bytes);
     const operation = receiverChain.then(async () => {
       if (epoch !== receiverEpoch || !isCurrent()) return { done: false, stale: true };
-      if (collector.state && collector.state.complete) return { done: true };
+      if (receiverSnapshot && receiverSnapshot.complete) return { done: true, delta: 0 };
       try {
-        const previous = collector.state;
+        const previous = receiverSnapshot;
         const result = await collector.accept(payload);
         // Switching tabs or stopping the camera retains an already accepted transfer.
         // Clearing/resetting the receiver, however, invalidates even a pending digest.
@@ -605,14 +762,16 @@
           return { done: false, foreign: true };
         }
         if (result.kind === 'complete') {
+          receiverSnapshot = { ...result, bytes: undefined, complete: true };
+          const delta = Math.max(0, result.total - (previous?.received || 0));
           stopCamera();
-          showReceiving(result);
-          return { done: acceptDecoded(result, result.name, true) };
+          showReceiving(receiverSnapshot, true);
+          return { done: acceptDecoded(result, result.name, true), delta };
         }
-        showReceiving(result);
-        message('decode-message', result.duplicate ? 'Ten fragment już mamy. Czekam na brakujące.' : `Odebrano ${result.received} z ${result.total} fragmentów.`, 'success');
-        if (mode === 'decode') status(`Odbieranie serii: ${result.received} / ${result.total}`);
-        return { done: false, progress: true };
+        const delta = Math.max(0, result.received - (previous?.received || 0));
+        receiverSnapshot = result;
+        if (delta > 0 || !previous) showReceiving(result);
+        return { done: false, progress: true, delta };
       } catch (error) {
         if (epoch === receiverEpoch) receiverError(error);
         return { done: false, error: true };
@@ -621,6 +780,116 @@
     // Keep operations serial without allowing a rejected old operation to block a new one.
     receiverChain = operation.catch(() => undefined);
     return operation;
+  }
+  function hideFeedback() {
+    ui['feedback-panel'].hidden = true;
+    ui['feedback-canvas'].width = ui['feedback-canvas'].height = 1;
+    ui['feedback-caption'].textContent = '';
+  }
+  function showFeedback() {
+    if (!receiverSnapshot || receiverSnapshot.version !== 2) return;
+    stopCamera();
+    let bytes;
+    try {
+      bytes = collector.createFeedback({ suggestedRate: metrics.recommended });
+      drawQR(window.WGQR.encodeBytes(bytes), ui['feedback-canvas']);
+      ui['feedback-panel'].hidden = false;
+      ui['resume-receiving'].hidden = Boolean(receiverSnapshot.complete);
+      ui['feedback-caption'].textContent = receiverSnapshot.complete
+        ? 'Odbiór pliku został sprawdzony. Na nadajniku wybierz „Zeskanuj potwierdzenie”, aby potwierdzić zakończenie.'
+        : `Na nadajniku wybierz „Zeskanuj potwierdzenie”. Kod wskaże niepełne bloki i zaproponuje ${metrics.recommended} kodów/s. Potem wznowisz odbiór.`;
+      ui['close-feedback'].focus();
+    } catch {
+      message('decode-message', 'Kod zwrotny jest dostępny po odebraniu fragmentu nowej serii. Odśwież obie strony, jeśli używasz starszej wersji.', 'error');
+    } finally {
+      if (bytes) bytes.fill(0);
+    }
+  }
+  function stopFeedbackCamera(keepPanel = false) {
+    feedbackEpoch += 1;
+    if (cancelFeedbackScan) cancelFeedbackScan();
+    cancelFeedbackScan = null;
+    if (feedbackScanner) feedbackScanner.dispose();
+    feedbackScanner = null;
+    if (feedbackStream) feedbackStream.getTracks().forEach((track) => track.stop());
+    feedbackStream = null;
+    if (feedbackImageBusy) cancelImageRead();
+    feedbackImageBusy = false;
+    ui['feedback-video'].pause();
+    ui['feedback-video'].srcObject = null;
+    ui['feedback-scan-panel'].hidden = !keepPanel;
+    ui['choose-feedback-image'].disabled = false;
+  }
+  function applyRecommendedRate(rate) {
+    if (![1, 2, 5, 10].includes(rate)) return;
+    ui['frame-rate'].querySelectorAll('input[type="radio"]').forEach((input) => { input.checked = Number(input.value) === rate; });
+    updateTransferEstimate();
+  }
+  async function receiveFeedback(bytes, isCurrent) {
+    const transfer = series;
+    const epoch = sourceEpoch;
+    if (!transfer || !isCurrent()) return false;
+    try {
+      const result = await transfer.acceptFeedback(bytes);
+      if (!isCurrent() || series !== transfer || epoch !== sourceEpoch) return false;
+      pauseAnimation();
+      stopFeedbackCamera();
+      applyRecommendedRate(result.suggestedRate);
+      if (result.complete) {
+        transmissionPhase = 'confirmed';
+        ui['animation-toggle'].disabled = true;
+        ui['animation-toggle'].textContent = 'Odbiór potwierdzony';
+        message('feedback-message', 'Odbiornik potwierdził kompletny plik po sprawdzeniu sumy SHA-256. Nadawanie zatrzymane.', 'success');
+        status('Odbiornik potwierdził zakończenie transferu');
+      } else if (result.missingBlocks.length) {
+        repairBlocks = Array.from(result.missingBlocks);
+        repairCursor = 0;
+        transmissionPhase = 'repair';
+        ui['animation-toggle'].disabled = false;
+        showRepairFrame();
+        message('feedback-message', `Pozostałe bloki: ${repairBlocks.length}. Ustawiono ${selectedFrameRate()} kodów/s. Wznów odbiór na drugim urządzeniu, a tutaj wybierz „Odtwórz serię”.`, 'success');
+        status('Naprawa przygotowana — nadawanie wstrzymane');
+      } else {
+        message('feedback-message', 'Wszystkie bloki dotarły, ale odbiornik jeszcze nie potwierdził sumy pliku. Pokaż nowy kod zwrotny po zakończeniu sprawdzania.', 'warning');
+        status('Oczekiwanie na potwierdzenie sprawdzonego pliku');
+      }
+      ui['scan-feedback'].focus();
+      return true;
+    } catch (error) {
+      if (!isCurrent() || series !== transfer || epoch !== sourceEpoch) return false;
+      const text = error.code === 'FEEDBACK_SESSION_MISMATCH'
+        ? 'Ten kod zwrotny dotyczy innego lub wcześniejszego transferu. Bieżący plik pozostaje bez zmian.'
+        : 'Nieprawidłowy kod zwrotny. Pokaż cały kod wygenerowany przez odbiornik tej serii.';
+      message('feedback-message', text, 'error');
+      return false;
+    }
+  }
+  async function readFeedbackImage(file) {
+    if (!file || !series) return;
+    pauseAnimation();
+    stopCamera();
+    stopFeedbackCamera(true);
+    cancelImageRead();
+    const token = feedbackEpoch;
+    const sourceToken = sourceEpoch;
+    const isCurrent = () => token === feedbackEpoch && sourceToken === sourceEpoch && mode === 'encode' && Boolean(series);
+    feedbackImageBusy = true;
+    ui['choose-feedback-image'].disabled = true;
+    message('feedback-message', 'Odczytuję kod zwrotny z obrazu…');
+    try {
+      const result = await scanImage(file, isCurrent);
+      if (!isCurrent()) return;
+      if (!result) { message('feedback-message', 'Nie znaleziono kodu zwrotnego. Wybierz wyraźny obraz z całym QR.', 'error'); return; }
+      await receiveFeedback(result.bytes, isCurrent);
+    } catch {
+      if (isCurrent()) message('feedback-message', 'Nie udało się odczytać obrazu. Wybierz PNG, JPG lub WebP do 20 MB.', 'error');
+    } finally {
+      if (token === feedbackEpoch) {
+        feedbackImageBusy = false;
+        ui['choose-feedback-image'].disabled = false;
+        ui['feedback-image-input'].value = '';
+      }
+    }
   }
   function readImage(file) {
     return new Promise((resolve, reject) => {
@@ -653,7 +922,8 @@
     return window.WGQR.decodePixels(pixels.data, pixels.width, pixels.height);
   }
   const breathe = () => new Promise((resolve) => window.setTimeout(resolve, 0));
-  async function scanImage(file, token) {
+  async function scanImage(file, current) {
+    const isCurrent = typeof current === 'function' ? current : () => current === decodeEpoch && mode === 'decode';
     if (!file.size || file.size > MAX_IMAGE_BYTES) {
       throw new Error('image-size');
     }
@@ -663,7 +933,7 @@
     let image;
     try {
       image = await readImage(file);
-      if (token !== decodeEpoch || mode !== 'decode') return;
+      if (!isCurrent()) return;
       const width = image.naturalWidth;
       const height = image.naturalHeight;
       if (!width || !height || width * height > 50000000 || Math.max(width, height) > 20000) throw new Error('image-too-large');
@@ -679,14 +949,14 @@
       }
       for (const plan of plans) {
         await breathe();
-        if (token !== decodeEpoch || mode !== 'decode') return;
+        if (!isCurrent()) return;
         const result = decodeRegion(image, ...plan);
         if (result && result.bytes && result.bytes.length) return result;
       }
       return null;
     } finally {
       if (image) image.src = '';
-      if (token === decodeEpoch) scanCanvas.width = scanCanvas.height = 1;
+      if (isCurrent()) scanCanvas.width = scanCanvas.height = 1;
     }
   }
   async function decodeImages(selectedFiles) {
@@ -706,7 +976,7 @@
     try {
       for (let index = 0; index < files.length; index += 1) {
         if (token !== decodeEpoch || mode !== 'decode') return;
-        if (decodedBytes || (collector.state && collector.state.complete)) return;
+        if (decodedBytes || (receiverSnapshot && receiverSnapshot.complete)) return;
         message('decode-message', `Odczytywanie obrazu ${index + 1} z ${files.length}…`);
         let result;
         try { result = await scanImage(files[index], token); }
@@ -728,7 +998,7 @@
             : 'Nie znaleziono czytelnego QR. Wybierz PNG, JPG lub WebP z całym kodem i białą ramką.';
         message('decode-message', text, 'error');
         status('Nie znaleziono QR w obrazach');
-      } else if (!rejected && collector.state) {
+      } else if (!rejected && receiverSnapshot) {
         message('decode-message', `Odczytano obrazy. ${unreadable ? `Nie udało się odczytać ${unreadable}. ` : ''}Dodaj brakujące fragmenty lub włącz kamerę.`, unreadable ? 'warning' : 'success');
       }
     } finally {
@@ -748,11 +1018,126 @@
     if (error.name === 'NotReadableError') return 'Kamera jest zajęta lub niedostępna. Zamknij inną aplikację używającą kamery albo wczytaj obraz.';
     return 'Nie udało się uruchomić kamery. Spróbuj w Safari lub Chrome albo wczytaj obraz QR.';
   }
+  function startVideoLoop(video, isCurrent, processFrame, onError) {
+    let videoRequest = null;
+    let animationRequest = null;
+    let retryTimer = null;
+    let cancelled = false;
+    let scanning = false;
+    let lastFrame = null;
+    let lastPoll = 0;
+    const active = () => !cancelled && isCurrent() && !document.hidden;
+    const cancel = () => {
+      cancelled = true;
+      if (videoRequest !== null && typeof video.cancelVideoFrameCallback === 'function') video.cancelVideoFrameCallback(videoRequest);
+      if (animationRequest !== null) window.cancelAnimationFrame(animationRequest);
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
+      videoRequest = animationRequest = retryTimer = null;
+    };
+    const frameKey = (metadata) => {
+      if (metadata && Number.isFinite(metadata.presentedFrames)) return `frame:${metadata.presentedFrames}`;
+      if (metadata && Number.isFinite(metadata.mediaTime)) return `time:${metadata.mediaTime}`;
+      if (typeof video.getVideoPlaybackQuality === 'function') {
+        const count = video.getVideoPlaybackQuality().totalVideoFrames;
+        if (Number.isFinite(count) && count > 0) return `frame:${count}`;
+      }
+      return Number.isFinite(video.currentTime) ? `time:${video.currentTime}` : null;
+    };
+    const schedule = () => {
+      if (!active() || scanning) return;
+      if (typeof video.requestVideoFrameCallback === 'function') {
+        videoRequest = video.requestVideoFrameCallback((_now, metadata) => {
+          videoRequest = null;
+          return scan(metadata);
+        });
+      } else {
+        retryTimer = window.setTimeout(() => {
+          retryTimer = null;
+          if (!active()) return;
+          if (typeof window.requestAnimationFrame === 'function') {
+            animationRequest = window.requestAnimationFrame(() => {
+              animationRequest = null;
+              return scan();
+            });
+          } else void scan();
+        }, Math.max(0, 34 - (window.performance.now() - lastPoll)));
+      }
+    };
+    const scan = async (metadata) => {
+      if (!active() || scanning) return;
+      scanning = true;
+      lastPoll = window.performance.now();
+      try {
+        if (video.readyState >= 2 && video.videoWidth && video.videoHeight) {
+          const key = frameKey(metadata);
+          if (key !== null && key === lastFrame) return;
+          lastFrame = key;
+          if (await processFrame()) cancel();
+        }
+      } catch (error) {
+        if (active()) onError(error);
+        cancel();
+      } finally {
+        scanning = false;
+        schedule();
+      }
+    };
+    schedule();
+    return cancel;
+  }
+  async function startFeedbackCamera() {
+    if (!series || series.version !== 2) return;
+    pauseAnimation();
+    closeExpanded(false);
+    stopCamera();
+    stopFeedbackCamera(true);
+    cancelImageRead();
+    const token = feedbackEpoch;
+    const sourceToken = sourceEpoch;
+    const target = series;
+    const valid = () => token === feedbackEpoch && sourceToken === sourceEpoch && series === target && mode === 'encode';
+    message('feedback-message', 'Zezwól na kamerę i pokaż kod zwrotny z urządzenia odbierającego. Możesz też wczytać jego obraz.');
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      message('feedback-message', 'Kamera wymaga HTTPS i obsługiwanej przeglądarki. Wczytaj obraz kodu zwrotnego.', 'error');
+      return;
+    }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+      if (!valid() || document.hidden) { stream.getTracks().forEach((track) => track.stop()); return; }
+      feedbackStream = stream;
+      const video = ui['feedback-video'];
+      video.muted = true;
+      video.playsInline = true;
+      video.srcObject = stream;
+      await video.play();
+      if (!valid()) return;
+      const scanner = window.WGCamera.createScanner({ decode: window.WGQR.decodePixels });
+      feedbackScanner = scanner;
+      stream.getVideoTracks().forEach((track) => track.addEventListener('ended', () => { if (valid()) stopFeedbackCamera(true); }, { once: true }));
+      message('feedback-message', 'Skanuję kod zwrotny. Nadajnik pozostaje w pauzie.');
+      cancelFeedbackScan = startVideoLoop(video, () => valid() && feedbackStream === stream, async () => {
+        const sample = scanner.scan(video);
+        return sample.result ? receiveFeedback(sample.result.bytes, valid) : false;
+      }, () => {
+        stopFeedbackCamera(true);
+        message('feedback-message', 'Nie udało się odczytać kamery. Możesz wczytać obraz kodu zwrotnego.', 'error');
+      });
+    } catch (error) {
+      if (stream) stream.getTracks().forEach((track) => track.stop());
+      if (!valid()) return;
+      stopFeedbackCamera(true);
+      message('feedback-message', cameraError(error), 'error');
+    }
+  }
   async function startCamera() {
     decodeEpoch += 1;
     cancelImageRead();
+    stopFeedbackCamera();
+    hideFeedback();
     stopCamera();
     prepareReceiver();
+    resetMetrics();
     message('decode-message');
     if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       message('decode-message', 'Kamera wymaga strony HTTPS i obsługiwanej przeglądarki. Możesz nadal wczytać obraz QR.', 'error');
@@ -789,80 +1174,21 @@
         if (token === cameraEpoch) stopCamera(true);
       }, { once: true }));
       const video = ui['camera-video'];
-      let videoRequest = null;
-      let animationRequest = null;
-      let retryTimer = null;
-      let cancelled = false;
-      let scanning = false;
-      let lastFrame = null;
-      let lastPoll = 0;
-      const active = () => !cancelled && token === cameraEpoch && cameraStream === stream && mode === 'decode' && !document.hidden;
-      cancelCameraScan = () => {
-        cancelled = true;
-        if (videoRequest !== null && typeof video.cancelVideoFrameCallback === 'function') video.cancelVideoFrameCallback(videoRequest);
-        if (animationRequest !== null) window.cancelAnimationFrame(animationRequest);
-        if (retryTimer !== null) window.clearTimeout(retryTimer);
-        videoRequest = animationRequest = retryTimer = null;
-      };
-      const frameKey = (metadata) => {
-        if (metadata && Number.isFinite(metadata.presentedFrames)) return `frame:${metadata.presentedFrames}`;
-        if (metadata && Number.isFinite(metadata.mediaTime)) return `time:${metadata.mediaTime}`;
-        if (typeof video.getVideoPlaybackQuality === 'function') {
-          const count = video.getVideoPlaybackQuality().totalVideoFrames;
-          if (Number.isFinite(count) && count > 0) return `frame:${count}`;
+      const scanner = window.WGCamera.createScanner({ decode: window.WGQR.decodePixels });
+      cameraScanner = scanner;
+      const active = () => token === cameraEpoch && cameraStream === stream && mode === 'decode';
+      cancelCameraScan = startVideoLoop(video, active, async () => {
+        const epoch = receiverEpoch;
+        const sample = scanner.scan(video);
+        const outcome = sample.result ? await receiveBytes(sample.result.bytes, active) : { done: false, delta: 0 };
+        if (epoch === receiverEpoch && (active() || (outcome.done && mode === 'decode'))) {
+          recordScan(sample, outcome.delta || 0, outcome.done);
         }
-        return Number.isFinite(video.currentTime) ? `time:${video.currentTime}` : null;
-      };
-      const schedule = () => {
-        if (!active() || scanning) return;
-        if (typeof video.requestVideoFrameCallback === 'function') {
-          videoRequest = video.requestVideoFrameCallback((_now, metadata) => {
-            videoRequest = null;
-            return scan(metadata);
-          });
-          return;
-        }
-        // Poll at most about 30 times/s; slow decoding does not add another fixed delay.
-        const delay = Math.max(0, 34 - (window.performance.now() - lastPoll));
-        retryTimer = window.setTimeout(() => {
-          retryTimer = null;
-          if (!active()) return;
-          if (typeof window.requestAnimationFrame === 'function') {
-            animationRequest = window.requestAnimationFrame(() => {
-              animationRequest = null;
-              return scan();
-            });
-          } else {
-            void scan();
-          }
-        }, delay);
-      };
-      const scan = async (metadata) => {
-        if (!active() || scanning) return;
-        scanning = true;
-        lastPoll = window.performance.now();
-        try {
-          if (video.readyState >= 2 && video.videoWidth && video.videoHeight) {
-            const key = frameKey(metadata);
-            if (key !== null && key === lastFrame) return;
-            lastFrame = key;
-            const result = decodeRegion(video, 0, 0, video.videoWidth, video.videoHeight, 1600);
-            if (result && result.bytes && result.bytes.length) {
-              const outcome = await receiveBytes(result.bytes, active);
-              if (outcome.done || !active()) return;
-            }
-          }
-        } catch {
-          if (active()) {
-            stopCamera();
-            message('decode-message', 'Nie udało się odczytać obrazu z kamery. Spróbuj ponownie lub wczytaj zdjęcie QR.', 'error');
-          }
-        } finally {
-          scanning = false;
-          schedule();
-        }
-      };
-      schedule();
+        return Boolean(outcome.done);
+      }, () => {
+        stopCamera();
+        message('decode-message', 'Nie udało się odczytać obrazu z kamery. Spróbuj ponownie lub wczytaj zdjęcie QR.', 'error');
+      });
     } catch (error) {
       if (stream) stream.getTracks().forEach((track) => track.stop());
       if (token !== cameraEpoch) return;
@@ -898,12 +1224,12 @@
     });
   }
 
-  if (!window.WGQR || !window.WGTransfer || !window.WGZip || !scanContext) {
+  if (!window.WGQR || !window.WGTransfer || !window.WGResilient || !window.WGCamera || !window.WGZip || !scanContext) {
     message('encode-message', 'Nie udało się wczytać narzędzia. Odśwież stronę.', 'error');
     ui['choose-file'].disabled = ui['choose-image'].disabled = ui['sample-file'].disabled = ui['series-sample'].disabled = ui['zip-sample'].disabled = ui['start-camera'].disabled = true;
     return;
   }
-  collector = window.WGTransfer.createCollector();
+  collector = window.WGResilient.createCollector();
   ui['encode-tab'].addEventListener('click', () => selectMode('encode'));
   ui['decode-tab'].addEventListener('click', () => selectMode('decode'));
   for (const id of ['encode-tab', 'decode-tab']) {
@@ -928,6 +1254,17 @@
       const file = new File([sourceBytes], sourceName, { type: 'application/octet-stream' });
       const zipMetadata = sourceZipMetadata;
       encodeFile(file, { zipMetadata });
+    }
+  });
+  ui['qr-density'].addEventListener('change', async () => {
+    if (!sourceBytes || !series) return;
+    pauseAnimation();
+    const file = new File([sourceBytes], sourceName, { type: 'application/octet-stream' });
+    const zipMetadata = sourceZipMetadata;
+    const expectedEpoch = sourceEpoch + 1;
+    await encodeFile(file, { zipMetadata });
+    if (sourceEpoch === expectedEpoch && series) {
+      message('encode-message', 'Zmieniono gęstość i utworzono nowy transfer. Na odbiorniku wybierz „Reset odbioru”, zanim wznowisz skanowanie.', 'warning');
     }
   });
   ui['animation-toggle'].addEventListener('click', () => animationPlaying ? pauseAnimation() : startAnimation());
@@ -958,8 +1295,9 @@
   });
   ui['series-sample'].addEventListener('click', () => {
     const heading = '# DEMO SERII QR - dane testowe, bez kluczy i hasel.\n';
-    const contents = (heading + 'Przykladowy plik do transferu przez piec kodow QR.\n'.repeat(70)).slice(0, 3000);
+    const contents = (heading + 'Przykladowy plik do transferu przez piec kodow QR.\n'.repeat(70)).slice(0, 1920);
     ui['transfer-mode'].value = 'series';
+    ui['qr-density'].value = '384';
     encodeFile(new File([contents], 'przyklad-serii-demo.txt', { type: 'text/plain' }));
   });
   ui['zip-sample'].addEventListener('click', () => {
@@ -982,7 +1320,9 @@
     if (!sourceBytes) return;
     pauseAnimation();
     const token = sourceEpoch;
-    const suffix = series ? `-fragment-${String(frameIndex + 1).padStart(3, '0')}-z-${String(series.total).padStart(3, '0')}` : '';
+    const suffix = series ? currentRepair
+      ? `-naprawa-blok-${currentRepair.block + 1}-pakiet-${currentRepair.serial}`
+      : `-fragment-${String(frameIndex + 1).padStart(3, '0')}-z-${String(series.total).padStart(3, '0')}` : '';
     const filename = cleanName(sourceName.replace(/\.[^.]*$/, ''), 'kod-qr') + suffix + '.png';
     ui['qr-canvas'].toBlob((blob) => {
       if (token !== sourceEpoch || !sourceBytes) return;
@@ -1002,11 +1342,43 @@
   ui['preview-decoded'].addEventListener('toggle', () => { ui['decoded-preview'].textContent = ui['preview-decoded'].open ? preview(decodedBytes) : ''; });
   ui['start-camera'].addEventListener('click', startCamera);
   ui['stop-camera'].addEventListener('click', () => stopCamera(true));
+  ui['expand-qr'].addEventListener('click', openExpanded);
+  ui['close-expanded'].addEventListener('click', () => closeExpanded());
+  ui['show-feedback'].addEventListener('click', showFeedback);
+  ui['close-feedback'].addEventListener('click', () => { hideFeedback(); ui['show-feedback'].focus(); });
+  ui['resume-receiving'].addEventListener('click', () => { hideFeedback(); if (!receiverSnapshot?.complete) startCamera(); });
+  ui['scan-feedback'].addEventListener('click', startFeedbackCamera);
+  ui['stop-feedback-camera'].addEventListener('click', () => {
+    stopFeedbackCamera();
+    message('feedback-message', 'Skanowanie potwierdzenia zatrzymane. Bieżący plik pozostaje w pauzie.');
+    ui['scan-feedback'].focus();
+  });
+  ui['choose-feedback-image'].addEventListener('click', () => ui['feedback-image-input'].click());
+  ui['feedback-image-input'].addEventListener('change', () => {
+    const file = ui['feedback-image-input'].files[0];
+    if (file) readFeedbackImage(file);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (!document.body.classList.contains('qr-expanded')) return;
+    if (event.key === 'Escape') { event.preventDefault(); closeExpanded(); return; }
+    if (event.key !== 'Tab') return;
+    const controls = Array.from(ui['qr-result'].querySelectorAll('button, input, select, textarea, a[href], [tabindex]'))
+      .filter((element) => !element.disabled && element.tabIndex >= 0 && !element.closest('[hidden]') && element.getClientRects().length);
+    if (!controls.length) { event.preventDefault(); ui['close-expanded'].focus(); return; }
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !ui['qr-result'].contains(document.activeElement))) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !ui['qr-result'].contains(document.activeElement))) {
+      event.preventDefault(); first.focus();
+    }
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       pauseAnimation();
       const wasActive = Boolean(cameraStream) || !ui['stop-camera'].hidden;
       stopCamera(wasActive);
+      stopFeedbackCamera();
       closePreviews();
     }
   });
@@ -1018,5 +1390,6 @@
   clearSource();
   clearDecoded();
   showReceiving(null);
+  resetMetrics();
   selectMode('encode');
 })();

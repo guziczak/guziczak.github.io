@@ -5,14 +5,24 @@ Konwerter pojedynczych i animowanych kodów QR, działający lokalnie w przeglą
 ## Użycie
 
 1. **Utwórz QR:** przeciągnij jeden lub kilka plików albo użyj przycisku wyboru. Kilka plików zostanie lokalnie skompresowanych do `pliki.zip` i wysłanych serią. Gotowe archiwum ZIP również jest wysyłane serią, bez ponownego pakowania. Pozostałe pliki do 2 953 bajtów otrzymują w trybie automatycznym zwykły QR, a większe — serię.
-2. **Seria:** wybierz „Odtwórz serię”. Domyślne tempo to 5 kodów/s. Przełącznik 5/s · 10/s działa także podczas odtwarzania i zachowuje bieżący plik. Kody zapętlają się. Dostępne są pauza, poprzedni/następny fragment oraz suwak. Seria zaczyna w pauzie, a ukrycie karty zatrzymuje odtwarzanie.
-3. **Odczytaj QR:** wybierz jeden lub wiele obrazów albo uruchom kamerę. Telefon może dołączyć w dowolnym momencie serii; odbiornik pokazuje otrzymane i brakujące fragmenty. Po odebraniu kompletu i sprawdzeniu zgodności można pobrać plik.
+2. **Seria:** wybierz „Odtwórz serię”. Domyślne tempo to 2 kody/s, z wyborem 1/s, 2/s, 5/s i 10/s. Najpierw nadawane są części pliku, następnie nowe kody naprawcze. Dostępne są pauza, ręczny wybór części oraz „Duży widok QR”. Seria zaczyna w pauzie, a ukrycie karty zatrzymuje odtwarzanie.
+3. **Odczytaj QR:** wybierz jeden lub wiele obrazów albo uruchom kamerę. Telefon może dołączyć w dowolnym momencie serii. Odbiornik pokazuje przyrost niezależnych porcji danych, postęp składania oraz rzeczywistą szybkość odbioru. Po odtworzeniu całości i sprawdzeniu zgodności można pobrać plik.
 4. **Reset odbioru:** rozpocznij odbieranie nowego pliku, odrzucając części poprzedniego. Zatrzymanie kamery i przełączanie zakładek zachowują postęp częściowego odbioru.
 5. **Wyczyść:** usuń pliki, fragmenty i wyniki z bieżącego widoku. Pobrane pliki i zrzuty ekranu trzeba usunąć oddzielnie, jeżeli nie są już potrzebne.
 
 Dla konfiguracji WireGuarda **zwykły pojedynczy QR** zawiera bezpośrednio treść pliku klienta `.conf`, bez adresu strony, JSON, kodowania base64 ani własnego nagłówka. Aplikacja WireGuard może zeskanować go bezpośrednio. **Serię należy odebrać na tej stronie**, pobrać odtworzony `.conf`, a następnie zaimportować go z pliku w WireGuardzie. Skaner WireGuarda nie składa naszego formatu wieloczęściowego. Narzędzie nie konfiguruje serwera VPN i nie generuje kluczy.
 
-Dostępne są przykłady pojedynczego QR, serii pięciu kodów (3 000 bajtów) oraz ZIP-a utworzonego z trzech plików. Dane są demonstracyjne i nie zawierają działających kluczy VPN.
+Dostępne są przykłady pojedynczego QR, serii pięciu kodów danych (1 920 bajtów, 384 bajty na część) oraz ZIP-a utworzonego z trzech plików. Po pięciu kodach demonstracyjnych zaczynają się dodatkowe kody naprawcze. Dane są demonstracyjne i nie zawierają działających kluczy VPN.
+
+## Odbiór przy pomijaniu klatek
+
+Nowe serie używają protokołu v2: systematycznych kodów fountain opartych na równaniach XOR, w blokach po najwyżej 32 porcje. Odbiornik zwiększa postęp tylko dla niezależnych równań. Po uzyskaniu pełnego rzędu dla bloku odtwarza jego części, także te, których oryginalnych kodów nie odczytał. Powtórzenia lub zależne równania są pomijane. Odbiór może zacząć się również od kodów naprawczych. Nie oznacza to gwarancji odzyskania po dowolnej ustalonej liczbie klatek; potrzeba dostatecznie wielu niezależnych odczytów.
+
+**Uzupełnij brakujące** na odbiorniku zatrzymuje kamerę i tworzy QR z potwierdzeniem postępu. Na nadajniku przycisk **Zeskanuj potwierdzenie** pozwala odczytać ten kod kamerą albo wczytać jego obraz. Potwierdzenie zawiera identyfikację bieżącego transferu, bitmapę ukończonych bloków oraz wskazówkę tempa. Nadajnik przechodzi do naprawy nieukończonych bloków; odtwarzanie wznawia użytkownik. Ukończenie całego pliku jest potwierdzane dopiero po zgodnym SHA-256. Potwierdzenie innej sesji jest odrzucane.
+
+Jest to synchronizacja po przekazaniu potwierdzenia, bez ukrytego kanału sieciowego. Gdy telefon używa tylnej kamery, na czas pokazania potwierdzenia trzeba odwrócić go ekranem do kamery nadajnika. Następnie **Wróć do skanowania** przywraca odbiór z zachowanym postępem.
+
+Skaner po znalezieniu QR śledzi jego położenie i analizuje wycinek z zapasem wokół kodu. Po utracie kodu powraca do przeszukiwania pełnego obrazu, okresowo w wyższej rozdzielczości. Płótno jest ponownie wymiarowane tylko przy zmianie rozmiaru analizowanego obrazu. Czarne kody na białym tle używają szybkiej ścieżki dekodowania; okresowe ponowne wyszukiwanie i import obrazów zachowują obsługę odwróconych kodów.
 
 ## Kilka plików w jednym ZIP-ie
 
@@ -28,7 +38,7 @@ Pliki znajdują się w głównym katalogu ZIP-a. Nazwy są oczyszczane z element
 - Brak wysyłania danych, analityki, cookies, localStorage, IndexedDB, telemetrii i skryptów pobieranych z CDN. Biblioteki są dołączone lokalnie w `assets/`.
 - Polityka CSP blokuje połączenia `connect-src`, zewnętrzne skrypty, formularze i obiekty. GitHub Pages otrzymuje zwykłe żądania pobrania plików strony; zawartość konfiguracji nie trafia do tych żądań.
 - Kamera wymaga HTTPS i zgody użytkownika. Uruchamia się wyłącznie przyciskiem i zatrzymuje po odebraniu całego pliku, ręcznym zatrzymaniu, zmianie trybu, ukryciu strony lub jej opuszczeniu. Przy serii pozostaje aktywna po pierwszym fragmencie. Wczytanie obrazów jest alternatywą dla kamery.
-- Seria również pozostaje lokalna. Każdy fragment ma identyfikator transferu, numer, metadane, CRC32 i sumę SHA-256 pliku. Odbiornik nie łączy różnych sesji i udostępnia plik dopiero po sprawdzeniu całości. Sumy kontrolne służą wykrywaniu błędów; nie są szyfrowaniem ani uwierzytelnieniem nadawcy.
+- Seria i zwrotne potwierdzenia pozostają lokalne. Każda ramka ma identyfikator transferu, metadane, CRC32 i sumę SHA-256 pliku. Odbiornik nie łączy różnych sesji i udostępnia plik dopiero po sprawdzeniu całości. Sumy kontrolne służą wykrywaniu błędów; nie są szyfrowaniem ani uwierzytelnieniem nadawcy. Potwierdzenie jest przypisane do konkretnego pliku i sesji, ale również nie stanowi kryptograficznego uwierzytelnienia urządzenia.
 - Podgląd zawartości jest domyślnie zamknięty; tekst jest wstawiany wyłącznie przez `textContent` i nie jest wykonywany. Linki z obcych kodów QR nigdy nie otwierają się automatycznie.
 - Prywatny klucz w pliku lub QR pozostaje poufny. Nie publikuj swoich konfiguracji ani zrzutów ekranu z kodem w repozytorium.
 - „Wyczyść” usuwa wyniki i odwołania do danych z aplikacji, ale nie stanowi gwarancji kryminalistycznego wymazania pamięci przeglądarki lub systemu.
@@ -37,15 +47,15 @@ Pliki znajdują się w głównym katalogu ZIP-a. Nazwy są oczyszczane z element
 
 Jeden zwykły kod: maksymalnie **2 953 bajty**. Do 2 331 bajtów używana jest korekcja M, powyżej korekcja L. Limit dotyczy bajtów, a nie liczby liter. Duże kody wymagają ostrego obrazu i odpowiedniej wielkości na ekranie.
 
-Seria: maksymalnie **10 MiB (10 485 760 bajtów)**, po **600 bajtów pliku na fragment**; liczba fragmentów wynika z rozmiaru. Plik 3 000 B ma 5 kodów, a maksymalny — 17 477. To limit jednego pliku lub całego ZIP-a po kompresji. Kolejne paczki można wysyłać oddzielnie, resetując odbiornik pomiędzy transferami. Pełne ramki z metadanymi mają do 796 bajtów i mieszczą się w korekcji M. Opuszczone klatki wracają w następnych obiegach. 5 lub 10 kodów/s jest ustawieniem tempa wyświetlania; skuteczna szybkość zależy od kamery, ekranu, oświetlenia, ostrości oraz powtórzeń. Nie obiecujemy odczytania każdej klatki w pierwszym obiegu.
+Seria: maksymalnie **10 MiB (10 485 760 bajtów)**, domyślnie po **384 bajty pliku na porcję**, z opcją gęstszego kodu po **600 bajtów**. Liczba części danych wynika z rozmiaru. Maksymalny plik ma odpowiednio 27 307 lub 17 477 części, a do nich dochodzą kody naprawcze. Limit dotyczy jednego pliku lub całego ZIP-a po kompresji. Kolejne paczki można wysyłać oddzielnie, resetując odbiornik pomiędzy transferami. Zmiana gęstości tworzy nowy transfer i wymaga resetu odbioru po drugiej stronie. Wartość 1, 2, 5 lub 10 kodów/s jest tempem wyświetlania; skuteczna szybkość zależy od kamery, ekranu, oświetlenia, ostrości oraz odsetka nowych niezależnych odczytów.
 
-Przed odtwarzaniem strona pokazuje **szacowany czas jednego pełnego obiegu** dla 5 i 10 kodów/s, obliczony jako liczba fragmentów podzielona przez tempo. Wyróżnia wybrane tempo, bez automatycznego uruchamiania odtwarzania. Dla maksymalnych 10 MiB to około 58 minut 16 sekund przy 5/s albo 29 minut 8 sekund przy 10/s. To szacunek nadawcy, bez informacji zwrotnej z odbiornika; brakujące fragmenty mogą wymagać następnych obiegów. Nie jest to odliczanie do gwarantowanego zakończenia.
+Przed odtwarzaniem strona pokazuje **szacowany czas pierwszego przebiegu części danych** dla wszystkich czterech prędkości, obliczony jako liczba części podzielona przez tempo. Wyróżnia wybrane ustawienie bez automatycznego uruchamiania odtwarzania. Kody naprawcze, pominięcia i czas dekodowania mogą wydłużyć odbiór. Licznik po stronie kamery mierzy rzeczywisty przyrost niezależnych porcji danych; duplikaty nie zawyżają wyniku. Wskazówka tempa jest przekazywana nadawcy dopiero w zwrotnym QR.
 
-Protokół jest opisany w [protocol.md](protocol.md). Jest przeznaczony do przesyłania między dwoma egzemplarzami tej strony i nie implementuje standardu UR ani kodów fountain. Zachowuje nazwę pliku po usunięciu niebezpiecznych znaków i ograniczeniu jej długości. Nazwa nie wpływa na zawartość pliku.
+Protokół jest opisany w [protocol.md](protocol.md). Jest przeznaczony do przesyłania między dwoma egzemplarzami tej strony. V2 jest własnym binarnym formatem fountain/FEC i nie implementuje standardu UR ani RaptorQ. Nowy odbiornik zachowuje obsługę v1. Stare odbiorniki wymagają odświeżenia strony przed odebraniem v2. Protokół zachowuje nazwę pliku po usunięciu niebezpiecznych znaków i ograniczeniu jej długości. Nazwa nie wpływa na zawartość pliku.
 
 Pliki i fragmenty są kodowane jako segmenty byte. Odczyt wykorzystuje `jsQR.binaryData`, a pobieranie odtworzone bajty. Dzięki temu konwersja zachowuje UTF-8, BOM, CRLF/LF, końcowe spacje i dane binarne. Nazwa pliku nie jest częścią zwykłego QR, dlatego trzeba ją wybrać po odczytaniu. Seria zawiera nazwę w metadanych. Plik z innego skanera lub kod korzystający ze specjalnych trybów tekstowych może wymagać interpretacji zgodnej z jego formatem.
 
-Prefiks `WGQR-XFR` jest zarezerwowany dla ramek serii. Pliki zaczynające się od tych ośmiu bajtów trzeba przesłać w serii, nawet jeśli są małe, aby odbiornik mógł jednoznacznie rozpoznać format.
+Prefiksy `WGQR-XFR` i `WGQR-ACK` są zarezerwowane dla ramek serii i potwierdzeń. Pliki zaczynające się od tych ośmiu bajtów trzeba przesłać w serii, nawet jeśli są małe, aby odbiornik mógł jednoznacznie rozpoznać format. Sam QR z potwierdzeniem nie jest pobierany jako plik.
 
 Obrazy: do 20 MB i 50 megapikseli, z dodatkowym limitem dłuższego boku 20 000 pikseli. Obsługiwane formaty obrazu zależą od przeglądarki. PNG i JPG są zalecane. Kod musi mieścić się w kadrze razem z jasnym marginesem. SVG nie jest wczytywany.
 
@@ -53,7 +63,9 @@ Obrazy: do 20 MB i 50 megapikseli, z dodatkowym limitem dłuższego boku 20 000 
 
 - `index.html`, `styles.css`, `app.js` — interfejs i obsługa plików/kamery.
 - `assets/qr-core.js` — gotowy, samodzielny bundle kodera i dekodera.
-- `assets/qr-transfer.js` — protokół fragmentów, składanie pliku i sprawdzanie integralności przez Web Crypto.
+- `assets/qr-transfer.js` — zgodność z poprzednim protokołem v1.
+- `assets/qr-resilient.js` — binarny protokół v2, równania naprawcze, składanie pliku, zwrotne potwierdzenia i sprawdzanie integralności.
+- `assets/qr-camera.js` — lokalny skaner z wyborem i śledzeniem wycinka obrazu.
 - `assets/zip-core.js` — samodzielny bundle tworzenia standardowych archiwów ZIP.
 - `protocol.md` — specyfikacja binarna i API protokołu serii.
 - `assets/favicon.svg` — lokalna ikona.
@@ -72,9 +84,9 @@ npm run build
 npm test
 ```
 
-Budowanie zapisuje `../assets/qr-core.js`, `../assets/zip-core.js`, wspólny plik `../vendor-licenses.txt` i metadane z SHA-256. Osobne polecenia `npm run build:qr` i `npm run build:zip` przebudowują wybraną bibliotekę i zachowują komplet licencji. Wersje zależności są przypięte. `qr-transfer.js` jest gotowym skryptem i nie wymaga budowania.
+Budowanie zapisuje `../assets/qr-core.js`, `../assets/zip-core.js`, wspólny plik `../vendor-licenses.txt` i metadane z SHA-256. Osobne polecenia `npm run build:qr` i `npm run build:zip` przebudowują wybraną bibliotekę i zachowują komplet licencji. Wersje zależności są przypięte. Skrypty protokołów i skanera nie wymagają budowania.
 
-Testy używają wyłącznie syntetycznych danych i kodują rzeczywiste PNG, które następnie odczytują przez jsQR. Obejmują m.in. BOM, CRLF, polskie znaki, emoji, dane binarne, białe znaki, kody odwrócone i graniczne rozmiary, a także utracone/przemieszane/powtórzone fragmenty serii, izolowanie sesji, uszkodzone nagłówki, CRC, SHA-256 i reset podczas asynchronicznego sprawdzania pliku. Testy ZIP (`npm run test:zip`) sprawdzają standardowym czytnikiem Pythona zgodność bajtów i nazw, kompresję, limity, przerwanie pakowania oraz odtworzenie archiwum z przemieszanych fragmentów serii; wymagają `python3`.
+Testy używają wyłącznie syntetycznych danych i kodują rzeczywiste PNG, które następnie odczytują przez jsQR. Obejmują m.in. BOM, CRLF, polskie znaki, emoji, dane binarne, białe znaki, kody odwrócone i graniczne rozmiary, a także utracone/przemieszane/powtórzone fragmenty serii, izolowanie sesji, uszkodzone nagłówki, CRC, SHA-256 i reset podczas asynchronicznego sprawdzania pliku. Scenariusze v2 sprawdzają odtworzenie po utracie części danych oraz start wyłącznie od kodów naprawczych, zależne równania i selektywną naprawę po zwrotnym potwierdzeniu. Testy skanera wykorzystują syntetyczny obraz, przemieszczają QR i sprawdzają ponowne znalezienie kodu. Nie zastępują pomiaru wydajności fizycznej kamery konkretnego telefonu. Testy ZIP (`npm run test:zip`) sprawdzają standardowym czytnikiem Pythona zgodność bajtów i nazw, kompresję, limity, przerwanie pakowania oraz odtworzenie archiwum z przemieszanych fragmentów serii; wymagają `python3`.
 
 ## Biblioteki i dokumentacja
 
@@ -83,6 +95,6 @@ Testy używają wyłącznie syntetycznych danych i kodują rzeczywiste PNG, któ
 - [fflate 0.8.2](https://github.com/101arrowz/fflate) — kompresja DEFLATE i standardowe archiwa ZIP; MIT. Dołączona lokalnie, bez workerów i zewnętrznych połączeń.
 - [WireGuard dla iOS](https://apps.apple.com/pl/app/wireguard/id1441195209) — import konfiguracji z pliku i QR.
 - [Kod skanera WireGuard dla iOS](https://git.zx2c4.com/wireguard-apple/tree/Sources/WireGuardApp/UI/iOS/ViewController/QRScanViewController.swift) — interpretuje odczytany QR jako całą konfigurację.
-- [Animated QRs — Blockchain Commons](https://developer.blockchaincommons.com/animated-qrs/) — szersze omówienie idei animowanych QR oraz standardu UR; nasza strona używa prostszego, własnego protokołu numerowanych fragmentów.
+- [Animated QRs — Blockchain Commons](https://developer.blockchaincommons.com/animated-qrs/) — omówienie idei animowanych QR i standardu UR; nasza strona korzysta z własnego formatu binarnego.
 
 Pełne licencje zależności są dostępne lokalnie w `vendor-licenses.txt`.

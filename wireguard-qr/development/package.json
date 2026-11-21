@@ -8,7 +8,8 @@
     "build": "npm run build:qr && npm run build:zip",
     "build:qr": "node tools/build-qr-core.mjs",
     "build:zip": "node tools/build-zip-core.mjs",
-    "test": "node --test tools/qr-core.test.mjs tools/qr-transfer.test.mjs tools/zip-core.test.mjs",
+    "test": "node --test tools/qr-core.test.mjs tools/qr-transfer.test.mjs tools/qr-resilient.test.mjs tools/qr-resilient-pixels.test.mjs tools/qr-camera.test.mjs tools/app-resilient.test.mjs tools/zip-core.test.mjs",
+    "test:resilient": "node --test tools/qr-resilient.test.mjs tools/qr-resilient-pixels.test.mjs tools/qr-camera.test.mjs tools/app-resilient.test.mjs",
     "test:zip": "node --test tools/zip-core.test.mjs",
     "fixtures": "node tools/make-fixtures.mjs"
   },

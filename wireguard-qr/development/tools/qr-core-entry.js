@@ -52,7 +52,7 @@ export function encodeBytes(bytes) {
  * Decode RGBA pixels. Use decoded bytes, never the decoder's text field:
  * its Unicode conversion can discard invalid UTF-8 or change file bytes.
  */
-export function decodePixels(pixels, width, height) {
+export function decodePixels(pixels, width, height, options = {}) {
   if (!isTypedArray(pixels, 'Uint8ClampedArray')
     || !Number.isSafeInteger(width)
     || !Number.isSafeInteger(height)
@@ -63,9 +63,12 @@ export function decodePixels(pixels, width, height) {
     throw error('INVALID_IMAGE', 'Nieprawidłowe dane obrazu RGBA lub jego wymiary.');
   }
 
-  const decoded = jsQR(pixels, width, height, {
-    inversionAttempts: 'attemptBoth'
-  });
+  const inversionAttempts = options && options.inversionAttempts !== undefined
+    ? options.inversionAttempts : 'attemptBoth';
+  if (inversionAttempts !== 'attemptBoth' && inversionAttempts !== 'dontInvert') {
+    throw error('INVALID_OPTIONS', 'Nieprawidłowy tryb odczytu kolorów kodu QR.');
+  }
+  const decoded = jsQR(pixels, width, height, { inversionAttempts });
   if (!decoded) return null;
 
   return {
