@@ -206,6 +206,10 @@
     animationPlaying = false;
     ui['animation-toggle'].textContent = 'Odtwórz serię';
     ui['animation-toggle'].setAttribute('aria-pressed', 'false');
+    if (series && mode === 'encode') {
+      message('encode-message', 'Seria jest wstrzymana. Możesz ją wznowić lub wybrać brakujący fragment ręcznie.', 'success');
+      status('Seria QR — odtwarzanie wstrzymane');
+    }
   }
   function frameMatrix(index) {
     if (matrixCache.has(index)) {
@@ -261,6 +265,7 @@
       showFrame(animationOrder[animationPosition]);
       schedule();
     };
+    message('encode-message', 'Seria jest odtwarzana w pętli. Skieruj na ekran kamerę drugiego urządzenia i zaczekaj na wszystkie fragmenty.', 'success');
     status('Odtwarzanie serii QR — pokaż ekran drugiemu urządzeniu');
     schedule();
   }
