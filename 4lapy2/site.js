@@ -529,32 +529,100 @@
 
   const menuToggle = document.querySelector('[data-menu-toggle]');
   const menuPanel = document.querySelector('[data-menu-panel]');
-  if (menuToggle && menuPanel) {
+  const menuScrim = document.querySelector('[data-menu-scrim]');
+  if (menuToggle && menuPanel && menuScrim) {
+    const header = menuToggle.closest('.site-header');
+    const root = document.documentElement;
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const isCompact = () => window.getComputedStyle(menuToggle).display !== 'none';
-    const setMenu = expanded => {
+    let expanded = false;
+    let animations = [];
+    let operation = 0;
+
+    const setMenu = (open, { immediate = false, returnFocus = false } = {}) => {
       const compact = isCompact();
-      menuToggle.setAttribute('aria-expanded', String(compact && expanded));
+      const next = compact && open;
+      if (next === expanded && !immediate) return;
+      const version = ++operation;
+      // Read a running animation before cancelling, so a second tap reverses smoothly.
+      const panelStyle = window.getComputedStyle(menuPanel);
+      const scrimStyle = window.getComputedStyle(menuScrim);
+      const start = {
+        opacity: menuPanel.hidden ? 0 : panelStyle.opacity,
+        transform: menuPanel.hidden ? 'translateY(-12px)' : panelStyle.transform,
+        scrimOpacity: menuScrim.hidden ? 0 : scrimStyle.opacity
+      };
+      animations.forEach(animation => animation.cancel());
+      animations = [];
+      expanded = next;
+      menuToggle.setAttribute('aria-expanded', String(expanded));
       menuToggle.setAttribute('aria-label', expanded ? copy.menuClose : copy.menuOpen);
-      menuPanel.hidden = compact && !expanded;
-      menuToggle.classList.toggle('is-active', compact && expanded);
-      document.documentElement.classList.toggle('menu-open', compact && expanded);
+      menuToggle.classList.toggle('is-active', expanded);
+      root.classList.toggle('menu-open', expanded);
+      if (returnFocus) menuToggle.focus({ preventScroll: true });
+      // This remains a disclosure. Tab can leave the header and close it naturally.
+      menuPanel.inert = compact && !expanded;
+
+      const finish = () => {
+        if (version !== operation) return;
+        menuPanel.hidden = compact && !expanded;
+        menuScrim.hidden = !expanded;
+        animations.forEach(animation => animation.cancel());
+        animations = [];
+      };
+      if (immediate || !compact || motion.matches || typeof menuPanel.animate !== 'function') {
+        finish();
+        return;
+      }
+      menuPanel.hidden = false;
+      menuScrim.hidden = false;
+      const timing = { duration: expanded ? 360 : 240, easing: 'cubic-bezier(.22,.68,0,1)', fill: 'both' };
+      animations = [
+        menuPanel.animate([
+          { opacity: start.opacity, transform: start.transform },
+          { opacity: expanded ? 1 : 0, transform: expanded ? 'translateY(0)' : 'translateY(-8px)' }
+        ], timing),
+        menuScrim.animate([{ opacity: start.scrimOpacity }, { opacity: expanded ? 1 : 0 }], timing)
+      ];
+      Promise.all(animations.map(animation => animation.finished)).then(finish, () => {});
     };
-    setMenu(false);
-    menuToggle.addEventListener('click', () => setMenu(menuToggle.getAttribute('aria-expanded') !== 'true'));
+
+    setMenu(false, { immediate: true });
+    menuToggle.addEventListener('click', event => {
+      setMenu(!expanded);
+      if (expanded && event.detail === 0) menuPanel.querySelector('a').focus({ preventScroll: true });
+    });
     menuPanel.addEventListener('click', event => { if (event.target.closest('a')) setMenu(false); });
+    menuScrim.addEventListener('click', () => setMenu(false, { returnFocus: true }));
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && menuToggle.getAttribute('aria-expanded') === 'true') {
-        setMenu(false);
-        menuToggle.focus();
+      if (event.key === 'Escape' && expanded) {
+        event.preventDefault();
+        setMenu(false, { returnFocus: true });
       }
     });
+    document.addEventListener('focusin', event => {
+      if (expanded && !header.contains(event.target)) setMenu(false);
+    });
     document.addEventListener('click', event => {
-      if (!menuPanel.contains(event.target) && !menuToggle.contains(event.target)) setMenu(false);
+      if (!expanded) return;
+      const link = event.target.closest('a');
+      if (link && link.hasAttribute('data-language-switch') && event.button === 0 &&
+        !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+        // The destination starts closed: do not capture an old-only menu snapshot.
+        setMenu(false, { immediate: true });
+      } else if (link && link.closest('.brand')) setMenu(false);
     });
     let compact = isCompact();
     window.addEventListener('resize', () => {
-      if (isCompact() !== compact) { compact = isCompact(); setMenu(false); }
+      if (isCompact() !== compact) { compact = isCompact(); setMenu(false, { immediate: true }); }
     }, { passive: true });
+    const resetMenu = () => setMenu(false, { immediate: true });
+    window.addEventListener('pageswap', resetMenu);
+    window.addEventListener('pagehide', resetMenu);
+    window.addEventListener('pageshow', event => { if (event.persisted) resetMenu(); });
+    const onMotion = () => { if (motion.matches) setMenu(expanded, { immediate: true }); };
+    if (motion.addEventListener) motion.addEventListener('change', onMotion);
+    else if (motion.addListener) motion.addListener(onMotion);
   }
 
   const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
