@@ -629,47 +629,58 @@
   initializeAnchorNavigation(document, window, motionPreference);
   initializeManualTop(document, window);
   const openingSign = document.querySelector('[data-opening-sign]');
-  if (openingSign && document.documentElement.dataset.languageTransition !== 'incoming' &&
-    !motionPreference.matches && 'IntersectionObserver' in window &&
+  if (openingSign && 'IntersectionObserver' in window &&
     typeof openingSign.animate === 'function' && typeof CSS !== 'undefined' &&
     typeof CSS.supports === 'function' && CSS.supports('rotate', '1deg')) {
+    const pageRoot = document.documentElement;
+    const swingTrigger = openingSign.querySelector('[data-swing-trigger]');
     let signAnimation = null;
-    let hasPlayed = false;
-    let stopped = false;
+    let introHandled = motionPreference.matches || pageRoot.dataset.languageTransition === 'incoming';
+    let inView = false;
+    let pageLeaving = false;
     const signObserver = new IntersectionObserver(entries => {
-      if (stopped || hasPlayed || motionPreference.matches ||
-        !entries.some(entry => entry.isIntersecting && entry.intersectionRatio >= 0.5)) return;
-      hasPlayed = true;
-      signObserver.disconnect();
-      // Individual rotation preserves the sign's CSS positioning and suspension point.
-      signAnimation = openingSign.animate([
-        { rotate: '0deg', offset: 0, easing: 'ease-in-out' },
-        { rotate: '-1.8deg', offset: 0.17, easing: 'ease-in-out' },
-        { rotate: '1.1deg', offset: 0.42, easing: 'ease-in-out' },
-        { rotate: '-0.5deg', offset: 0.67, easing: 'ease-in-out' },
-        { rotate: '0.18deg', offset: 0.86, easing: 'ease-in-out' },
-        { rotate: '0deg', offset: 1 }
-      ], { duration: 1100, fill: 'none' });
-      signAnimation.onfinish = stopSignMotion;
-      signAnimation.oncancel = stopSignMotion;
+      inView = entries.some(entry => entry.isIntersecting && entry.intersectionRatio >= 0.5);
+      if (!introHandled && inView) swingSign();
     }, { threshold: 0.5 });
 
-    function stopSignMotion() {
-      stopped = true;
+    function skipSignIntro() {
+      introHandled = true;
       signObserver.disconnect();
-      if (signAnimation) {
-        const current = signAnimation;
-        signAnimation = null;
+    }
+    function cancelSignMotion() {
+      if (!signAnimation) return;
+      const current = signAnimation;
+      signAnimation = null;
+      current.onfinish = current.oncancel = null;
+      current.cancel();
+    }
+    function swingSign() {
+      if (signAnimation || motionPreference.matches || document.hidden || pageLeaving ||
+        pageRoot.dataset.languageTransition) return;
+      skipSignIntro();
+      // The cords and plaque rotate together around the existing suspension point.
+      const current = openingSign.animate([
+        { rotate: '0deg', offset: 0, easing: 'ease-in-out' },
+        { rotate: '-3.5deg', offset: 0.18, easing: 'ease-in-out' },
+        { rotate: '2.3deg', offset: 0.43, easing: 'ease-in-out' },
+        { rotate: '-1.2deg', offset: 0.67, easing: 'ease-in-out' },
+        { rotate: '0.45deg', offset: 0.86, easing: 'ease-in-out' },
+        { rotate: '0deg', offset: 1 }
+      ], { duration: 2400, fill: 'none' });
+      signAnimation = current;
+      const finish = () => {
+        if (signAnimation === current) signAnimation = null;
         current.onfinish = current.oncancel = null;
-        current.cancel();
-      }
-      if (motionPreference.removeEventListener) motionPreference.removeEventListener('change', onSignMotionChange);
-      else if (motionPreference.removeListener) motionPreference.removeListener(onSignMotionChange);
-      document.removeEventListener('click', onLanguageChoice);
-      window.removeEventListener('pagereveal', onLanguageEntry);
+      };
+      current.onfinish = finish;
+      current.oncancel = finish;
     }
     function onSignMotionChange() {
-      if (motionPreference.matches) stopSignMotion();
+      if (motionPreference.matches) {
+        skipSignIntro();
+        cancelSignMotion();
+      }
+      if (swingTrigger) swingTrigger.hidden = motionPreference.matches;
     }
     function onLanguageChoice(event) {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
@@ -677,17 +688,40 @@
       const link = event.target.closest && event.target.closest('a[data-language-switch]');
       if (!link || link.hasAttribute('download') ||
         (link.target && link.target.toLowerCase() !== '_self')) return;
-      // Capture the sign at rest before leaving for the other language.
-      stopSignMotion();
+      // Capture the sign at rest; choosing a language does not replay its intro.
+      skipSignIntro();
+      cancelSignMotion();
     }
     function onLanguageEntry() {
-      if (document.documentElement.dataset.languageTransition === 'incoming') stopSignMotion();
+      if (pageRoot.dataset.languageTransition !== 'incoming') return;
+      skipSignIntro();
+      cancelSignMotion();
     }
+    function onSignPageHide() {
+      pageLeaving = true;
+      skipSignIntro();
+      cancelSignMotion();
+    }
+    function onSignPageShow(event) {
+      pageLeaving = false;
+      if (event.persisted) skipSignIntro();
+      onSignMotionChange();
+    }
+    function onSignVisibilityChange() {
+      if (document.hidden) cancelSignMotion();
+      else if (!introHandled && inView) swingSign();
+    }
+
     if (motionPreference.addEventListener) motionPreference.addEventListener('change', onSignMotionChange);
     else if (motionPreference.addListener) motionPreference.addListener(onSignMotionChange);
+    if (swingTrigger) swingTrigger.addEventListener('click', swingSign);
     document.addEventListener('click', onLanguageChoice);
     window.addEventListener('pagereveal', onLanguageEntry);
-    signObserver.observe(openingSign);
+    window.addEventListener('pagehide', onSignPageHide);
+    window.addEventListener('pageshow', onSignPageShow);
+    document.addEventListener('visibilitychange', onSignVisibilityChange);
+    onSignMotionChange();
+    if (!introHandled) signObserver.observe(openingSign);
   }
 
   const reveals = all('[data-reveal]');

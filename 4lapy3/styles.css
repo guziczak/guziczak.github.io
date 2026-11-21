@@ -100,6 +100,8 @@
 .opening-cords{position:relative;z-index:1;width:100%;height:40px;overflow:visible}
 .opening-cords path{fill:none;stroke:#b08b74;stroke-width:1.15;stroke-linecap:round;vector-effect:non-scaling-stroke}
 .opening-plaque{position:relative;min-height:142px;margin-top:-8px;padding:24px 18px 18px;border:1px solid #c8ab96;border-radius:6px;background:#f5e9de;color:var(--ink);text-align:center;box-shadow:0 12px 24px -18px #9d66422e}
+.opening-swing{position:absolute;inset:-1px;z-index:2;border:0;padding:0;border-radius:inherit;background:transparent;cursor:pointer}
+.opening-swing:focus-visible{outline:3px solid var(--ink);outline-offset:4px}
 .opening-eyelet{position:absolute;top:5px;width:6px;height:6px;border:1px solid #b08b74;border-radius:50%;background:var(--paper)}
 .opening-eyelet-left{left:calc(16.0714% - 3px)}
 .opening-eyelet-right{right:calc(16.0714% - 3px)}
