@@ -20,7 +20,7 @@
   <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
   <link rel="preload" as="image" href="../assets/hero-pets.webp" imagesrcset="../assets/hero-pets-640.webp 640w, ../assets/hero-pets.webp 1122w" imagesizes="(max-width: 760px) 92vw, 46vw" fetchpriority="high">
   <link rel="stylesheet" href="../assets/fonts.css">
-  <link rel="stylesheet" href="../styles.css?v=20261121b">
+  <link rel="stylesheet" href="../styles.css?v=20261121c">
   <script src="../site.js?v=20261120e" defer></script>
 </head>
 <body>
@@ -43,20 +43,20 @@
     <div class="header-inner wrap">
       <a class="brand" href="#top" aria-label="Cztery Łapy i Ty — home">
         <svg class="brand-mark" aria-hidden="true"><use href="#i-paw"/></svg>
-        <span class="brand-name">Cztery Łapy <i>i Ty.</i><small>VETERINARY PRACTICE</small></span>
+        <span class="brand-name">Cztery Łapy <i>i Ty.</i><small data-header-label="tagline">VETERINARY PRACTICE</small></span>
       </a>
       <nav class="site-menu" id="site-menu" data-menu-panel aria-label="Main navigation">
-        <a href="#o-nas">About us</a>
-        <a href="#opieka">Our services</a>
-        <a href="#przypomnienie">Reminder</a>
-        <a href="#kontakt">Contact</a>
+        <a href="#o-nas"><span data-header-label="about">About us</span></a>
+        <a href="#opieka"><span data-header-label="care">Our services</span></a>
+        <a href="#przypomnienie"><span data-header-label="reminder">Reminder</span></a>
+        <a href="#kontakt"><span data-header-label="contact">Contact</span></a>
       </nav>
       <div class="header-actions">
         <div class="site-preferences" role="group" aria-label="Website settings">
-          <a class="preference-button language-switch" href="../?lang=pl" data-language-switch="pl" lang="pl" hreflang="pl" aria-label="Przełącz na język polski" title="Przełącz na język polski">PL</a>
+          <a class="preference-button language-switch" href="../?lang=pl" data-language-switch="pl" lang="pl" hreflang="pl" aria-label="Przełącz na język polski" title="Przełącz na język polski"><span data-header-label="switch">PL</span></a>
           <button class="preference-button theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark theme" title="Switch to dark theme" hidden><svg class="icon theme-icon-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="icon theme-icon-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
         </div>
-        <a class="header-call" href="tel:+48717867884" aria-label="Book an appointment: +48 71 786 78 84"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg><span>Book an appointment</span></a>
+        <a class="header-call" href="tel:+48717867884" aria-label="Book an appointment: +48 71 786 78 84"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg><span data-header-label="call">Book an appointment</span></a>
         <button class="menu-toggle" data-menu-toggle aria-controls="site-menu" aria-expanded="false" aria-label="Open menu"><span></span><span></span></button>
       </div>
     </div>
