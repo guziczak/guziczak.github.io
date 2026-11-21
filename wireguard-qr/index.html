@@ -6,13 +6,14 @@
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#f5f6f2">
   <meta name="referrer" content="no-referrer">
-  <meta name="description" content="Zamień mały plik w kod QR lub odzyskaj plik z obrazu i kamery. Konwersja lokalnie w przeglądarce, bez konta i wysyłania plików.">
+  <meta name="description" content="Przesyłaj pliki jednym QR lub animowaną serią kodów. Odbiór kamerą i z obrazów, lokalnie w przeglądarce, bez konta i wysyłania plików na serwer.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Plik ↔ QR — lokalny konwerter</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=2">
   <script src="./assets/qr-core.js" defer></script>
-  <script src="./app.js" defer></script>
+  <script src="./assets/qr-transfer.js" defer></script>
+  <script src="./app.js?v=2" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#converter">Przejdź do konwertera</a>
@@ -27,9 +28,9 @@
   <main class="shell">
     <section class="intro" aria-labelledby="page-title">
       <p class="eyebrow">TWÓJ PLIK. TWOJE URZĄDZENIA.</p>
-      <h1 id="page-title">Mały plik.<br class="mobile-break"> Jeden kod QR.</h1>
-      <p class="intro-copy">Przenieś konfigurację WireGuarda albo inny mały plik.<br class="desktop-break"> Przeciągnij, zeskanuj, gotowe. W obie strony.</p>
-      <div class="trust-line"><span>Bez logowania</span><span>Bez wysyłania plików</span><span>Bez instalacji</span></div>
+      <h1 id="page-title">Plik z ekranu.<br class="mobile-break"> Prosto na telefon.</h1>
+      <p class="intro-copy">Jeden kod QR lub zapętlona seria dla większego pliku.<br class="desktop-break"> Przeciągnij, zeskanuj i odbierz całość. W obie strony.</p>
+      <div class="trust-line"><span>Bez logowania</span><span>Bez wysyłania na serwer</span><span>Bez instalacji</span></div>
     </section>
 
     <section class="converter" id="converter" aria-label="Konwerter pliku i kodu QR">
@@ -48,15 +49,20 @@
       <section id="encode-panel" class="workspace" role="tabpanel" aria-labelledby="encode-tab">
         <div class="input-pane">
           <div class="pane-heading"><h2>Wybierz plik</h2><span class="small-tag">PLIK → QR</span></div>
+          <div class="format-field">
+            <label for="transfer-mode">Sposób przesyłania</label>
+            <div class="select-wrap"><select id="transfer-mode" aria-describedby="format-help"><option value="auto" selected>Auto — jeden QR lub seria</option><option value="single">Jeden QR — WireGuard</option><option value="series">Seria QR — większy plik</option></select></div>
+            <p id="format-help">Do 2 953 bajtów: zwykły QR. Większy plik: seria kodów, którą odbierzesz tutaj na drugim urządzeniu.</p>
+          </div>
           <div id="file-drop" class="dropzone">
             <div class="upload-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 5h14l9 9v28H14zM28 5v10h9M24 33V21M19 26l5-5 5 5"/></svg><span class="file-extension">.conf</span></div>
             <p class="drop-title">Przeciągnij plik tutaj</p>
             <p class="drop-subtitle">lub wybierz go z urządzenia</p>
             <button id="choose-file" class="button primary" type="button">Wybierz plik</button>
             <input id="file-input" class="visually-hidden" type="file" tabindex="-1" aria-label="Wybierz plik do zakodowania">
-            <span class="drop-footnote">Maksymalnie 2 953 bajty · około 2,9 KB</span>
+            <span class="drop-footnote">Pliki do 256 KiB · seria dobiera liczbę kodów</span>
           </div>
-          <div class="sample-row"><span>Chcesz najpierw sprawdzić?</span><button id="sample-file" type="button" class="text-button">Wczytaj przykład</button></div>
+          <div class="sample-row"><span>Wypróbuj:</span><button id="sample-file" type="button" class="text-button">Jeden QR</button><span aria-hidden="true">·</span><button id="series-sample" type="button" class="text-button">Serię 5 kodów</button></div>
           <p id="encode-message" class="message" role="status" aria-live="polite"></p>
           <div id="source-details" class="file-details" hidden>
             <div class="file-detail-top"><span class="file-symbol" aria-hidden="true">≡</span><div><strong id="source-name"></strong><span id="source-format"></span></div><span id="source-size" class="byte-count"></span></div>
@@ -73,10 +79,17 @@
           <div id="qr-result" class="qr-result" hidden>
             <div class="qr-paper"><canvas id="qr-canvas" aria-label="Kod QR zawierający wybrany plik"></canvas></div>
             <p id="qr-caption" class="result-caption"></p>
-            <button id="download-qr" class="button secondary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 16v5h14v-5"/></svg>Pobierz obraz PNG</button>
+            <div id="series-controls" class="series-controls" hidden>
+              <div class="playback-row"><button id="animation-toggle" class="button primary" type="button" aria-pressed="false">Odtwórz serię</button><div class="rate-field"><label for="frame-rate">Tempo</label><div class="select-wrap"><select id="frame-rate"><option value="1">1 kod/s</option><option value="2">2 kody/s</option><option value="3" selected>3 kody/s</option><option value="5">5 kodów/s</option></select></div></div></div>
+              <div class="frame-navigation"><button id="previous-frame" class="button secondary" type="button">Poprzedni</button><span id="frame-position">Fragment 1 z 1</span><button id="next-frame" class="button secondary" type="button">Następny</button></div>
+              <label class="visually-hidden" for="frame-slider">Wybierz fragment serii</label><input id="frame-slider" class="frame-slider" type="range" min="1" max="1" step="1" value="1">
+              <p class="series-hint">Seria powtarza się do zatrzymania. Jeśli telefon pomija fragmenty, zmniejsz tempo lub wybierz brakujący fragment ręcznie.</p>
+            </div>
+            <p id="transfer-info" class="transfer-info"></p>
+            <button id="download-qr" class="button secondary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 16v5h14v-5"/></svg><span id="download-qr-label">Pobierz obraz PNG</span></button>
             <p id="capacity-note" class="capacity-note"></p>
           </div>
-          <div class="output-tip"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 18h4"/></svg><p>W WireGuardzie wybierz <strong>dodanie tunelu z kodu QR</strong> i skieruj telefon na ekran.</p></div>
+          <div class="output-tip"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 18h4"/></svg><p><strong>Jeden QR z konfiguracją:</strong> skanuj w WireGuardzie. <strong>Seria:</strong> otwórz tę stronę na telefonie i wybierz „Odczytaj QR”.</p></div>
         </div>
       </section>
 
@@ -85,10 +98,10 @@
           <div class="pane-heading"><h2>Wczytaj kod QR</h2><span class="small-tag">QR → PLIK</span></div>
           <div id="image-drop" class="dropzone image-dropzone">
             <div class="upload-icon image-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="7" width="36" height="34" rx="4"/><circle cx="17" cy="18" r="4"/><path d="M6 34l11-9 8 7 7-12 10 14"/></svg></div>
-            <p class="drop-title">Przeciągnij obraz z kodem</p>
-            <p class="drop-subtitle">PNG, JPG lub zrzut ekranu</p>
-            <button id="choose-image" class="button primary" type="button">Wybierz obraz QR</button>
-            <input id="image-input" class="visually-hidden" type="file" accept="image/*" tabindex="-1" aria-label="Wybierz obraz kodu QR">
+            <p class="drop-title">Przeciągnij obrazy z kodami</p>
+            <p class="drop-subtitle">Jeden QR lub kilka klatek tej samej serii</p>
+            <button id="choose-image" class="button primary" type="button">Wybierz obrazy QR</button>
+            <input id="image-input" class="visually-hidden" type="file" accept="image/*" multiple tabindex="-1" aria-label="Wybierz obrazy kodów QR">
           </div>
           <div class="camera-divider"><span>albo zeskanuj na żywo</span></div>
           <button id="start-camera" class="button secondary camera-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg>Uruchom kamerę</button>
@@ -97,10 +110,20 @@
             <p id="scan-help">Umieść cały kod w kadrze i przytrzymaj telefon.</p>
           </div>
           <button id="stop-camera" class="button secondary camera-button" type="button" hidden>Zatrzymaj kamerę</button>
+          <p class="camera-instruction">Dla serii trzymaj kamerę skierowaną na zmieniający się kod. Odebrane fragmenty pozostają tutaj również po zatrzymaniu kamery.</p>
           <p id="decode-message" class="message" role="status" aria-live="polite"></p>
         </div>
         <div class="output-pane">
           <div class="pane-heading"><h2>Odzyskany plik</h2><span class="output-label">DO POBRANIA</span></div>
+          <div id="receiving-progress" class="receiving-progress" hidden>
+            <span class="receiving-label">ODBIERANIE SERII</span>
+            <h3 id="receiving-name"></h3>
+            <p id="receiving-count" role="status" aria-live="polite">Odebrano 0 fragmentów</p>
+            <progress id="receiving-progressbar" value="0" max="1" aria-label="Postęp odbierania pliku"></progress>
+            <p id="receiving-missing" class="receiving-missing"></p>
+            <p id="receiving-help" class="receiving-help">Możesz zacząć od dowolnej klatki. Plik pojawi się po odebraniu wszystkich fragmentów i sprawdzeniu zgodności.</p>
+            <button id="reset-receiver" class="button secondary" type="button">Reset odbioru</button>
+          </div>
           <div id="decoded-empty" class="empty-state">
             <svg class="empty-file" viewBox="0 0 100 108" aria-hidden="true"><path d="M23 8h32l23 23v68H23zM55 8v24h23M37 52h27M37 65h27M37 78h17"/></svg>
             <p>Odczytaj kod, aby pobrać plik</p>
@@ -112,22 +135,23 @@
             <p><span id="decoded-kind"></span><span class="result-divider">·</span><span id="decoded-size"></span></p>
             <label for="output-name">Nazwa pliku</label>
             <input id="output-name" class="filename-input" type="text" value="wireguard.conf" maxlength="120" autocomplete="off" autocapitalize="off" spellcheck="false">
-            <p class="filename-help">Zwykły QR przechowuje zawartość, bez nazwy pliku. Możesz wpisać własną.</p>
+            <p class="filename-help">Seria zachowuje nazwę pliku. Zwykły QR zawiera samą treść — wtedy nazwę możesz nadać tutaj.</p>
             <button id="download-file" class="button primary full-width" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 16v5h14v-5"/></svg>Pobierz plik</button>
             <details id="preview-decoded" class="text-preview"><summary>Pokaż odczytaną zawartość</summary><pre id="decoded-preview"></pre></details>
           </div>
           <div class="output-tip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4 8 9 8 9s8-5 8-9V6zM9 12l2 2 4-5"/></svg><p>Odczyt odbywa się na Twoim urządzeniu. Strona nie otwiera linków zapisanych w kodzie.</p></div>
         </div>
       </section>
-      <div class="converter-footer"><span class="status-dot" aria-hidden="true"></span><span id="status-bar">Gotowe do pracy. Pliki pozostają w Twojej przeglądarce.</span><span class="footer-format">RAW QR</span></div>
+      <div class="converter-footer"><span class="status-dot" aria-hidden="true"></span><span id="status-bar">Gotowe do pracy. Pliki pozostają w Twojej przeglądarce.</span><span class="footer-format">QR + SERIE</span></div>
     </section>
 
     <aside class="privacy-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg><p><strong>QR z konfiguracją jest tak samo poufny jak plik.</strong> Może zawierać klucz prywatny VPN. Udostępniaj go wyłącznie swoim urządzeniom; po użyciu wybierz „Wyczyść”.</p></aside>
 
     <section class="help-section" aria-label="Jak to działa">
-      <details><summary>Jak przenieść konfigurację WireGuarda na telefon?</summary><p>Na komputerze wybierz gotowy plik konfiguracji klienta <code>.conf</code>. Na telefonie otwórz aplikację WireGuard, dodaj tunel i wybierz skanowanie QR. Nie musisz otwierać tej strony na telefonie, jeżeli importujesz konfigurację bezpośrednio do WireGuarda.</p><p>Jeśli potrzebujesz pliku z QR, otwórz tutaj „Odczytaj QR”, uruchom kamerę albo wybierz zapisany obraz i pobierz plik. Konwerter nie tworzy serwera VPN ani nowych kluczy.</p></details>
+      <details><summary>Jak przenieść konfigurację WireGuarda na telefon?</summary><p>Wybierz gotowy plik konfiguracji klienta <code>.conf</code>. Jeśli mieści się w jednym zwykłym QR, otwórz na telefonie aplikację WireGuard, dodaj tunel i wybierz skanowanie QR.</p><p>Dla większego pliku uruchom serię. Na telefonie otwórz tę stronę, wybierz „Odczytaj QR” i uruchom kamerę. Po zebraniu wszystkich fragmentów pobierz odtworzony <code>.conf</code> i zaimportuj go z pliku w WireGuardzie. Skaner WireGuarda nie składa serii kodów. Konwerter obsługuje istniejące konfiguracje; nie tworzy serwera VPN ani nowych kluczy.</p></details>
+      <details><summary>Jak działa seria i jakie tempo wybrać?</summary><p>Plik jest dzielony na fragmenty po 600 bajtów. Każdy ma osobny QR, a strona powtarza serię. Telefon zbiera fragmenty w dowolnej kolejności i pomija powtórzenia. Liczba kodów zależy od rozmiaru: 3 000 bajtów to 5 kodów, a 6 000 bajtów to 10.</p><p>Zacznij od 3 kodów na sekundę. Możesz wybrać 1, 2, 3 lub 5. Wyższe tempo pomaga wtedy, gdy kamera nadąża. Jeśli postęp stoi, zwolnij, popraw ostrość albo zatrzymaj serię na brakującym fragmencie. Kamera pozostaje włączona do zakończenia odbioru lub wybrania „Zatrzymaj kamerę”.</p><p>Po zebraniu całości sprawdzana jest suma SHA-256. Dopiero po zgodnym wyniku można pobrać plik. Obca seria nie nadpisze odbieranej; „Reset odbioru” pozwala rozpocząć nową.</p></details>
       <details><summary>Czy pliki i klucze trafiają na serwer?</summary><p>Nie. Odczyt pliku, tworzenie QR i skanowanie wykonuje kod w Twojej przeglądarce. Ta strona nie wysyła zawartości, nie zapisuje jej w pamięci trwałej przeglądarki i nie korzysta z analityki ani zewnętrznych skryptów. GitHub Pages dostarcza jedynie pliki strony.</p><p>Pobrane pliki i obrazy pozostają tam, gdzie je zapiszesz. „Wyczyść” usuwa wyniki z otwartej strony, ale nie usuwa Twoich pobranych plików ani zrzutów ekranu.</p></details>
-      <details><summary>Dlaczego tylko małe pliki?</summary><p>Jeden standardowy kod QR może zapisać maksymalnie 2 953 bajty danych binarnych. Większość pojedynczych konfiguracji WireGuarda jest znacznie mniejsza. Pliki do 2 331 bajtów otrzymują silniejszą korekcję błędów M; dla większych używana jest korekcja L.</p><p>Strona zachowuje bajty pliku, w tym zakończenia linii i polskie znaki. Nie skraca zawartości i nie dzieli dużych plików na wiele kodów. Inne skanery mogą interpretować dane tekstowo; odczyt tutaj pozwala odzyskać bajty zakodowane przez ten konwerter.</p></details>
+      <details><summary>Jak duży plik mogę przesłać?</summary><p>Jeden zwykły QR mieści do 2 953 bajtów. Seria obsługuje tutaj pliki do 256 KiB, czyli 262 144 bajtów i maksymalnie 437 fragmentów. Większy plik oznacza dłuższe skanowanie; to narzędzie sprawdza się przy konfiguracjach, kluczach i niedużych dokumentach.</p><p>Odtworzona zawartość zachowuje bajty pliku, w tym polskie znaki i zakończenia linii. Serię trzeba odczytać na tej stronie. Pojedyncza zapisana klatka serii zawiera tylko jej fragment — do odtworzenia pliku potrzebny jest komplet.</p></details>
     </section>
     <noscript><p class="noscript-message">Włącz JavaScript, aby konwertować pliki. Cała konwersja odbywa się lokalnie w przeglądarce.</p></noscript>
   </main>
