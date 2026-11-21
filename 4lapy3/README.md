@@ -12,9 +12,11 @@ To niezależna propozycja, oparta na dopracowanej funkcjonalności poprzedniej w
 - `preferences.js` — wybór i zapamiętywanie motywu oraz języka, wczesne ustawienie kolorów oraz dyskretne przejście przy przełączeniu PL/EN.
 - `entry.js` — ustawienie sekcji z adresu przed pokazaniem treści przy pierwszym wczytaniu dokumentu.
 - `site.js` — płynne akordeony usług, status otwarcia w Europe/Warsaw, menu, przypomnienia Google Calendar / ICS oraz mapa wczytywana po wyraźnej zgodzie. Teksty dynamiczne odpowiadają językowi dokumentu.
+- `calendar-config.js` — publiczny identyfikator klienta Google OAuth; pusta wartość pozostawia zapis przez standardowy link Google.
+- `calendar-api.js` — opcjonalna autoryzacja Google Identity Services i bezpośredni zapis wydarzenia do kalendarza użytkownika.
 - `assets/` — lokalne zdjęcia i mapa WebP, fonty i licencje OFL.
 
-Nie wymaga kompilacji ani bibliotek JavaScript. Katalog jest publikowany bezpośrednio przez istniejący GitHub Pages z gałęzi main.
+Nie wymaga kompilacji. Podstawowe działanie nie zależy od bibliotek JavaScript. Opcjonalny zapis przez Google Calendar API ładuje Google Identity Services po otwarciu okna przypomnienia, tylko gdy skonfigurowano klienta OAuth. Katalog jest publikowany bezpośrednio przez istniejący GitHub Pages z gałęzi main.
 
 ## Język i wygląd
 
@@ -46,7 +48,7 @@ W `localStorage` zapisywane są wyłącznie preferencje `4lapy3-theme` i `4lapy3
 
 Strona zachowuje dane kontaktowe, godziny i zakres usług z projektu /4lapy/. Dane pochodzą z publicznych źródeł oznaczonych jako październik 2026 i wymagają potwierdzenia przez przychodnię. Propozycja jest oznaczona jako poglądowa i ma noindex/nofollow.
 
-Formularz nie wysyła i nie zapisuje danych na serwerze. Wybranie Google Calendar otwiera przygotowane wydarzenie w usłudze Google; ICS powstaje lokalnie. Oba warianty planują kontakt o 9:00 czasu polskiego przed terminem szczepienia. Brak analityki.
+Dane formularza nie trafiają na serwer przychodni ani do trwałej pamięci strony. Google otrzymuje treść przypomnienia dopiero po wybraniu zapisu do Google: przez jawny link albo przez API po autoryzacji użytkownika. ICS powstaje lokalnie. Wszystkie warianty planują kontakt o 9:00 czasu polskiego przed terminem szczepienia. Brak analityki.
 
 Podgląd przypomnienia stosuje tę samą walidację daty co eksport: po wybraniu przeszłego terminu od razu pokazuje ostrzeżenie, a komunikat przed przyciskami wyjaśnia, co poprawić. Gdy krótsze wyprzedzenie również nie jest już możliwe, formularz sugeruje kontakt telefoniczny. Powrót do karty ponownie sprawdza ważność daty; poprawa lub wyczyszczenie pola usuwa nieaktualny błąd. Pole daty zachowuje natywny systemowy kalendarz, a jego rozmiary i wyrównanie są dopasowane do pozostałych pól także w iOS.
 
@@ -55,6 +57,28 @@ Domyślny podgląd mapy jest lokalnym plikiem i nie łączy przeglądarki z dost
 Akordeony zachowują semantykę natywnych details/summary. Animowana jest ich rzeczywista wysokość, również podczas zamykania i zmiany kierunku w trakcie ruchu. Zmiana szerokości lub wysokości treści aktualizuje cel animacji. Preferencja ograniczonego ruchu wyłącza animację; bez JavaScript akordeony nadal działają natywnie.
 
 Wywieszka obok głównego przycisku kontaktu pokazuje najpierw bieżący status, a pod nim godzinę otwarcia lub zamknięcia. Po pierwszym zwykłym pojawieniu się w widoku wykonuje łagodne, tłumione kołysanie przez 2,4 s. Kliknięcie, stuknięcie albo aktywacja klawiszem Enter/Spacja rozkołysze ją ponownie po zakończeniu poprzedniego ruchu. Sznurek i tabliczka obracają się razem wokół gwoździa; gwóźdź i adres są nieruchome. Wybór języka zatrzymuje kołysanie przed przechwyceniem widoku, a wejście do tłumaczenia pomija ponowne intro; po przejściu nadal można poruszyć tabliczką. Ukrycie strony przerywa ruch. Preferencja ograniczonego ruchu pozostawia wywieszkę nieruchomą i ukrywa przycisk do jej rozkołysania. Przycisk nie zmienia wyglądu szyldu; ma nazwę dostępną dla czytników ekranu oraz obrys przy obsłudze klawiaturą. Przypomnienie o szczepieniu znajduje się bezpośrednio po usługach, przed opiniami, i ma dodatkowy skrót w pasku najważniejszych informacji.
+
+## Okno zapisu przypomnienia
+
+Po poprawnym wypełnieniu formularza przycisk „Dodaj przypomnienie” otwiera natywny `dialog` z tytułem wydarzenia, datą przypomnienia, godziną i datą szczepienia. Okno ma wersję PL/EN, korzysta z wybranego motywu, przewija się wewnątrz małego ekranu i respektuje ograniczenie ruchu. Zamknięcie, Escape oraz powrót do edycji zachowują dane. Formularz występuje tylko raz; modal pokazuje jego zweryfikowane podsumowanie.
+
+Domyślna konfiguracja ma pusty `googleClientId`. W tym stanie działa „Kontynuuj w Google” z informacją o otwarciu zewnętrznego okna oraz pobranie ICS. Kliknięcie linku lub pobranie pliku nie jest traktowane jako potwierdzony zapis wydarzenia. Bez klienta OAuth nie da się ominąć zewnętrznego edytora Google.
+
+### Uruchomienie bezpośredniego zapisu do Google
+
+1. W projekcie Google Cloud włącz Google Calendar API.
+2. Skonfiguruj Google Auth Platform: nazwę aplikacji, wymagane dane i zakres `https://www.googleapis.com/auth/calendar.events.owned`. Ten zakres pozwala zarządzać wydarzeniami we własnych kalendarzach użytkownika; nie jest uprawnieniem ograniczonym do dodania jednego wydarzenia.
+3. Utwórz klienta OAuth typu **Web application**. Dla publikacji GitHub Pages dodaj Authorized JavaScript origin **`https://guziczak.github.io`** — bez `/4lapy3/`. Dla innych domen podaj ich faktyczne pochodzenia.
+4. W czasie testów dodaj konta testowe w konfiguracji dostępu. Przed publicznym udostępnieniem spełnij wymagania Google dotyczące publikacji i ewentualnej weryfikacji aplikacji.
+5. Wpisz publiczny OAuth **client ID** w `calendar-config.js`, w polu `googleClientId`, i zmień wersję tego skryptu w obu HTML, aby przeglądarki pobrały nową konfigurację. Nie umieszczaj tu `client_secret`, klucza konta usługi ani tokenu.
+
+Po konfiguracji modal udostępnia „Zapisz w Google”. Google Identity Services obsługuje wybór konta i zgodę w swoim oknie, a treść wydarzenia zapisuje Calendar API. Kod strony nie wymaga backendu do tego jednorazowego działania. Token pozostaje wyłącznie w pamięci bieżącej strony. Zapis nie dodaje gości ani nie rezerwuje wizyty w przychodni.
+
+Wydarzenie powstaje w głównym kalendarzu użytkownika, ma 15 minut, czas `Europe/Warsaw`, status dostępności `transparent` i powiadomienie na początek wydarzenia. Podwójne kliknięcia są blokowane; ponowienie tego samego przypomnienia w bieżącej sesji używa tego samego identyfikatora wydarzenia. Potwierdzenie „Przypomnienie dodane” pojawia się dopiero po zweryfikowanej odpowiedzi API. Odmowa zgody, błąd sieci lub zamknięcie okna nie zerują danych formularza.
+
+Sprawdzenie adaptera bez prawdziwych połączeń i zapisów: `node 4lapy3/tools/calendar-api.test.cjs`. Testy obejmują m.in. odmowę i anulowanie zgody, późne odpowiedzi, niepewny wynik zapisu, ponowienie z tym samym ID i błąd autoryzacji. Testy istniejącej logiki dat i eksportu: `node --test 4lapy3/tools/localization.test.cjs`.
+
+Dokumentacja: [konfiguracja klienta OAuth](https://developers.google.com/identity/oauth2/web/guides/get-google-api-clientid), [Google Identity Services — model tokenowy](https://developers.google.com/identity/oauth2/web/guides/use-token-model), [Calendar API — events.insert](https://developers.google.com/workspace/calendar/api/v3/reference/events/insert).
 
 ## Materiały wizualne
 

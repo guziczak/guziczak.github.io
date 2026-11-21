@@ -35,6 +35,19 @@
       previewReminderInvalid: 'Termin przypomnienia już minął.',
       googleSuccess: 'W Kalendarzu Google zapisz przygotowane wydarzenie. Termin wizyty ustal telefonicznie.',
       icsSuccess: 'Otwórz pobrany plik i zatwierdź wydarzenie w swoim kalendarzu. Termin wizyty ustal telefonicznie.',
+      calendarTime: '09:00 · czas polski',
+      calendarGoogleNote: 'Google otworzy okno, w którym zatwierdzisz zapis.',
+      calendarLoading: 'Przygotowuję zapis do Kalendarza Google…',
+      calendarAuth: 'Wybierz konto Google i potwierdź dostęp do kalendarza.',
+      calendarSaving: 'Zapisuję przypomnienie…',
+      calendarUnavailable: 'Nie można teraz otworzyć podglądu. Odśwież stronę i spróbuj ponownie.',
+      calendarConnectionError: 'Nie udało się połączyć z Google. Możesz użyć linku poniżej lub pobrać plik kalendarza.',
+      calendarAuthDenied: 'Nie udzielono dostępu do kalendarza. Możesz spróbować ponownie albo wybrać inny sposób zapisu.',
+      calendarAuthClosed: 'Okno Google zostało zamknięte. Twoje dane nadal tu są.',
+      calendarAuthPopup: 'Nie udało się otworzyć okna Google. Spróbuj ponownie lub wybierz „Kontynuuj w Google”.',
+      calendarAuthExpired: 'Dostęp do Google wygasł. Kliknij ponownie, aby się połączyć.',
+      calendarUnconfirmed: 'Nie udało się potwierdzić zapisu. Sprawdź swój kalendarz lub spróbuj ponownie.',
+      calendarDownloadError: 'Nie udało się pobrać pliku. Spróbuj ponownie.',
       filenamePrefix: 'przypomnienie-szczepienie', calendarProduct: 'Przypomnienie//PL',
       menuOpen: 'Otwórz menu', menuClose: 'Zamknij menu',
       mapTitle: 'Dojazd do przychodni Cztery Łapy i Ty, Chabrowa 2D, Wysoka',
@@ -65,6 +78,19 @@
       previewReminderInvalid: 'The reminder time has passed.',
       googleSuccess: 'Save the prepared event in Google Calendar. Arrange the appointment by phone.',
       icsSuccess: 'Open the downloaded file and add the event to your calendar. Arrange the appointment by phone.',
+      calendarTime: '09:00 · Poland time',
+      calendarGoogleNote: 'Google will open a window where you confirm the event.',
+      calendarLoading: 'Preparing Google Calendar…',
+      calendarAuth: 'Choose your Google account and allow access to your calendar.',
+      calendarSaving: 'Saving your reminder…',
+      calendarUnavailable: 'The preview cannot open right now. Refresh the page and try again.',
+      calendarConnectionError: 'Google could not be reached. You can use the link below or download a calendar file.',
+      calendarAuthDenied: 'Calendar access was not granted. You can try again or choose another way to save.',
+      calendarAuthClosed: 'The Google window was closed. Your details are still here.',
+      calendarAuthPopup: 'The Google window could not open. Try again or choose “Continue in Google”.',
+      calendarAuthExpired: 'Your Google access has expired. Click again to reconnect.',
+      calendarUnconfirmed: 'The save could not be confirmed. Check your calendar or try again.',
+      calendarDownloadError: 'The file could not be downloaded. Please try again.',
       filenamePrefix: 'vaccination-reminder', calendarProduct: 'Vaccination reminder//EN',
       menuOpen: 'Open menu', menuClose: 'Close menu',
       mapTitle: 'Directions to Cztery Łapy i Ty Veterinary Clinic, Chabrowa 2D, Wysoka',
@@ -820,6 +846,235 @@
   // Re-check dates restored by the browser or after returning to an open tab.
   window.addEventListener('pageshow', renderReminder);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) renderReminder(); });
+  const calendarDialog = document.getElementById('calendar-dialog');
+  const calendarUi = calendarDialog ? {
+    status: calendarDialog.querySelector('[data-calendar-status]'),
+    google: calendarDialog.querySelector('[data-calendar-google]'),
+    googleLink: calendarDialog.querySelector('[data-calendar-google-link]'),
+    googleNote: calendarDialog.querySelector('[data-calendar-google-note]'),
+    ics: calendarDialog.querySelector('[data-calendar-ics]'),
+    options: calendarDialog.querySelector('[data-calendar-options]'),
+    success: calendarDialog.querySelector('[data-calendar-success]'),
+    done: calendarDialog.querySelector('[data-calendar-done]'),
+    eventLink: calendarDialog.querySelector('[data-calendar-event-link]')
+  } : null;
+  const calendarReady = calendarUi && Object.values(calendarUi).every(Boolean) &&
+    typeof calendarDialog.showModal === 'function';
+  const calendarApi = window.ClinicCalendarApi && window.ClinicCalendarApi.createClient({
+    googleClientId: window.CLINIC_CALENDAR_CONFIG && window.CLINIC_CALENDAR_CONFIG.googleClientId
+  });
+  let calendarSession = null;
+
+  function isCalendarSession(session) {
+    return calendarSession === session && calendarDialog.open && !session.controller.signal.aborted;
+  }
+  function setCalendarStatus(text, state = 'info') {
+    calendarUi.status.textContent = text;
+    calendarUi.status.dataset.state = state;
+  }
+  function showCalendarFallback() {
+    calendarUi.googleLink.hidden = false;
+    calendarUi.googleNote.hidden = false;
+  }
+  function setCalendarBusy(session, busy) {
+    session.busy = busy;
+    calendarUi.options.setAttribute('aria-busy', String(busy));
+    calendarUi.google.disabled = busy || !calendarApi || !calendarApi.isReady();
+    calendarUi.ics.disabled = busy;
+    if (busy) {
+      calendarUi.googleLink.setAttribute('aria-disabled', 'true');
+      calendarUi.googleLink.setAttribute('tabindex', '-1');
+    } else {
+      calendarUi.googleLink.removeAttribute('aria-disabled');
+      calendarUi.googleLink.removeAttribute('tabindex');
+    }
+  }
+  function finishCalendarSession(restoreFocus = true) {
+    const session = calendarSession;
+    calendarSession = null;
+    if (session) session.controller.abort();
+    document.documentElement.classList.remove('reminder-modal-open');
+    if (restoreFocus && session && session.returnFocus && session.returnFocus.isConnected) {
+      session.returnFocus.focus({ preventScroll: true });
+    }
+  }
+  function closeCalendar({ edit = false, restoreFocus = true } = {}) {
+    if (edit && calendarSession) calendarSession.returnFocus = dateInput;
+    // Invalidate callbacks before closing: a late consent response cannot write.
+    if (calendarSession) calendarSession.controller.abort();
+    if (calendarDialog.open) calendarDialog.close();
+    finishCalendarSession(restoreFocus);
+  }
+  function freshCalendarReminder(session) {
+    const reminder = buildReminder(session.values, undefined, pageLanguage);
+    if (reminder.error) {
+      setCalendarStatus(reminder.error, 'error');
+      return null;
+    }
+    session.reminder = reminder;
+    return reminder;
+  }
+  function calendarErrorMessage(error) {
+    switch (error && error.code) {
+      case 'auth_denied': return copy.calendarAuthDenied;
+      case 'auth_closed': return copy.calendarAuthClosed;
+      case 'auth_popup': return copy.calendarAuthPopup;
+      case 'auth_required': return copy.calendarAuthExpired;
+      case 'not_ready':
+      case 'not_configured':
+      case 'sdk_unavailable':
+      case 'unavailable':
+      case 'auth_error': return copy.calendarConnectionError;
+      default: return copy.calendarUnconfirmed;
+    }
+  }
+  function prepareCalendarGoogle(session) {
+    const configured = Boolean(calendarApi && calendarApi.configured);
+    calendarUi.google.hidden = !configured;
+    calendarUi.googleLink.hidden = configured;
+    calendarUi.googleNote.hidden = configured;
+    calendarUi.googleNote.textContent = copy.calendarGoogleNote;
+    setCalendarBusy(session, false);
+    if (!configured) return;
+    setCalendarStatus(copy.calendarLoading);
+    // SDK loading starts only after the dialog has been opened.
+    calendarApi.ready().then(() => {
+      if (!isCalendarSession(session)) return;
+      setCalendarBusy(session, false);
+      if (calendarUi.status.textContent === copy.calendarLoading) setCalendarStatus('');
+    }).catch(() => {
+      if (!isCalendarSession(session)) return;
+      calendarUi.google.hidden = true;
+      showCalendarFallback();
+      setCalendarStatus(copy.calendarConnectionError, 'error');
+    });
+  }
+  function openCalendar(reminder, opener) {
+    if (!calendarReady) { setMessage(copy.calendarUnavailable, true); return; }
+    if (calendarDialog.open) closeCalendar({ restoreFocus: false });
+    const session = { reminder, values: readValues(), controller: new AbortController(),
+      busy: false, returnFocus: opener || document.activeElement };
+    calendarSession = session;
+    const fill = (selector, value) => {
+      const element = calendarDialog.querySelector(selector);
+      if (element) element.textContent = value;
+    };
+    fill('[data-calendar-event-title]', reminder.title);
+    fill('[data-calendar-reminder-date]', dateFormats[pageLanguage].full.format(reminder.reminderDay));
+    fill('[data-calendar-reminder-time]', copy.calendarTime);
+    fill('[data-calendar-vaccination-date]', dateFormats[pageLanguage].full.format(reminder.vaccination));
+    calendarUi.googleLink.href = googleUrl(reminder);
+    calendarUi.eventLink.hidden = true;
+    calendarUi.eventLink.removeAttribute('href');
+    calendarUi.options.hidden = false;
+    calendarUi.success.hidden = true;
+    setCalendarStatus('');
+    try {
+      calendarDialog.showModal();
+      document.documentElement.classList.add('reminder-modal-open');
+    } catch (_) {
+      finishCalendarSession(false);
+      setMessage(copy.calendarUnavailable, true);
+      return;
+    }
+    prepareCalendarGoogle(session);
+  }
+
+  if (calendarReady) {
+    calendarDialog.querySelectorAll('[data-calendar-close]').forEach(button => {
+      button.addEventListener('click', () => closeCalendar());
+    });
+    calendarDialog.querySelectorAll('[data-calendar-edit]').forEach(button => {
+      button.addEventListener('click', () => closeCalendar({ edit: true }));
+    });
+    calendarUi.done.addEventListener('click', () => closeCalendar());
+    calendarDialog.addEventListener('cancel', event => {
+      event.preventDefault();
+      closeCalendar();
+    });
+    calendarDialog.addEventListener('close', () => {
+      if (!calendarDialog.open) finishCalendarSession();
+    });
+    calendarDialog.addEventListener('click', event => {
+      if (event.target !== calendarDialog) return;
+      const bounds = calendarDialog.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right ||
+        event.clientY < bounds.top || event.clientY > bounds.bottom) closeCalendar();
+    });
+    window.addEventListener('pagehide', () => {
+      if (calendarDialog.open) closeCalendar({ restoreFocus: false });
+    });
+
+    calendarUi.google.addEventListener('click', () => {
+      const session = calendarSession;
+      if (!session || !isCalendarSession(session) || session.busy ||
+        !calendarApi || !calendarApi.isReady() || !freshCalendarReminder(session)) return;
+      setCalendarBusy(session, true);
+      setCalendarStatus(copy.calendarAuth);
+      let authorization;
+      try {
+        // The call stays in the click stack; a new popup keeps the user gesture.
+        authorization = calendarApi.authorize({ signal: session.controller.signal });
+      } catch (error) {
+        setCalendarBusy(session, false);
+        showCalendarFallback();
+        setCalendarStatus(calendarErrorMessage(error), 'error');
+        return;
+      }
+      authorization.then(() => {
+        if (!isCalendarSession(session)) return null;
+        // A long consent flow may cross 09:00. Re-check before the actual write.
+        const reminder = freshCalendarReminder(session);
+        if (!reminder) { setCalendarBusy(session, false); return null; }
+        setCalendarStatus(copy.calendarSaving);
+        return calendarApi.save(reminder, { signal: session.controller.signal });
+      }).then(result => {
+        if (!result || !isCalendarSession(session)) return;
+        setCalendarBusy(session, false);
+        calendarUi.options.hidden = true;
+        calendarUi.success.hidden = false;
+        setCalendarStatus('', 'success');
+        calendarUi.eventLink.hidden = !result.htmlLink;
+        if (result.htmlLink) calendarUi.eventLink.href = result.htmlLink;
+        calendarUi.done.focus({ preventScroll: true });
+      }).catch(error => {
+        if (!isCalendarSession(session)) return;
+        setCalendarBusy(session, false);
+        showCalendarFallback();
+        setCalendarStatus(calendarErrorMessage(error), 'error');
+      });
+    });
+
+    calendarUi.googleLink.addEventListener('click', event => {
+      const session = calendarSession;
+      if (!session || !isCalendarSession(session) || session.busy) { event.preventDefault(); return; }
+      const reminder = freshCalendarReminder(session);
+      if (!reminder) { event.preventDefault(); return; }
+      calendarUi.googleLink.href = googleUrl(reminder);
+      // Opening an editor is not a confirmed save.
+      setCalendarStatus(copy.googleSuccess);
+    });
+    calendarUi.ics.addEventListener('click', () => {
+      const session = calendarSession;
+      if (!session || !isCalendarSession(session) || session.busy) return;
+      const reminder = freshCalendarReminder(session);
+      if (!reminder) return;
+      try {
+        const blobUrl = URL.createObjectURL(new Blob([calendarFile(reminder)], { type: 'text/calendar;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = calendarFilename(reminder);
+        link.hidden = true;
+        calendarDialog.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+        // Import still needs confirmation in the chosen calendar application.
+        setCalendarStatus(copy.icsSuccess);
+      } catch (_) { setCalendarStatus(copy.calendarDownloadError, 'error'); }
+    });
+  }
+
   form.addEventListener('submit', event => {
     event.preventDefault();
     renderReminder();
@@ -831,27 +1086,7 @@
       field.focus();
       return;
     }
-    const destination = event.submitter && event.submitter.value === 'ics' ? 'ics' : 'google';
-    if (destination === 'google') {
-      const link = document.createElement('a');
-      link.href = googleUrl(reminder);
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setMessage(copy.googleSuccess, false);
-    } else {
-      const blobUrl = URL.createObjectURL(new Blob([calendarFile(reminder)], { type: 'text/calendar;charset=utf-8' }));
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = calendarFilename(reminder);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-      setMessage(copy.icsSuccess, false);
-    }
+    openCalendar(reminder, event.submitter || document.activeElement);
   });
   renderReminder();
 }());

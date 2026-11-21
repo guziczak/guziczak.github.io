@@ -20,8 +20,10 @@
   <link rel="icon" href="assets/favicon.svg?v=20261121paw1" type="image/svg+xml">
   <link rel="preload" as="image" href="assets/hero-clinic.webp" imagesrcset="assets/hero-clinic-640.webp 640w, assets/hero-clinic.webp 1536w" imagesizes="(max-width: 370px) calc(100vw - 32px), (max-width: 580px) calc(100vw - 40px), (max-width: 760px) 540px, (max-width: 950px) calc(56.25vw - 54px), (max-width: 1150px) calc(56.25vw - 57.375px), (max-width: 1376px) calc(65.25vw - 93.96px), 804px" fetchpriority="high">
   <link rel="stylesheet" href="assets/fonts.css">
-  <link rel="stylesheet" href="styles.css?v=20261121swing6">
-  <script src="site.js?v=20261121swing6" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261121modal7">
+  <script src="calendar-config.js?v=20261121modal7" defer></script>
+  <script src="calendar-api.js?v=20261121modal7" defer></script>
+  <script src="site.js?v=20261121modal7" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#tresc">Przejdź do treści</a>
@@ -182,7 +184,8 @@
             </div>
             <p class="field-help" id="reminder-help">Przepisz datę kolejnego szczepienia z książeczki zdrowia.</p>
             <p id="reminder-message" role="status" aria-live="polite"></p>
-            <div class="calendar-actions"><button class="button button-dark" type="submit" name="calendar" value="google">Dodaj do Kalendarza Google</button><button class="button button-outline" type="submit" name="calendar" value="ics">iPhone / Outlook (.ics)</button></div>
+            <div class="calendar-actions"><button class="button button-dark" type="submit" aria-haspopup="dialog" aria-controls="calendar-dialog"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>Dodaj przypomnienie</button></div>
+            <p class="calendar-choice-note">Google, iPhone lub Outlook</p>
           </form>
         </div>
       </div>
@@ -251,6 +254,37 @@
       <div class="footer-bottom"><span>© 2026 Cztery Łapy i Ty · Agnieszka Janeczek</span><p>Projekt poglądowy. Godziny, usługi i dane kontaktowe pochodzą z publicznych źródeł (październik 2026) i wymagają potwierdzenia. Wizualizację gabinetu i zdjęcie kota wygenerowano przy użyciu AI. Wnętrze jest poglądowe i nie przedstawia rzeczywistej przychodni.</p></div>
     </div>
   </footer>
+  <dialog class="calendar-dialog" id="calendar-dialog" aria-labelledby="calendar-dialog-title" aria-describedby="calendar-event-title">
+    <div class="calendar-dialog-content">
+      <div class="calendar-dialog-header">
+        <div><p class="small-label">DO TWOJEGO KALENDARZA</p><h2 id="calendar-dialog-title">Zapisz przypomnienie</h2></div>
+        <button class="calendar-dialog-close" type="button" data-calendar-close aria-label="Zamknij okno" autofocus><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div class="calendar-dialog-summary">
+        <div class="calendar-dialog-event"><span class="calendar-dialog-mark" aria-hidden="true"><svg class="icon"><use href="#i-calendar"/></svg></span><h3 id="calendar-event-title" data-calendar-event-title>Umów szczepienie zwierzaka</h3></div>
+        <dl class="calendar-dialog-dates">
+          <div><dt>Przypomnienie</dt><dd><strong data-calendar-reminder-date></strong><span data-calendar-reminder-time></span></dd></div>
+          <div><dt>Data szczepienia</dt><dd data-calendar-vaccination-date></dd></div>
+        </dl>
+      </div>
+      <p class="calendar-dialog-appointment">Termin wizyty ustal telefonicznie.</p>
+      <div class="calendar-dialog-actions" data-calendar-options>
+        <button class="button button-dark" type="button" data-calendar-google hidden>Zapisz w Google</button>
+        <a class="button button-dark" data-calendar-google-link target="_blank" rel="noopener noreferrer" hidden>Kontynuuj w Google</a>
+        <p class="calendar-dialog-note" data-calendar-google-note hidden>Google otworzy okno, w którym zatwierdzisz zapis.</p>
+        <button class="button button-outline" type="button" data-calendar-ics>iPhone / Outlook (.ics)</button>
+      </div>
+      <p class="calendar-dialog-status" data-calendar-status role="status" aria-live="polite" aria-atomic="true"></p>
+      <div class="calendar-dialog-success" data-calendar-success hidden>
+        <span class="calendar-dialog-success-mark" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></span>
+        <h3>Przypomnienie dodane</h3><p>Znajdziesz je w swoim Kalendarzu Google.</p>
+        <button class="button button-dark" type="button" data-calendar-done>Gotowe</button>
+        <a class="text-link" data-calendar-event-link target="_blank" rel="noopener noreferrer" hidden>Zobacz w kalendarzu</a>
+      </div>
+      <div class="calendar-dialog-footer"><button class="text-link calendar-dialog-edit" type="button" data-calendar-edit>Zmień dane</button></div>
+    </div>
+  </dialog>
+
   <a class="mobile-contact" href="tel:+48717867884"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg>Umów wizytę <span>71 786 78 84</span></a>
   <noscript><div class="noscript-note">Godziny przyjęć i kontakt znajdziesz poniżej. Przypomnienie oraz interaktywna mapa wymagają włączonego JavaScript.</div></noscript>
   <span id="page-ready" hidden></span>

@@ -20,8 +20,10 @@
   <link rel="icon" href="../assets/favicon.svg?v=20261121paw1" type="image/svg+xml">
   <link rel="preload" as="image" href="../assets/hero-clinic.webp" imagesrcset="../assets/hero-clinic-640.webp 640w, ../assets/hero-clinic.webp 1536w" imagesizes="(max-width: 370px) calc(100vw - 32px), (max-width: 580px) calc(100vw - 40px), (max-width: 760px) 540px, (max-width: 950px) calc(56.25vw - 54px), (max-width: 1150px) calc(56.25vw - 57.375px), (max-width: 1376px) calc(65.25vw - 93.96px), 804px" fetchpriority="high">
   <link rel="stylesheet" href="../assets/fonts.css">
-  <link rel="stylesheet" href="../styles.css?v=20261121swing6">
-  <script src="../site.js?v=20261121swing6" defer></script>
+  <link rel="stylesheet" href="../styles.css?v=20261121modal7">
+  <script src="../calendar-config.js?v=20261121modal7" defer></script>
+  <script src="../calendar-api.js?v=20261121modal7" defer></script>
+  <script src="../site.js?v=20261121modal7" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#tresc">Skip to content</a>
@@ -182,7 +184,8 @@
             </div>
             <p class="field-help" id="reminder-help">Enter the next vaccination date from your pet’s health record.</p>
             <p id="reminder-message" role="status" aria-live="polite"></p>
-            <div class="calendar-actions"><button class="button button-dark" type="submit" name="calendar" value="google">Add to Google Calendar</button><button class="button button-outline" type="submit" name="calendar" value="ics">iPhone / Outlook (.ics)</button></div>
+            <div class="calendar-actions"><button class="button button-dark" type="submit" aria-haspopup="dialog" aria-controls="calendar-dialog"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>Add a reminder</button></div>
+            <p class="calendar-choice-note">Google, iPhone or Outlook</p>
           </form>
         </div>
       </div>
@@ -251,6 +254,37 @@
       <div class="footer-bottom"><span>© 2026 Cztery Łapy i Ty · Agnieszka Janeczek</span><p>Concept website. Opening hours, services and contact details are taken from public sources (October 2026) and need confirmation. The room visual and cat image were generated with AI. The room is a concept and does not show the actual practice interior.</p></div>
     </div>
   </footer>
+  <dialog class="calendar-dialog" id="calendar-dialog" aria-labelledby="calendar-dialog-title" aria-describedby="calendar-event-title">
+    <div class="calendar-dialog-content">
+      <div class="calendar-dialog-header">
+        <div><p class="small-label">FOR YOUR CALENDAR</p><h2 id="calendar-dialog-title">Save your reminder</h2></div>
+        <button class="calendar-dialog-close" type="button" data-calendar-close aria-label="Close dialog" autofocus><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div class="calendar-dialog-summary">
+        <div class="calendar-dialog-event"><span class="calendar-dialog-mark" aria-hidden="true"><svg class="icon"><use href="#i-calendar"/></svg></span><h3 id="calendar-event-title" data-calendar-event-title>Book your pet’s vaccination</h3></div>
+        <dl class="calendar-dialog-dates">
+          <div><dt>Reminder</dt><dd><strong data-calendar-reminder-date></strong><span data-calendar-reminder-time></span></dd></div>
+          <div><dt>Vaccination date</dt><dd data-calendar-vaccination-date></dd></div>
+        </dl>
+      </div>
+      <p class="calendar-dialog-appointment">Arrange the appointment by phone.</p>
+      <div class="calendar-dialog-actions" data-calendar-options>
+        <button class="button button-dark" type="button" data-calendar-google hidden>Save to Google</button>
+        <a class="button button-dark" data-calendar-google-link target="_blank" rel="noopener noreferrer" hidden>Continue to Google</a>
+        <p class="calendar-dialog-note" data-calendar-google-note hidden>Google will open a window where you can confirm the event.</p>
+        <button class="button button-outline" type="button" data-calendar-ics>iPhone / Outlook (.ics)</button>
+      </div>
+      <p class="calendar-dialog-status" data-calendar-status role="status" aria-live="polite" aria-atomic="true"></p>
+      <div class="calendar-dialog-success" data-calendar-success hidden>
+        <span class="calendar-dialog-success-mark" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></span>
+        <h3>Reminder added</h3><p>You can find it in your Google Calendar.</p>
+        <button class="button button-dark" type="button" data-calendar-done>Done</button>
+        <a class="text-link" data-calendar-event-link target="_blank" rel="noopener noreferrer" hidden>View in calendar</a>
+      </div>
+      <div class="calendar-dialog-footer"><button class="text-link calendar-dialog-edit" type="button" data-calendar-edit>Edit details</button></div>
+    </div>
+  </dialog>
+
   <a class="mobile-contact" href="tel:+48717867884"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg>Call to book <span>+48 71 786 78 84</span></a>
   <noscript><div class="noscript-note">Opening hours and contact details are listed below. The reminder tool and interactive map require JavaScript to be enabled.</div></noscript>
   <span id="page-ready" hidden></span>
