@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { RENAL_STATE_DEFAULTS } from './renal-state.js';
 import {
   PATIENT_CONTEXT_FIELDS, pickPatientContext, patientContextKey, prescriptionProductKey,
   createPrescriptionCart, savePrescriptionItem, removePrescriptionItem,
@@ -8,7 +9,7 @@ import {
 
 const patient = (patch = {}) => ({ specialty: 'dental', patientType: 'child', age: '5',
   humanAgeUnit: 'years', weight: '20', renalStatus: 'unknown', humanCrCl: '', humanSerumCreatinine: '',
-  species: '', vetAgeUnit: 'years', foodChainStatus: 'unknown', ...patch });
+  species: '', vetAgeUnit: 'years', foodChainStatus: 'unknown', ...RENAL_STATE_DEFAULTS, ...patch });
 const draft = (patch = {}, snapshotPatch = {}) => ({
   valid: true, confirmed: true, demo: false,
   snapshot: { ...patient(), drugId: 'amoxicillin-clavulanate', formId: 'augmentin-400-57',

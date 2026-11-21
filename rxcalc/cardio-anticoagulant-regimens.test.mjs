@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   CARDIO_ANTICOAGULANT_REGIMENS as records,
   assessAnticoagulantEligibility as assess,
+  apixabanReductionCriteria,
 } from './cardio-anticoagulant-regimens.js';
 import { availableHumanRegimens, resolveHumanRegimen } from './human-regimen-engine.js';
 import { DRUGS } from './catalogue.js';
@@ -89,7 +90,7 @@ test('source dose, phase and whole-tablet arithmetic are not transferred between
   }
 });
 
-test('apixaban NVAF uses all three independent reduction criteria at inclusive boundaries', () => {
+test('apixaban NVAF two-of-three truth table uses inclusive criterion boundaries', () => {
   const standard = byId('eliquis-nvaf-standard');
   const reduced = byId('eliquis-nvaf-two-criteria');
   for (const [age, weight, serumCreatinine, reduction] of [
@@ -103,19 +104,97 @@ test('apixaban NVAF uses all three independent reduction criteria at inclusive b
     [80, 60, 1.5, true],
   ]) {
     const input = { age, weight, serumCreatinine, crcl: 50 };
+    const criteria = apixabanReductionCriteria(standard, contextFor(standard, input));
+    assert.equal(criteria.reduction, reduction, JSON.stringify(input));
+    assert.equal(criteria.minimumCount, Number(age >= 80) + Number(weight <= 60) + Number(serumCreatinine >= 1.5));
+    assert.equal(criteria.maximumCount, criteria.minimumCount);
     assert.equal(assess(standard, contextFor(standard, input)).errors.length === 0, !reduction, JSON.stringify(input));
     assert.equal(assess(reduced, contextFor(reduced, input)).errors.length === 0, reduction, JSON.stringify(input));
   }
   for (const record of [standard, reduced]) {
-    for (const field of ['age', 'weight', 'serumCreatinine']) {
+    for (const field of ['age', 'weight']) {
       for (const value of [undefined, null, '', NaN, Infinity, -1, '80']) {
         assert.ok(assess(record, { ...eligibleContext(record), [field]: value }).errors.length, `${record.id} ${field} ${value}`);
       }
+    }
+    // A genuinely absent optional datum is different from an entered invalid
+    // result, even when age + actual weight already decide the count.
+    for (const serumCreatinine of [NaN, Infinity, -1, 0, '1.5', 'not a result', true]) {
+      const checked = assess(record, { ...eligibleContext(record), serumCreatinine });
+      assert.ok(checked.issues.some(issue => issue.field === 'serumCreatinine' && issue.kind === 'invalid'));
     }
     assert.ok(assess(record, { ...eligibleContext(record), age: 80 * 365, ageUnit: 'days' })
       .errors.some(message => message.includes('niejednoznaczny')));
   }
   assert.deepEqual(assess(reduced, contextFor(reduced, { age: 960, ageUnit: 'months', weight: 60 })).errors, []);
+});
+
+test('known age and actual weight can decide NVAF reduction without a separate creatinine value', () => {
+  const standard = byId('eliquis-nvaf-standard'), reduced = byId('eliquis-nvaf-two-criteria');
+  // These are partial evaluations of EMA's count, not a replacement for the
+  // independent CrCl/renal and indication checks in the complete resolver.
+  for (const [age, weight, reduction, requiresCreatinine, minimum, maximum] of [
+    [79.99, 60.01, false, false, 0, 1],
+    [80, 60, true, false, 2, 3],
+    [80, 60.01, null, true, 1, 2],
+    [79.99, 60, null, true, 1, 2],
+  ]) {
+    for (const serumCreatinine of [undefined, null, '']) {
+      const raw = { age, ageUnit: 'years', weight, serumCreatinine, crcl: 50 };
+      const criteria = apixabanReductionCriteria(standard, raw);
+      assert.equal(criteria.reduction, reduction);
+      assert.equal(criteria.requiresCreatinine, requiresCreatinine);
+      assert.equal(criteria.minimumCount, minimum);
+      assert.equal(criteria.maximumCount, maximum);
+      assert.equal(criteria.creatinine, null);
+      for (const record of [standard, reduced]) {
+        const result = resolveHumanRegimen(record, contextFor(record, raw));
+        assert.equal(result.valid, reduction !== null && reduction === (record === reduced));
+        assert.equal(result.requirements.includes('serumCreatinine'), requiresCreatinine);
+        assert.equal(result.issues.some(issue => issue.code === 'missing-serum-creatinine'), requiresCreatinine);
+      }
+    }
+  }
+});
+
+test('unknown age or weight never becomes a negative reduction criterion', () => {
+  const record = byId('eliquis-nvaf-standard');
+  for (const missing of [{ age: null }, { weight: null }, { age: null, weight: null }]) {
+    const input = { ...contextFor(record), serumCreatinine: null, ...missing };
+    const criteria = apixabanReductionCriteria(record, input);
+    assert.equal(criteria.reduction, null);
+    assert.equal(criteria.requiresCreatinine, true);
+    assert.equal(resolveHumanRegimen(record, input).valid, false);
+    assert.ok(assess(record, input).issues.some(issue => issue.kind === 'missing'));
+  }
+  assert.equal(apixabanReductionCriteria(byId('eliquis-vte-initial'), {}), null);
+  const ambiguous = apixabanReductionCriteria(record, {
+    age: 80 * 365, ageUnit: 'days', weight: 60, serumCreatinine: null,
+  });
+  assert.equal(ambiguous.age, null);
+  assert.equal(ambiguous.reduction, null);
+});
+
+test('partial NVAF criteria never bypass independent renal scope or indication confirmation', () => {
+  for (const [id, age, weight] of [
+    ['eliquis-nvaf-standard', 70, 75], ['eliquis-nvaf-two-criteria', 80, 60],
+  ]) {
+    const record = byId(id);
+    const input = contextFor(record, { age, weight, serumCreatinine: null, crcl: 50 });
+    assert.equal(resolveHumanRegimen(record, input).valid, true);
+    for (const crcl of [null, undefined, '', 0, NaN, 29.999, 14.999]) {
+      const result = resolveHumanRegimen(record, { ...input, crcl });
+      assert.equal(result.valid, false, `${id}: ${String(crcl)}`);
+      assert.equal(result.issues.filter(issue => issue.field === 'crcl').length, 1);
+    }
+    for (const removed of record.selectionRequirements.map(requirement => requirement.id)) {
+      const result = resolveHumanRegimen(record, {
+        ...input, sourceConfirmations: input.sourceConfirmations.filter(id => id !== removed),
+      });
+      assert.equal(result.valid, false, `${id}: ${removed}`);
+      assert.ok(result.issues.some(issue => issue.code === 'missing-source-confirmations'));
+    }
+  }
 });
 
 test('renal bands are half-open at 30 and 50 and never substitute eGFR or a normal-status flag for CrCl', () => {
@@ -216,7 +295,7 @@ test('fixed source schedules cannot silently become different anticoagulant phas
     assess(record, context);
     assert.deepEqual(context, before, record.id);
   }
-  assert.deepEqual(assess({}, {}), { errors: [], warnings: [], requirements: [] });
+  assert.deepEqual(assess({}, {}), { errors: [], warnings: [], requirements: [], issues: [] });
   assert.ok(assess({ anticoagulantRule: 'unreviewed-variant' }, {}).errors.length);
   assert.ok(assess(byId('eliquis-vte-initial'), null).errors.length);
 });

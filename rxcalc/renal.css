@@ -1,0 +1,37 @@
+.renal-panel{margin-top:16px;padding-top:16px;border-top:1px solid var(--border);min-width:0;scroll-margin-top:110px}
+.renal-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.renal-heading h4{display:flex;align-items:center;gap:7px;margin:0;color:var(--ink);font-size:13px;font-weight:650}
+.renal-heading svg{width:16px;height:16px;color:var(--accent)}
+.renal-heading>span{font-size:11px;color:var(--muted);text-align:right}
+.renal-modes{display:grid;grid-template-columns:1fr 1fr;gap:4px;border:1px solid var(--border);padding:4px;border-radius:10px;background:var(--surface-soft);margin-bottom:14px}
+.renal-modes button{min-height:44px;min-width:0;padding:8px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--muted);font-size:12px;line-height:1.4}
+.renal-modes button.active{border-color:var(--border);background:var(--surface);color:var(--ink);font-weight:650}
+.renal-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.renal-fields>.field{min-width:0;max-width:none}
+.renal-fields input,.renal-fields select,.renal-weight-details input{min-height:46px;font-size:16px;width:100%}
+.renal-creatinine-input{display:grid;grid-template-columns:minmax(0,1fr) 104px;gap:7px;align-items:center}
+.renal-fields .renal-creatinine-input input{min-width:0;padding-right:10px}
+.renal-fields .renal-creatinine-input select{padding-left:10px;padding-right:24px}
+.renal-creatinine>small{font-size:11px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+.renal-weight-details,.renal-help{font-size:12px;line-height:1.6;color:var(--muted);margin-top:8px}
+.renal-weight-details summary,.renal-help summary{min-height:44px;display:flex;align-items:center;cursor:pointer;color:var(--accent);font-weight:600}
+.renal-weight-details summary::before,.renal-help summary::before{content:'▸';margin-right:7px}
+.renal-weight-details[open] summary::before,.renal-help[open] summary::before{content:'▾'}
+.renal-weight-details p,.renal-help p{margin:0 0 10px}
+.renal-help a{display:block;min-height:36px;padding:6px 0;overflow-wrap:anywhere}
+.renal-weight-details .field{max-width:320px;margin-bottom:5px}
+.renal-review{display:flex;align-items:flex-start;gap:10px;margin:12px 0;font-size:12px;line-height:1.6;color:var(--ink);cursor:pointer;min-height:44px}
+.renal-review input{width:18px;height:18px;flex-shrink:0;margin-top:2px;accent-color:var(--accent)}
+.renal-estimate{border:1px solid var(--border);border-radius:9px;background:var(--surface-soft);padding:12px 14px;display:grid;gap:5px;min-width:0}
+.renal-estimate>span{font-size:11px;color:var(--muted)}
+.renal-estimate>strong{font-size:24px;line-height:1.3;color:var(--ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.renal-estimate>strong small{font-size:13px;font-weight:500}
+.renal-estimate p,.renal-estimate>small{margin:0;font-size:11px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+.renal-estimate.invalid{border-color:var(--warn)}
+.renal-estimate.invalid p{color:var(--warn)}
+.renal-criteria{margin:10px 0 0;font-size:11px;line-height:1.7;color:var(--muted)}
+.renal-criteria[hidden]{display:none}
+.renal-panel :is(input,select,button,summary):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.renal-panel .field{scroll-margin-top:110px}
+@media(max-width:600px){.renal-fields{grid-template-columns:minmax(0,1fr)}.renal-modes button{font-size:12px}.renal-heading{align-items:flex-start}.renal-heading>span{max-width:120px}.renal-review,.renal-help,.renal-weight-details{font-size:12px}.renal-estimate p,.renal-estimate>small,.renal-criteria{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.renal-panel{scroll-behavior:auto}}

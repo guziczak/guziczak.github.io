@@ -88,16 +88,21 @@ test('a genuinely separate higher source limit can be displayed, but none is gue
  assert.equal(preview().schemeRows[0].limit,null);
 });
 
-test('missing or ineligible patient data suppress fill and markers, not static source information',()=>{
+test('missing patient qualification keeps neutral arithmetic; missing numeric inputs remain unknown',()=>{
  const note=preview();
- const html=dailyDoseMarkup({note,source,input,eligibility:{valid:false,errors:['Uzupełnij wiek']}});
+ const html=dailyDoseMarkup({note,source,input,eligibility:{valid:false,errors:['Uzupełnij wiek'],
+  issues:[{code:'missing-age',field:'age',kind:'missing',message:'Uzupełnij wiek'}]}});
  assert.ok(html.includes('25–45 mg/kg/dobę'));
- assert.ok(html.includes('Warunki porównania niepotwierdzone'));
- assert.ok(!html.includes('class="dose-scheme-fill"'));
- assert.ok(!html.includes('class="dose-scheme-marker"'));
+ assert.ok(html.includes('dose-clinical-status missing'));
+ assert.ok(html.includes('data-focus-field="age"'));
+ assert.ok(html.includes('class="dose-scheme-fill"'));
+ assert.ok(html.includes('class="dose-scheme-marker"'));
+ assert.match(html,/dose-scheme-meter[^>]*neutral/);
  const missing=preview({input:{...input,weight:null}});
  assert.equal(missing.schemeRows[0].dailyMax,null);
  assert.equal(missing.schemeRows[0].maximum,45);
+ const pending=dailyDoseMarkup({note:missing,source,input:{...input,weight:null},eligibility:{valid:false,errors:['Uzupełnij masę']}});
+ assert.ok(!pending.includes('class="dose-scheme-fill"'));
  const manual=preview({input:{...input,weight:null},limit:{daily:800,kind:'manual'}});
  assert.equal(manual.schemeRows[0].limit.daily,800);
  assert.equal(manual.schemeRows[0].limit.value,null);

@@ -31,7 +31,7 @@ const fmt = value => String(clean(value)).replace('.', ',');
 
 function emptyResult() {
   return {
-    valid: false, errors: [], warnings: [], requirements: [],
+    valid: false, errors: [], warnings: [], requirements: [], issues: [],
     doseMode: null, dose: null, frequency: null,
     fixedDays: null, minDays: null, maxDays: null,
     doseRange: null, frequencyOptions: null,
@@ -278,6 +278,11 @@ function resolveChoice(record, context, result, key, optionsKey, editable = fals
 /** Resolve a source candidate, never an automatically selected treatment. */
 export function resolveHumanRegimen(record, context = {}, { allowNumericOverrides = false } = {}) {
   const result = emptyResult();
+  const issue = (code, field, kind, message) => {
+    if (result.issues.some(item => item.code === code && item.field === field)) return;
+    result.errors.push(message);
+    result.issues.push({ code, field, kind, message });
+  };
   if (!object(context)) {
     result.errors.push('Nieprawidłowy kontekst pacjenta.');
     return result;
@@ -307,52 +312,70 @@ export function resolveHumanRegimen(record, context = {}, { allowNumericOverride
   result.asNeeded = record.asNeeded === true;
 
   if (present(record.minAgeMonths) || present(record.maxAgeMonths)) result.requirements.push('age');
-  checkAge(record, context, result.errors);
+  const ageErrors = [];
+  checkAge(record, context, ageErrors);
+  const ageKind = missing(context.age) ? 'missing' : !finite(context.age) || context.age < 0 || !AGE_UNITS.has(context.ageUnit) ? 'invalid' : 'out-of-scope';
+  ageErrors.forEach(message => issue(`${ageKind}-age`, 'age', ageKind, message));
   const weightRequired = record.patientFields?.includes('weight') || ['perKgDay', 'perKgDose'].includes(record.doseMode)
     || ['minWeight', 'maxWeight', 'maxDailyMgPerKg', 'maxSingleMgPerKg'].some(key => present(record[key]));
   if (weightRequired) result.requirements.push('weight');
   const weight = positive(context.weight) && context.weight <= 500 ? context.weight : null;
   if (missing(context.weight)) {
-    if (weightRequired) result.errors.push('Uzupełnij masę ciała w kg dla tego schematu.');
-  } else if (weight === null) result.errors.push('Podaj poprawną masę ciała w kg.');
+    if (weightRequired) issue('missing-weight', 'weight', 'missing', 'Uzupełnij masę ciała w kg dla tego schematu.');
+  } else if (weight === null) issue('invalid-weight', 'weight', 'invalid', 'Podaj poprawną masę ciała w kg.');
   if (weight !== null) {
     if (present(record.minWeight) && (record.minWeightExclusive ? weight <= record.minWeight : weight < record.minWeight)) {
-      result.errors.push(`Masa ciała musi wynosić ${record.minWeightExclusive ? 'więcej niż' : 'co najmniej'} ${fmt(record.minWeight)} kg w tym schemacie.`);
+      issue('weight-out-of-scope', 'weight', 'out-of-scope', `Masa ciała musi wynosić ${record.minWeightExclusive ? 'więcej niż' : 'co najmniej'} ${fmt(record.minWeight)} kg w tym schemacie.`);
     }
     if (present(record.maxWeight) && (record.maxWeightExclusive ? weight >= record.maxWeight : weight > record.maxWeight)) {
-      result.errors.push(`Masa ciała musi wynosić ${record.maxWeightExclusive ? 'mniej niż' : 'nie więcej niż'} ${fmt(record.maxWeight)} kg w tym schemacie.`);
+      issue('weight-out-of-scope', 'weight', 'out-of-scope', `Masa ciała musi wynosić ${record.maxWeightExclusive ? 'mniej niż' : 'nie więcej niż'} ${fmt(record.maxWeight)} kg w tym schemacie.`);
     }
   }
 
   if (record.renalPolicy === 'normal-only' && context.renalStatus === 'impaired') {
-    result.errors.push('Ten schemat wymaga innej oceny przy zaburzonej czynności nerek. Nie zastosowano automatycznej redukcji dawki.');
+    issue('renal-status-out-of-scope', 'renalStatus', 'out-of-scope', 'Ten schemat wymaga innej oceny przy zaburzonej czynności nerek. Nie zastosowano automatycznej redukcji dawki.');
   }
   if (present(context.renalStatus) && !RENAL_STATUSES.has(context.renalStatus)) {
-    result.errors.push('Wybierz poprawny status oceny czynności nerek.');
+    issue('invalid-renal-status', 'renalStatus', 'invalid', 'Wybierz poprawny status oceny czynności nerek.');
   }
   if (record.requireCrCl === true) result.requirements.push('crcl');
   if (missing(context.crcl)) {
-    if (record.requireCrCl === true) result.errors.push('Uzupełnij oceniony klirens kreatyniny CrCl w ml/min.');
+    if (record.requireCrCl === true) issue('missing-crcl', 'crcl', 'missing', 'Uzupełnij oceniony klirens kreatyniny CrCl w ml/min.');
   } else if (!positive(context.crcl)) {
-    result.errors.push('Podaj poprawny klirens kreatyniny CrCl w ml/min.');
+    issue('invalid-crcl', 'crcl', 'invalid', 'Podaj poprawny klirens kreatyniny CrCl w ml/min.');
   } else if (present(record.minCrCl)
       && (record.minCrClExclusive ? context.crcl <= record.minCrCl : context.crcl < record.minCrCl)) {
-    result.errors.push(`CrCl nie spełnia warunku schematu (${record.minCrClExclusive ? 'powyżej' : 'co najmniej'} ${fmt(record.minCrCl)} ml/min). Wymagany jest inny schemat.`);
+    issue('crcl-out-of-scope', 'crcl', 'out-of-scope', `CrCl nie spełnia warunku schematu (${record.minCrClExclusive ? 'powyżej' : 'co najmniej'} ${fmt(record.minCrCl)} ml/min). Wymagany jest inny schemat.`);
   }
   if (positive(context.crcl) && present(record.maxCrCl)
       && (record.maxCrClExclusive ? context.crcl >= record.maxCrCl : context.crcl > record.maxCrCl)) {
-    result.errors.push(`CrCl nie spełnia warunku schematu (${record.maxCrClExclusive ? 'poniżej' : 'nie więcej niż'} ${fmt(record.maxCrCl)} ml/min). Wymagany jest inny schemat.`);
+    issue('crcl-out-of-scope', 'crcl', 'out-of-scope', `CrCl nie spełnia warunku schematu (${record.maxCrClExclusive ? 'poniżej' : 'nie więcej niż'} ${fmt(record.maxCrCl)} ml/min). Wymagany jest inny schemat.`);
   }
   const confirmations = Array.isArray(context.sourceConfirmations) ? context.sourceConfirmations : [];
   const unconfirmed = (record.selectionRequirements || []).filter(item => !confirmations.includes(item.id));
   if (unconfirmed.length) {
     result.requirements.push('sourceConfirmations');
-    result.errors.push(`Potwierdź warunki wybranego schematu: ${unconfirmed.length} do sprawdzenia.`);
+    issue('missing-source-confirmations', 'sourceConfirmations', 'missing', `Potwierdź warunki wybranego schematu: ${unconfirmed.length} do sprawdzenia.`);
   }
   const specialist = assessAnticoagulantEligibility(record, context);
-  result.errors.push(...specialist.errors.filter(message => !result.errors.includes(message)));
+  for (const item of specialist.issues || []) issue(item.code, item.field, item.kind, item.message);
+  result.errors.push(...specialist.errors.filter(message => !specialist.issues?.some(item => item.message === message) && !result.errors.includes(message)));
   result.warnings.push(...specialist.warnings);
   result.requirements.push(...specialist.requirements);
+  // The optional estimator supplies explicit missing/invalid inputs. Do not
+  // repeat a generic missing CrCl message beside those actionable issues.
+  if (Array.isArray(context.renalIssues) && context.renalIssues.length) {
+    const replacedIssues = result.issues.filter(item => item.code === 'missing-crcl'
+      || context.renalIssues.some(renalIssue => renalIssue?.field === item.field));
+    const replaced = new Set(replacedIssues.map(item => item.message));
+    result.errors = result.errors.filter(message => !replaced.has(message));
+    result.issues = result.issues.filter(item => !replacedIssues.includes(item));
+    for (const item of context.renalIssues) {
+      if (item && text(item.code) && text(item.field) && text(item.message) && ['missing', 'invalid', 'out-of-scope'].includes(item.kind))
+        issue(item.code, item.field, item.kind, item.message);
+      else issue('invalid-renal-context', 'crcl', 'invalid', 'Sprawdź dane użyte do oceny czynności nerek.');
+    }
+  }
 
   const editable = allowNumericOverrides === true && record.doseMode !== 'instruction' && record.lockSourceValues !== true;
   if (record.doseMode !== 'instruction') resolveChoice(record, context, result, 'dose', 'doseRange', editable);

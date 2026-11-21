@@ -47,6 +47,22 @@ function paracetamol(frequency, { sourceSelected = true } = {}) {
     context:dailyDoseMotionContext(value) };
 }
 
+function apixaban(frequency, {crcl=null} = {}) {
+  const drug = DRUGS.find(item => item.forms.some(form => form.id === 'eliquis-5'));
+  const form = drug.forms.find(item => item.id === 'eliquis-5');
+  const source = HUMAN_REGIMENS.find(item => item.id === 'cardio-eliquis-nvaf-standard');
+  const context = {formId:form.id, specialty:'cardio', patientType:'adult', age:70, ageUnit:'years',
+    weight:75, serumCreatinine:1.1, renalStatus:'unknown', crcl, dose:5, frequency, days:30,
+    sourceConfirmations:source.selectionRequirements.map(item => item.id)};
+  const sourceCheck = resolveHumanRegimen(source, context);
+  const eligibility = resolveHumanRegimen(source, {...context, dose:source.dose, frequency:source.frequency});
+  const input = {...form, ...context, patientKind:'human', doseMode:'fixed', packageSize:form.packOptions[0].quantity};
+  const note = ingredientDailyDose({form, drug, input, source, sourceCheck});
+  const value = {note, input, form, source, specialty:'cardio', patientType:'adult', species:null};
+  return {...value, markup:dailyDoseMarkup({...value, eligibility, doseProblems:sourceCheck.errors}),
+    context:dailyDoseMotionContext(value)};
+}
+
 // A small layout/WAAPI fixture consumes the actual generated markup. Only the
 // browser geometry is simulated: 2/3 px centred boundaries and 76 px clamped
 // labels, on a track with a nonzero page offset. No dose/scale model is mocked.
@@ -333,4 +349,39 @@ test('reduced motion applies immediately through source/limit switches and cance
   initial.render(paracetamol(5)); initial.render(paracetamol(4));
   assert.equal(initial.calls.length, 0);
   assert.equal(initial.element('dose-scheme-fill').style.width, '80%');
+});
+
+test('neutral apixaban arithmetic animates while renal qualification changes without resetting the visible edge', () => {
+  const one = apixaban(1), two = apixaban(2), complete = apixaban(2, {crcl:80});
+  const fixture = motionFixture();
+  assert.equal(one.context, two.context);
+  assert.equal(two.context, complete.context);
+  assert.equal(one.note.schemeRows[0].maximum, 10);
+  assert.equal(two.note.schemeRows[0].maximum, 10);
+  fixture.render(one); fixture.render(two);
+  transition(fixture, 'dose-scheme-fill', 'width', 40, 80);
+  assert.match(fixture.node.innerHTML, /dose-scheme-current same neutral[^>]*><b>100%/);
+  assert.equal(fixture.element('end').style.left, '80%');
+  const beforeQualification = [...fixture.calls];
+  fixture.element('dose-scheme-fill').visible.width = 61;
+  fixture.render(complete);
+  assert.ok(beforeQualification.every(animation => animation.cancelled));
+  transition(fixture, 'dose-scheme-fill', 'width', 61, 80);
+  assert.doesNotMatch(fixture.node.innerHTML, / same neutral|complete-patient-data/);
+  for (const animation of fixture.calls) animation.finish();
+  fixture.render(one);
+  transition(fixture, 'dose-scheme-fill', 'width', 80, 40);
+  assert.match(fixture.node.innerHTML, /dose-scheme-current below neutral[^>]*><b>50%/);
+});
+
+test('reduced motion keeps neutral arithmetic and clinical feedback current without any animation', () => {
+  const fixture = motionFixture({reduced:true});
+  fixture.render(apixaban(1)); fixture.render(apixaban(2));
+  assert.equal(fixture.calls.length, 0);
+  assert.equal(fixture.element('dose-scheme-fill').style.width, '80%');
+  assert.match(fixture.node.innerHTML, /data-focus-field="crcl"/);
+  fixture.render(apixaban(2, {crcl:80}));
+  assert.equal(fixture.calls.length, 0);
+  assert.equal(fixture.element('dose-scheme-fill').style.width, '80%');
+  assert.doesNotMatch(fixture.node.innerHTML, /dose-clinical-status/);
 });

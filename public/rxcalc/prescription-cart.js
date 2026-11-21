@@ -3,10 +3,12 @@
  * This module neither persists patient data nor validates combinations of drugs.
  * The calculator supplies its already validated text in both output modes.
  */
+import { RENAL_STATE_DEFAULTS, RENAL_STATE_FIELDS, renalAssessmentForState } from './renal-state.js';
 
 export const PATIENT_CONTEXT_FIELDS = Object.freeze([
   'specialty', 'patientType', 'age', 'weight', 'species', 'vetAgeUnit',
   'humanAgeUnit', 'renalStatus', 'humanCrCl', 'humanSerumCreatinine', 'foodChainStatus',
+  ...RENAL_STATE_FIELDS,
 ]);
 
 const plainObject = value => value !== null && typeof value === 'object'
@@ -35,6 +37,8 @@ export function pickPatientContext(state = {}) {
 /** Compare meaningful values, so e.g. 70 and "70,0" describe the same context. */
 export function normalizePatientContext(state = {}) {
   const animal = state.specialty === 'veterinary';
+  const renal = animal ? null : renalAssessmentForState(state);
+  const calculated = state.renalInputMode === 'calculate';
   return freeze({
     patientKind: animal ? 'animal' : 'human',
     patientType: animal ? null : state.patientType || 'adult',
@@ -43,8 +47,13 @@ export function normalizePatientContext(state = {}) {
     age: numeric(state.age),
     ageUnit: (animal ? state.vetAgeUnit : state.humanAgeUnit) || 'years',
     renalStatus: animal ? null : state.renalStatus || 'unknown',
-    crcl: animal ? null : numeric(state.humanCrCl),
-    serumCreatinine: animal ? null : numeric(state.humanSerumCreatinine),
+    crcl: animal ? null : calculated ? renal.crcl : renal.crcl ?? numeric(state.humanCrCl),
+    serumCreatinine: animal ? null : renal.serumCreatinineMgDl ?? numeric(state.humanSerumCreatinine),
+    renalInputMode: animal ? null : state.renalInputMode ?? 'manual',
+    renalCreatinineUnit: animal ? null : renal.serumCreatinineMgDl !== null ? 'mg/dl' : state.renalCreatinineUnit ?? 'mg/dl',
+    renalSex: animal || !calculated ? null : state.renalSex || '',
+    renalCalculationWeight: animal || !calculated ? null : numeric(state.renalCalculationWeight),
+    renalCalculationReviewed: animal || !calculated ? null : state.renalCalculationReviewed === true,
     foodChainStatus: animal ? state.foodChainStatus || 'unknown' : null,
   });
 }
@@ -147,6 +156,7 @@ export function preparePrescriptionEdit(item, currentState = {}) {
   const patient = pickPatientContext({
     patientType: 'adult', age: '', weight: '', species: '', vetAgeUnit: 'years',
     humanAgeUnit: 'years', renalStatus: 'unknown', humanCrCl: '', humanSerumCreatinine: '', foodChainStatus: 'unknown',
+    ...RENAL_STATE_DEFAULTS,
     ...currentState,
   });
   return { ok: true, state: {

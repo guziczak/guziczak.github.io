@@ -176,7 +176,7 @@ function boundaryLabel(row, kind) {
     : kind === 'source' ? 'Granica wybranego schematu' : 'Limit z danych preparatu';
 }
 
-function meterMarkup(row, note, comparisonAllowed) {
+function meterMarkup(row, note, comparisonAllowed, {neutral=false} = {}) {
   const model = doseMeterModel(row, {comparisonAllowed});
   // An unknown denominator is not an alarm, a zero dose or a loading bar. The
   // renderer presents one neutral instruction below the quantities instead.
@@ -192,39 +192,109 @@ function meterMarkup(row, note, comparisonAllowed) {
   const weightBoundary = positive(row.ceiling) && positive(row.ceilingPerKg)
     ? `<span class="dose-safety-weight-boundary">${n(row.ceilingPerKg, 4)} ${esc(row.unit)}/kg/dobę</span>` : '';
   const comparison = model.ratio === null ? '' : `<strong>${esc(percentText(model.ratio))}% granicy</strong>`;
-  // Unknown and ineligible contexts have no marker or numeric scale. A known
-  // boundary awaiting a dose retains its marker, but never a zero-value fill.
+  // Unknown operands never produce a made-up scale or a zero-value fill.
+  // A neutral arithmetic preview still uses the real, supplied boundary.
   const scaled = !['unknown','unconfirmed'].includes(model.state);
-  const graphicLabel = model.ratio === null ? stateText
-    : `${row.name}: ${n(model.value, 6)} ${unit}. ${label}: ${n(model.ceiling, 4)} ${unit}. ${percentText(model.ratio)}% granicy. ${model.clipped ? 'Pasek kończy się na 125%; rzeczywista wartość jest większa.' : ''}`;
-  const graphic = `<div class="dose-safety-meter ${scaled ? '' : 'unscaled'} ${model.state}" role="img" aria-label="${esc(graphicLabel)}"><span class="dose-safety-track"></span>${scaled ? `${model.fill === null ? '' : `<span class="dose-safety-fill" style="width:${model.fill}%"></span><span class="dose-safety-excess" style="width:${model.excess}%"></span>`}<span class="dose-safety-wall" aria-hidden="true"></span>${model.clipped ? '<span class="dose-safety-overflow" aria-hidden="true">›</span>' : ''}` : ''}</div>`;
+  const graphicLabel = (model.ratio === null ? stateText
+    : `${row.name}: ${n(model.value, 6)} ${unit}. ${label}: ${n(model.ceiling, 4)} ${unit}. ${percentText(model.ratio)}% granicy. ${model.clipped ? 'Pasek kończy się na 125%; rzeczywista wartość jest większa.' : ''}`)
+    + (neutral ? ' Porównanie liczbowe; warunki stosowania schematu u pacjenta nie są potwierdzone.' : '');
+  const graphic = `<div class="dose-safety-meter ${scaled ? '' : 'unscaled'} ${model.state}${neutral ? ' neutral' : ''}" role="img" aria-label="${esc(graphicLabel)}"><span class="dose-safety-track"></span>${scaled ? `${model.fill === null ? '' : `<span class="dose-safety-fill" style="width:${model.fill}%"></span><span class="dose-safety-excess" style="width:${model.excess}%"></span>`}<span class="dose-safety-wall" aria-hidden="true"></span>${model.clipped ? '<span class="dose-safety-overflow" aria-hidden="true">›</span>' : ''}` : ''}</div>`;
   const axis = scaled ? '<div class="dose-safety-axis" aria-hidden="true"><span>0</span><span class="dose-safety-axis-limit">100% · granica</span><span>125%</span></div>' : '';
   const derived = row.derivedCeiling ? '<p class="dose-safety-derived">Z proporcji składników preparatu — nie jest to niezależne maksimum tej substancji.</p>' : '';
-  return `${boundary}${weightBoundary}${graphic}${axis}<div class="dose-safety-status ${model.state}"><span>${esc(stateText)}</span>${comparison}</div>${derived}`;
+  return `${boundary}${weightBoundary}${graphic}${axis}<div class="dose-safety-status ${model.state}${neutral ? ' neutral' : ''}"><span>${esc(stateText)}</span>${comparison}</div>${derived}`;
+}
+
+const issuePriority = {'missing':1, 'invalid':2, 'out-of-scope':3};
+const patientFieldLabels = {
+  age:'wiek pacjenta', weight:'masa ciała', crcl:'CrCl (ml/min)',
+  serumCreatinine:'kreatynina w surowicy', renalStatus:'ocena czynności nerek',
+  sourceConfirmations:'potwierdzenie warunków schematu',
+  sex:'płeć do wzoru', ageUnit:'jednostka wieku', creatinineUnit:'jednostka kreatyniny',
+  calculationWeight:'masa do wzoru', renalStable:'warunki oszacowania CrCl',
+  weightReviewed:'warunki oszacowania CrCl', mode:'sposób podania CrCl', source:'wybrany schemat',
+};
+const messages = value => Array.isArray(value) ? value.filter(item => typeof item === 'string' && item.trim()) : [];
+
+/** Presentation only: patient eligibility never changes known arithmetic.
+ * Structured issues deduplicate checks of the same field (including the two
+ * renal validators), while legacy callers retain their concrete error text.
+ * Neither this result nor its neutral flag is used to authorize a prescription.
+ */
+export function dailyDosePresentationModel({source=null, eligibility=null, comparisonEligibility=null, veterinary=false} = {}) {
+  const clinicalConfirmed = !source || (eligibility?.valid === true || !eligibility && comparisonEligibility?.valid === true)
+    && comparisonEligibility?.valid !== false;
+  const errors = [...new Set([...messages(eligibility?.errors), ...messages(comparisonEligibility?.errors)])];
+  const structured = [eligibility, comparisonEligibility].flatMap(check => Array.isArray(check?.issues) ? check.issues : [])
+    .filter(issue => issue && typeof issue === 'object' && Object.hasOwn(issuePriority, issue.kind)
+      && typeof issue.message === 'string' && issue.message.trim())
+    .map(issue => ({code:typeof issue.code === 'string' ? issue.code : '',
+      field:typeof issue.field === 'string' && issue.field.trim() ? issue.field : null,
+      kind:issue.kind, message:issue.message}));
+  const covered = new Set(structured.map(issue => issue.message));
+  const legacy = errors.filter(message => !covered.has(message)).map(message => ({
+    code:'legacy', field:null,
+    kind:/^(Uzupełnij|Wybierz|Podaj wiek w|Potwierdź warunki wybranego schematu)\b/.test(message) ? 'missing' : 'invalid',
+    message,
+  }));
+  const byField = new Map();
+  for (const issue of [...structured, ...legacy]) {
+    const key = issue.field ? `field:${issue.field}` : `message:${issue.message}`;
+    const previous = byField.get(key);
+    if (!previous || issuePriority[issue.kind] > issuePriority[previous.kind]) byField.set(key, issue);
+  }
+  const issues = [...byField.values()];
+  const state = clinicalConfirmed ? 'confirmed'
+    : issues.some(issue => issue.kind === 'out-of-scope') ? 'out-of-scope'
+      : issues.some(issue => issue.kind === 'invalid') ? 'invalid' : 'missing';
+  // Veterinary weight-band resolution has its own eligibility contract. Keep
+  // that path unchanged instead of borrowing a band from another patient.
+  const neutral = !!source && !veterinary && !clinicalConfirmed;
+  const focusField = issues.find(issue => issue.kind === state && Object.hasOwn(patientFieldLabels, issue.field))?.field
+    || issues.find(issue => Object.hasOwn(patientFieldLabels, issue.field))?.field || null;
+  return {clinicalConfirmed, comparisonAllowed:clinicalConfirmed || neutral, neutral, state, issues, errors, focusField};
+}
+
+export function clinicalStatusMarkup(presentation) {
+  if (presentation.clinicalConfirmed) return '';
+  const {state, issues, focusField} = presentation;
+  const missing = issues.filter(issue => issue.kind === 'missing');
+  const missingLabels = [...new Set(missing.map(issue => Object.hasOwn(patientFieldLabels, issue.field)
+    ? patientFieldLabels[issue.field] : issue.message.replace(/[.!?]+$/, '')))];
+  const missingDetail = missingLabels.length ? `Do uzupełnienia: ${missingLabels.join(', ')}.` : '';
+  const detail = state === 'missing'
+    ? missingDetail || 'Uzupełnij dane i warunki wybranego schematu.'
+    : [...issues.filter(issue => issue.kind !== 'missing').map(issue => issue.message), missingDetail].filter(Boolean).join(' ');
+  const title = state === 'out-of-scope' ? 'Dane pacjenta poza zakresem schematu.'
+    : state === 'invalid' ? 'Sprawdź dane pacjenta.' : 'Ocena schematu wymaga uzupełnienia danych.';
+  const action = state === 'missing' || state === 'invalid' && focusField
+    ? `<button type="button" class="text-button dose-patient-data-action" data-action="complete-patient-data"${focusField ? ` data-focus-field="${esc(focusField)}"` : ''}>${state === 'missing' ? 'Uzupełnij dane pacjenta' : 'Popraw dane pacjenta'}</button>` : '';
+  return `<div class="dose-clinical-status ${state}" role="status"><p><strong>${esc(title)}</strong> ${esc(detail)}</p>${action}</div>`;
 }
 
 /** Pure HTML renderer. No source limits are invented and no input is mutated. */
 export function dailyDoseMarkup({ note, input = {}, source = null, context = '', eligibility = null, doseProblems = [], canChooseSource = false, veterinary = false, referenceContext = null, modified = false, roundingAssessment = null, icon = () => '' } = {}) {
   if (!note) return '';
-  const comparisonAllowed = !source || (eligibility?.valid === true || !eligibility && note.comparisonEligibility?.valid === true)
-    && note.comparisonEligibility?.valid !== false;
+  const presentation = dailyDosePresentationModel({source, eligibility, comparisonEligibility:note.comparisonEligibility, veterinary});
+  const {comparisonAllowed, clinicalConfirmed} = presentation;
   const hasCeiling = note.rows.some(row => positive(row.ceiling) || positive(row.ceilingPerKg));
   const comparative = !hasCeiling && !veterinary && referenceContext
     ? adultAugmentinReference({...referenceContext,input,source}) : null;
   const schemes = note.schemeRows?.some(Boolean) ? note.schemeRows : null;
   const rows = note.rows.map((row,index) => {
-    const percent=!comparative && schemes?.[index] ? regimenDosePercentMarkup(row,schemes[index],comparisonAllowed,roundingAssessment) : '';
-    return `<div class="dose-safety-row"><dt>${esc(row.name)}</dt><dd><div class="dose-safety-amount ${percent?'has-scheme-percent':''}"><strong>${row.daily === null ? '—' : n(row.daily, 6)} <span>${esc(row.unit)}/dobę</span></strong>${row.perKg === null ? '' : `<small>${n(row.perKg, 4)} ${esc(row.unit)}/kg/dobę</small>`}${percent}</div>${comparative ? referenceMeterMarkup(row, comparative) || meterMarkup(row, note, comparisonAllowed) : (schemes?.[index] ? regimenMeterMarkup(row, schemes[index], comparisonAllowed,roundingAssessment) : meterMarkup(row, note, comparisonAllowed))}</dd></div>`;
+    const percent=!comparative && schemes?.[index] ? regimenDosePercentMarkup(row,schemes[index],comparisonAllowed,roundingAssessment,presentation) : '';
+    return `<div class="dose-safety-row"><dt>${esc(row.name)}</dt><dd><div class="dose-safety-amount ${percent?'has-scheme-percent':''}"><strong>${row.daily === null ? '—' : n(row.daily, 6)} <span>${esc(row.unit)}/dobę</span></strong>${row.perKg === null ? '' : `<small>${n(row.perKg, 4)} ${esc(row.unit)}/kg/dobę</small>`}${percent}</div>${comparative ? referenceMeterMarkup(row, comparative) || meterMarkup(row, note, comparisonAllowed,presentation) : (schemes?.[index] ? regimenMeterMarkup(row, schemes[index], comparisonAllowed,roundingAssessment,presentation) : meterMarkup(row, note, comparisonAllowed,presentation))}</dd></div>`;
   }).join('');
   const hasDerived = note.rows.some(row => row.derivedCeiling);
-  const scope = source ? `<p class="daily-dose-scope"><strong>${modified ? 'Źródło odniesienia dla zmodyfikowanego schematu:' : 'Wybrany schemat:'}</strong> ${esc(source.label)}${source.phaseLabel ? ` · ${esc(source.phaseLabel)}` : ''}. Porównanie dotyczy wyłącznie tego wskazania, etapu i zakresu pacjentów.</p>` : '';
-  const eligibilityErrors = [...new Set([...(eligibility?.errors||[]),...(note.comparisonEligibility?.errors||[])])];
+  const scope = source ? `<p class="daily-dose-scope"><strong>${modified ? 'Źródło odniesienia dla zmodyfikowanego schematu:' : presentation.neutral ? 'Źródło porównania liczbowego:' : 'Wybrany schemat:'}</strong> ${esc(source.label)}${source.phaseLabel ? ` · ${esc(source.phaseLabel)}` : ''}. ${presentation.neutral ? 'Położenie na pasku nie potwierdza doboru schematu dla pacjenta.' : 'Porównanie dotyczy wyłącznie tego wskazania, etapu i zakresu pacjentów.'}</p>` : '';
+  const eligibilityErrors = presentation.errors;
   const awaitingContext = !eligibilityErrors.length || eligibilityErrors.every(error => /^(Uzupełnij|Wybierz|Podaj wiek w|Potwierdź warunki wybranego schematu)\b/.test(error));
-  const errors = source && !comparisonAllowed
-    ? awaitingContext
+  const errors = source && !clinicalConfirmed
+    ? !veterinary ? clinicalStatusMarkup(presentation) : awaitingContext
       ? `<div class="daily-dose-guidance"><p class="daily-dose-pending">Uzupełnij dane do porównania ze schematem.</p>${eligibilityErrors.length ? `<ul>${eligibilityErrors.map(error => `<li>${esc(error)}</li>`).join('')}</ul>` : ''}</div>`
       : `<div class="dose-safety-notice"><strong>Nie potwierdzono warunków porównania.</strong><p>Wartości źródłowe wymagają spełnienia warunków wybranego schematu.</p>${eligibilityErrors.length ? `<ul>${eligibilityErrors.map(error => `<li>${esc(error)}</li>`).join('')}</ul>` : ''}</div>` : '';
-  const problems = [...new Set([...doseProblems,...(note.calculationErrors||[])])];
+  const patientErrors = new Set([...eligibilityErrors, ...presentation.issues.map(issue => issue.message)]);
+  const problems = [...new Set([...messages(doseProblems),...messages(note.calculationErrors)])]
+    .filter(message => !patientErrors.has(message));
   const doseIssues = comparisonAllowed && problems.length ? `<div class="dose-safety-notice"><strong>Sprawdź zgodność i odmierzenie dawki.</strong><ul>${problems.map(error => `<li>${esc(error)}</li>`).join('')}</ul></div>` : '';
   const missingText = !source
     ? canChooseSource ? 'Wybierz schemat, aby zobaczyć dawkę źródłową i jej progi.'
@@ -232,12 +302,12 @@ export function dailyDoseMarkup({ note, input = {}, source = null, context = '',
     : source.frequencyOptions && !source.frequencyOptions.includes(input.frequency)
       ? 'Wybierz częstość podawania z dostępnych opcji schematu.'
       : 'Ten schemat nie określa liczbowej dawki do porównania.';
-  const missing = !hasCeiling && !comparative && !schemes && !(source && !comparisonAllowed)
+  const missing = !hasCeiling && !comparative && !schemes && !(source && !clinicalConfirmed)
     ? `<div class="daily-dose-guidance"><p class="daily-dose-pending">${esc(missingText)}</p>${canChooseSource ? '<button type="button" class="text-button dose-safety-source-choice" data-action="daily-dose-source">Wybierz schemat ze źródła</button>' : ''}</div>` : '';
   const caution = hasCeiling ? `<p class="dose-safety-caution">${note.ceilingKind === 'manual' ? 'Limit ręczny nie jest automatycznie weryfikowany w ChPL. ' : ''}${hasDerived && !schemes ? 'Składniki porównano do tej samej granicy schematu. ' : ''}Położenie na pasku nie potwierdza bezpieczeństwa ani prawidłowego doboru dawki. Uwzględnij także inne leki z tą samą substancją.</p>` : '';
   const rounding = note.rounding ? `<p class="dose-safety-rounding"><strong>Po zaokrągleniu ${['suspension','solution','injection'].includes(input.form)?'objętości':'ilości'}:</strong> ${n(note.rounding.from, 6)} → ${n(note.rounding.to, 6)} ${esc(note.unitLabel||input.unitLabel)} na podanie (krok ${n(input.roundingStep, 6)} ${esc(note.unitLabel||input.unitLabel)}). Dawki dobowe uwzględniają tę zmianę.</p>` : '';
-  const pending = note.dailyUnits === null && !(source && !comparisonAllowed && awaitingContext) ? '<p class="daily-dose-pending">Uzupełnij dawkę, częstotliwość i wymagane dane pacjenta. Czas kuracji nie jest potrzebny do podglądu dobowego.</p>' : '';
+  const pending = note.dailyUnits === null && !(source && !clinicalConfirmed && (!veterinary || awaitingContext)) ? '<p class="daily-dose-pending">Uzupełnij dawkę, częstotliwość i wymagane dane pacjenta. Czas kuracji nie jest potrzebny do podglądu dobowego.</p>' : '';
   const url = /^https?:\/\//i.test(note.sourceUrl || '') ? note.sourceUrl : '';
   const reference = url ? `<a class="daily-dose-source" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(note.sourceLabel || (veterinary ? 'Źródło dawkowania' : 'ChPL · dawkowanie'))} ↗</a>` : '';
-  return `<div class="daily-dose-heading">${icon('info')}<h3 id="daily-dose-title">${comparative ? 'Dawki dobowe i odniesienia' : schemes ? 'Dawki dobowe i zakres schematu' : hasCeiling ? 'Dawki dobowe i granice' : 'Dawki dobowe'}</h3><span>Z tego preparatu</span></div>${source?.asNeeded ? '<p class="dose-safety-prn">Maksymalne planowane zużycie doraźne, nie obowiązkowa dawka.</p>' : ''}${referenceIntroMarkup(comparative)}${regimenLegendMarkup(schemes)}<dl class="dose-safety-rows">${rows || `<div class="dose-safety-row"><dt>Ilość preparatu</dt><dd>${note.dailyUnits === null ? '—' : n(note.dailyUnits, 6)} ${esc(note.unitLabel||input.unitLabel)}/dobę</dd></div>`}</dl>${rounding}${pending}${errors}${doseIssues}${missing}${scope}${caution}${referenceDetailsMarkup(comparative)}${comparative ? '' : reference}`;
+  return `<div class="daily-dose-heading">${icon('info')}<h3 id="daily-dose-title">${comparative ? 'Dawki dobowe i odniesienia' : schemes ? 'Dawki dobowe i zakres schematu' : hasCeiling ? 'Dawki dobowe i granice' : 'Dawki dobowe'}</h3><span>Z tego preparatu</span></div>${source?.asNeeded ? '<p class="dose-safety-prn">Maksymalne planowane zużycie doraźne, nie obowiązkowa dawka.</p>' : ''}${referenceIntroMarkup(comparative)}${regimenLegendMarkup(schemes,presentation)}<dl class="dose-safety-rows">${rows || `<div class="dose-safety-row"><dt>Ilość preparatu</dt><dd>${note.dailyUnits === null ? '—' : n(note.dailyUnits, 6)} ${esc(note.unitLabel||input.unitLabel)}/dobę</dd></div>`}</dl>${rounding}${pending}${errors}${doseIssues}${missing}${scope}${caution}${referenceDetailsMarkup(comparative)}${comparative ? '' : reference}`;
 }

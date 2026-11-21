@@ -99,13 +99,21 @@ test('new reviewed periods remain inapplicable when confirmations, renal data or
   ['cardio-eliquis-post-hip',{sourceConfirmations:[]}],
   ['cardio-ramipril-hypertension-10-crcl-ge60',{crcl:null}],
   ['cardio-ramipril-hypertension-5-crcl10to60',{crcl:60}],
-  ['cardio-eliquis-nvaf-standard',{serumCreatinine:null}],
+  ['cardio-eliquis-nvaf-standard',{age:82*12,weight:70,serumCreatinine:null}],
   ['cardio-eliquis-nvaf-two-criteria',{age:35*12,weight:70,serumCreatinine:1}],
   ['cardio-xarelto-nvaf-renal',{crcl:60}],
  ]){
   const o=lookup(id);Object.assign(o.context,changes);const g=resolveDurationGuidance(o);
   assert.equal(g.coverage,'reviewed',id);assert.equal(g.applicable,false,id);
   assert.equal(assessDuration(o.source.fixedDays??30,g).tone,'neutral',id);
+ }
+});
+test('NVAF duration eligibility accepts a decided two-of-three count but still requires assessed CrCl',()=>{
+ for(const id of ['cardio-eliquis-nvaf-standard','cardio-eliquis-nvaf-two-criteria']){
+  const o=lookup(id);o.context.serumCreatinine=null;
+  assert.equal(resolveDurationGuidance(o).applicable,true,id);
+  o.context.crcl=null;
+  assert.equal(resolveDurationGuidance(o).applicable,false,id);
  }
 });
 test('new acute and HF starts use their actual source phase lengths without repeating the whole treatment',()=>{

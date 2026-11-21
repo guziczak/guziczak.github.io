@@ -51,10 +51,13 @@ test('a matching reference cannot remove clinical errors or unrelated warnings',
   assert.equal(shown.status,'warning');
 });
 
-test('unchecked source conditions show a neutral pending state without a dose percentage',()=>{
+test('unchecked source conditions keep a neutral numerical comparison and separate clinical status',()=>{
   const html=dailyDoseMarkup({note,input,source,
-    eligibility:{valid:false,errors:['Potwierdź warunki wybranego schematu: 2 do sprawdzenia.']}});
-  assert.ok(html.includes('daily-dose-guidance'));
+    eligibility:{valid:false,errors:['Potwierdź warunki wybranego schematu: 2 do sprawdzenia.'],
+      issues:[{code:'missing-source-confirmations',field:'sourceConfirmations',kind:'missing',message:'Potwierdź warunki wybranego schematu: 2 do sprawdzenia.'}]}});
+  assert.ok(html.includes('dose-clinical-status missing'));
+  assert.ok(html.includes('data-focus-field="sourceConfirmations"'));
   assert.ok(!html.includes('class="dose-safety-notice"'));
-  assert.ok(!html.includes('class="dose-scheme-current'));
+  assert.match(html,/dose-scheme-current[^>]*neutral[^>]*><b>100%/);
+  assert.ok(!html.includes('Taka sama ilość dobowa jak w schemacie'));
 });

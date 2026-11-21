@@ -103,16 +103,17 @@ test('a dose above the source range marks both ingredient comparisons as out of 
   assert.ok(html.includes('Dawka jest poza zakresem'));
 });
 
-test('patient mismatch or explicit renal exclusion does not display a reassuring comparison',()=>{
+test('patient mismatch or explicit renal exclusion retains only a neutral arithmetic comparison',()=>{
   for(const change of [{patientType:'adult'},{weight:40},{age:1/12},{crcl:20},{renalStatus:'impaired'}]) {
     const eligibility=resolveHumanRegimen(source,{...context,...change});
     assert.equal(eligibility.valid,false);
     const sourceCheck=resolveHumanRegimen(source,context);
     const note=report({input:{...input,dose:450,weight:20,roundingStep:null},source,sourceCheck});
     const html=dailyDoseMarkup({note,input,source,eligibility});
-    assert.ok(html.includes('Warunki porównania niepotwierdzone'));
-    assert.ok(!html.includes('dose-safety-wall'));
-    assert.ok(!html.includes('% granicy'));
+    assert.match(html,/dose-scheme-current upper neutral/);
+    assert.match(html,/dose-clinical-status/);
+    assert.match(html,/dose-scheme-fill/);
+    assert.doesNotMatch(html,/Na górnej granicy wybranego schematu|Dobowo w zakresie wybranego schematu/);
   }
 });
 

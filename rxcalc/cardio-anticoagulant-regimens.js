@@ -66,7 +66,7 @@ export const CARDIO_ANTICOAGULANT_REGIMENS = [
     selectionRequirements: [nvaf],
     notes: [
       'ChPL 4.2, NVAF: 5 mg na podanie, 2 razy na dobę. Ta dawka nie jest uniwersalnym maksimum apiksabanu.',
-      'Wybrany wariant wymaga CrCl ≥30 ml/min i mniej niż 2 kryteriów: wiek ≥80 lat, masa ≤60 kg, kreatynina w surowicy ≥1,5 mg/dl. Trzy dane trzeba podać oddzielnie; kalkulator nie wylicza z nich CrCl.',
+      'Wybrany wariant wymaga CrCl ≥30 ml/min i mniej niż 2 kryteriów: wiek ≥80 lat, masa ≤60 kg, kreatynina w surowicy ≥1,5 mg/dl. CrCl ocenia się niezależnie. Przy znanym wieku i masie kreatynina jest potrzebna do zliczenia kryteriów, gdy spełniono dokładnie jedno z dwóch pierwszych.',
       'Przy co najmniej 2 kryteriach albo CrCl 15–<30 ml/min należy osobno wybrać odpowiedni wariant 2,5 mg; dawka nie zmienia się automatycznie.',
       'ChPL opisuje terapię długotrwałą. Liczba dni w kalkulatorze planuje zapas, nie termin odstawienia.',
     ],
@@ -80,7 +80,7 @@ export const CARDIO_ANTICOAGULANT_REGIMENS = [
     patientFields: ['crcl', 'weight', 'serumCreatinine'],
     selectionRequirements: [nvaf],
     notes: [
-      'ChPL 4.2, Dose reduction: 2,5 mg 2 razy na dobę przy co najmniej 2 z 3 kryteriów: wiek ≥80 lat, masa ≤60 kg, kreatynina w surowicy ≥1,5 mg/dl (w ChPL również 133 µmol/l). Formularz przyjmuje wyłącznie mg/dl.',
+      'ChPL 4.2, Dose reduction: 2,5 mg 2 razy na dobę przy co najmniej 2 z 3 kryteriów: wiek ≥80 lat, masa ≤60 kg, kreatynina w surowicy ≥1,5 mg/dl (w ChPL również zaokrąglone 133 µmol/l). Formularz przyjmuje mg/dl lub µmol/l i normalizuje jednostki przed oceną kryterium.',
       'Reguła dotyczy NVAF; nie przenosi się jej na leczenie ZŻG/ZP ani na profilaktykę po endoprotezoplastyce.',
       'Ten wariant obejmuje CrCl ≥30 ml/min. Dla CrCl 15–<30 ml/min istnieje odrębny schemat, niezależny od liczby powyższych kryteriów.',
       'Leczenie jest długotrwałe; podana liczba dni oznacza okres zapasu.',
@@ -266,13 +266,44 @@ const absent = value => value === null || value === undefined || value === '';
 const same = (a, b) => finite(a) && finite(b)
   && Math.abs(a - b) <= Number.EPSILON * 32 * Math.max(1, Math.abs(a), Math.abs(b));
 
+/** Partial evaluation of the NVAF 2-of-3 rule only; renal eligibility is separate.
+ * EMA Eliquis 4.2, checked 2026-11-21. Unknown is never treated as false.
+ * Both age and actual body weight remain required. An entered invalid creatinine
+ * is rejected by the assessor even when the count is already decided.
+ */
+export function apixabanReductionCriteria(record, context = {}) {
+  if (!['apixaban-nvaf-standard', 'apixaban-nvaf-two-criteria'].includes(record?.anticoagulantRule)) return null;
+  if (!context || typeof context !== 'object' || Array.isArray(context)) context = {};
+  let age = null;
+  if (finite(context.age) && context.age >= 0 && ['years', 'months', 'days'].includes(context.ageUnit)) {
+    const low = context.ageUnit === 'years' ? context.age * 12 : context.ageUnit === 'months' ? context.age : context.age / 31;
+    const high = context.ageUnit === 'years' ? context.age * 12 : context.ageUnit === 'months' ? context.age : context.age / 28;
+    if (low >= 960) age = true;
+    else if (high < 960) age = false;
+  }
+  const weight = positive(context.weight) && context.weight <= 500 ? context.weight <= 60 : null;
+  const creatinine = positive(context.serumCreatinine) ? context.serumCreatinine >= 1.5 : null;
+  const known = age !== null && weight !== null;
+  const firstTwo = Number(age === true) + Number(weight === true);
+  const requiresCreatinine = !known || firstTwo === 1;
+  const decided = known && (creatinine !== null || !requiresCreatinine);
+  const minimumCount = firstTwo + Number(creatinine === true);
+  return { age, weight, creatinine, requiresCreatinine,
+    minimumCount, maximumCount: minimumCount + Number(age === null) + Number(weight === null) + Number(creatinine === null),
+    reduction: decided ? minimumCount >= 2 : null };
+}
+
 /** Extra patient/phase-dose checks only. The caller still runs the ordinary
  * human resolver for identity, adult age, duration, limits and sourceConfirmations.
  * Does not choose a record, fill a field, calculate CrCl or assert full clinical
  * suitability. Unknown rules fail closed; unrelated records receive no checks.
  */
 export function assessAnticoagulantEligibility(record, context = {}) {
-  const result = { errors: [], warnings: [], requirements: [] };
+  const result = { errors: [], warnings: [], requirements: [], issues: [] };
+  const issue = (code, field, kind, message) => {
+    result.errors.push(message);
+    result.issues.push({ code, field, kind, message });
+  };
   if (!record?.anticoagulantRule) return result;
   const rule = record.anticoagulantRule;
   if (!RULES.has(rule)) {
@@ -285,27 +316,29 @@ export function assessAnticoagulantEligibility(record, context = {}) {
   }
   result.requirements.push('crcl');
   const crcl = context.crcl;
-  if (!positive(crcl)) result.errors.push('Podaj oceniony CrCl w ml/min; eGFR ani kreatynina w surowicy nie zastępują tego pola.');
-  else if (crcl < 15) result.errors.push('CrCl <15 ml/min jest poza zakresem tego schematu z ChPL.');
+  if (!positive(crcl)) issue(absent(crcl) ? 'missing-crcl' : 'invalid-crcl', 'crcl', absent(crcl) ? 'missing' : 'invalid', absent(crcl) ? 'Uzupełnij oceniony klirens kreatyniny CrCl w ml/min.' : 'Podaj poprawny klirens kreatyniny CrCl w ml/min.');
+  else if (crcl < 15) issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'CrCl <15 ml/min jest poza zakresem tego schematu z ChPL.');
   else {
     if (['apixaban-nvaf-standard', 'apixaban-nvaf-two-criteria'].includes(rule) && crcl < 30)
-      result.errors.push('Ten wariant NVAF wymaga CrCl ≥30 ml/min; dla 15–<30 ml/min wybierz odrębny wariant.');
+      issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Ten wariant NVAF wymaga CrCl ≥30 ml/min; dla 15–<30 ml/min wybierz odrębny wariant.');
     if (rule === 'apixaban-nvaf-severe-renal' && crcl >= 30)
-      result.errors.push('Nerkowy wariant apiksabanu 2,5 mg dotyczy wyłącznie CrCl 15–<30 ml/min.');
+      issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Nerkowy wariant apiksabanu 2,5 mg dotyczy wyłącznie CrCl 15–<30 ml/min.');
     if (rule === 'rivaroxaban-nvaf-standard' && crcl < 50)
-      result.errors.push('Wariant rywaroksabanu 20 mg w NVAF wymaga CrCl ≥50 ml/min.');
+      issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Wariant rywaroksabanu 20 mg w NVAF wymaga CrCl ≥50 ml/min.');
     if (['rivaroxaban-nvaf-renal', 'rivaroxaban-vte-reduced'].includes(rule) && crcl >= 50)
-      result.errors.push('Wybrany nerkowy wariant rywaroksabanu dotyczy wyłącznie CrCl 15–<50 ml/min.');
+      issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Wybrany nerkowy wariant rywaroksabanu dotyczy wyłącznie CrCl 15–<50 ml/min.');
     if (crcl < 30) result.warnings.push('CrCl 15–<30 ml/min: zwiększona ekspozycja i ryzyko krwawienia wymagają ostrożności według ChPL.');
     if (rule === 'rivaroxaban-vte' && crcl < 50 && record.dose === 20)
       result.warnings.push('Przy CrCl 15–<50 ml/min ChPL pozwala rozważyć 15 zamiast 20 mg raz/dobę tylko po porównaniu ryzyka krwawienia i nawrotu. Nie zastosowano redukcji automatycznie.');
   }
 
   if (['apixaban-nvaf-standard', 'apixaban-nvaf-two-criteria'].includes(rule)) {
-    result.requirements.push('age', 'weight', 'serumCreatinine');
+    result.requirements.push('age', 'weight');
+    const criteria = apixabanReductionCriteria(record, context);
+    if (criteria.requiresCreatinine) result.requirements.push('serumCreatinine');
     let ageCriterion = null;
     if (!finite(context.age) || context.age < 0 || !['years', 'months', 'days'].includes(context.ageUnit)) {
-      result.errors.push('Podaj wiek i jego jednostkę, aby sprawdzić kryterium ≥80 lat w NVAF.');
+      issue(absent(context.age) ? 'missing-age' : 'invalid-age', 'age', absent(context.age) ? 'missing' : 'invalid', 'Podaj wiek i jego jednostkę, aby sprawdzić kryterium ≥80 lat w NVAF.');
     } else {
       const lowMonths = context.ageUnit === 'years' ? context.age * 12
         : context.ageUnit === 'months' ? context.age : context.age / 31;
@@ -313,18 +346,17 @@ export function assessAnticoagulantEligibility(record, context = {}) {
         : context.ageUnit === 'months' ? context.age : context.age / 28;
       if (lowMonths >= 960) ageCriterion = true;
       else if (highMonths < 960) ageCriterion = false;
-      else result.errors.push('Wiek w dniach jest niejednoznaczny przy progu 80 lat. Podaj wiek w latach lub ukończonych miesiącach.');
+      else issue('ambiguous-age', 'age', 'invalid', 'Wiek w dniach jest niejednoznaczny przy progu 80 lat. Podaj wiek w latach lub ukończonych miesiącach.');
     }
     if (!positive(context.weight) || context.weight > 500)
-      result.errors.push('Podaj prawidłową masę w kg, aby sprawdzić kryterium ≤60 kg w NVAF.');
-    if (!positive(context.serumCreatinine))
-      result.errors.push('Podaj kreatyninę w surowicy w mg/dl, aby sprawdzić kryterium ≥1,5 mg/dl w NVAF.');
-    if (ageCriterion !== null && positive(context.weight) && context.weight <= 500 && positive(context.serumCreatinine)) {
-      const criteria = Number(ageCriterion) + Number(context.weight <= 60) + Number(context.serumCreatinine >= 1.5);
-      if (rule === 'apixaban-nvaf-standard' && criteria >= 2)
-        result.errors.push('Spełniono co najmniej 2 z 3 kryteriów redukcji NVAF. Wybrany wariant 5 mg nie odpowiada tej regule ChPL.');
-      if (rule === 'apixaban-nvaf-two-criteria' && criteria < 2)
-        result.errors.push('Nie potwierdzono co najmniej 2 z 3 kryteriów wymaganych dla tego wariantu 2,5 mg w NVAF.');
+      issue(absent(context.weight) ? 'missing-weight' : 'invalid-weight', 'weight', absent(context.weight) ? 'missing' : 'invalid', 'Podaj prawidłową masę w kg, aby sprawdzić kryterium ≤60 kg w NVAF.');
+    if (!positive(context.serumCreatinine) && (criteria.requiresCreatinine || !absent(context.serumCreatinine)))
+      issue(absent(context.serumCreatinine) ? 'missing-serum-creatinine' : 'invalid-serum-creatinine', 'serumCreatinine', absent(context.serumCreatinine) ? 'missing' : 'invalid', 'Podaj kreatyninę w surowicy w mg/dl, aby sprawdzić kryterium ≥1,5 mg/dl w NVAF.');
+    if (criteria.reduction !== null) {
+      if (rule === 'apixaban-nvaf-standard' && criteria.reduction)
+        issue('nvaf-reduction-mismatch', 'source', 'out-of-scope', 'Spełniono co najmniej 2 z 3 kryteriów redukcji NVAF. Wybrany wariant 5 mg nie odpowiada tej regule ChPL.');
+      if (rule === 'apixaban-nvaf-two-criteria' && !criteria.reduction)
+        issue('nvaf-reduction-mismatch', 'source', 'out-of-scope', 'Nie potwierdzono co najmniej 2 z 3 kryteriów wymaganych dla tego wariantu 2,5 mg w NVAF.');
     }
   }
   if (rule === 'rivaroxaban-vte-reduced') result.warnings.push('Redukcja do 15 mg w tym zastosowaniu opiera się na modelowaniu farmakokinetycznym i nie została zbadana klinicznie.');

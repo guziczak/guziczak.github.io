@@ -1,6 +1,6 @@
 # Eliquis i Xarelto — zakres schematów i uzasadnienie źródłowe
 
-Sprawdzenie źródeł: **19 listopada 2026 r.** Moduł `cardio-anticoagulant-regimens.js` zawiera 14 jawnie wybieranych schematów dla dorosłych i czterech istniejących postaci: Eliquis 2,5 mg, Eliquis 5 mg, Xarelto 15 mg, Xarelto 20 mg. Nazwy i objaśnienia są opracowaniem danych źródłowych; nie skopiowano pełnych instrukcji z ChPL. Wybór preparatu ani wpisanie CrCl nie wybiera wskazania, dawki lub następnego etapu terapii.
+Pierwotne sprawdzenie danych dawkowania: **19 listopada 2026 r.** Aktualizacja oceny danych, jednostek i prezentacji: **2026-11-21**. Moduł `cardio-anticoagulant-regimens.js` zawiera 14 jawnie wybieranych schematów dla dorosłych i czterech istniejących postaci: Eliquis 2,5 mg, Eliquis 5 mg, Xarelto 15 mg, Xarelto 20 mg. Nazwy i objaśnienia są opracowaniem danych źródłowych; nie skopiowano pełnych instrukcji z ChPL. Wybór preparatu, wpisanie CrCl ani jawne oszacowanie go metodą CG nie wybiera wskazania, dawki lub następnego etapu terapii.
 
 ## Źródła pierwotne
 
@@ -8,6 +8,8 @@ Sprawdzenie źródeł: **19 listopada 2026 r.** Moduł `cardio-anticoagulant-reg
 2. **Xarelto — EMA, Annex I, Summary of Product Characteristics:** [aktualny dokument EN](https://www.ema.europa.eu/en/documents/product-information/xarelto-epar-product-information_en.pdf). Część 15 mg zaczyna się na stronie 54, część 20 mg na stronie 86. Wykorzystano punkty 4.1–4.4, zwłaszcza tabele etapów ZŻG/ZP, odrębną redukcję nerkową w NVAF, warunkową redukcję w leczeniu ZŻG/ZP i przyjmowanie z posiłkiem. [Karta EPAR](https://www.ema.europa.eu/en/medicines/human/EPAR/xarelto) podaje ostatnią aktualizację informacji produktowej **22.09.2026**.
 
 Numery stron odnoszą się do numeracji widocznej w pobranych dokumentach. `sourceDocumentDate` w rekordach jest datą aktualizacji dokumentu na stronie EMA, a nie datą pierwszego pozwolenia lub datą sporządzenia tych notatek. `sourceCheckedAt` oznacza dzień odczytu i porównania danych. W czasie przeglądu polskie adresy PDF zwracały w czytniku sieciowym błąd 429; podstawą danych jest dostępny dokument angielski z tego samego urzędowego źródła. Nie użyto streszczenia pacjenckiego jako podstawy warunków nerkowych.
+
+Aktualizacja z 2026-11-21 ponownie odnosi regułę NVAF do punktu 4.2 ChPL Eliquis. Dobór metody oceny nerek i ograniczenia wzoru omówiono na podstawie [MHRA: prescribing medicines in renal impairment](https://www.gov.uk/drug-safety-update/prescribing-medicines-in-renal-impairment-using-the-appropriate-estimate-of-renal-function-to-avoid-the-risk-of-adverse-drug-reactions) oraz [SPS: calculating kidney function](https://www.sps.nhs.uk/articles/calculating-kidney-function/). Implementacja, normalizacja jednostek i granice zakresu kalkulatora są opisane w [renal-function-notes.md](renal-function-notes.md). Te źródła nie dodają nowych schematów dawkowania do 14 rekordów.
 
 ## Dokładny zakres 14 rekordów
 
@@ -36,13 +38,15 @@ Każdy rekord odsyła do ChPL przez `sourceUrl`, `sourceLabel`, `sourceSection`,
 
 ### Apiksaban: trzy różne powody wybrania 2,5 mg
 
-Reguła NVAF obejmuje wiek **≥80 lat**, masę **≤60 kg** oraz kreatyninę w surowicy **≥1,5 mg/dl**. Do redukcji potrzeba co najmniej dwóch spełnionych kryteriów. W części 4.2 ChPL podaje również równoważny próg 133 µmol/l; formularz tego modułu przyjmuje tylko mg/dl. Nie rozpoznaje jednostki na podstawie wielkości liczby i nie przelicza jej automatycznie.
+Reguła NVAF obejmuje wiek **≥80 lat**, rzeczywistą masę **≤60 kg** oraz kreatyninę w surowicy **≥1,5 mg/dl**. Do redukcji potrzeba co najmniej dwóch spełnionych kryteriów. W części 4.2 ChPL podaje również 133 µmol/l. Formularz przyjmuje mg/dl albo µmol/l z jawnym wyborem jednostki; do reguły przekazuje wartość znormalizowaną do mg/dl. Nie rozpoznaje jednostki na podstawie wielkości liczby. Osobna masa wybrana do oszacowania CG nie zastępuje rzeczywistej masy w tej regule.
 
 Niezależnie od powyższego, NVAF przy CrCl 15–29 ml/min wymaga wariantu 2,5 mg 2 razy/dobę. Dlatego istnieje osobny rekord nerkowy, który nie wymaga sztucznego „uzupełnienia” drugiego kryterium wieku lub masy. Dwa rekordy oparte na liczbie kryteriów ograniczono do CrCl ≥30, żeby warianty nie udawały zamiennych przyczyn kwalifikacji.
 
 Trzecie zastosowanie tej samej dawki dotyczy zapobiegania nawrotom ZŻG/ZP po 6 miesiącach oraz profilaktyki po planowej endoprotezoplastyce. Reguły NVAF nie stosuje się do tych wskazań. Wiek 85 lat, masa 50 kg i kreatynina 2 mg/dl nie zmieniają automatycznie 10 mg lub 5 mg w schemacie leczenia ostrej ZŻG/ZP na 2,5 mg. Przy CrCl 15–29 w tych wskazaniach ChPL wymaga ostrożności. CrCl <15 i dializoterapia są poza oferowanym zakresem. Źródło: Eliquis, 4.2, podrozdziały „Dose reduction”, „Renal impairment”, „Elderly”, „Body weight”; 4.4 dotyczący nerek.
 
-Wymaganie podania wszystkich trzech danych przy porównaniu 2 z 3 jest konserwatywną zasadą kompletności aplikacji. Nie twierdzi, że ChPL wymaga nowego oznaczenia kreatyniny tylko po to, aby zliczyć kryteria już przesądzone przez wiek i masę. Wiek podany w dniach przy granicy 80 lat wymaga doprecyzowania w latach lub miesiącach, zamiast założenia stałej długości wszystkich miesięcy.
+Od 2026-11-21 aplikacja ocenia regułę warunkowo. Wiek i masa rzeczywista pozostają wymagane. Gdy oba ich kryteria są niespełnione, brakująca kreatynina nie może zwiększyć liczby kryteriów do dwóch; gdy oba są spełnione, wynik zliczenia jest już rozstrzygnięty. Gdy spełnione jest dokładnie jedno, kreatynina jest potrzebna do rozstrzygnięcia. Nieznane kryterium nie jest oznaczane jako niespełnione, a wpisana błędna kreatynina nie jest ignorowana. Wiek podany w dniach przy granicy 80 lat wymaga doprecyzowania w latach lub miesiącach.
+
+To częściowa ocena logiczna tej samej reguły źródłowej, a nie nowe zalecenie leczenia. **CrCl nadal jest wymagany i oceniany niezależnie** we wszystkich 14 rekordach. Nawet rozstrzygnięte zliczenie 2 z 3 nie potwierdza zakresu nerkowego. Jeżeli użytkownik wybierze obliczanie CG, kreatynina pozostaje wymagana do wzoru, także gdy nie jest potrzebna do samego zliczenia kryteriów NVAF.
 
 ### Rywaroksaban: redukcja nerkowa zależy od wskazania
 
@@ -73,31 +77,39 @@ Moduł nie importuje `human-regimen-engine.js`. Eksportuje:
 
 ```js
 CARDIO_ANTICOAGULANT_REGIMENS
+apixabanReductionCriteria(record, context)
 assessAnticoagulantEligibility(record, context)
 ```
 
-Każdy rekord ma `anticoagulantRule`, który identyfikuje dodatkową logikę, oraz `lockSourceValues: true`. Walidator zwraca `{ errors, warnings, requirements }`. `requirements` zawiera nazwy pól pacjenta, a nie potwierdzenia. Nie wybiera innego rekordu i nie modyfikuje wejścia.
+Każdy rekord ma `anticoagulantRule`, który identyfikuje dodatkową logikę, oraz `lockSourceValues: true`. Walidator zwraca `{ errors, warnings, requirements, issues }`. `requirements` zawiera nazwy pól pacjenta, a nie potwierdzenia. Strukturalne `issues` mają pola `{ code, field, kind, message }`, gdzie `kind` rozróżnia `missing`, `invalid` i `out-of-scope`; dotychczasowe `errors` nadal blokują niewłaściwy wynik. `apixabanReductionCriteria` udostępnia częściowe zliczenie, potrzebę kreatyniny i stan rozstrzygnięcia. Żadna z tych funkcji nie wybiera innego rekordu ani nie modyfikuje wejścia.
 
 | Pole | Jednostka / semantyka | Kontrola |
 | --- | --- | --- |
 | `context.age`, `ageUnit` | lata, miesiące lub dni | Generic engine sprawdza dorosłość; dodatkowy walidator próg 80 lat w dwóch rekordach NVAF apiksabanu |
 | `context.weight` | kg | W regule 2 z 3 musi być dodatnią skończoną liczbą, w zakresie formularza do 500 kg |
-| `context.crcl` | oceniony CrCl w ml/min | Wymagany we wszystkich 14 rekordach; nie zastępuje go `renalStatus: normal`, eGFR lub kreatynina |
-| `context.serumCreatinine` | mg/dl | Wymagane wyłącznie w dwóch rekordach apiksabanu opartych na regule 2 z 3 |
+| `context.crcl` | oceniony lub jawnie oszacowany CrCl w ml/min | Wymagany we wszystkich 14 rekordach; nie zastępuje go `renalStatus: normal`, eGFR lub sama kreatynina; porównanie używa niezaokrąglonej wartości |
+| `context.serumCreatinine` | mg/dl po normalizacji wejścia mg/dl albo µmol/l | W dwóch rekordach NVAF potrzebne do zliczenia, gdy wiek i masa go nie rozstrzygają; wpisana błędna wartość jest odrzucana |
+| `context.renalIssues` | błędy aktywnego trybu panelu nerkowego | W trybie CG wskazują rzeczywiste brakujące dane lub warunki wzoru zamiast ponownej prośby o ręczny CrCl |
 | `context.sourceConfirmations` | tablica ID potwierdzeń | Generic engine musi wymagać wszystkich `selectionRequirements` bieżącego rekordu |
 | `context.dose`, `frequency` | wartości odpowiadające `doseMode: fixed` | Po podaniu muszą być zgodne z wybranym stałym schematem; ogólne pozwolenie na nadpisania nie może omijać tego sprawdzenia |
 
-`record.patientFields` określa dodatkowe widoczne dane pacjenta. Dla dwóch rekordów opartych na 2 z 3 to `['crcl', 'weight', 'serumCreatinine']`; dla pozostałych `['crcl']`. Wiek wynika też z istniejącego `minAgeMonths: 216`. Nie wymuszamy masy lub kreatyniny na siłę w nerkowym wariancie NVAF 2,5 mg ani w fazach ŻChZZ, w których nie służą do podanej redukcji.
+`record.patientFields` określa dodatkowe widoczne dane pacjenta. Dla dwóch rekordów opartych na 2 z 3 to `['crcl', 'weight', 'serumCreatinine']`; dla pozostałych `['crcl']`. Wiek wynika też z istniejącego `minAgeMonths: 216`. Obecność pola kreatyniny nie oznacza bezwarunkowej konieczności jej podania do zliczenia kryteriów. Nerkowy wariant NVAF 2,5 mg i fazy ŻChZZ nie otrzymują dodatkowej reguły redukcji na podstawie wieku i masy. Jawnie wybrany tryb CG ma natomiast własny komplet wymaganych danych, niezależny od `patientFields` dawki.
 
 Integracja musi wykonać wszystkie następujące działania:
 
 1. Dopiąć rekordy do `HUMAN_REGIMENS`; wybór produktu pozostaje bez wybranego schematu.
 2. W `resolveHumanRegimen` dołączyć wyniki `assessAnticoagulantEligibility` do zwykłej walidacji tożsamości, wieku, dawki, częstości i czasu. Sprawdzać potwierdzenia `selectionRequirements`, także przy `{allowNumericOverrides:true}`.
-3. Pokazać czytelnie jednostkę mg/dl i oddzielne CrCl; respektować `lockSourceValues` w UI edycji. Nie wyliczać CrCl automatycznie z kreatyniny ani z samej etykiety „nerki prawidłowe”.
-4. Czyścić potwierdzenia po zmianie schematu lub danych pacjenta. Dane i potwierdzenia muszą być częścią snapshotu/klucza kontekstu koszyka, aby stare teksty nie pozostawały aktualne po zmianie kreatyniny lub danych kwalifikacji.
+3. Pokazać jednostkę kreatyniny i odrębny CrCl; respektować `lockSourceValues`. Oceniony CrCl jest osobnym wejściem. Obliczanie CG uruchamia dopiero wybór użytkownika i wymaga prawidłowych danych oraz oceny stabilności/masy; sama kreatynina ani etykieta „nerki prawidłowe” go nie zatwierdza.
+4. Po zmianie schematu czyścić potwierdzenia. Po edycji danych korzystać wyłącznie z jawnych zależności `source-confirmations.js`: zachować można wcześniej zaznaczone warunki niezależne od pola, nigdy potwierdzenie końcowego wyniku. Warunki zależne i nieznane są unieważniane. Dane i potwierdzenia pozostają częścią snapshotu/klucza koszyka, aby wcześniejszy tekst nie był używany dla zmienionego kontekstu.
 5. Dodać nowy moduł do statycznego builda i precache, zwiększyć wersję cache i zsynchronizować kopię `public/rxcalc/` zgodnie z zasadami repozytorium.
 
 Samo włączenie tablicy danych bez kroku 2 byłoby niekompletną integracją: poprzedni silnik zna dolną granicę CrCl, ale nie górną granicę przedziału, regułę 2 z 3 i jawne potwierdzenia fazy. Test integracyjny celowo wykrywa taki stan.
+
+### Potwierdzenia i prezentacja — 2026-11-21
+
+Rozpoznana edycja masy lub pól nerkowych może zachować samo potwierdzenie wskazania NVAF albo odrębne potwierdzenie początkowego/dalszego etapu ZŻG/ZP apiksabanu. Osobne potwierdzenie nerkowe jest wtedy usuwane. Zmiana wieku nie korzysta z tego wyjątku. Warunki łączące etap z oceną ryzyka, rekordy nieobjęte jawną listą oraz nieznane pola pozostają unieważniane. Mechanizm nie tworzy żadnego zaznaczenia automatycznie. Końcowe potwierdzenie aktualnego wyniku jest po edycji zawsze wymagane ponownie.
+
+Wykres może pokazać neutralne 100% dla 10 mg/dobę wobec źródłowych 10 mg/dobę przed ukończeniem oceny pacjenta. Brakujące dane mają jeden status i skrót do właściwego pola; nie są powielane jako błąd dawki. Jest to prezentacja arytmetyki. Błędy kwalifikacji, zakres nerkowy, wybór fazy, stała dawka, potwierdzenia i blokada eksportu działają nadal. Nie dodano uniwersalnego maksimum tylko po to, żeby narysować pasek.
 
 ## Ograniczenia zakresu i testy
 
@@ -106,3 +118,5 @@ Oferta schematów obejmuje dorosłych. Aktualne dokumenty EMA zawierają także 
 Walidacja nie jest pełną oceną kliniczną. Nie rozpoznaje wskazania, aktywnego krwawienia, choroby wątroby, ciąży, interakcji, zespołu antyfosfolipidowego czy ryzyka związanego z protezą zastawkową. ChPL 4.3–4.6 nadal wymaga odrębnej oceny tych kwestii. Konkretnych warunków fazy, NVAF, dializoterapii lub porównania ryzyka krwawienia nie uznano za potwierdzone tylko dlatego, że istnieje prawidłowy wynik obliczenia.
 
 `cardio-anticoagulant-regimens.test.mjs` sprawdza niezależne oczekiwania dawek dla 14 rekordów, przypisanie do czterech postaci i całych tabletek, osiem kombinacji reguły 2 z 3, granice CrCl 15/30/50, brak zastępowania CrCl przez eGFR, brak przenoszenia redukcji NVAF do ZŻG/ZP, etapowe czasy, ograniczenia nerkowego 15 mg, wymagane potwierdzenia oraz blokadę nadpisania stałego schematu. Testy programu nie stanowią walidacji klinicznej danych.
+
+Regresje z 2026-11-21 obejmują również warunkową potrzebę kreatyniny, zachowanie nieznanego kryterium, odrębność masy rzeczywistej i masy CG, normalizację obu jednostek, selektywne unieważnianie potwierdzeń oraz neutralny wykres bez możliwości ominięcia walidacji. Szczegółowy podział modułów i przypadków opisuje [renal-function-notes.md](renal-function-notes.md).

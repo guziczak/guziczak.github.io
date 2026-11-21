@@ -57,11 +57,12 @@ test('pending quantity never turns into a displayed 0% current dose',()=>{
   assert.equal(regimenDosePercentMarkup(note.rows[0],note.schemeRows[0]),'');
  }
 });
-test('unconfirmed patient conditions suppress comparison percentages and annotation scale',()=>{
+test('unconfirmed patient conditions retain neutral arithmetic without changing the underlying allowed gate',()=>{
  const note=preview();assert.equal(regimenPercentModel(note.rows[0],note.schemeRows[0],false),null);
  const html=dailyDoseMarkup({note,input,source,eligibility:{valid:false,errors:['Sprawdź wiek']}});
- assert.ok(!html.includes('dose-scheme-current'));assert.ok(!html.includes('dose-scheme-ticks'));assert.ok(!html.includes('dose-scheme-percent-axis'));
- assert.match(html,/Warunki porównania niepotwierdzone/);
+ assert.match(html,/dose-scheme-current within neutral/);assert.match(html,/dose-scheme-ticks/);assert.match(html,/dose-scheme-percent-axis/);
+ assert.match(html,/88,9%/);assert.match(html,/Sprawdź dane pacjenta/);
+ assert.doesNotMatch(html,/Dobowo w zakresie wybranego schematu/);
 });
 test('an absolute manual limit without weight is not placed on a per-kg percentage scale',()=>{
  const note=preview({input:{...input,weight:null},sourceCheck:{maxDailyMgPerKg:45},limit:{daily:800,kind:'manual'}});
@@ -105,5 +106,5 @@ test('presentation escapes data, does not mutate or change arithmetic, and prese
 test('percent runtime files are identical in both hosted copies and cache is bumped',async()=>{
  for(const name of ['dose-regimen.js','dose-safety-view.js','dose-safety.css','sw.js'])
   assert.equal(await readFile(new URL(name,import.meta.url),'utf8'),await readFile(new URL(`../public/rxcalc/${name}`,import.meta.url),'utf8'));
- assert.match(await readFile(new URL('sw.js',import.meta.url),'utf8'),/2026-11-20\.82/);
+ assert.match(await readFile(new URL('sw.js',import.meta.url),'utf8'),/2026-11-21\.83/);
 });

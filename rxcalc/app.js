@@ -18,7 +18,7 @@ import { createPatientPickers } from './patient-picker.js';
 import { createViewportLayout } from './viewport-layout.js';
 import { createCatalogueMotion } from './catalogue-motion.js';
 import { ingredientDailyDose, supportsDailyDose } from './daily-dose.js';
-import { dailyDoseMarkup, dailyDoseMotionContext, renderDailyDoseNote } from './dose-safety-view.js';
+import { dailyDoseMarkup, dailyDoseMotionContext, renderDailyDoseNote, dailyDosePresentationModel, clinicalStatusMarkup } from './dose-safety-view.js';
 import { assessDoseRounding, hasScopedRoundingEvidence, automaticRoundingStep, applyRoundingPresentation, roundingValidationSource, resolveRoundingRegimen, createRoundingReview, roundingAuditText } from './rounding-assessment.js';
 import { roundingReviewMarkup } from './rounding-review-view.js';
 import { resolveDurationGuidance, durationResultWarning, durationDayChoices } from './duration-guidance.js';
@@ -32,6 +32,10 @@ import { copyText, selectCopyText } from './clipboard.js';
 import { FENTANYL_SINGLE_DOSE_SOURCES } from './cardio-fentanyl.js';
 import { availableSingleDoseSources, resolveSingleDose, buildSingleDoseText, formatSingleDoseNumber } from './single-dose.js';
 import { singleDoseRegimenMarkup, singleDoseResultMarkup, updateSingleDoseView } from './single-dose-view.js';
+import { apixabanReductionCriteria } from './cardio-anticoagulant-regimens.js';
+import { RENAL_STATE_DEFAULTS, renalAssessmentForState, renalRegimenContext, renalCreatinineUnitChange } from './renal-state.js';
+import { renalPanelMarkup, updateRenalPanel } from './renal-view.js';
+import { sourceConfirmationsAfterEdit } from './source-confirmations.js';
 
 const $ = (q, root = document) => root.querySelector(q);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -86,6 +90,7 @@ const state = {
   specialty, category: 'all', routeFilter: 'all', search: '', drugId: '', formId: '', packageId: '',
   patientType: 'adult', age: '', weight: '', species: '', vetAgeUnit: 'years', vetRoute: '', foodChainStatus: 'unknown',
   humanAgeUnit: 'years', renalStatus: 'unknown', humanCrCl: '', humanSerumCreatinine: '', instructionPacks: '', sourceConfirmations: [],
+  ...RENAL_STATE_DEFAULTS,
   doseMode: 'fixed', dose: '', doseMicrograms: '', frequency: '', days: '', roundingStep: '', manualMax: '', regimenId: '',
   roundingMode: 'auto', roundDoses: false, roundingPlaces: '1',
   extraInstructions: '', confirmed: false, rxMode: 'full', custom: false,
@@ -218,13 +223,17 @@ const variantUnit = count => count === 1 ? 'wariant' : count % 10 >= 2 && count 
 const regimenContext = () => ({ formId: getForm()?.id, species: state.species, weight: num(state.weight), age: num(state.age), ageUnit: state.vetAgeUnit, foodChainStatus: state.foodChainStatus, days: num(state.days), calculationBlocked: getForm()?.calculationBlocked === true });
 const humanContext = () => {
   const source=getSourceRegimen();
-  const renalRelevant=source?.renalPolicy || source?.minCrCl != null || source?.maxCrCl != null || source?.requireCrCl;
   return { formId:getForm()?.id, specialty:state.specialty, patientType:state.patientType,
     age:num(state.age), ageUnit:state.humanAgeUnit, weight:num(state.weight), days:num(state.days),
     dose:num(state.dose), frequency:num(state.frequency), renalStatus:state.renalStatus,
-    crcl:renalRelevant ? num(state.humanCrCl) : null,
-    serumCreatinine:source?.patientFields?.includes('serumCreatinine') ? num(state.humanSerumCreatinine) : null,
+    ...renalRegimenContext(state,source),
     sourceConfirmations:state.sourceConfirmations };
+};
+const renalViewOptions = () => {
+  const source=getSourceRegimen(),assessment=renalAssessmentForState(state);
+  return {state,assessment,required:source?.requireCrCl===true,icon,thresholds:[source?.minCrCl,source?.maxCrCl],
+    criteria:apixabanReductionCriteria(source,{age:num(state.age),ageUnit:state.humanAgeUnit,
+      weight:num(state.weight),serumCreatinine:assessment.serumCreatinineMgDl})};
 };
 const singleDoseContext = () => ({ formId:getForm()?.id, specialty:state.specialty,
   patientType:state.patientType, age:num(state.age), ageUnit:state.humanAgeUnit,
@@ -322,7 +331,7 @@ function clearCustomProduct() {
   Object.assign(state,{customName:'',customForm:'tablet',customStrength:'',customConcentration:'',customVolume:'5',customPack:'',customFractions:'1',customDrops:'',customContainers:'1',vetRoute:''});
 }
 function clearPatientContext() {
-  Object.assign(state,{age:'',weight:'',patientType:'adult',species:'',vetAgeUnit:'years',foodChainStatus:'unknown',humanAgeUnit:'years',renalStatus:'unknown',humanCrCl:'',humanSerumCreatinine:''});
+  Object.assign(state,{age:'',weight:'',patientType:'adult',species:'',vetAgeUnit:'years',foodChainStatus:'unknown',humanAgeUnit:'years',renalStatus:'unknown',humanCrCl:'',humanSerumCreatinine:'',...RENAL_STATE_DEFAULTS});
   resetRegimen();
 }
 function startVeterinary() {
@@ -363,17 +372,17 @@ function ageFields(required = false) {
 function patientPanel(f) {
   if (!productReady() || isReference(f)) return '';
   const source = getSourceRegimen();
-  const needs = isSingleDose(f) ? { age:true, weight:false, foodChain:false }
+  const baseNeeds = isSingleDose(f) ? { age:true, weight:false, foodChain:false }
     : patientFieldsFor({ ...state, form:f, source });
-  const weight = required => field('weight', required ? 'Masa ciała' : 'Masa (opcjonalnie)', state.weight, isVeterinary() ? getAnimal()?.weight || 'kg' : state.patientType === 'child' ? 'np. 24' : 'np. 70', 'kg', `data-patient-picker ${required ? 'required' : ''}`);
   const renalRelevant = !isVeterinary() && (source?.renalPolicy || source?.minCrCl != null || source?.maxCrCl != null || source?.requireCrCl);
-  const renal = renalRelevant ? field('humanCrCl', source.requireCrCl ? 'CrCl ustalony klinicznie' : 'Znany CrCl (opcjonalnie)', state.humanCrCl, 'Wartość CrCl', 'ml/min', source.requireCrCl ? 'required' : '') : '';
+  const calculateRenal = renalRelevant && state.renalInputMode === 'calculate';
+  const needs = {...baseNeeds,age:baseNeeds.age||calculateRenal,weight:baseNeeds.weight||calculateRenal};
+  const weight = required => field('weight', required ? 'Masa ciała' : 'Masa (opcjonalnie)', state.weight, isVeterinary() ? getAnimal()?.weight || 'kg' : state.patientType === 'child' ? 'np. 24' : 'np. 70', 'kg', `data-patient-picker ${required ? 'required' : ''}`);
+  const renal = renalRelevant ? renalPanelMarkup(renalViewOptions()) : '';
   const renalImpairment = !isVeterinary() && source?.renalPolicy ? `<div class="field renal-details-field"><label class="renal-impairment-option" for="renalImpairment"><input id="renalImpairment" type="checkbox" ${state.renalStatus === 'impaired' ? 'checked' : ''}><span>Rozpoznane zaburzenia czynności nerek</span></label><small>Opcjonalnie, jeśli dotyczy pacjenta. CrCl podawaj w ml/min, nie jako eGFR na 1,73 m².</small></div>` : '';
-  const creatinine = !isVeterinary() && source?.patientFields?.includes('serumCreatinine')
-    ? field('humanSerumCreatinine', 'Kreatynina w surowicy', state.humanSerumCreatinine, 'Wartość w mg/dl', 'mg/dl', 'required') : '';
-  const essential = `${needs.weight ? weight(true) : ''}${needs.age ? ageFields(true) : ''}${needs.foodChain ? foodChainField() : ''}${source?.requireCrCl ? renal : ''}${creatinine}`;
-  const additional = `${!needs.age ? ageFields() : ''}${!needs.weight ? weight(false) : ''}${!source?.requireCrCl ? renal : ''}${renalImpairment}`;
-  return `<section class="patient-card embedded-context" aria-labelledby="patient-title"><div class="section-heading"><h3 id="patient-title">Dane pacjenta</h3><span class="trailing">${icon('lock')} Tylko na ten czas</span></div>${essential ? `<div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${essential}</div>` : '<p class="small-help">Wybrane przeliczenie nie wymaga dodatkowych parametrów pacjenta.</p>'}${isVeterinary() ? '<p class="small-help">Masę wpisz w kg: 100 g = 0,1 kg.</p>' : renalRelevant ? '<p class="small-help">CrCl podaj w ml/min, bez podstawiania eGFR na 1,73 m². Kreatynina w surowicy, gdy wymagana, jest osobną wartością w mg/dl.</p>' : ''}${additional ? `<details class="context-details" data-disclosure="patientDetailsOpen" ${ui.patientDetailsOpen ? 'open' : ''}><summary>Dodatkowe parametry pacjenta</summary><div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${additional}</div></details>` : ''}</section>`;
+  const essential = `${needs.weight ? weight(true) : ''}${needs.age ? ageFields(true) : ''}${needs.foodChain ? foodChainField() : ''}`;
+  const additional = `${!needs.age ? ageFields() : ''}${!needs.weight ? weight(false) : ''}${renalImpairment}`;
+  return `<section class="patient-card embedded-context" aria-labelledby="patient-title"><div class="section-heading"><h3 id="patient-title">Dane pacjenta</h3><span class="trailing">${icon('lock')} Tylko na ten czas</span></div>${essential ? `<div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${essential}</div>` : '<p class="small-help">Wybrane przeliczenie nie wymaga dodatkowych parametrów pacjenta.</p>'}${isVeterinary() ? '<p class="small-help">Masę wpisz w kg: 100 g = 0,1 kg.</p>' : ''}${renal}${additional ? `<details class="context-details" data-disclosure="patientDetailsOpen" ${ui.patientDetailsOpen ? 'open' : ''}><summary>Dodatkowe parametry pacjenta</summary><div class="patient-fields ${isVeterinary() ? 'vet-patient-fields' : ''}">${additional}</div></details>` : ''}</section>`;
 }
 
 function sourceRequirementsMarkup(source) {
@@ -381,9 +390,9 @@ function sourceRequirementsMarkup(source) {
   if(!conditions.length)return '';
   return `<fieldset class="source-conditions"><legend>Warunki wybranego schematu</legend><p class="small-help">Potwierdź warunki dotyczące tego pacjenta i etapu leczenia.</p>${conditions.map(item=>`<label class="source-condition"><input type="checkbox" data-source-requirement="${esc(item.id)}" ${state.sourceConfirmations.includes(item.id)?'checked':''}><span>${esc(item.label)}${item.detail?`<small>${esc(item.detail)}</small>`:''}</span></label>`).join('')}</fieldset>`;
 }
-function clearSourceConfirmations() {
-  state.sourceConfirmations=[];
-  document.querySelectorAll('[data-source-requirement]').forEach(input=>{input.checked=false;});
+function clearSourceConfirmations(field) {
+  state.sourceConfirmations=field?sourceConfirmationsAfterEdit(getSourceRegimen(),state.sourceConfirmations,field):[];
+  document.querySelectorAll('[data-source-requirement]').forEach(input=>{input.checked=state.sourceConfirmations.includes(input.dataset.sourceRequirement);});
 }
 
 function humanRegimenPanel(f) {
@@ -555,7 +564,7 @@ function updateDailyDoseNote(form,input,sourceCheck,limit) {
   const doseProblems=actualCheck&&input.dose>0&&input.frequency>0
     ?[...actualCheck.errors,...actualCheck.warnings]:[];
   const markup=dailyDoseMarkup({note,input,source,eligibility,doseProblems,roundingAssessment,modified:sourceIsModified(),
-    referenceContext:{formId:form.id,patientType:state.patientType,renalStatus:state.renalStatus,crcl:num(state.humanCrCl)},
+    referenceContext:{formId:form.id,patientType:state.patientType,renalStatus:state.renalStatus,crcl:humanContext().crcl},
     context:suspensionLimitContext(form),
     canChooseSource:!source&&getAvailableRegimens().length>0,
     veterinary:isVeterinary(),icon});
@@ -794,6 +803,7 @@ function updateSingleDoseResult() {
 }
 function updateResult() {
   try { updateResultContent(); } finally {
+    if($('#renal-panel'))updateRenalPanel(document,renalViewOptions());
     updateCartControls();selectMenus.refresh();patientPickers.refresh();
     if(!isSingleDose(getForm())) {
       updateDecimalRounding();updateTabletDoseButtons();updateLiquidDoseButtons();
@@ -867,7 +877,11 @@ function updateResultContent() {
   $('#limit-text').innerHTML=`<span>${comparison?`${n(comparison.daily,3)} ${esc(comparison.unit)} / dobę`:quantitiesAvailable&&r.dailyMg!==null?`${n(r.dailyMg,3)} mg / dobę`:quantitiesAvailable&&r.dailyUnits!==null?`${n(r.dailyUnits,3)} ${esc(f.unitLabel)} / dobę`:'Dawka dobowa'}</span><span>${limit.daily!==null?`limit ${n(limit.daily)} mg/dobę${sourceCheck?.maxDailyMgPerKg ? ` · ${n(sourceCheck.maxDailyMgPerKg)} mg/kg/dobę` : ''}`:sourceCheck?.maxDailyUnits ? `limit ${n(sourceCheck.maxDailyUnits)} ${esc(f.unitLabel)}/dobę`:comparison?`${n(comparison.referenceDaily,3)} ${esc(comparison.unit)}/dobę · ${esc(comparison.label)}`:'Brak liczbowego limitu'}</span>`;
   $('#limit-text').title=limit.daily!==null?limit.label:comparison?'Punkt odniesienia dla wybranego schematu; nie jest uniwersalnym maksimum.':'Brak limitu nie oznacza potwierdzenia bezpieczeństwa.';
   const started=!!state.regimenId||f.calculationBlocked||r.status==='critical'||state.dose!==''||state.frequency!==''||state.days!=='';
-  let messages=[...r.errors.map(t=>[t,r.status==='critical'?'critical':'neutral']),...r.warnings.map(t=>[t,'warning']),...(r.notices||[]).filter(item=>item.sourceComparison===true).map(item=>[item.message,'neutral'])];
+  const missingPatientIssues=(sourceCheck?.issues||[]).filter(issue=>issue.kind==='missing');
+  const missingPatientMessages=new Set(missingPatientIssues.map(issue=>issue.message));
+  const missingPatientStatus=missingPatientIssues.length?clinicalStatusMarkup(dailyDosePresentationModel({
+    source:selectedSource,eligibility:{valid:false,issues:missingPatientIssues,errors:[...missingPatientMessages]}})):'';
+  let messages=[...r.errors.filter(t=>!missingPatientMessages.has(t)).map(t=>[t,r.status==='critical'?'critical':'neutral']),...r.warnings.map(t=>[t,'warning']),...(r.notices||[]).filter(item=>item.sourceComparison===true).map(item=>[item.message,'neutral'])];
   if(hasResult && f.unmodelledShelfLifeMonths && input.days>180)messages.push([`Po otwarciu preparat zachowuje trwałość przez ${f.unmodelledShelfLifeMonths} miesięcy. Wyliczenie opakowań opiera się na pojemności; przy tej długości terapii trzeba je sprawdzić z datami otwarcia i ważności.`, 'warning']);
   const pack=f.packOptions.find(p=>p.id===state.packageId)||f.packOptions[0];
   if($('#selected-package')) $('#selected-package').textContent=pack.label;
@@ -875,7 +889,8 @@ function updateResultContent() {
   if(state.demo)messages.unshift(['Przykład arytmetyczny. Kopiowanie wyłączone — rozpocznij od „Nowy pacjent”.','neutral']);
   if(sourceCheck?.limitLabel) messages.push([sourceCheck.limitLabel,'neutral']);
   if(roundingAssessment?.state==='reviewed')messages.push([roundingAuditText(roundingAssessment),'rounding-reviewed']);
-  $('#result-alerts').innerHTML=started?messages.map(([m,c])=>`<div class="alert ${c}">${icon(c==='critical'?'alert':'info')}<span>${esc(m)}</span></div>`).join(''):'';
+  messages=messages.filter(([message],index)=>messages.findIndex(([other])=>other===message)===index);
+  $('#result-alerts').innerHTML=started?missingPatientStatus+messages.map(([m,c])=>`<div class="alert ${c}">${icon(c==='critical'?'alert':'info')}<span>${esc(m)}</span></div>`).join(''):'';
   $('#total-units').textContent=quantitiesAvailable&&r.totalUnits!==null?`${n(r.totalUnits,4)} ${f.unitLabel}`:'—';
   $('#package-result').textContent=quantitiesAvailable&&r.packages!==null?`${getSourceRegimen()?.asNeeded ? 'Do ' : ''}${n(r.packages)} op. × ${pack.label}`:'— opakowań';
   $('#package-description').textContent=quantitiesAvailable&&r.leftoverUnits!==null?`${n(r.leftoverUnits,4)} ${f.unitLabel} nadmiaru${r.expiryWasteUnits>0?` · w tym ${n(r.expiryWasteUnits,3)} ${f.unitLabel} po terminie przydatności`:''}`:'Wybierz opakowanie preparatu';
@@ -1174,7 +1189,7 @@ function example() {
       // Keep the thumb's current visual position when a fast tap reverses a slide.
       const thumb=$('.patient-type-thumb');
       const from=thumb?.getBoundingClientRect(), fromTrack=thumb?.parentElement.getBoundingClientRect();
-      state.patientType=value;state.age='';state.weight='';state.humanAgeUnit='years';state.renalStatus='unknown';state.humanCrCl='';state.humanSerumCreatinine='';resetRegimen();render();
+      state.patientType=value;state.age='';state.weight='';state.humanAgeUnit='years';state.renalStatus='unknown';state.humanCrCl='';state.humanSerumCreatinine='';Object.assign(state,RENAL_STATE_DEFAULTS);resetRegimen();render();
       const next=$('.patient-type-thumb');
       if(from&&fromTrack?.width&&next?.animate&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
         const to=next.getBoundingClientRect(), toTrack=next.parentElement.getBoundingClientRect();
@@ -1218,6 +1233,27 @@ function example() {
     }
     case 'edit-regimen':ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
     case 'daily-dose-source':ui.manualRegimen=false;ui.regimenExpanded=true;dirty();render();selectMenus.focus('regimenId');break;
+    case 'renal-mode':{
+      if(!['manual','calculate'].includes(value)||value===state.renalInputMode)break;
+      state.renalInputMode=value;state.renalCalculationReviewed=false;
+      clearSourceConfirmations('renalInputMode');dirty();render();
+      $(`#${value==='calculate'?'humanSerumCreatinine':'humanCrCl'}`)?.focus({preventScroll:true});
+      break;
+    }
+    case 'complete-patient-data':{
+      let target=b.dataset.focusField;
+      if(target==='source') {ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;}
+      if(target==='crcl'&&state.renalInputMode==='calculate')target=renalAssessmentForState(state).issues[0]?.field||'serumCreatinine';
+      const ids={crcl:'humanCrCl',serumCreatinine:'humanSerumCreatinine',creatinineUnit:'renalCreatinineUnit',sex:'renalSex',calculationWeight:'renalCalculationWeight',renalStable:'renalCalculationReviewed',weightReviewed:'renalCalculationReviewed',mode:'renal-panel',age:'age',ageUnit:'humanAgeUnit',weight:'weight',renalStatus:'renalImpairment',days:'days'};
+      let input=target==='sourceConfirmations'?$('.source-conditions input:not(:checked)'):document.getElementById(ids[target]||'renal-panel');
+      if(!input)input=$('#renal-panel')||$('#patient-title');
+      if(input){
+        let details=input.closest('details');while(details){details.open=true;details=details.parentElement?.closest('details');}
+        input.scrollIntoView({block:'center',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+        if(input.tagName==='SELECT')selectMenus.focus(input.id);else input.focus({preventScroll:true});
+      }
+      break;
+    }
     case 'source-mode':resetRegimen();ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
     case 'manual-regimen':if(isSingleDose(getForm())||isInstruction(getForm()))break;clearSourceConfirmations();state.regimenId='';ui.manualRegimen=true;ui.regimenExpanded=false;ui.sourceDetailsOpen=false;dirty();render();toast('Tryb ręczny — wartości wymagają własnej weryfikacji.');break;
     case 'days':if(isSingleDose(getForm())||getSourceRegimen()?.fixedDays)break;state.days=value;dirty();if($('#days'))$('#days').value=value;document.querySelectorAll('[data-action=days]').forEach(x=>{x.classList.toggle('active',x.dataset.value===value);x.setAttribute('aria-pressed',String(x.dataset.value===value));});updateResult();break;
@@ -1294,11 +1330,19 @@ $('#app').addEventListener('input',e=>{
   if(e.target.id==='search'){state.search=e.target.value;ui.showAll=false;renderDrugs();return;}
   const key=e.target.dataset.field;if(!key || e.target.tagName==='SELECT')return;
   if(state.regimenId&&((key==='dose'&&!canEditSourceValues()&&(isVeterinary()||!getSourceRegimen()?.doseRange))||(key==='days'&&getSourceRegimen()?.fixedDays))){e.target.value=state[key];return;}
-  if(Object.hasOwn(state,key)){state[key]=e.target.value;if(['age','weight','humanCrCl','humanSerumCreatinine'].includes(key))clearSourceConfirmations();dirty();updateResult();}
+  if(Object.hasOwn(state,key)){
+    const changed=state[key]!==e.target.value;state[key]=e.target.value;
+    if(changed&&key==='humanSerumCreatinine')state.renalCreatinineSource=null;
+    if(changed&&['age','weight','humanCrCl','humanSerumCreatinine','renalCalculationWeight'].includes(key)){
+      state.renalCalculationReviewed=false;clearSourceConfirmations(key);
+    }
+    dirty();updateResult();
+  }
 });
 $('#app').addEventListener('change',e=>{
   if(e.target.id==='confirmed'){state.confirmed=e.target.checked&&!!latest?.valid&&productReady()&&!state.demo;updateResult();return;}
-  if(e.target.id==='renalImpairment'){state.renalStatus=e.target.checked?'impaired':'unknown';clearSourceConfirmations();dirty();updateResult();return;}
+  if(e.target.id==='renalImpairment'){state.renalStatus=e.target.checked?'impaired':'unknown';state.renalCalculationReviewed=false;clearSourceConfirmations('renalStatus');dirty();updateResult();return;}
+  if(e.target.id==='renalCalculationReviewed'){state.renalCalculationReviewed=e.target.checked;clearSourceConfirmations('renalCalculationReviewed');dirty();updateResult();return;}
   if(e.target.dataset.sourceRequirement){
     const id=e.target.dataset.sourceRequirement;
     if(!getSourceRegimen()?.selectionRequirements?.some(item=>item.id===id))return;
@@ -1314,8 +1358,15 @@ $('#app').addEventListener('change',e=>{
   if(key==='regimenId'){chooseSourceRegimen(e.target.value);render();return;}
   if(key==='roundingMode'){state.roundingMode=normalizeRoundingMode(e.target.value);state.roundDoses=state.roundingMode==='custom';dirty();updateResult();return;}
   if(key==='roundingPlaces'){state.roundingPlaces=String(normalizeDecimalPlaces(e.target.value,1));dirty();updateResult();return;}
+  if(key==='renalCreatinineUnit'){
+    const unit=e.target.value;if(!['mg/dl','umol/l'].includes(unit)||unit===state.renalCreatinineUnit)return;
+    Object.assign(state,renalCreatinineUnitChange(state,unit));
+    if($('#humanSerumCreatinine'))$('#humanSerumCreatinine').value=state.humanSerumCreatinine;
+    dirty();updateResult();return;
+  }
+  if(key==='renalSex'){state.renalSex=e.target.value;state.renalCalculationReviewed=false;clearSourceConfirmations(key);dirty();updateResult();return;}
   if(state.regimenId&&(['doseMode','roundingStep'].includes(key)||(key==='frequency'&&!canEditSourceValues()&&(isVeterinary()||!getSourceRegimen()?.frequencyOptions)))){e.target.value=state[key];return;}
-  state[key]=e.target.value;if(['humanAgeUnit','vetAgeUnit','foodChainStatus'].includes(key))clearSourceConfirmations();dirty();
+  state[key]=e.target.value;if(['humanAgeUnit','vetAgeUnit','foodChainStatus'].includes(key)){state.renalCalculationReviewed=false;clearSourceConfirmations(key);}dirty();
   if(key==='species'){state.age='';state.weight='';state.foodChainStatus='unknown';state.vetAgeUnit=['hamster','rat'].includes(state.species)?'months':'years';startVeterinary();render();}
   else if(key==='vetAgeUnit'){state.age='';render();}
   else if(key==='humanAgeUnit'){state.age='';render();}

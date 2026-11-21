@@ -116,11 +116,12 @@ const roundingTone=(assessment,model,allowed)=>assessment&&allowed&&model.value!
   &&['rule','needs-review','reviewed','blocked'].includes(assessment.state)?assessment.state:model.state;
 const currentPercent=(value,assessment)=>assessment?.state==='rule'?n(value,2):formatRegimenPercent(value);
 
-export function regimenDosePercentMarkup(row,scheme,allowed=true,roundingAssessment=null) {
+export function regimenDosePercentMarkup(row,scheme,allowed=true,roundingAssessment=null,{neutral=false}={}) {
   const percentages=regimenPercentModel(row,scheme,allowed);
   if(percentages?.current==null)return '';
   const meter=regimenMeterModel(row,scheme,allowed);
-  return `<span class="dose-scheme-current ${roundingTone(roundingAssessment,meter,allowed)} ${meter.limitExceeded?'limit-exceeded':''}"><b>${esc(currentPercent(percentages.current,roundingAssessment))}%</b><small>${esc(percentBasis(scheme))}</small></span>`;
+  const tone=neutral?meter.state:roundingTone(roundingAssessment,meter,allowed);
+  return `<span class="dose-scheme-current ${tone}${neutral?' neutral':''} ${meter.limitExceeded?'limit-exceeded':''}"><b>${esc(currentPercent(percentages.current,roundingAssessment))}%</b><small>${esc(percentBasis(scheme))}</small></span>`;
 }
 
 function percentTicks(scheme,model,percentages) {
@@ -139,7 +140,7 @@ const delta=(value,reference)=>Math.abs(value-reference)/reference*100<.01?'<0,0
 
 /** A source band is not a target or a safe zone. Solid limits are separate and
  * explicitly named; companion-ingredient values are proportional, not maxima. */
-export function regimenMeterMarkup(row, scheme, allowed=true,roundingAssessment=null) {
+export function regimenMeterMarkup(row, scheme, allowed=true,roundingAssessment=null,{neutral=false}={}) {
   const model=regimenMeterModel(row,scheme,allowed);
   if(!model)return '';
   const unit=`${row.unit}/${scheme.perKg?'kg/':''}dobę`;
@@ -162,7 +163,12 @@ export function regimenMeterMarkup(row, scheme, allowed=true,roundingAssessment=
     :model.state==='above'?`Powyżej ${scheme.kind==='fixed'?'dawki dobowej':'górnej granicy'} schematu o ${delta(model.value,scheme.maximum)}%`
     :model.state==='below'?`Poniżej ${scheme.kind==='fixed'?'dawki dobowej':'dolnej granicy'} schematu`
     :scheme.kind==='asNeeded'?'Nie przekracza zakresu dobowego; stosowanie doraźne':'Dobowo w zakresie wybranego schematu';
-  const tone=roundingTone(roundingAssessment,model,allowed);
+  // Eligibility may still be incomplete while both arithmetic operands are
+  // known. That display keeps the same geometry but makes no source-match or
+  // rounding-review claim; an actual numeric excess remains explicit.
+  if(neutral&&['same','upper','within'].includes(model.state))status='Porównanie liczbowe ze schematem';
+  if(neutral&&model.state==='pending')status='Brak wyliczonej dawki dobowej';
+  const tone=neutral?model.state:roundingTone(roundingAssessment,model,allowed);
   if(['rule','needs-review','reviewed'].includes(tone))status=`${roundingAssessment.label} · +${n(roundingAssessment.deltaPercent,2)}% względem dawki źródłowej`;
   if(tone==='blocked')status=roundingAssessment.errors?.[0]||roundingAssessment.label;
   if(model.limitExceeded)status+=' · Przekroczony dodatkowy limit';
@@ -170,17 +176,17 @@ export function regimenMeterMarkup(row, scheme, allowed=true,roundingAssessment=
   const sourceMarkers=scheme.kind==='range'
     ?`<span class="dose-scheme-band" style="left:${model.start}%;width:${model.end-model.start}%"></span><span class="dose-scheme-marker" data-dose-motion="start" style="left:${model.start}%"></span>`:'';
   const percentDescription=percentages?` Wartość 100% jest odniesieniem do ${percentBasis(scheme)}. ${scheme.kind==='range'?`Początek zakresu: ${formatRegimenPercent(percentages.start)}%. `:''}${percentages.current===null?'':`Wpisana dawka: ${currentPercent(percentages.current,roundingAssessment)}%. `}${percentages.limit===null?'':`${limitLabel}: ${formatRegimenPercent(percentages.limit)}%. `}Koniec skali: ${formatRegimenPercent(percentages.scale)}%; nie jest limitem dawki.`:'';
-  const graphicLabel=`${row.name}. ${label}: ${range}. ${scheme.limit?`${limitLabel}: ${limitValue}. `:''}${status}.${model.value!==null?` Wpisana ilość: ${n(model.value,6)} ${unit}.`:''}${percentDescription}`;
-  const graphic=`${percentTicks(scheme,model,percentages)}<div class="dose-scheme-meter ${scaled?'':'unscaled'} ${tone} ${model.limitExceeded?'limit-exceeded':''}" role="img" aria-label="${esc(graphicLabel)}"><span class="dose-scheme-track"></span>${scaled?`${sourceMarkers}${model.fill===null?'':`<span class="dose-scheme-fill" style="width:${model.fill}%"></span>`}<span class="dose-scheme-marker" data-dose-motion="end" style="left:${model.end}%"></span>${model.wall===null?'':`<span class="dose-scheme-wall" style="left:${model.wall}%"></span>`}${model.clipped?'<span class="dose-scheme-overflow">›</span>':''}`:''}</div>`;
+  const graphicLabel=`${row.name}. ${label}: ${range}. ${scheme.limit?`${limitLabel}: ${limitValue}. `:''}${status}.${model.value!==null?` Wpisana ilość: ${n(model.value,6)} ${unit}.`:''}${percentDescription}${neutral?' Warunki stosowania schematu u pacjenta nie są potwierdzone.':''}`;
+  const graphic=`${percentTicks(scheme,model,percentages)}<div class="dose-scheme-meter ${scaled?'':'unscaled'} ${tone}${neutral?' neutral':''} ${model.limitExceeded?'limit-exceeded':''}" role="img" aria-label="${esc(graphicLabel)}"><span class="dose-scheme-track"></span>${scaled?`${sourceMarkers}${model.fill===null?'':`<span class="dose-scheme-fill" style="width:${model.fill}%"></span>`}<span class="dose-scheme-marker" data-dose-motion="end" style="left:${model.end}%"></span>${model.wall===null?'':`<span class="dose-scheme-wall" style="left:${model.wall}%"></span>`}${model.clipped?'<span class="dose-scheme-overflow">›</span>':''}`:''}</div>`;
   const axis=percentages?`<div class="dose-scheme-axis dose-scheme-percent-axis"><span>0%</span><span><b>${esc(formatRegimenPercent(percentages.scale))}%</b><small>Koniec skali · nie limit</small></span></div>`:'';
   const derived=scheme.derived?'<p class="dose-safety-derived">Z proporcji składników preparatu — nie jest to niezależne maksimum tej substancji.</p>':'';
-  return `<div class="dose-scheme-values"><span>${esc(label)}</span><strong>${esc(range)}${equivalent}</strong></div>${extra}${graphic}${axis}<div class="dose-scheme-status ${tone} ${model.limitExceeded?'limit-exceeded':''}">${esc(status)}</div>${model.clipped?'<p class="dose-scheme-small">Wartość wykracza poza skalę paska; pełna dawka jest podana powyżej.</p>':''}${derived}`;
+  return `<div class="dose-scheme-values"><span>${esc(label)}</span><strong>${esc(range)}${equivalent}</strong></div>${extra}${graphic}${axis}<div class="dose-scheme-status ${tone}${neutral?' neutral':''} ${model.limitExceeded?'limit-exceeded':''}">${esc(status)}</div>${model.clipped?'<p class="dose-scheme-small">Wartość wykracza poza skalę paska; pełna dawka jest podana powyżej.</p>':''}${derived}`;
 }
 
-export function regimenLegendMarkup(schemes) {
+export function regimenLegendMarkup(schemes,{neutral=false}={}) {
   const rows=(schemes||[]).filter(Boolean);
   if(!rows.length)return '';
   const hasLimit=rows.some(r=>r.limit);
   const hasRange=rows.some(r=>r.kind==='range');
-  return `<div class="dose-scheme-legend"><span><i class="legend-fill"></i>Wpisana dawka</span><span><i class="legend-range"></i>${hasRange?'Zakres':'Dawka'} schematu</span>${hasLimit?'<span><i class="legend-limit"></i>Dodatkowy limit</span>':''}</div><p class="dose-scheme-caption">${rows[0].kind==='asNeeded'?'Doraźnie — brak wymaganej dawki minimalnej na dobę. ':''}Częstość ze źródła: ${rows[0].kind==='asNeeded'?'do ':''}${n(rows[0].frequency)} ×/dobę. Przerywane kreski nie są progami toksyczności.${hasLimit?'':' Nie wyznaczono osobnego maksimum poza schematem.'}</p>`;
+  return `<div class="dose-scheme-legend${neutral?' neutral':''}"><span><i class="legend-fill"></i>Wpisana dawka</span><span><i class="legend-range"></i>${hasRange?'Zakres':'Dawka'} schematu</span>${hasLimit?'<span><i class="legend-limit"></i>Dodatkowy limit</span>':''}</div><p class="dose-scheme-caption">${rows[0].kind==='asNeeded'?'Doraźnie — brak wymaganej dawki minimalnej na dobę. ':''}Częstość ze źródła: ${rows[0].kind==='asNeeded'?'do ':''}${n(rows[0].frequency)} ×/dobę. Przerywane kreski nie są progami toksyczności.${hasLimit?'':' Nie wyznaczono osobnego maksimum poza schematem.'}</p>`;
 }

@@ -158,3 +158,26 @@
 .alert.rounding-reviewed,.alert.rounding-rule{border-color:var(--rounding-blue);background:var(--rounding-blue-bg);color:var(--ink)}
 .dose-scheme-current.blocked,.dose-scheme-status.blocked{color:var(--red)}
 .dose-scheme-meter.blocked .dose-scheme-fill{background:var(--red)}
+
+/* Arithmetic stays visible before clinical eligibility is complete. Neutral
+   ink is not a source-match signal; numeric excess keeps its existing warning
+   or limit colour, and all fill/marker geometry stays unchanged for motion. */
+.dose-scheme-legend.neutral .legend-fill{background:var(--muted)}
+.dose-scheme-meter.neutral .dose-scheme-band{background:var(--muted);border-color:var(--muted)}
+.dose-scheme-meter.neutral:not(.above):not(.limit-exceeded) .dose-scheme-fill,
+.dose-safety-meter.neutral .dose-safety-fill{background:var(--muted)}
+.dose-scheme-current.neutral:not(.above):not(.limit-exceeded) b,
+.dose-scheme-status.neutral:not(.above):not(.limit-exceeded),
+.dose-safety-status.neutral:not(.exceeded),.dose-safety-status.neutral:not(.exceeded) strong{color:var(--muted)}
+.dose-safety-meter.neutral.boundary .dose-safety-wall{background:var(--ink)}
+.dose-clinical-status{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 14px;margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font-size:11px;line-height:1.6}
+.dose-clinical-status p{flex:1 1 240px;margin:0;color:var(--ink)}
+.dose-clinical-status strong{font-weight:650}
+.dose-clinical-status.invalid{border-left:3px solid var(--warn)}
+.dose-clinical-status.out-of-scope{border-left:3px solid var(--red)}
+.dose-clinical-status.invalid strong{color:var(--warn)}
+.dose-clinical-status.out-of-scope strong{color:var(--red)}
+.dose-patient-data-action{min-height:44px;text-align:left;white-space:normal;flex:none}
+.dose-patient-data-action:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:780px){.dose-clinical-status{font-size:12px}}
+@media(forced-colors:active){.dose-scheme-meter.neutral .dose-scheme-fill,.dose-safety-meter.neutral .dose-safety-fill{background:CanvasText;forced-color-adjust:none}}
