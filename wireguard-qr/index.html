@@ -10,10 +10,10 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Plik ↔ QR — lokalny konwerter</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=2">
+  <link rel="stylesheet" href="./styles.css?v=3">
   <script src="./assets/qr-core.js" defer></script>
   <script src="./assets/qr-transfer.js" defer></script>
-  <script src="./app.js?v=3" defer></script>
+  <script src="./app.js?v=4" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#converter">Przejdź do konwertera</a>
@@ -80,7 +80,7 @@
             <div class="qr-paper"><canvas id="qr-canvas" aria-label="Kod QR zawierający wybrany plik"></canvas></div>
             <p id="qr-caption" class="result-caption"></p>
             <div id="series-controls" class="series-controls" hidden>
-              <div class="playback-row"><button id="animation-toggle" class="button primary" type="button" aria-pressed="false">Odtwórz serię</button><div class="rate-field"><label for="frame-rate">Tempo</label><div class="select-wrap"><select id="frame-rate"><option value="1">1 kod/s</option><option value="2">2 kody/s</option><option value="3" selected>3 kody/s</option><option value="5">5 kodów/s</option></select></div></div></div>
+              <div class="playback-row"><button id="animation-toggle" class="button primary" type="button" aria-pressed="false">Odtwórz serię</button><fieldset id="frame-rate" class="rate-field"><legend>Tempo</legend><div class="rate-switch"><label><input class="visually-hidden" type="radio" name="frame-rate" value="5" aria-label="5 kodów na sekundę" checked><span>5/s</span></label><label><input class="visually-hidden" type="radio" name="frame-rate" value="10" aria-label="10 kodów na sekundę"><span>10/s</span></label></div></fieldset></div>
               <div class="frame-navigation"><button id="previous-frame" class="button secondary" type="button">Poprzedni</button><span id="frame-position">Fragment 1 z 1</span><button id="next-frame" class="button secondary" type="button">Następny</button></div>
               <label class="visually-hidden" for="frame-slider">Wybierz fragment serii</label><input id="frame-slider" class="frame-slider" type="range" min="1" max="1" step="1" value="1">
               <p class="series-hint">Seria powtarza się do zatrzymania. Jeśli telefon pomija fragmenty, zmniejsz tempo lub wybierz brakujący fragment ręcznie.</p>
@@ -149,7 +149,7 @@
 
     <section class="help-section" aria-label="Jak to działa">
       <details><summary>Jak przenieść konfigurację WireGuarda na telefon?</summary><p>Wybierz gotowy plik konfiguracji klienta <code>.conf</code>. Jeśli mieści się w jednym zwykłym QR, otwórz na telefonie aplikację WireGuard, dodaj tunel i wybierz skanowanie QR.</p><p>Dla większego pliku uruchom serię. Na telefonie otwórz tę stronę, wybierz „Odczytaj QR” i uruchom kamerę. Po zebraniu wszystkich fragmentów pobierz odtworzony <code>.conf</code> i zaimportuj go z pliku w WireGuardzie. Skaner WireGuarda nie składa serii kodów. Konwerter obsługuje istniejące konfiguracje; nie tworzy serwera VPN ani nowych kluczy.</p></details>
-      <details><summary>Jak działa seria i jakie tempo wybrać?</summary><p>Plik jest dzielony na fragmenty po 600 bajtów. Każdy ma osobny QR, a strona powtarza serię. Telefon zbiera fragmenty w dowolnej kolejności i pomija powtórzenia. Liczba kodów zależy od rozmiaru: 3 000 bajtów to 5 kodów, a 6 000 bajtów to 10.</p><p>Zacznij od 3 kodów na sekundę. Możesz wybrać 1, 2, 3 lub 5. Wyższe tempo pomaga wtedy, gdy kamera nadąża. Jeśli postęp stoi, zwolnij, popraw ostrość albo zatrzymaj serię na brakującym fragmencie. Kamera pozostaje włączona do zakończenia odbioru lub wybrania „Zatrzymaj kamerę”.</p><p>Po zebraniu całości sprawdzana jest suma SHA-256. Dopiero po zgodnym wyniku można pobrać plik. Obca seria nie nadpisze odbieranej; „Reset odbioru” pozwala rozpocząć nową.</p></details>
+      <details><summary>Jak działa seria i jakie tempo wybrać?</summary><p>Plik jest dzielony na fragmenty po 600 bajtów. Każdy ma osobny QR, a strona powtarza serię. Telefon zbiera fragmenty w dowolnej kolejności i pomija powtórzenia. Liczba kodów zależy od rozmiaru: 3 000 bajtów to 5 kodów, a 6 000 bajtów to 10.</p><p>Zacznij od 5 kodów na sekundę. Przełącznik „5/s · 10/s” pozwala zmienić tempo również podczas odtwarzania. Wyższe tempo pomaga wtedy, gdy kamera nadąża. Jeśli postęp stoi, wróć do 5/s, popraw ostrość albo zatrzymaj serię na brakującym fragmencie. Kamera pozostaje włączona do zakończenia odbioru lub wybrania „Zatrzymaj kamerę”.</p><p>Po zebraniu całości sprawdzana jest suma SHA-256. Dopiero po zgodnym wyniku można pobrać plik. Obca seria nie nadpisze odbieranej; „Reset odbioru” pozwala rozpocząć nową.</p></details>
       <details><summary>Czy pliki i klucze trafiają na serwer?</summary><p>Nie. Odczyt pliku, tworzenie QR i skanowanie wykonuje kod w Twojej przeglądarce. Ta strona nie wysyła zawartości, nie zapisuje jej w pamięci trwałej przeglądarki i nie korzysta z analityki ani zewnętrznych skryptów. GitHub Pages dostarcza jedynie pliki strony.</p><p>Pobrane pliki i obrazy pozostają tam, gdzie je zapiszesz. „Wyczyść” usuwa wyniki z otwartej strony, ale nie usuwa Twoich pobranych plików ani zrzutów ekranu.</p></details>
       <details><summary>Jak duży plik mogę przesłać?</summary><p>Jeden zwykły QR mieści do 2 953 bajtów. Seria obsługuje tutaj pliki do 256 KiB, czyli 262 144 bajtów i maksymalnie 437 fragmentów. Większy plik oznacza dłuższe skanowanie; to narzędzie sprawdza się przy konfiguracjach, kluczach i niedużych dokumentach.</p><p>Odtworzona zawartość zachowuje bajty pliku, w tym polskie znaki i zakończenia linii. Serię trzeba odczytać na tej stronie. Pojedyncza zapisana klatka serii zawiera tylko jej fragment — do odtworzenia pliku potrzebny jest komplet.</p></details>
     </section>

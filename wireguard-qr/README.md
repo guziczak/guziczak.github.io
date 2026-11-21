@@ -5,7 +5,7 @@ Konwerter pojedynczych i animowanych kodów QR, działający lokalnie w przeglą
 ## Użycie
 
 1. **Utwórz QR:** przeciągnij plik lub użyj przycisku wyboru. W trybie automatycznym plik do 2 953 bajtów otrzymuje zwykły QR, a większy — serię. Można też jawnie wybrać jeden QR albo serię.
-2. **Seria:** wybierz „Odtwórz serię”. Domyślne tempo to 3 kody/s, do wyboru 1, 2, 3 i 5. Kody zapętlają się. Dostępne są pauza, poprzedni/następny fragment oraz suwak. Seria zaczyna w pauzie, a ukrycie karty zatrzymuje odtwarzanie.
+2. **Seria:** wybierz „Odtwórz serię”. Domyślne tempo to 5 kodów/s. Przełącznik 5/s · 10/s działa także podczas odtwarzania i zachowuje bieżący plik. Kody zapętlają się. Dostępne są pauza, poprzedni/następny fragment oraz suwak. Seria zaczyna w pauzie, a ukrycie karty zatrzymuje odtwarzanie.
 3. **Odczytaj QR:** wybierz jeden lub wiele obrazów albo uruchom kamerę. Telefon może dołączyć w dowolnym momencie serii; odbiornik pokazuje otrzymane i brakujące fragmenty. Po odebraniu kompletu i sprawdzeniu zgodności można pobrać plik.
 4. **Reset odbioru:** rozpocznij odbieranie nowego pliku, odrzucając części poprzedniego. Zatrzymanie kamery i przełączanie zakładek zachowują postęp częściowego odbioru.
 5. **Wyczyść:** usuń pliki, fragmenty i wyniki z bieżącego widoku. Pobrane pliki i zrzuty ekranu trzeba usunąć oddzielnie, jeżeli nie są już potrzebne.
@@ -29,7 +29,7 @@ Dostępne są przykłady pojedynczego QR oraz serii pięciu kodów (3 000 bajtó
 
 Jeden zwykły kod: maksymalnie **2 953 bajty**. Do 2 331 bajtów używana jest korekcja M, powyżej korekcja L. Limit dotyczy bajtów, a nie liczby liter. Duże kody wymagają ostrego obrazu i odpowiedniej wielkości na ekranie.
 
-Seria: maksymalnie **256 KiB (262 144 bajty)**, po **600 bajtów pliku na fragment**; liczba fragmentów wynika z rozmiaru. Plik 3 000 B ma 5 kodów, a maksymalny — 437. Pełne ramki z metadanymi mają do 796 bajtów i mieszczą się w korekcji M. Opuszczone klatki wracają w następnych obiegach. 5 kodów/s jest ustawieniem tempa wyświetlania; skuteczna szybkość zależy od kamery, ekranu, oświetlenia, ostrości oraz powtórzeń. Nie obiecujemy odczytania każdej klatki w pierwszym obiegu.
+Seria: maksymalnie **256 KiB (262 144 bajty)**, po **600 bajtów pliku na fragment**; liczba fragmentów wynika z rozmiaru. Plik 3 000 B ma 5 kodów, a maksymalny — 437. Pełne ramki z metadanymi mają do 796 bajtów i mieszczą się w korekcji M. Opuszczone klatki wracają w następnych obiegach. 5 lub 10 kodów/s jest ustawieniem tempa wyświetlania; skuteczna szybkość zależy od kamery, ekranu, oświetlenia, ostrości oraz powtórzeń. Nie obiecujemy odczytania każdej klatki w pierwszym obiegu.
 
 Protokół jest opisany w [protocol.md](protocol.md). Jest przeznaczony do przesyłania między dwoma egzemplarzami tej strony i nie implementuje standardu UR ani kodów fountain. Zachowuje nazwę pliku po usunięciu niebezpiecznych znaków i ograniczeniu jej długości. Nazwa nie wpływa na zawartość pliku.
 

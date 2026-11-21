@@ -31,7 +31,7 @@
   let decodeEpoch = 0;
   let cameraEpoch = 0;
   let cameraStream = null;
-  let cameraTimer = null;
+  let cancelCameraScan = null;
   let pendingImageCancel = null;
   let series = null;
   let frameIndex = 0;
@@ -147,8 +147,8 @@
   }
   function stopCamera(showMessage = false) {
     cameraEpoch += 1;
-    if (cameraTimer !== null) window.clearTimeout(cameraTimer);
-    cameraTimer = null;
+    if (cancelCameraScan) cancelCameraScan();
+    cancelCameraScan = null;
     if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
     cameraStream = null;
     ui['camera-video'].pause();
@@ -240,6 +240,9 @@
     animationOrder = Array.from({ length: series.total }, (_, i) => (start + direction * i + series.total) % series.total);
     animationPosition = 0;
   }
+  function selectedFrameRate() {
+    return ui['frame-rate'].querySelector('input:checked')?.value === '10' ? 10 : 5;
+  }
   function startAnimation() {
     if (!series || mode !== 'encode' || document.hidden) return;
     pauseAnimation();
@@ -250,7 +253,7 @@
     ui['animation-toggle'].setAttribute('aria-pressed', 'true');
     const token = sourceEpoch;
     const schedule = () => {
-      const fps = Number(ui['frame-rate'].value) || 3;
+      const fps = selectedFrameRate();
       // Small deterministic timing variations avoid locking onto the same camera phase.
       const jitter = [1, 1.12, 0.91, 1.06, 0.94][(animationPosition + animationCycle) % 5];
       animationTimer = window.setTimeout(tick, Math.round((1000 / fps) * jitter));
@@ -266,7 +269,7 @@
       schedule();
     };
     message('encode-message', 'Seria jest odtwarzana w pętli. Skieruj na ekran kamerę drugiego urządzenia i zaczekaj na wszystkie fragmenty.', 'success');
-    status('Odtwarzanie serii QR — pokaż ekran drugiemu urządzeniu');
+    status(`Odtwarzanie serii QR — ${selectedFrameRate()} kodów/s`);
     schedule();
   }
   function manualFrame(index) {
@@ -663,25 +666,81 @@
       stream.getVideoTracks().forEach((track) => track.addEventListener('ended', () => {
         if (token === cameraEpoch) stopCamera(true);
       }, { once: true }));
-      const scan = async () => {
-        if (token !== cameraEpoch) return;
-        const video = ui['camera-video'];
+      const video = ui['camera-video'];
+      let videoRequest = null;
+      let animationRequest = null;
+      let retryTimer = null;
+      let cancelled = false;
+      let scanning = false;
+      let lastFrame = null;
+      let lastPoll = 0;
+      const active = () => !cancelled && token === cameraEpoch && cameraStream === stream && mode === 'decode' && !document.hidden;
+      cancelCameraScan = () => {
+        cancelled = true;
+        if (videoRequest !== null && typeof video.cancelVideoFrameCallback === 'function') video.cancelVideoFrameCallback(videoRequest);
+        if (animationRequest !== null) window.cancelAnimationFrame(animationRequest);
+        if (retryTimer !== null) window.clearTimeout(retryTimer);
+        videoRequest = animationRequest = retryTimer = null;
+      };
+      const frameKey = (metadata) => {
+        if (metadata && Number.isFinite(metadata.presentedFrames)) return `frame:${metadata.presentedFrames}`;
+        if (metadata && Number.isFinite(metadata.mediaTime)) return `time:${metadata.mediaTime}`;
+        if (typeof video.getVideoPlaybackQuality === 'function') {
+          const count = video.getVideoPlaybackQuality().totalVideoFrames;
+          if (Number.isFinite(count) && count > 0) return `frame:${count}`;
+        }
+        return Number.isFinite(video.currentTime) ? `time:${video.currentTime}` : null;
+      };
+      const schedule = () => {
+        if (!active() || scanning) return;
+        if (typeof video.requestVideoFrameCallback === 'function') {
+          videoRequest = video.requestVideoFrameCallback((_now, metadata) => {
+            videoRequest = null;
+            return scan(metadata);
+          });
+          return;
+        }
+        // Poll at most about 30 times/s; slow decoding does not add another fixed delay.
+        const delay = Math.max(0, 34 - (window.performance.now() - lastPoll));
+        retryTimer = window.setTimeout(() => {
+          retryTimer = null;
+          if (!active()) return;
+          if (typeof window.requestAnimationFrame === 'function') {
+            animationRequest = window.requestAnimationFrame(() => {
+              animationRequest = null;
+              return scan();
+            });
+          } else {
+            void scan();
+          }
+        }, delay);
+      };
+      const scan = async (metadata) => {
+        if (!active() || scanning) return;
+        scanning = true;
+        lastPoll = window.performance.now();
         try {
           if (video.readyState >= 2 && video.videoWidth && video.videoHeight) {
+            const key = frameKey(metadata);
+            if (key !== null && key === lastFrame) return;
+            lastFrame = key;
             const result = decodeRegion(video, 0, 0, video.videoWidth, video.videoHeight, 1600);
             if (result && result.bytes && result.bytes.length) {
-              const outcome = await receiveBytes(result.bytes, () => token === cameraEpoch && mode === 'decode');
-              if (outcome.done || token !== cameraEpoch) return;
+              const outcome = await receiveBytes(result.bytes, active);
+              if (outcome.done || !active()) return;
             }
           }
         } catch {
-          stopCamera();
-          message('decode-message', 'Nie udało się odczytać obrazu z kamery. Spróbuj ponownie lub wczytaj zdjęcie QR.', 'error');
-          return;
+          if (active()) {
+            stopCamera();
+            message('decode-message', 'Nie udało się odczytać obrazu z kamery. Spróbuj ponownie lub wczytaj zdjęcie QR.', 'error');
+          }
+        } finally {
+          scanning = false;
+          schedule();
         }
-        if (token === cameraEpoch) cameraTimer = window.setTimeout(scan, 180);
       };
-      scan();
+      schedule();
     } catch (error) {
       if (stream) stream.getTracks().forEach((track) => track.stop());
       if (token !== cameraEpoch) return;
@@ -752,7 +811,10 @@
   ui['previous-frame'].addEventListener('click', () => { if (series) manualFrame((frameIndex - 1 + series.total) % series.total); });
   ui['next-frame'].addEventListener('click', () => { if (series) manualFrame((frameIndex + 1) % series.total); });
   ui['frame-slider'].addEventListener('input', () => manualFrame(Number(ui['frame-slider'].value) - 1));
-  ui['frame-rate'].addEventListener('change', () => { pauseAnimation(); status('Zmieniono prędkość — naciśnij „Odtwórz serię”'); });
+  ui['frame-rate'].addEventListener('change', () => {
+    if (animationPlaying) startAnimation();
+    else status(`Ustawiono ${selectedFrameRate()} kodów/s — naciśnij „Odtwórz serię”`);
+  });
   ui['reset-receiver'].addEventListener('click', () => {
     decodeEpoch += 1;
     cancelImageRead();
