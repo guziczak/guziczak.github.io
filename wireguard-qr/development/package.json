@@ -1,0 +1,19 @@
+{
+  "name": "wireguard-qr-local",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Browser-local, byte-preserving WireGuard configuration and QR conversion",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build-qr-core.mjs",
+    "test": "node --test tools/qr-core.test.mjs",
+    "fixtures": "node tools/make-fixtures.mjs"
+  },
+  "dependencies": {
+    "jsqr": "1.4.0",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

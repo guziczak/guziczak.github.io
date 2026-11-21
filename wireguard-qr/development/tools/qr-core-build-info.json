@@ -1,0 +1,37 @@
+{
+  "esbuild": "0.28.2",
+  "dependencies": {
+    "qrcode": "1.5.4",
+    "dijkstrajs": "1.0.3",
+    "jsqr": "1.4.0"
+  },
+  "bundleBytes": 152913,
+  "bundleSha256": "9256b95c88a63d6cbe337e71c945c4c436f10fe948136b21edceeee6e4c189cc",
+  "inputs": [
+    "node_modules/dijkstrajs/dijkstra.js",
+    "node_modules/jsqr/dist/jsQR.js",
+    "node_modules/qrcode/lib/core/alignment-pattern.js",
+    "node_modules/qrcode/lib/core/alphanumeric-data.js",
+    "node_modules/qrcode/lib/core/bit-buffer.js",
+    "node_modules/qrcode/lib/core/bit-matrix.js",
+    "node_modules/qrcode/lib/core/byte-data.js",
+    "node_modules/qrcode/lib/core/error-correction-code.js",
+    "node_modules/qrcode/lib/core/error-correction-level.js",
+    "node_modules/qrcode/lib/core/finder-pattern.js",
+    "node_modules/qrcode/lib/core/format-info.js",
+    "node_modules/qrcode/lib/core/galois-field.js",
+    "node_modules/qrcode/lib/core/kanji-data.js",
+    "node_modules/qrcode/lib/core/mask-pattern.js",
+    "node_modules/qrcode/lib/core/mode.js",
+    "node_modules/qrcode/lib/core/numeric-data.js",
+    "node_modules/qrcode/lib/core/polynomial.js",
+    "node_modules/qrcode/lib/core/qrcode.js",
+    "node_modules/qrcode/lib/core/reed-solomon-encoder.js",
+    "node_modules/qrcode/lib/core/regex.js",
+    "node_modules/qrcode/lib/core/segments.js",
+    "node_modules/qrcode/lib/core/utils.js",
+    "node_modules/qrcode/lib/core/version-check.js",
+    "node_modules/qrcode/lib/core/version.js",
+    "tools/qr-core-entry.js"
+  ]
+}
