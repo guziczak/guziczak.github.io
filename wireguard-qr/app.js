@@ -17,7 +17,8 @@
     'frame-position', 'frame-slider', 'frame-rate', 'transfer-info',
     'download-qr-label', 'receiving-progress', 'receiving-name',
     'receiving-count', 'receiving-progressbar', 'receiving-missing',
-    'reset-receiver', 'receiving-help'
+    'reset-receiver', 'receiving-help', 'zip-sample', 'zip-details',
+    'zip-count', 'zip-entries', 'download-source-zip'
   ].forEach((id) => { ui[id] = $(id); });
 
   const MAX_BYTES = 2953;
@@ -27,6 +28,7 @@
   let sourceBytes = null;
   let decodedBytes = null;
   let sourceName = '';
+  let sourceZipMetadata = null;
   let sourceEpoch = 0;
   let decodeEpoch = 0;
   let cameraEpoch = 0;
@@ -54,6 +56,10 @@
     ui[target].dataset.kind = kind;
   }
   function byteCount(count) { return `${count.toLocaleString('pl-PL')} B`; }
+  function fileCount(count) {
+    const ending = count === 1 ? 'plik' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'pliki' : 'plików';
+    return `${count} ${ending}`;
+  }
   function cleanName(name, fallback = 'wireguard.conf') {
     const cleaned = String(name || '').replace(/[\u0000-\u001f\u007f/\\:*?"<>|]/g, '_').replace(/^\.+/, '').trim().slice(0, 120);
     return cleaned || fallback;
@@ -63,6 +69,7 @@
     catch { return null; }
   }
   function fileKind(bytes) {
+    if (window.WGZip.isZip(bytes)) return 'Archiwum ZIP';
     const text = textFrom(bytes);
     if (text !== null && /^\s*\[Interface\]\s*$/m.test(text) && /^\s*\[Peer\]\s*$/m.test(text)) {
       return 'Konfiguracja WireGuard';
@@ -71,6 +78,7 @@
   }
   function preview(bytes) {
     if (!bytes) return '';
+    if (window.WGZip.isZip(bytes)) return 'To archiwum ZIP. Pobranie zachowa całe archiwum; strona nie rozpakowuje jego zawartości.';
     const text = textFrom(bytes);
     if (text === null || /\u0000/.test(text)) {
       return 'To plik binarny. Pobranie zachowa jego oryginalne bajty.';
@@ -87,6 +95,8 @@
     ui['choose-file'].disabled = busy;
     ui['sample-file'].disabled = busy;
     ui['series-sample'].disabled = busy;
+    ui['zip-sample'].disabled = busy;
+    ui['download-source-zip'].disabled = busy || !sourceBytes || !window.WGZip.isZip(sourceBytes);
     ui['transfer-mode'].disabled = busy;
     ui['file-drop'].setAttribute('aria-busy', String(busy));
   }
@@ -107,6 +117,7 @@
     if (sourceBytes) sourceBytes.fill(0);
     sourceBytes = null;
     sourceName = '';
+    sourceZipMetadata = null;
     ui['file-input'].value = '';
     ui['source-details'].hidden = true;
     ui['source-name'].textContent = '';
@@ -127,6 +138,11 @@
     ui['frame-slider'].value = '1';
     ui['transfer-info'].textContent = '';
     ui['download-qr-label'].textContent = 'Pobierz obraz PNG';
+    ui['zip-details'].hidden = true;
+    ui['zip-count'].textContent = '';
+    ui['zip-entries'].replaceChildren();
+    ui['zip-entries'].hidden = true;
+    ui['download-source-zip'].disabled = true;
   }
   function clearDecoded() {
     if (decodedBytes) decodedBytes.fill(0);
@@ -292,26 +308,91 @@
       }
     }
   }
-  async function encodeFile(file) {
+  function showZipDetails(metadata) {
+    ui['zip-details'].hidden = false;
+    ui['zip-count'].textContent = metadata ? `${fileCount(metadata.count)} w archiwum` : 'Gotowe archiwum ZIP';
+    ui['zip-entries'].replaceChildren();
+    ui['zip-entries'].hidden = !metadata;
+    if (metadata) {
+      metadata.entries.forEach((entry) => {
+        const item = document.createElement('li');
+        item.textContent = `${entry.name} · ${byteCount(entry.size)}`;
+        ui['zip-entries'].appendChild(item);
+      });
+    }
+    ui['download-source-zip'].disabled = false;
+  }
+  async function selectFiles(fileList) {
+    const files = Array.from(fileList);
+    if (files.length === 1) return encodeFile(files[0]);
+    const token = ++sourceEpoch;
+    clearSource();
+    encodeBusy(false);
+    message('encode-message');
+    if (!files.length) return;
+    if (files.length > window.WGZip.MAX_FILES) {
+      message('encode-message', `Wybierz najwyżej ${window.WGZip.MAX_FILES} plików do jednego ZIP-a.`, 'error');
+      status('Za dużo plików do archiwum');
+      return;
+    }
+    const inputBytes = files.reduce((total, file) => total + file.size, 0);
+    if (inputBytes > window.WGZip.MAX_INPUT_BYTES) {
+      message('encode-message', 'Wybrane pliki mają łącznie więcej niż 8 MiB. Wybierz mniejszy zestaw.', 'error');
+      status('Przekroczono limit plików przed spakowaniem');
+      return;
+    }
+    encodeBusy(true);
+    message('encode-message', `Pakowanie: ${fileCount(files.length)}. Pliki pozostają w tej przeglądarce.`);
+    status('Tworzenie archiwum ZIP…');
+    const isCurrent = () => token === sourceEpoch && mode === 'encode';
+    let archive;
+    try {
+      archive = await window.WGZip.createArchive(files, { isCurrent });
+      if (!isCurrent()) return;
+      if (archive.bytes.length > window.WGTransfer.MAX_FILE_BYTES) {
+        message('encode-message', `Gotowy ZIP ma ${byteCount(archive.bytes.length)} i przekracza limit serii 256 KiB. Wybierz mniej lub mniejsze pliki. Archiwum nie zostało przesłane ani skrócone.`, 'error');
+        status('Archiwum ZIP jest za duże na serię QR');
+        return;
+      }
+      const metadata = {
+        count: archive.count,
+        inputBytes: archive.inputBytes,
+        entries: archive.entries.map((entry) => ({ name: entry.name, size: entry.size }))
+      };
+      const file = new File([archive.bytes], archive.name, { type: 'application/zip' });
+      ui['transfer-mode'].value = 'series';
+      await encodeFile(file, { zipMetadata: metadata });
+    } catch (error) {
+      if (!isCurrent() || error.code === 'CANCELLED') return;
+      clearSource();
+      const text = error.code === 'TOO_MANY_FILES' ? 'Do archiwum można dodać najwyżej 100 plików.'
+        : error.code === 'INPUT_TOO_LARGE' ? 'Wybrane pliki przekraczają łącznie 8 MiB.'
+          : error.code === 'READ_FAILED' || error.code === 'FILE_SIZE_CHANGED'
+            ? 'Nie udało się w całości odczytać jednego z plików. Wybierz je ponownie.'
+            : 'Nie udało się utworzyć archiwum ZIP. Wybierz pliki ponownie.';
+      message('encode-message', text, 'error');
+      status('Nie udało się utworzyć ZIP-a');
+    } finally {
+      if (archive && archive.bytes) archive.bytes.fill(0);
+      if (token === sourceEpoch) encodeBusy(false);
+    }
+  }
+  async function encodeFile(file, options = {}) {
     const token = ++sourceEpoch;
     clearSource();
     encodeBusy(false);
     message('encode-message');
     if (!file) return;
     if (!file.size) {
-      message('encode-message', 'Ten plik jest pusty. Wybierz plik z konfiguracją.', 'error');
+      message('encode-message', 'Ten plik jest pusty. Wybierz niepusty plik.', 'error');
       status('Wybrany plik jest pusty');
       return;
     }
     const requestedMode = ui['transfer-mode'].value;
     let useSeries = requestedMode === 'series' || (requestedMode === 'auto' && file.size > MAX_BYTES);
-    const limit = useSeries ? window.WGTransfer.MAX_FILE_BYTES : MAX_BYTES;
-    if (file.size > limit) {
-      const advice = requestedMode === 'single' && file.size <= window.WGTransfer.MAX_FILE_BYTES
-        ? 'Wybierz tryb „Automatycznie” lub „Seria QR”, a następnie ponownie wybierz plik.'
-        : 'Maksymalny rozmiar serii to 256 KiB. Wybierz mniejszy plik.';
-      message('encode-message', `Plik ma ${byteCount(file.size)}. ${advice}`, 'error');
-      status('Plik przekracza limit wybranego trybu');
+    if (file.size > window.WGTransfer.MAX_FILE_BYTES) {
+      message('encode-message', `Plik ma ${byteCount(file.size)}. Maksymalny rozmiar serii to 256 KiB. Wybierz mniejszy plik.`, 'error');
+      status('Plik przekracza limit serii QR');
       return;
     }
     encodeBusy(true);
@@ -321,6 +402,16 @@
     try {
       bytes = new Uint8Array(await file.arrayBuffer());
       if (token !== sourceEpoch || mode !== 'encode') { bytes.fill(0); return; }
+      const inputIsZip = window.WGZip.isZip(bytes);
+      if (inputIsZip) {
+        useSeries = true;
+        ui['transfer-mode'].value = 'series';
+      } else if (requestedMode === 'single' && bytes.length > MAX_BYTES) {
+        bytes.fill(0);
+        message('encode-message', 'Jeden QR mieści do 2953 B. Wybierz tryb „Automatycznie” lub „Seria QR”, a następnie ponownie wskaż plik.', 'error');
+        status('Plik jest za duży na pojedynczy QR');
+        return;
+      }
       const reservedPrefix = [87, 71, 81, 82, 45, 88, 70, 82]; // WGQR-XFR protocol marker
       const protocolLike = bytes.length >= 8 && reservedPrefix.every((value, index) => bytes[index] === value);
       if (protocolLike && requestedMode === 'single') {
@@ -345,7 +436,9 @@
         ui['frame-slider'].value = '1';
         showFrame(0);
         ui['download-qr-label'].textContent = 'Pobierz tę klatkę';
-        ui['transfer-info'].textContent = 'Serię odczytasz na tej stronie na drugim urządzeniu. Aplikacja WireGuard nie importuje jej bezpośrednio.';
+        ui['transfer-info'].textContent = inputIsZip
+          ? 'Na drugim urządzeniu wybierz „Odczytaj QR”. Po odebraniu całości pobierzesz ZIP do rozpakowania.'
+          : 'Serię odczytasz na tej stronie na drugim urządzeniu. Aplikacja WireGuard nie importuje jej bezpośrednio.';
         ui['capacity-note'].textContent = `${series.total} fragmentów po maksymalnie 600 B danych. Odtwarzaj w pętli lub wybieraj brakujące numery ręcznie.`;
       } else {
         qr = window.WGQR.encodeBytes(bytes);
@@ -358,14 +451,19 @@
       }
       sourceBytes = bytes;
       sourceName = filename;
+      sourceZipMetadata = inputIsZip ? options.zipMetadata || null : null;
       ui['source-name'].textContent = sourceName;
       ui['source-size'].textContent = byteCount(bytes.length);
-      ui['source-format'].textContent = fileKind(bytes);
+      ui['source-format'].textContent = inputIsZip && sourceZipMetadata ? `Archiwum ZIP · ${fileCount(sourceZipMetadata.count)}` : fileKind(bytes);
+      if (inputIsZip) showZipDetails(sourceZipMetadata);
       ui['source-details'].hidden = false;
       ui['qr-empty'].hidden = true;
       ui['qr-result'].hidden = false;
       ui['download-qr'].disabled = false;
-      message('encode-message', useSeries ? 'Seria jest gotowa i wstrzymana. Włącz kamerę na drugim urządzeniu, a potem odtwórz serię.' : 'Gotowe. Zeskanuj kod na drugim urządzeniu lub pobierz PNG.', 'success');
+      const readyMessage = inputIsZip && sourceZipMetadata
+        ? `Spakowano ${fileCount(sourceZipMetadata.count)} do pliki.zip. Seria jest gotowa i wstrzymana; włącz kamerę na drugim urządzeniu, potem odtwórz serię.`
+        : useSeries ? 'Seria jest gotowa i wstrzymana. Włącz kamerę na drugim urządzeniu, a potem odtwórz serię.' : 'Gotowe. Zeskanuj kod na drugim urządzeniu lub pobierz PNG.';
+      message('encode-message', readyMessage, 'success');
       status(useSeries ? 'Seria QR gotowa — odtwarzanie wstrzymane' : 'Kod QR utworzony lokalnie');
     } catch {
       if (bytes && bytes !== sourceBytes) bytes.fill(0);
@@ -401,7 +499,7 @@
     ui['decoded-result'].hidden = false;
     ui['download-file'].disabled = false;
     const kind = fileKind(decodedBytes);
-    ui['output-name'].value = filename ? cleanName(filename) : kind === 'Konfiguracja WireGuard' ? 'wireguard.conf' : kind === 'Plik binarny' ? 'odczytany-plik.bin' : 'odczytany-plik.txt';
+    ui['output-name'].value = filename ? cleanName(filename) : kind === 'Archiwum ZIP' ? 'pliki.zip' : kind === 'Konfiguracja WireGuard' ? 'wireguard.conf' : kind === 'Plik binarny' ? 'odczytany-plik.bin' : 'odczytany-plik.txt';
     message('decode-message', verified ? 'Odebrano wszystkie fragmenty i sprawdzono sumę SHA-256. Plik jest gotowy do pobrania.' : 'Kod odczytany. Nazwij plik i pobierz jego zawartość.', 'success');
     if (mode === 'decode') status(verified ? 'Plik odtworzony i sprawdzony' : 'QR odczytany lokalnie');
     return true;
@@ -776,9 +874,9 @@
     });
   }
 
-  if (!window.WGQR || !window.WGTransfer || !scanContext) {
+  if (!window.WGQR || !window.WGTransfer || !window.WGZip || !scanContext) {
     message('encode-message', 'Nie udało się wczytać narzędzia. Odśwież stronę.', 'error');
-    ui['choose-file'].disabled = ui['choose-image'].disabled = ui['sample-file'].disabled = ui['series-sample'].disabled = ui['start-camera'].disabled = true;
+    ui['choose-file'].disabled = ui['choose-image'].disabled = ui['sample-file'].disabled = ui['series-sample'].disabled = ui['zip-sample'].disabled = ui['start-camera'].disabled = true;
     return;
   }
   collector = window.WGTransfer.createCollector();
@@ -795,16 +893,17 @@
   ui['clear-all'].addEventListener('click', resetAll);
   ui['choose-file'].addEventListener('click', () => ui['file-input'].click());
   ui['choose-image'].addEventListener('click', () => ui['image-input'].click());
-  ui['file-input'].addEventListener('change', () => { if (ui['file-input'].files[0]) encodeFile(ui['file-input'].files[0]); });
+  ui['file-input'].addEventListener('change', () => { if (ui['file-input'].files.length) selectFiles(Array.from(ui['file-input'].files)); });
   ui['image-input'].addEventListener('change', () => { if (ui['image-input'].files.length) decodeImages(Array.from(ui['image-input'].files)); });
-  bindDrop(ui['file-drop'], encodeFile, 'encode-message');
+  bindDrop(ui['file-drop'], selectFiles, 'encode-message', true);
   bindDrop(ui['image-drop'], decodeImages, 'decode-message', true);
   ui['transfer-mode'].addEventListener('change', () => {
     pauseAnimation();
     if (sourceBytes) {
       // File copies bytes before encodeFile clears the previous source buffer.
       const file = new File([sourceBytes], sourceName, { type: 'application/octet-stream' });
-      encodeFile(file);
+      const zipMetadata = sourceZipMetadata;
+      encodeFile(file, { zipMetadata });
     }
   });
   ui['animation-toggle'].addEventListener('click', () => animationPlaying ? pauseAnimation() : startAnimation());
@@ -837,6 +936,22 @@
     const contents = (heading + 'Przykladowy plik do transferu przez piec kodow QR.\n'.repeat(70)).slice(0, 3000);
     ui['transfer-mode'].value = 'series';
     encodeFile(new File([contents], 'przyklad-serii-demo.txt', { type: 'text/plain' }));
+  });
+  ui['zip-sample'].addEventListener('click', () => {
+    const configuration = '# DEMO ZIP - ten plik nie tworzy aktywnego VPN.\n[Interface]\nPrivateKey = DEMO_NIEPRAWIDLOWY_KLUCZ\nAddress = 10.0.0.2/32\n\n[Peer]\nPublicKey = DEMO_NIEPRAWIDLOWY_KLUCZ\nEndpoint = vpn.example.com:51820\nAllowedIPs = 0.0.0.0/0\n';
+    const note = 'To sa nieszkodliwe pliki demonstracyjne. Archiwum powstaje lokalnie w przegladarce.\nPo odebraniu kompletnej serii QR pobierz pliki.zip i rozpakuj je na swoim urzadzeniu.\nKonfiguracja demo zawiera niewazne klucze. Nie wpisuj tutaj prawdziwych hasel do celow testowych.\n';
+    const settings = JSON.stringify({ demo: true, secret: false, description: 'Przykladowe dane do testu ZIP', items: Array.from({ length: 12 }, (_, index) => ({ number: index + 1, label: `element-${index + 1}`, enabled: index % 3 === 0 })) }, null, 2) + '\n';
+    selectFiles([
+      new File([configuration], 'demo-wireguard.conf', { type: 'text/plain' }),
+      new File([note], 'czytaj-mnie.txt', { type: 'text/plain' }),
+      new File([settings], 'ustawienia-demo.json', { type: 'application/json' })
+    ]);
+  });
+  ui['download-source-zip'].addEventListener('click', () => {
+    if (!sourceBytes || !window.WGZip.isZip(sourceBytes) || ui['download-source-zip'].disabled) return;
+    const name = /\.zip$/i.test(sourceName) ? sourceName : `${sourceName || 'pliki'}.zip`;
+    downloadBlob(new Blob([sourceBytes], { type: 'application/zip' }), cleanName(name, 'pliki.zip'));
+    status('Archiwum ZIP gotowe do zapisania');
   });
   ui['download-qr'].addEventListener('click', () => {
     if (!sourceBytes) return;

@@ -82,6 +82,14 @@ h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.2px; }
 .file-detail-top { display: flex; align-items: center; gap: 12px; }
 .file-symbol { font-size: 25px; color: #698561; background: #edf2e5; border-radius: 7px; width: 34px; height: 39px; display: flex; justify-content: center; align-items: center; }
 .file-detail-top>div { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; }
+.multi-file-help { margin: 10px 0 0; color: #65765d; font-size: .875rem; line-height: 1.6; }
+#file-drop .drop-footnote { font-size: .875rem; line-height: 1.6; }
+.zip-details { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+#zip-count { margin: 0 0 8px; font-size: .875rem; font-weight: 600; line-height: 1.5; }
+#zip-entries { list-style: none; padding: 0; margin: 0 0 14px; max-height: 190px; overflow: auto; font-size: .875rem; color: #52684a; line-height: 1.6; }
+#zip-entries li { padding: 7px 0; border-bottom: 1px solid #e4eadd; overflow-wrap: anywhere; }
+#zip-entries li:last-child { border-bottom: 0; }
+#download-source-zip { font-size: .875rem; }
 #source-name { font-size: 13px; overflow-wrap: anywhere; }
 #source-format { font-size: 11px; color: #829078; }
 .byte-count { font-size: 11px; white-space: nowrap; color: #778570; }

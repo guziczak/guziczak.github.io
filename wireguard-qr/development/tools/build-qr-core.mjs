@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { writeVendorLicenses } from './write-vendor-licenses.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const publicRoot = resolve(root, '..');
@@ -15,28 +16,12 @@ const libraries = [
   { name: 'jsqr', version: '1.4.0', license: 'LICENSE', url: 'https://github.com/cozmo/jsQR' }
 ];
 
-const notices = [
-  'Third-party software bundled in assets/qr-core.js',
-  'All libraries run locally in the browser. No runtime CDN is used.',
-  'Build tool: esbuild ' + esbuildVersion + ' (build-time only; not included in the browser bundle).',
-  'The original dependency sources are unmodified; esbuild bundles and minifies them.',
-  'qrcode contains code derived from QRCode for JavaScript:',
-  'Copyright (c) 2009 Kazuhiko Arase; Copyright (c) 2011 Ryan Day. MIT License.',
-  ''
-];
-
 for (const library of libraries) {
   const directory = join(root, 'node_modules', library.name);
   const packageInfo = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'));
   if (packageInfo.version !== library.version) {
     throw new Error(`Unexpected ${library.name} version; run npm ci using the committed lockfile.`);
   }
-  notices.push(
-    `${library.name} ${library.version}`,
-    library.url,
-    await readFile(join(directory, library.license), 'utf8'),
-    ''
-  );
 }
 
 await mkdir(dirname(bundlePath), { recursive: true });
@@ -63,7 +48,7 @@ for (const output of Object.values(result.metafile.outputs)) {
     throw new Error('The browser bundle must not import any external runtime files.');
   }
 }
-await writeFile(licensesPath, notices.join('\n'), 'utf8');
+await writeVendorLicenses(root, licensesPath, esbuildVersion);
 
 const bundle = await readFile(bundlePath);
 await writeFile(join(root, 'tools', 'qr-core-build-info.json'), JSON.stringify({

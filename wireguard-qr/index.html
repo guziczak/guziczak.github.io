@@ -6,14 +6,15 @@
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#f5f6f2">
   <meta name="referrer" content="no-referrer">
-  <meta name="description" content="Przesyłaj pliki jednym QR lub animowaną serią kodów. Odbiór kamerą i z obrazów, lokalnie w przeglądarce, bez konta i wysyłania plików na serwer.">
+  <meta name="description" content="Przesyłaj pliki i paczki ZIP kodami QR. Wybierz kilka plików, spakuj je lokalnie i odbierz serią kodów na drugim urządzeniu. Bez konta i wysyłania plików na serwer.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Plik ↔ QR — lokalny konwerter</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=3">
+  <link rel="stylesheet" href="./styles.css?v=4">
   <script src="./assets/qr-core.js" defer></script>
   <script src="./assets/qr-transfer.js" defer></script>
-  <script src="./app.js?v=4" defer></script>
+  <script src="./assets/zip-core.js" defer></script>
+  <script src="./app.js?v=5" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#converter">Przejdź do konwertera</a>
@@ -29,7 +30,7 @@
     <section class="intro" aria-labelledby="page-title">
       <p class="eyebrow">TWÓJ PLIK. TWOJE URZĄDZENIA.</p>
       <h1 id="page-title">Plik z ekranu.<br class="mobile-break"> Prosto na telefon.</h1>
-      <p class="intro-copy">Jeden kod QR lub zapętlona seria dla większego pliku.<br class="desktop-break"> Przeciągnij, zeskanuj i odbierz całość. W obie strony.</p>
+      <p class="intro-copy">Jeden plik lub paczka ZIP, przesyłane kodami QR.<br class="desktop-break"> Przeciągnij, zeskanuj i odbierz całość. W obie strony.</p>
       <div class="trust-line"><span>Bez logowania</span><span>Bez wysyłania na serwer</span><span>Bez instalacji</span></div>
     </section>
 
@@ -48,24 +49,30 @@
 
       <section id="encode-panel" class="workspace" role="tabpanel" aria-labelledby="encode-tab">
         <div class="input-pane">
-          <div class="pane-heading"><h2>Wybierz plik</h2><span class="small-tag">PLIK → QR</span></div>
+          <div class="pane-heading"><h2>Wybierz pliki</h2><span class="small-tag">PLIKI → QR</span></div>
           <div class="format-field">
             <label for="transfer-mode">Sposób przesyłania</label>
             <div class="select-wrap"><select id="transfer-mode" aria-describedby="format-help"><option value="auto" selected>Auto — jeden QR lub seria</option><option value="single">Jeden QR — WireGuard</option><option value="series">Seria QR — większy plik</option></select></div>
-            <p id="format-help">Do 2 953 bajtów: zwykły QR. Większy plik: seria kodów, którą odbierzesz tutaj na drugim urządzeniu.</p>
+            <p id="format-help">Do 2 953 bajtów: zwykły QR. Większe pliki i archiwa ZIP wysyłamy serią kodów. Kilka wybranych plików połączymy w jeden ZIP.</p>
           </div>
           <div id="file-drop" class="dropzone">
-            <div class="upload-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 5h14l9 9v28H14zM28 5v10h9M24 33V21M19 26l5-5 5 5"/></svg><span class="file-extension">.conf</span></div>
-            <p class="drop-title">Przeciągnij plik tutaj</p>
-            <p class="drop-subtitle">lub wybierz go z urządzenia</p>
-            <button id="choose-file" class="button primary" type="button">Wybierz plik</button>
-            <input id="file-input" class="visually-hidden" type="file" tabindex="-1" aria-label="Wybierz plik do zakodowania">
-            <span class="drop-footnote">Pliki do 256 KiB · seria dobiera liczbę kodów</span>
+            <div class="upload-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 5h14l9 9v28H14zM28 5v10h9M24 33V21M19 26l5-5 5 5"/></svg><span class="file-extension">.zip</span></div>
+            <p class="drop-title">Przeciągnij pliki tutaj</p>
+            <p class="drop-subtitle">Kilka plików spakujemy razem do ZIP.</p>
+            <button id="choose-file" class="button primary" type="button">Wybierz pliki</button>
+            <input id="file-input" class="visually-hidden" type="file" multiple tabindex="-1" aria-label="Wybierz pliki do zakodowania">
+            <span class="drop-footnote">Plik lub gotowy ZIP do 256 KiB</span>
           </div>
-          <div class="sample-row"><span>Wypróbuj:</span><button id="sample-file" type="button" class="text-button">Jeden QR</button><span aria-hidden="true">·</span><button id="series-sample" type="button" class="text-button">Serię 5 kodów</button></div>
+          <p class="multi-file-help">Do spakowania: maks. 100 plików i 8 MiB łącznie. Gotowe archiwum musi zmieścić się w 256 KiB.</p>
+          <div class="sample-row"><span>Wypróbuj:</span><button id="sample-file" type="button" class="text-button">Jeden QR</button><span aria-hidden="true">·</span><button id="series-sample" type="button" class="text-button">Serię 5 kodów</button><span aria-hidden="true">·</span><button id="zip-sample" type="button" class="text-button">ZIP z 3 plików</button></div>
           <p id="encode-message" class="message" role="status" aria-live="polite"></p>
           <div id="source-details" class="file-details" hidden>
             <div class="file-detail-top"><span class="file-symbol" aria-hidden="true">≡</span><div><strong id="source-name"></strong><span id="source-format"></span></div><span id="source-size" class="byte-count"></span></div>
+            <section id="zip-details" class="zip-details" aria-label="Utworzone archiwum ZIP" hidden>
+              <p id="zip-count"></p>
+              <ul id="zip-entries" aria-label="Pliki w archiwum ZIP"></ul>
+              <button id="download-source-zip" class="button secondary full-width" type="button" disabled>Pobierz ZIP</button>
+            </section>
             <details id="preview-source" class="text-preview"><summary>Pokaż zawartość pliku</summary><pre id="source-preview"></pre></details>
           </div>
         </div>
@@ -148,6 +155,7 @@
     <aside class="privacy-note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg><p><strong>QR z konfiguracją jest tak samo poufny jak plik.</strong> Może zawierać klucz prywatny VPN. Udostępniaj go wyłącznie swoim urządzeniom; po użyciu wybierz „Wyczyść”.</p></aside>
 
     <section class="help-section" aria-label="Jak to działa">
+      <details><summary>Czy mogę przesłać kilka plików w ZIP-ie?</summary><p>Tak. Wybierz lub przeciągnij kilka plików naraz, a strona skompresuje je lokalnie do jednego archiwum <code>pliki.zip</code> i przygotuje serię QR. Możesz też wybrać gotowy ZIP — jego zawartość zostanie przesłana bez zmian.</p><p>Na drugim urządzeniu otwórz tę stronę, wybierz „Odczytaj QR” i zeskanuj serię. Po zebraniu kompletu pobierzesz ZIP do rozpakowania na swoim urządzeniu. Gotowe archiwum może mieć do 256 KiB. Do pakowania przyjmujemy maksymalnie 100 plików o łącznym rozmiarze 8 MiB; stopień kompresji zależy od zawartości.</p><p>Pliki trafiają do głównego katalogu archiwum. Powtarzające się nazwy otrzymują kolejne numery, aby zachować wszystkie pliki.</p></details>
       <details><summary>Jak przenieść konfigurację WireGuarda na telefon?</summary><p>Wybierz gotowy plik konfiguracji klienta <code>.conf</code>. Jeśli mieści się w jednym zwykłym QR, otwórz na telefonie aplikację WireGuard, dodaj tunel i wybierz skanowanie QR.</p><p>Dla większego pliku uruchom serię. Na telefonie otwórz tę stronę, wybierz „Odczytaj QR” i uruchom kamerę. Po zebraniu wszystkich fragmentów pobierz odtworzony <code>.conf</code> i zaimportuj go z pliku w WireGuardzie. Skaner WireGuarda nie składa serii kodów. Konwerter obsługuje istniejące konfiguracje; nie tworzy serwera VPN ani nowych kluczy.</p></details>
       <details><summary>Jak działa seria i jakie tempo wybrać?</summary><p>Plik jest dzielony na fragmenty po 600 bajtów. Każdy ma osobny QR, a strona powtarza serię. Telefon zbiera fragmenty w dowolnej kolejności i pomija powtórzenia. Liczba kodów zależy od rozmiaru: 3 000 bajtów to 5 kodów, a 6 000 bajtów to 10.</p><p>Zacznij od 5 kodów na sekundę. Przełącznik „5/s · 10/s” pozwala zmienić tempo również podczas odtwarzania. Wyższe tempo pomaga wtedy, gdy kamera nadąża. Jeśli postęp stoi, wróć do 5/s, popraw ostrość albo zatrzymaj serię na brakującym fragmencie. Kamera pozostaje włączona do zakończenia odbioru lub wybrania „Zatrzymaj kamerę”.</p><p>Po zebraniu całości sprawdzana jest suma SHA-256. Dopiero po zgodnym wyniku można pobrać plik. Obca seria nie nadpisze odbieranej; „Reset odbioru” pozwala rozpocząć nową.</p></details>
       <details><summary>Czy pliki i klucze trafiają na serwer?</summary><p>Nie. Odczyt pliku, tworzenie QR i skanowanie wykonuje kod w Twojej przeglądarce. Ta strona nie wysyła zawartości, nie zapisuje jej w pamięci trwałej przeglądarki i nie korzysta z analityki ani zewnętrznych skryptów. GitHub Pages dostarcza jedynie pliki strony.</p><p>Pobrane pliki i obrazy pozostają tam, gdzie je zapiszesz. „Wyczyść” usuwa wyniki z otwartej strony, ale nie usuwa Twoich pobranych plików ani zrzutów ekranu.</p></details>

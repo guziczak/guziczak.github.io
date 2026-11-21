@@ -5,11 +5,15 @@
   "description": "Browser-local, byte-preserving WireGuard configuration and QR conversion",
   "type": "module",
   "scripts": {
-    "build": "node tools/build-qr-core.mjs",
-    "test": "node --test tools/qr-core.test.mjs tools/qr-transfer.test.mjs",
+    "build": "npm run build:qr && npm run build:zip",
+    "build:qr": "node tools/build-qr-core.mjs",
+    "build:zip": "node tools/build-zip-core.mjs",
+    "test": "node --test tools/qr-core.test.mjs tools/qr-transfer.test.mjs tools/zip-core.test.mjs",
+    "test:zip": "node --test tools/zip-core.test.mjs",
     "fixtures": "node tools/make-fixtures.mjs"
   },
   "dependencies": {
+    "fflate": "0.8.2",
     "jsqr": "1.4.0",
     "qrcode": "1.5.4"
   },
