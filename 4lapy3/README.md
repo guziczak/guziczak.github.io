@@ -56,11 +56,11 @@ Wywieszka obok głównego przycisku kontaktu pokazuje najpierw bieżący status,
 
 ## Materiały wizualne
 
-Tekst strony przedstawia lokalizację, lek. wet. Agnieszkę Janeczek oraz zakres usług. Zdjęcia pełnią rolę ilustracyjną; usunięto reklamowe podpisy na fotografiach i powtarzalne slogany. Na telefonie zdjęcie główne zachowuje pełny portret i naturalną wysokość, bez przycinania głów zwierząt.
+Tekst strony przedstawia lokalizację, lek. wet. Agnieszkę Janeczek oraz zakres usług. Główny obraz to wygenerowana przy użyciu wbudowanego ImageGen wizualizacja fikcyjnego gabinetu: kość słoniowa, jasny dąb, stół do badań, kompaktowy aparat USG, miękkie światło dzienne oraz drobne granatowo-terakotowe akcenty. W kadrze nie ma ludzi ani zwierząt. Nie jest to zdjęcie rzeczywistej przychodni ani dokumentacja jej wyposażenia.
 
-Portrety psa i kota są ilustracyjnymi zdjęciami wygenerowanymi przy użyciu wbudowanego ImageGen. Nie przedstawiają personelu, wnętrza ani pacjentów przychodni.
+Hero korzysta z plików `assets/hero-clinic.webp` (1536 × 1024 px) i `assets/hero-clinic-640.webp` (640 × 427 px), z responsywnym `srcset` i dopasowanym wstępnym ładowaniem. Na komputerze ma nieco szerszą prawą kolumnę i spokojny kadr 4:3; na telefonie zachowuje pełny krajobraz 3:2, bez przycinania wnętrza do pionowego portretu. Zaokrąglenie i obramowanie obejmują sam obraz, a pod nim widnieje czytelny podpis 14 px: „Wizualizacja poglądowa gabinetu · AI” (EN: „Concept visual of a veterinary room · AI”). Kolor podpisu i ramki korzysta z odpowiednich zmiennych jasnego i ciemnego motywu.
 
-Materiały bazowe: spokojny golden retriever i szary kot w pionowym portrecie oraz jasny kot delikatnie głaskany pod brodą, z twarzą człowieka poza kadrem. W tej propozycji tła fotografii opracowano przy użyciu ImageGen w ciepłej, neutralnej tonacji kości słoniowej i kamienia. Zachowano naturalny kolor sierści, miękkie dzienne światło, anatomię oraz zapas kadru nad głowami zwierząt. Fotografie nie zawierają napisów ani logo.
+Zdjęcie kota w sekcji o przychodni pozostaje ilustracją wygenerowaną przy użyciu ImageGen, z naturalną sierścią, miękkim dziennym światłem i ciepłym neutralnym tłem. Obrazy nie zawierają napisów ani logo i nie przedstawiają rzeczywistych pacjentów ani personelu przychodni. Informacja w stopce ujawnia pochodzenie obrazów oraz poglądowy charakter wnętrza. Poprzednie pliki `hero-pets` pozostają w zasobach, lecz nie są używane jako hero ani obraz udostępniania.
 
 Fonty DM Serif Display i Manrope pobrano z Google Fonts. Licencje znajdują się w assets/fonts/.
 
