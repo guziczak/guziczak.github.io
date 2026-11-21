@@ -242,7 +242,11 @@ export function dailyDosePresentationModel({source=null, eligibility=null, compa
     const previous = byField.get(key);
     if (!previous || issuePriority[issue.kind] > issuePriority[previous.kind]) byField.set(key, issue);
   }
-  const issues = [...byField.values()];
+  // Collect patient inputs before confirmations that those edits would revoke.
+  const fieldOrder = {age:0,ageUnit:1,weight:2,serumCreatinine:3,creatinineUnit:4,
+    sex:5,calculationWeight:6,crcl:7,renalStatus:8,days:9,mode:10,
+    renalStable:80,weightReviewed:81,sourceConfirmations:100};
+  const issues = [...byField.values()].sort((a,b)=>(fieldOrder[a.field]??50)-(fieldOrder[b.field]??50));
   const state = clinicalConfirmed ? 'confirmed'
     : issues.some(issue => issue.kind === 'out-of-scope') ? 'out-of-scope'
       : issues.some(issue => issue.kind === 'invalid') ? 'invalid' : 'missing';

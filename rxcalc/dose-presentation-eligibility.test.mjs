@@ -163,3 +163,14 @@ test('clinical presentation does not change validation, mutate data or reinterpr
   assert.doesNotMatch(malicious, /<img/);
   assert.match(malicious, /&lt;img/);
 });
+
+test('missing numeric inputs are completed before confirmations invalidated by those edits', () => {
+  const issues = [
+    {code:'confirm',field:'sourceConfirmations',kind:'missing',message:'Confirm source.'},
+    {code:'review',field:'renalStable',kind:'missing',message:'Review estimate.'},
+    {code:'creatinine',field:'serumCreatinine',kind:'missing',message:'Enter creatinine.'},
+  ];
+  const presentation = dailyDosePresentationModel({source,eligibility:{valid:false,issues,errors:issues.map(issue=>issue.message)}});
+  assert.equal(presentation.focusField,'serumCreatinine');
+  assert.deepEqual(presentation.issues.map(issue=>issue.field),['serumCreatinine','renalStable','sourceConfirmations']);
+});

@@ -1247,10 +1247,12 @@ function example() {
       const ids={crcl:'humanCrCl',serumCreatinine:'humanSerumCreatinine',creatinineUnit:'renalCreatinineUnit',sex:'renalSex',calculationWeight:'renalCalculationWeight',renalStable:'renalCalculationReviewed',weightReviewed:'renalCalculationReviewed',mode:'renal-panel',age:'age',ageUnit:'humanAgeUnit',weight:'weight',renalStatus:'renalImpairment',days:'days'};
       let input=target==='sourceConfirmations'?$('.source-conditions input:not(:checked)'):document.getElementById(ids[target]||'renal-panel');
       if(!input)input=$('#renal-panel')||$('#patient-title');
+      const picker=input?.hasAttribute('data-patient-picker')?document.getElementById(`${input.id}-wheel-trigger`):null;
+      if(picker)input=picker;
       if(input){
         let details=input.closest('details');while(details){details.open=true;details=details.parentElement?.closest('details');}
-        input.scrollIntoView({block:'center',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
-        if(input.tagName==='SELECT')selectMenus.focus(input.id);else input.focus({preventScroll:true});
+        input.scrollIntoView({block:'center',behavior:picker||window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+        if(picker)picker.click();else if(input.tagName==='SELECT')selectMenus.focus(input.id);else input.focus({preventScroll:true});
       }
       break;
     }
