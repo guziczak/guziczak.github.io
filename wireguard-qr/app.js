@@ -25,7 +25,10 @@
     'expand-qr', 'close-expanded', 'show-feedback', 'feedback-canvas',
     'feedback-panel', 'feedback-caption', 'close-feedback', 'resume-receiving',
     'scan-feedback', 'feedback-scan-panel', 'feedback-video', 'stop-feedback-camera',
-    'feedback-message', 'feedback-image-input', 'choose-feedback-image'
+    'feedback-message', 'feedback-image-input', 'choose-feedback-image',
+    'receiving-label', 'transfer-telemetry', 'telemetry-title', 'telemetry-status',
+    'telemetry-duration', 'telemetry-speed', 'telemetry-useful', 'telemetry-read',
+    'telemetry-detail', 'copy-diagnostics', 'diagnostics-text', 'diagnostics-message'
   ].forEach((id) => { ui[id] = $(id); });
 
   const MAX_BYTES = 2953;
@@ -63,6 +66,9 @@
   let receiverEpoch = 0;
   let receiverChain = Promise.resolve();
   let collector = null;
+  let telemetry = null;
+  let lastTelemetryPaint = 0;
+  let copyingDiagnostics = false;
   let receiverSnapshot = null;
   let progressTimer = null;
   let pendingProgress = null;
@@ -237,6 +243,10 @@
     ui['start-camera'].hidden = false;
     decodeBusy(false);
     scanCanvas.width = scanCanvas.height = 1;
+    if (telemetry) {
+      telemetry.stopCamera();
+      renderTelemetry(true);
+    }
     if (showMessage) {
       message('decode-message', 'Kamera została wyłączona. Możesz też wczytać obraz QR.');
       status('Kamera wyłączona');
@@ -625,11 +635,15 @@
       ui['receiving-progressbar'].value = 0;
       ui['receiving-missing'].textContent = '';
       ui['receiving-help'].textContent = '';
+      ui['receiving-label'].textContent = 'ODBIERANIE SERII';
+      ui['show-feedback'].textContent = 'Uzupełnij brakujące';
       ui['show-feedback'].hidden = true;
       return;
     }
     const received = state.complete || state.kind === 'complete' ? state.total : state.received;
     const complete = received === state.total && Boolean(state.complete || state.kind === 'complete');
+    ui['receiving-label'].textContent = complete ? 'ODBIÓR ZAKOŃCZONY' : 'ODBIERANIE SERII';
+    ui['show-feedback'].textContent = complete ? 'Pokaż potwierdzenie' : 'Uzupełnij brakujące';
     ui['receiving-progress'].hidden = false;
     ui['decoded-empty'].hidden = true;
     ui['receiving-name'].textContent = state.name;
@@ -706,23 +720,141 @@
       ? 'Zbieram pomiary. Licznik pokazuje nowe, użyteczne fragmenty — powtórzenia nie zwiększają wyniku.'
       : `Propozycja: ${metrics.recommended} kodów/s. Przekaż ją nadajnikowi kodem zwrotnym; tempo nie zmienia się automatycznie na drugim urządzeniu.`;
   }
+  function resetTelemetry() {
+    if (telemetry) telemetry.reset();
+    lastTelemetryPaint = 0;
+    copyingDiagnostics = false;
+    ui['transfer-telemetry'].hidden = true;
+    ui['telemetry-title'].textContent = 'Statystyki odbioru';
+    ui['telemetry-status'].textContent = '';
+    for (const field of ['duration', 'speed', 'useful', 'read']) ui[`telemetry-${field}`].textContent = '—';
+    ui['telemetry-detail'].textContent = '';
+    ui['copy-diagnostics'].disabled = true;
+    ui['diagnostics-text'].value = '';
+    ui['diagnostics-text'].hidden = true;
+    message('diagnostics-message');
+  }
+  function startCameraTelemetry(stream) {
+    let settings = {};
+    try { settings = stream.getVideoTracks()[0]?.getSettings?.() || {}; } catch { /* Optional metadata must not stop reception. */ }
+    telemetry.startCamera({ width: settings.width, height: settings.height, frameRate: settings.frameRate });
+    renderTelemetry(true);
+  }
+  function renderTelemetry(force = false) {
+    if (!telemetry) return;
+    const now = window.performance.now();
+    if (!force && lastTelemetryPaint && now - lastTelemetryPaint < 250) return;
+    lastTelemetryPaint = now;
+    const data = telemetry.snapshot();
+    const transfer = data.transfer;
+    ui['transfer-telemetry'].hidden = !transfer;
+    ui['copy-diagnostics'].disabled = !transfer || copyingDiagnostics;
+    if (!transfer) return;
+    const count = (value) => Number(value || 0).toLocaleString('pl-PL');
+    const decimal = (value) => Number(value || 0).toLocaleString('pl-PL', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const milliseconds = (value) => Number.isFinite(value) ? `${decimal(value)} ms` : 'brak pomiaru';
+    const protocol = transfer.version === 0 ? 'Pojedynczy QR' : `WGQR v${transfer.version}`;
+    ui['telemetry-title'].textContent = 'Statystyki odbioru';
+    ui['telemetry-status'].textContent = data.complete
+      ? transfer.version === 0 ? 'Odczytany' : 'Zakończony'
+      : cameraStream ? 'W trakcie' : 'Wstrzymany';
+    ui['telemetry-duration'].textContent = `${decimal(data.elapsedMs / 1000)} s`;
+    ui['telemetry-speed'].textContent = transfer.version === 0 ? 'nie dotyczy'
+      : !data.complete ? 'po ukończeniu'
+      : !Number.isFinite(data.averageBytesPerSecond) ? 'brak pomiaru czasu'
+      : data.averageBytesPerSecond >= 1024 ? `${decimal(data.averageBytesPerSecond / 1024)} KiB/s`
+        : `${decimal(data.averageBytesPerSecond)} B/s`;
+    ui['telemetry-useful'].textContent = `${count(data.usefulUnits)} / ${count(transfer.total)}`;
+    ui['telemetry-read'].textContent = count(data.qrReads);
+    const video = data.video;
+    const resolution = video && video.width && video.height ? `${count(video.width)} × ${count(video.height)}` : 'brak danych';
+    const reportedFps = video && Number.isFinite(video.frameRate) ? `${decimal(video.frameRate)} kl./s` : 'brak danych';
+    const pixels = data.lastScanPixels;
+    ui['telemetry-detail'].textContent = [
+      `Czas od pierwszej przyjętej porcji do wyniku: ${decimal(data.elapsedMs / 1000)} s (łącznie z przerwami).`,
+      `Aktywny czas kamery: ${decimal(data.cameraActiveMs / 1000)} s; uruchomienia: ${count(data.cameraStarts)}.`,
+      `Próby dekodowania kamery: ${count(data.cameraAttempts)}; poprawne odczyty QR: ${count(data.opticalReads)}.`,
+      `QR odczytane z obrazów: ${count(data.imageReads)}; przyjęte z obrazów: ${count(data.imagePackets)}.`,
+      `Przyjęte pakiety: ${count(data.acceptedPackets)} (kamera: ${count(data.cameraPackets)}, obrazy: ${count(data.imagePackets)}).`,
+      `Pakiety wnoszące nowe dane: ${count(data.usefulPackets)}; przyjęte bez nowych danych: ${count(data.redundantPackets)}.`,
+      `Nowe porcje danych: ${count(data.usefulUnits)} / ${count(transfer.total)}.`,
+      `Odrzucone odczyty: ${count(data.rejectedPackets)} (inny plik: ${count(data.rejections.foreign)}, nieprawidłowy: ${count(data.rejections.invalid)}, potwierdzenie: ${count(data.rejections.feedback)}).`,
+      `Obróbka klatki — średnio: ${milliseconds(data.latencyAvgMs)}; p95${data.latencyP95Approximate ? ' w przybliżeniu' : ''}: ${milliseconds(data.latencyP95Ms)}.`,
+      `Tryb skanowania — śledzenie: ${count(data.trackedAttempts)}, szukanie: ${count(data.searchAttempts)}.`,
+      `Kamera zgłasza: ${resolution}; ${reportedFps}. To nie jest tempo odczytu kodów ani tempo nadajnika.`,
+      `Ostatni obszar dekodowania: ${pixels ? `${count(pixels.width)} × ${count(pixels.height)}` : 'brak pomiaru'}.`,
+      `Wersja aplikacji: ${data.appVersion}. Protokół: ${protocol}.`,
+      `Rozmiar pliku: ${byteCount(transfer.size)}. Porcja: ${byteCount(transfer.chunkBytes)}. Bloki: ${count(transfer.blocksComplete)} / ${count(transfer.blockCount)}.`,
+      'Próba bez odczytu nie oznacza zgubionego QR. Pakiet bez nowych danych może być powtórzeniem lub zależnym równaniem naprawczym.'
+    ].join('\n');
+  }
+  function recordPacketTelemetry(result, delta, source) {
+    // Only numerical protocol metadata enters diagnostics. No filename, content, ID or digest.
+    const firstPacket = ui['transfer-telemetry'].hidden;
+    telemetry.recordPacket({
+      version: result.version, size: result.size, total: result.total, chunkBytes: result.chunkBytes,
+      blockCount: result.blockCount, received: result.received, blocksComplete: result.blocksComplete,
+      complete: Boolean(result.complete || result.kind === 'complete')
+    }, { delta, source, packetType: result.version === 0 ? 'plain' : result.version === 1 ? 'legacy' : 'unknown' });
+    renderTelemetry(firstPacket || Boolean(result.complete || result.kind === 'complete'));
+  }
+  async function copyDiagnostics() {
+    if (!telemetry || !telemetry.snapshot().transfer || copyingDiagnostics) return;
+    const epoch = receiverEpoch;
+    const report = telemetry.report();
+    copyingDiagnostics = true;
+    ui['copy-diagnostics'].disabled = true;
+    message('diagnostics-message');
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard-unavailable');
+      await navigator.clipboard.writeText(report);
+      if (epoch !== receiverEpoch) return;
+      ui['diagnostics-text'].value = '';
+      ui['diagnostics-text'].hidden = true;
+      message('diagnostics-message', 'Skopiowano lokalny raport diagnostyczny w formacie JSON.', 'success');
+    } catch {
+      if (epoch !== receiverEpoch) return;
+      const field = ui['diagnostics-text'];
+      field.value = report;
+      field.hidden = false;
+      field.readOnly = true;
+      field.focus();
+      field.select();
+      try { field.setSelectionRange(0, report.length); } catch { /* Native selection is enough on older browsers. */ }
+      message('diagnostics-message', 'Przeglądarka nie pozwoliła skopiować automatycznie. Zaznaczony raport JSON skopiuj ręcznie.', 'warning');
+    } finally {
+      if (epoch === receiverEpoch) {
+        copyingDiagnostics = false;
+        renderTelemetry(true);
+      }
+    }
+  }
   function resetCollector() {
     receiverEpoch += 1;
     if (collector) collector.reset();
+    resetTelemetry();
     receiverSnapshot = null;
     showReceiving(null, true);
     hideFeedback();
     resetMetrics();
   }
   function prepareReceiver() {
-    if (receiverSnapshot && receiverSnapshot.complete) resetCollector();
+    if ((receiverSnapshot && receiverSnapshot.complete) || decodedBytes || telemetry?.snapshot().complete) resetCollector();
     clearDecoded();
     showReceiving(receiverSnapshot, true);
   }
   function receiverError(error) {
     if (error.code === 'TRANSFER_RESET') return;
-    receiverSnapshot = collector.state;
-    showReceiving(receiverSnapshot, true);
+    const nextState = collector.state;
+    if (receiverSnapshot && !nextState) {
+      // A failed final digest invalidates the collector. The next file must not
+      // inherit counters, time or a pending clipboard result from that session.
+      resetCollector();
+      if (cameraStream) startCameraTelemetry(cameraStream);
+    } else {
+      receiverSnapshot = nextState;
+      showReceiving(receiverSnapshot, true);
+    }
     const text = error.code === 'FEEDBACK_FRAME'
       ? 'To kod zwrotny odbiornika. Na urządzeniu nadającym wybierz „Zeskanuj potwierdzenie”. Ten kod nie jest plikiem.'
       : error.code === 'UNSUPPORTED_VERSION'
@@ -735,7 +867,7 @@
     message('decode-message', text, 'error');
     if (mode === 'decode') status('Nie przyjęto nieprawidłowego fragmentu');
   }
-  function receiveBytes(bytes, isCurrent) {
+  function receiveBytes(bytes, isCurrent, source = 'camera') {
     const epoch = receiverEpoch;
     const payload = Uint8Array.from(bytes);
     const operation = receiverChain.then(async () => {
@@ -749,31 +881,45 @@
         if (epoch !== receiverEpoch) return { done: false, stale: true };
         if (result.kind === 'plain') {
           if (previous && !previous.complete && previous.received > 0) {
-            showReceiving();
+            telemetry.recordRejected('foreign', { source });
+            renderTelemetry();
+            showReceiving(receiverSnapshot, true);
             message('decode-message', 'Trwa odbiór serii. Aby otworzyć pojedynczy QR, najpierw wybierz „Reset odbioru”.', 'warning');
             return { done: false, blocked: true };
           }
+          recordPacketTelemetry({
+            version: 0, size: result.bytes.length, total: 1, chunkBytes: result.bytes.length,
+            blockCount: 1, received: 1, blocksComplete: 1, complete: true
+          }, 1, source);
           stopCamera();
           return { done: acceptDecoded(result) };
         }
         if (result.kind === 'foreign') {
-          showReceiving(result);
+          telemetry.recordRejected('foreign', { source });
+          renderTelemetry();
+          showReceiving(result, true);
           message('decode-message', 'To fragment innego pliku. Dokończ bieżącą serię albo wybierz „Reset odbioru”.', 'warning');
           return { done: false, foreign: true };
         }
         if (result.kind === 'complete') {
           receiverSnapshot = { ...result, bytes: undefined, complete: true };
           const delta = Math.max(0, result.total - (previous?.received || 0));
+          recordPacketTelemetry(receiverSnapshot, delta, source);
           stopCamera();
           showReceiving(receiverSnapshot, true);
           return { done: acceptDecoded(result, result.name, true), delta };
         }
         const delta = Math.max(0, result.received - (previous?.received || 0));
         receiverSnapshot = result;
+        recordPacketTelemetry(result, delta, source);
         if (delta > 0 || !previous) showReceiving(result);
         return { done: false, progress: true, delta };
       } catch (error) {
-        if (epoch === receiverEpoch) receiverError(error);
+        if (epoch === receiverEpoch && error.code !== 'TRANSFER_RESET') {
+          telemetry.recordRejected(error.code === 'FEEDBACK_FRAME' ? 'feedback' : 'invalid', { source });
+          renderTelemetry();
+          receiverError(error);
+        }
         return { done: false, error: true };
       }
     }).finally(() => payload.fill(0));
@@ -984,7 +1130,7 @@
         if (token !== decodeEpoch || mode !== 'decode') return;
         if (!result) { unreadable += 1; continue; }
         found += 1;
-        const outcome = await receiveBytes(result.bytes, () => token === decodeEpoch && mode === 'decode');
+        const outcome = await receiveBytes(result.bytes, () => token === decodeEpoch && mode === 'decode', 'image');
         if (outcome.done) return;
         if (outcome.error || outcome.foreign || outcome.blocked) rejected += 1;
       }
@@ -1174,15 +1320,19 @@
         if (token === cameraEpoch) stopCamera(true);
       }, { once: true }));
       const video = ui['camera-video'];
+      startCameraTelemetry(stream);
       const scanner = window.WGCamera.createScanner({ decode: window.WGQR.decodePixels });
       cameraScanner = scanner;
       const active = () => token === cameraEpoch && cameraStream === stream && mode === 'decode';
       cancelCameraScan = startVideoLoop(video, active, async () => {
         const epoch = receiverEpoch;
         const sample = scanner.scan(video);
+        // Record the final optical attempt before a successful packet freezes the report.
+        telemetry.recordScan({ decodeMs: sample.decodeMs, region: sample.region, pixels: sample.pixels, result: Boolean(sample.result) });
         const outcome = sample.result ? await receiveBytes(sample.result.bytes, active) : { done: false, delta: 0 };
         if (epoch === receiverEpoch && (active() || (outcome.done && mode === 'decode'))) {
           recordScan(sample, outcome.delta || 0, outcome.done);
+          renderTelemetry(outcome.done);
         }
         return Boolean(outcome.done);
       }, () => {
@@ -1224,12 +1374,13 @@
     });
   }
 
-  if (!window.WGQR || !window.WGTransfer || !window.WGResilient || !window.WGCamera || !window.WGZip || !scanContext) {
+  if (!window.WGQR || !window.WGTransfer || !window.WGResilient || !window.WGCamera || !window.WGTelemetry || !window.WGZip || !scanContext) {
     message('encode-message', 'Nie udało się wczytać narzędzia. Odśwież stronę.', 'error');
     ui['choose-file'].disabled = ui['choose-image'].disabled = ui['sample-file'].disabled = ui['series-sample'].disabled = ui['zip-sample'].disabled = ui['start-camera'].disabled = true;
     return;
   }
   collector = window.WGResilient.createCollector();
+  telemetry = window.WGTelemetry.create({ now: () => window.performance.now(), appVersion: document.documentElement?.dataset.appVersion || 'nieznana' });
   ui['encode-tab'].addEventListener('click', () => selectMode('encode'));
   ui['decode-tab'].addEventListener('click', () => selectMode('decode'));
   for (const id of ['encode-tab', 'decode-tab']) {
@@ -1241,6 +1392,7 @@
     });
   }
   ui['clear-all'].addEventListener('click', resetAll);
+  ui['copy-diagnostics'].addEventListener('click', copyDiagnostics);
   ui['choose-file'].addEventListener('click', () => ui['file-input'].click());
   ui['choose-image'].addEventListener('click', () => ui['image-input'].click());
   ui['file-input'].addEventListener('change', () => { if (ui['file-input'].files.length) selectFiles(Array.from(ui['file-input'].files)); });
@@ -1391,5 +1543,6 @@
   clearDecoded();
   showReceiving(null);
   resetMetrics();
+  resetTelemetry();
   selectMode('encode');
 })();

@@ -24,6 +24,16 @@ Jest to synchronizacja po przekazaniu potwierdzenia, bez ukrytego kanału siecio
 
 Skaner po znalezieniu QR śledzi jego położenie i analizuje wycinek z zapasem wokół kodu. Po utracie kodu powraca do przeszukiwania pełnego obrazu, okresowo w wyższej rozdzielczości. Płótno jest ponownie wymiarowane tylko przy zmianie rozmiaru analizowanego obrazu. Czarne kody na białym tle używają szybkiej ścieżki dekodowania; okresowe ponowne wyszukiwanie i import obrazów zachowują obsługę odwróconych kodów.
 
+## Statystyki odbioru i diagnostyka
+
+Panel **Statystyki odbioru** znajduje się przy odzyskanym pliku. Pokazuje czas odbioru, liczbę nowych porcji danych oraz odczytanych QR; po zakończeniu także średnią prędkość. Wyniki pozostają widoczne po zatrzymaniu kamery i odebraniu całości. Pauza, pokazanie zwrotnego QR i wznowienie zachowują pomiar. Reset odbioru lub wyczyszczenie strony usuwa go.
+
+Czas odbioru biegnie od pierwszego zaakceptowanego fragmentu do zakończenia weryfikacji pliku, razem z przerwami. Średnia prędkość kompletnej serii to rozmiar pliku podzielony przez ten czas. Przy pojedynczym natychmiastowym odczycie prędkość może pozostać niedostępna. To pomiar całego odbioru, a nie tempa wyświetlania kodów na drugim urządzeniu.
+
+Szczegóły rozdzielają próby odczytu kamery, poprawnie rozpoznane QR, pakiety dodające nowe dane i pakiety bez nowych danych. Te ostatnie obejmują zarówno powtórzenia, jak i zależne równania naprawcze. Nieudana próba rozpoznania obrazu nie oznacza zgubienia osobnego kodu nadawcy. Parametry obrazu i czas analizy klatki pomagają ocenić skaner; zgłoszone przez kamerę FPS nie są gwarancją takiej liczby skutecznych odczytów.
+
+Przycisk **Kopiuj diagnostykę** tworzy lokalny raport JSON z wersją aplikacji, licznikami, czasami oraz parametrami transferu i obrazu. Raport nie zawiera nazwy, treści, kluczy, identyfikatora ani sumy pliku, adresu IP czy identyfikatora urządzenia. Nie odczytujemy User-Agent. Gdy schowek jest niedostępny, aplikacja pokazuje tekst do ręcznego skopiowania. Nic nie jest automatycznie wysyłane ani zapisywane w trwałej pamięci przeglądarki.
+
 ## Kilka plików w jednym ZIP-ie
 
 Wybór lub przeciągnięcie co najmniej dwóch plików uruchamia kompresję ZIP w przeglądarce. Po spakowaniu interfejs pokazuje nazwy plików i rozmiar gotowego archiwum. Przycisk **Pobierz ZIP** pozwala zachować kopię po stronie nadawcy. Odbiornik pobiera jedno archiwum, które rozpakowuje się standardowymi narzędziami urządzenia; strona nie wyodrębnia ani nie uruchamia zawartości archiwów.
@@ -35,7 +45,7 @@ Pliki znajdują się w głównym katalogu ZIP-a. Nazwy są oczyszczane z element
 ## Prywatność i granice
 
 - Plik jest odczytywany przez `File.arrayBuffer()`. Kompresję ZIP, kodowanie, odczyt obrazu, skanowanie kamery i tworzenie pobieranego pliku wykonuje przeglądarka.
-- Brak wysyłania danych, analityki, cookies, localStorage, IndexedDB, telemetrii i skryptów pobieranych z CDN. Biblioteki są dołączone lokalnie w `assets/`.
+- Brak wysyłania danych, analityki sieciowej, cookies, localStorage, IndexedDB, zdalnej telemetrii i skryptów pobieranych z CDN. Lokalne liczniki diagnostyczne pozostają w pamięci strony; użytkownik może je skopiować. Biblioteki są dołączone lokalnie w `assets/`.
 - Polityka CSP blokuje połączenia `connect-src`, zewnętrzne skrypty, formularze i obiekty. GitHub Pages otrzymuje zwykłe żądania pobrania plików strony; zawartość konfiguracji nie trafia do tych żądań.
 - Kamera wymaga HTTPS i zgody użytkownika. Uruchamia się wyłącznie przyciskiem i zatrzymuje po odebraniu całego pliku, ręcznym zatrzymaniu, zmianie trybu, ukryciu strony lub jej opuszczeniu. Przy serii pozostaje aktywna po pierwszym fragmencie. Wczytanie obrazów jest alternatywą dla kamery.
 - Seria i zwrotne potwierdzenia pozostają lokalne. Każda ramka ma identyfikator transferu, metadane, CRC32 i sumę SHA-256 pliku. Odbiornik nie łączy różnych sesji i udostępnia plik dopiero po sprawdzeniu całości. Sumy kontrolne służą wykrywaniu błędów; nie są szyfrowaniem ani uwierzytelnieniem nadawcy. Potwierdzenie jest przypisane do konkretnego pliku i sesji, ale również nie stanowi kryptograficznego uwierzytelnienia urządzenia.
@@ -66,6 +76,7 @@ Obrazy: do 20 MB i 50 megapikseli, z dodatkowym limitem dłuższego boku 20 000 
 - `assets/qr-transfer.js` — zgodność z poprzednim protokołem v1.
 - `assets/qr-resilient.js` — binarny protokół v2, równania naprawcze, składanie pliku, zwrotne potwierdzenia i sprawdzanie integralności.
 - `assets/qr-camera.js` — lokalny skaner z wyborem i śledzeniem wycinka obrazu.
+- `assets/qr-telemetry.js` — lokalne liczniki, pomiar czasu oraz raport diagnostyczny z ograniczonym zestawem pól.
 - `assets/zip-core.js` — samodzielny bundle tworzenia standardowych archiwów ZIP.
 - `protocol.md` — specyfikacja binarna i API protokołu serii.
 - `assets/favicon.svg` — lokalna ikona.

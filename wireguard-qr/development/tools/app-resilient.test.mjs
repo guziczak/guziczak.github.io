@@ -7,9 +7,22 @@ import { webcrypto } from 'node:crypto';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const sources = ['assets/qr-core.js', 'assets/qr-transfer.js', 'assets/qr-resilient.js', 'assets/zip-core.js']
+const sources = ['assets/qr-core.js', 'assets/qr-transfer.js', 'assets/qr-resilient.js', 'assets/zip-core.js', 'assets/qr-telemetry.js']
   .map((name) => fs.readFileSync(path.join(root, name), 'utf8'));
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+
+function corruptPayloadWithValidCrc(frame) {
+  const bytes = Uint8Array.from(frame);
+  const view = new DataView(bytes.buffer);
+  bytes[view.getUint16(10)] ^= 1;
+  let crc = 0xffffffff;
+  for (const byte of bytes.subarray(0, -4)) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+  }
+  view.setUint32(bytes.length - 4, (crc ^ 0xffffffff) >>> 0);
+  return bytes;
+}
 
 function harness() {
   const h = { now: 1000, serial: 0, timers: new Map(), videoCallbacks: new Map(), urls: new Map(), encoded: [], transfers: [], streams: [], mediaRequests: [], deferMedia: false, disposedScanners: 0, events: {}, optical: null };
@@ -26,6 +39,8 @@ function harness() {
     dispatch(name, event = {}) { for (const fn of this.listeners[name] || []) fn(event); }
     click() { if (!this.disabled) this.dispatch('click'); }
     focus() { h.document.activeElement = this; }
+    select() { this.selectionStart = 0; this.selectionEnd = this.value.length; }
+    setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; }
     setAttribute(name, value) { this.attributes[name] = String(value); }
     removeAttribute(name) { delete this.attributes[name]; }
     getAttribute(name) { return this.attributes[name]; }
@@ -46,18 +61,18 @@ function harness() {
   h.els = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map((m) => [m[1], new Element(m[1])]));
   h.els['transfer-mode'].value = 'auto'; h.els['qr-density'].value = '384';
   for (const rate of [1, 2, 5, 10]) { const radio = new Element(`rate-${rate}`); radio.value = String(rate); radio.checked = rate === 2; h.els['frame-rate'].appendChild(radio); }
-  h.document = { body: new Element('body'), activeElement: h.els['expand-qr'], hidden: false, getElementById: (id) => h.els[id], createElement: () => new Element(), querySelectorAll: () => [], addEventListener: (name, fn) => { (h.events[name] ??= []).push(fn); } };
+  h.document = { body: new Element('body'), documentElement: { dataset: { appVersion: html.match(/data-app-version="([^"]+)"/)?.[1] || 'test' } }, activeElement: h.els['expand-qr'], hidden: false, getElementById: (id) => h.els[id], createElement: () => new Element(), querySelectorAll: () => [], addEventListener: (name, fn) => { (h.events[name] ??= []).push(fn); } };
   for (const id of ['close-expanded', 'expand-qr', 'animation-toggle', 'frame-slider', 'scan-feedback']) h.els['qr-result'].appendChild(h.els[id]);
   class FakeImage {
     set src(value) { if (value) { this.payload = h.urls.get(value)?.payload; this.naturalWidth = this.naturalHeight = 300; queueMicrotask(() => this.onload?.()); } }
   }
   h.makeStream = () => {
-    const track = { stopped: false, listeners: {}, stop() { this.stopped = true; }, addEventListener(name, fn) { this.listeners[name] = fn; } };
+    const track = { stopped: false, listeners: {}, stop() { this.stopped = true; }, addEventListener(name, fn) { this.listeners[name] = fn; }, getSettings() { return { width: 1920, height: 1080, frameRate: 30, deviceId: 'must-not-export-camera-id' }; } };
     const stream = { track, getTracks: () => [track], getVideoTracks: () => [track] }; h.streams.push(stream); return stream;
   };
   const context = {
     Uint8Array, Uint8ClampedArray, ArrayBuffer, DataView, TextEncoder, TextDecoder, File, Blob, Image: FakeImage, crypto: webcrypto,
-    document: h.document, navigator: { mediaDevices: { getUserMedia() { if (h.deferMedia) return new Promise((resolve) => h.mediaRequests.push(resolve)); return Promise.resolve(h.makeStream()); } } },
+    document: h.document, navigator: { clipboard: { async writeText(text) { h.clipboardText = text; } }, mediaDevices: { getUserMedia() { if (h.deferMedia) return new Promise((resolve) => h.mediaRequests.push(resolve)); return Promise.resolve(h.makeStream()); } } },
     URL: { createObjectURL(blob) { const id = `blob:${++h.serial}`; h.urls.set(id, blob); return id; }, revokeObjectURL: (id) => h.urls.delete(id) },
     performance: { now: () => h.now }, isSecureContext: true,
     setTimeout(fn, delay = 0) { if (delay === 0) return setTimeout(fn, 0); const id = ++h.serial; h.timers.set(id, { fn, delay }); return id; },
@@ -69,6 +84,8 @@ function harness() {
   const encode = h.context.WGQR.encodeBytes;
   h.context.WGQR = { ...h.context.WGQR, encodeBytes(bytes) { h.encoded.push(Uint8Array.from(bytes)); return encode(bytes); }, decodePixels: () => h.optical ? { bytes: Uint8Array.from(h.optical) } : null };
   h.context.WGResilient = { ...h.protocol, async createTransfer(...args) { const transfer = await h.protocol.createTransfer(...args); h.transfers.push(transfer); return transfer; } };
+  const createTelemetry = h.context.WGTelemetry.create;
+  h.context.WGTelemetry = { ...h.context.WGTelemetry, create(options) { h.telemetry = createTelemetry(options); return h.telemetry; } };
   h.context.WGCamera = { createScanner() { let disposed = false; return { scan(video) { assert.equal(disposed, false); return { result: video.payload ? { bytes: Uint8Array.from(video.payload) } : null, decodeMs: 25, region: 'tracked', pixels: { width: 300, height: 300 } }; }, reset() {}, dispose() { if (!disposed) h.disposedScanners++; disposed = true; } }; } };
   vm.runInContext(app, h.context);
   h.wait = async (predicate) => { for (let i = 0; i < 600; i++) { if (predicate()) return; await new Promise((resolve) => setTimeout(resolve, 2)); } throw new Error('Timed out waiting for app state'); };
@@ -186,5 +203,90 @@ test('expanded view declares modal semantics, traps focus, and restores focus on
     assert.equal(prevented, true); assert.notEqual(h.document.activeElement, h.els['close-expanded']);
     for (const fn of h.events.keydown) fn({ key: 'Escape', preventDefault() {} }); assert.equal(h.document.activeElement, h.els['expand-qr']); assert.equal(h.els['qr-result'].getAttribute('aria-modal'), undefined);
     h.els['expand-qr'].click(); h.els['clear-all'].click(); assert.equal(h.document.body.classList.contains('qr-expanded'), false); assert.equal(h.els['qr-result'].getAttribute('role'), undefined);
+  } finally { h.close(); }
+});
+
+test('telemetry preserves a paused receiver, freezes the final scan and elapsed time, and supports local copy plus reset', async () => {
+  const h = harness();
+  try {
+    const bytes = new Uint8Array(1152).fill(31);
+    const transfer = await h.protocol.createTransfer(bytes, 'private-name-never-export.bin', { chunkBytes: 384 });
+    h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    assert.equal(h.els['transfer-telemetry'].hidden, true);
+    await h.fireFrame('camera-video', transfer.frame(0));
+    assert.equal(h.els['transfer-telemetry'].hidden, false);
+    assert.equal(h.els['telemetry-speed'].textContent, 'po ukończeniu');
+    await h.fireFrame('camera-video', transfer.frame(0));
+    h.els['stop-camera'].click();
+    const paused = h.telemetry.snapshot();
+    assert.equal(paused.usefulUnits, 1); assert.equal(paused.redundantPackets, 1); assert.equal(paused.cameraActiveMs, 200);
+    h.now += 5000;
+    h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    await h.fireFrame('camera-video', transfer.frame(1));
+    await h.fireFrame('camera-video', transfer.frame(2));
+    const completed = JSON.parse(h.telemetry.report());
+    assert.equal(completed.complete, true); assert.equal(completed.elapsedMs, 5300); assert.equal(completed.cameraActiveMs, 400);
+    assert.equal(completed.cameraStarts, 2); assert.equal(completed.cameraAttempts, 4); assert.equal(completed.opticalReads, 4);
+    assert.equal(completed.usefulUnits, 3); assert.equal(completed.acceptedPackets, 4); assert.equal(completed.redundantPackets, 1);
+    assert.ok(Math.abs(completed.averageBytesPerSecond - bytes.length / 5.3) < 0.001);
+    assert.equal(h.els['receiving-label'].textContent, 'ODBIÓR ZAKOŃCZONY');
+    assert.equal(h.els['show-feedback'].textContent, 'Pokaż potwierdzenie');
+    h.now += 10000; h.els['show-feedback'].click(); h.els['close-feedback'].click();
+    assert.deepEqual(JSON.parse(h.telemetry.report()), completed);
+    assert.equal(h.els['transfer-telemetry'].hidden, false); assert.equal(h.els['download-file'].disabled, false);
+    h.els['copy-diagnostics'].click(); await h.micro();
+    assert.deepEqual(JSON.parse(h.clipboardText), completed);
+    assert.equal(h.clipboardText.includes(transfer.name), false); assert.equal(h.clipboardText.includes(transfer.id), false);
+    assert.equal(h.clipboardText.includes(transfer.digest), false); assert.equal(h.clipboardText.includes('must-not-export-camera-id'), false);
+    h.context.navigator.clipboard.writeText = async () => { throw new Error('denied'); };
+    h.els['copy-diagnostics'].click(); await h.micro();
+    assert.equal(h.els['diagnostics-text'].hidden, false); assert.equal(h.els['diagnostics-text'].readOnly, true);
+    assert.deepEqual(JSON.parse(h.els['diagnostics-text'].value), completed);
+    assert.equal(h.els['diagnostics-text'].selectionEnd, h.els['diagnostics-text'].value.length);
+    h.els['reset-receiver'].click();
+    assert.equal(h.telemetry.snapshot().transfer, null); assert.equal(h.els['transfer-telemetry'].hidden, true);
+    assert.equal(h.els['diagnostics-text'].hidden, true); assert.equal(h.els['diagnostics-text'].value, '');
+    assert.equal(h.els['copy-diagnostics'].disabled, true);
+    const damaged = await h.protocol.createTransfer(new Uint8Array(768).fill(19), 'damaged.bin', { chunkBytes: 384 });
+    h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    await h.fireFrame('camera-video', damaged.frame(0));
+    await h.fireFrame('camera-video', corruptPayloadWithValidCrc(damaged.frame(1)));
+    assert.match(h.els['decode-message'].textContent, /Suma pliku nie zgadza/);
+    assert.equal(h.telemetry.snapshot().transfer, null); assert.equal(h.els['transfer-telemetry'].hidden, true);
+    assert.equal(h.videoCallbacks.size, 1); assert.equal(h.streams.at(-1).track.stopped, false);
+    const replacement = await h.protocol.createTransfer(new Uint8Array(768).fill(20), 'replacement.bin', { chunkBytes: 384 });
+    await h.fireFrame('camera-video', replacement.frame(0)); await h.fireFrame('camera-video', replacement.frame(1));
+    const recovered = h.telemetry.snapshot();
+    assert.equal(recovered.complete, true); assert.equal(recovered.usefulUnits, 2); assert.equal(recovered.transfer.total, 2);
+    assert.equal(recovered.acceptedPackets, 2); assert.equal(recovered.cameraAttempts, 2); assert.equal(recovered.cameraActiveMs, 200);
+  } finally { h.close(); }
+});
+
+test('telemetry counts accepted and rejected image QR separately, resets for raw input, and ignores a late copy after clear', async () => {
+  const h = harness();
+  try {
+    const transfer = await h.protocol.createTransfer(new Uint8Array(768).fill(7), 'image-transfer.bin', { chunkBytes: 384 });
+    const other = await h.protocol.createTransfer(new Uint8Array(768).fill(8), 'other.bin', { chunkBytes: 384 });
+    h.els['decode-tab'].click();
+    h.upload(transfer.frame(0)); await h.wait(() => !h.els['choose-image'].disabled);
+    h.now += 1000; h.upload(other.frame(0)); await h.wait(() => !h.els['choose-image'].disabled);
+    h.now += 1000; h.upload(transfer.frame(1)); await h.wait(() => !h.els['choose-image'].disabled);
+    const completed = h.telemetry.snapshot();
+    assert.equal(completed.complete, true); assert.equal(completed.imageReads, 3); assert.equal(completed.imagePackets, 2);
+    assert.equal(completed.opticalReads, 0); assert.equal(completed.qrReads, 3); assert.equal(completed.rejections.foreign, 1);
+    assert.equal(h.els['telemetry-read'].textContent, '3');
+    const raw = new TextEncoder().encode('[Interface]\nPrivateKey = NEVER_EXPORT_THIS_CONTENT\n[Peer]\nPublicKey = DEMO\n');
+    h.upload(raw); await h.wait(() => !h.els['choose-image'].disabled);
+    const plain = h.telemetry.snapshot();
+    assert.equal(plain.transfer.version, 0); assert.equal(plain.imageReads, 1); assert.equal(plain.usefulUnits, 1);
+    assert.equal(plain.qrReads, 1); assert.equal(plain.complete, true); assert.equal(h.els['telemetry-speed'].textContent, 'nie dotyczy');
+    assert.equal(h.telemetry.report().includes('NEVER_EXPORT_THIS_CONTENT'), false);
+    let rejectCopy;
+    h.context.navigator.clipboard.writeText = () => new Promise((_, reject) => { rejectCopy = reject; });
+    h.els['copy-diagnostics'].click(); await h.micro();
+    h.els['clear-all'].click(); rejectCopy(new Error('late denial')); await h.micro();
+    assert.equal(h.els['transfer-telemetry'].hidden, true); assert.equal(h.els['diagnostics-text'].hidden, true);
+    assert.equal(h.els['diagnostics-text'].value, ''); assert.equal(h.els['diagnostics-message'].textContent, '');
+    assert.equal(h.telemetry.snapshot().transfer, null);
   } finally { h.close(); }
 });

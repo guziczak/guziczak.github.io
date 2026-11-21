@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl">
+<html lang="pl" data-app-version="2026.11.21-telemetry.1">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,13 +10,14 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Plik ↔ QR — lokalny konwerter</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=6">
+  <link rel="stylesheet" href="./styles.css?v=7">
   <script src="./assets/qr-core.js?v=2" defer></script>
   <script src="./assets/qr-transfer.js?v=2" defer></script>
   <script src="./assets/qr-resilient.js?v=1" defer></script>
   <script src="./assets/qr-camera.js?v=1" defer></script>
   <script src="./assets/zip-core.js?v=2" defer></script>
-  <script src="./app.js?v=8" defer></script>
+  <script src="./assets/qr-telemetry.js?v=1" defer></script>
+  <script src="./app.js?v=9" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#converter">Przejdź do konwertera</a>
@@ -147,7 +148,7 @@
           <button id="stop-camera" class="button secondary camera-button" type="button" hidden>Zatrzymaj kamerę</button>
           <section id="scan-metrics" class="scan-metrics" aria-label="Rzeczywista skuteczność skanowania" hidden>
             <div><span>Nowe porcje danych/s</span><strong id="scan-rate">—</strong></div>
-            <div><span>Czas rozpoznania QR</span><strong id="scan-latency">—</strong></div>
+            <div><span>Czas analizy klatki</span><strong id="scan-latency">—</strong></div>
             <p id="scan-advice">Pomiar rozpocznie się po pierwszych odczytach.</p>
             <p class="metrics-note">Tempo odbioru uwzględnia tylko nowe informacje. Powtórzenia nie podnoszą wyniku.</p>
           </section>
@@ -156,8 +157,23 @@
         </div>
         <div class="output-pane">
           <div class="pane-heading"><h2>Odzyskany plik</h2><span class="output-label">DO POBRANIA</span></div>
+          <section id="transfer-telemetry" class="transfer-telemetry" aria-labelledby="telemetry-title" hidden>
+            <div class="telemetry-heading"><h3 id="telemetry-title">Statystyki odbioru</h3><span id="telemetry-status" class="telemetry-status">W trakcie</span></div>
+            <dl class="telemetry-grid">
+              <div><dt>Czas odbioru</dt><dd id="telemetry-duration">—</dd></div>
+              <div><dt>Średnia prędkość</dt><dd id="telemetry-speed">Po ukończeniu</dd></div>
+              <div><dt>Nowe porcje danych</dt><dd id="telemetry-useful">—</dd></div>
+              <div><dt>Odczytane QR</dt><dd id="telemetry-read">—</dd></div>
+            </dl>
+            <p class="telemetry-note">Czas liczymy od pierwszego fragmentu, razem z przerwami. Średnią prędkość wyznaczamy po odebraniu całości.</p>
+            <details class="telemetry-details"><summary>Szczegóły pomiaru</summary><pre id="telemetry-detail"></pre></details>
+            <button id="copy-diagnostics" class="button secondary full-width" type="button">Kopiuj diagnostykę</button>
+            <p class="telemetry-note">Lokalne liczniki i parametry odczytu, bez nazwy i zawartości pliku. Możesz wkleić wyniki do rozmowy.</p>
+            <textarea id="diagnostics-text" class="diagnostics-text" readonly spellcheck="false" aria-label="Diagnostyka do ręcznego skopiowania" hidden></textarea>
+            <p id="diagnostics-message" class="message" role="status" aria-live="polite"></p>
+          </section>
           <div id="receiving-progress" class="receiving-progress" hidden>
-            <span class="receiving-label">ODBIERANIE SERII</span>
+            <span id="receiving-label" class="receiving-label">ODBIERANIE SERII</span>
             <h3 id="receiving-name"></h3>
             <p id="receiving-count" role="status" aria-live="polite">Odebrano 0 fragmentów</p>
             <progress id="receiving-progressbar" value="0" max="1" aria-label="Postęp odbierania pliku"></progress>
@@ -201,7 +217,8 @@
       <details><summary>Jak przenieść konfigurację WireGuarda na telefon?</summary><p>Wybierz gotowy plik konfiguracji klienta <code>.conf</code>. Jeśli mieści się w jednym zwykłym QR, otwórz na telefonie aplikację WireGuard, dodaj tunel i wybierz skanowanie QR.</p><p>Dla większego pliku uruchom serię. Na telefonie otwórz tę stronę, wybierz „Odczytaj QR” i uruchom kamerę. Po zebraniu wszystkich fragmentów pobierz odtworzony <code>.conf</code> i zaimportuj go z pliku w WireGuardzie. Skaner WireGuarda nie składa serii kodów. Konwerter obsługuje istniejące konfiguracje; nie tworzy serwera VPN ani nowych kluczy.</p></details>
       <details><summary>Jak działa seria i jakie tempo wybrać?</summary><p>Najpierw nadajemy części pliku, a następnie nowe kody naprawcze. Odbiornik wykorzystuje je do odtworzenia pominiętych części. Kolejność nie ma znaczenia, a powtórzenia nie kasują postępu. Nie musisz odczytać każdego konkretnego kodu.</p><p>Zacznij od czytelniejszego kodu i 2 kodów na sekundę. Dostępne są 1/s, 2/s, 5/s i 10/s. Odbiornik pokazuje liczbę nowych porcji danych odczytanych w sekundzie oraz czas rozpoznawania. Jeśli postęp jest słaby, powiększ QR, popraw ostrość lub zmniejsz tempo. „Więcej danych w kodzie” tworzy gęstsze kody i jest przeznaczone do wyraźnego obrazu.</p><p>Po złożeniu całości sprawdzana jest suma SHA-256. Dopiero po zgodnym wyniku można pobrać plik. Obca seria nie nadpisze odbieranej; „Reset odbioru” pozwala rozpocząć nową. Odśwież stronę na obu urządzeniach, aby używać nowego sposobu przesyłania.</p></details>
       <details><summary>Jak zsynchronizować odbiór z nadajnikiem?</summary><p>Na odbiorniku wybierz „Uzupełnij brakujące”. Kamera zatrzyma się, a strona wyświetli QR z informacją o postępie. Na nadajniku wybierz „Zeskanuj potwierdzenie”. Po jego odczytaniu nadajnik skupi kody naprawcze na nieukończonych częściach oraz dobierze tempo do przekazanej wskazówki.</p><p>Potwierdzenie przekazujesz kamerą lub jako obraz. Przy korzystaniu z tylnej kamery telefonu trzeba na chwilę odwrócić telefon, aby nadajnik zobaczył jego ekran. Następnie wróć do skanowania i wznów serię. Postęp pozostaje zachowany; nie ma połączenia sieciowego między urządzeniami.</p></details>
-      <details><summary>Czy pliki i klucze trafiają na serwer?</summary><p>Nie. Odczyt pliku, tworzenie QR i skanowanie wykonuje kod w Twojej przeglądarce. Ta strona nie wysyła zawartości, nie zapisuje jej w pamięci trwałej przeglądarki i nie korzysta z analityki ani zewnętrznych skryptów. GitHub Pages dostarcza jedynie pliki strony.</p><p>Pobrane pliki i obrazy pozostają tam, gdzie je zapiszesz. „Wyczyść” usuwa wyniki z otwartej strony, ale nie usuwa Twoich pobranych plików ani zrzutów ekranu.</p></details>
+      <details><summary>Jak zachować pomiary do porównania?</summary><p>Przy odzyskanym pliku zobaczysz statystyki odbioru. Po zakończeniu wyniki pozostaną widoczne, więc możesz zrobić zrzut ekranu albo wybrać „Kopiuj diagnostykę” i wkleić raport do rozmowy.</p><p>Czas biegnie od pierwszego przyjętego fragmentu, razem z przerwami. Średnia prędkość dotyczy całego ukończonego odbioru. Nowe porcje danych oznaczają postęp; liczba odczytanych QR może być większa z powodu powtórzeń. Szczegóły pokazują też próby skanowania i czas analizy obrazu.</p><p>Raport zawiera lokalne liczniki i parametry, bez nazwy oraz zawartości pliku. Nie jest automatycznie wysyłany. Reset odbioru, wyczyszczenie lub odświeżenie strony usuwa bieżące pomiary.</p></details>
+      <details><summary>Czy pliki i klucze trafiają na serwer?</summary><p>Nie. Odczyt pliku, tworzenie QR i skanowanie wykonuje kod w Twojej przeglądarce. Ta strona nie wysyła zawartości, nie zapisuje jej w pamięci trwałej przeglądarki i nie korzysta z analityki sieciowej ani zewnętrznych skryptów. GitHub Pages dostarcza jedynie pliki strony. Statystyki odbioru są liczone lokalnie i udostępniasz je samodzielnie, jeśli skopiujesz raport.</p><p>Pobrane pliki i obrazy pozostają tam, gdzie je zapiszesz. „Wyczyść” usuwa wyniki z otwartej strony, ale nie usuwa Twoich pobranych plików ani zrzutów ekranu.</p></details>
       <details><summary>Jak duży plik mogę przesłać?</summary><p>Jeden zwykły QR mieści do 2 953 bajtów. Seria obsługuje plik lub gotowy ZIP do 10 MiB, czyli 10 485 760 bajtów. To limit całej jednej paczki po kompresji. Kolejne paczki możesz przesyłać oddzielnie.</p><p>Przed odtwarzaniem zobaczysz szacowany czas pierwszej serii danych przy 1, 2, 5 i 10 kodach/s. Czytelniejszy kod mieści 384 bajty, a gęstszy 600 bajtów danych. Większe paczki nadal wymagają długiego skanowania; czas nie obejmuje dodatkowych kodów naprawczych ani pominiętych odczytów.</p><p>Odtworzona zawartość zachowuje bajty pliku, w tym polskie znaki i zakończenia linii. Serię trzeba odczytać na tej stronie. Pojedyncza zapisana klatka zawiera część danych lub informację naprawczą — do odtworzenia pliku potrzebny jest odpowiedni zestaw kodów.</p></details>
     </section>
     <noscript><p class="noscript-message">Włącz JavaScript, aby konwertować pliki. Cała konwersja odbywa się lokalnie w przeglądarce.</p></noscript>
