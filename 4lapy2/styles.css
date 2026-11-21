@@ -256,25 +256,43 @@ html[data-entry-pending] main,html[data-entry-pending] .site-footer{visibility:h
   html[data-language-transition]::view-transition-group(language-header-contact),
   html[data-language-transition]::view-transition-group(language-header-switch),
   html[data-language-transition]::view-transition-group(language-header-call){animation-duration:280ms;animation-timing-function:steps(1,end);animation-fill-mode:both;z-index:2}
-  html[data-language-transition]::view-transition-old(language-header-tagline),
   html[data-language-transition]::view-transition-old(language-header-about),
   html[data-language-transition]::view-transition-old(language-header-care),
   html[data-language-transition]::view-transition-old(language-header-reminder),
   html[data-language-transition]::view-transition-old(language-header-contact),
   html[data-language-transition]::view-transition-old(language-header-switch),
   html[data-language-transition]::view-transition-old(language-header-call){animation:language-label-leave 280ms ease-in-out both;mix-blend-mode:normal}
-  html[data-language-transition]::view-transition-new(language-header-tagline),
   html[data-language-transition]::view-transition-new(language-header-about),
   html[data-language-transition]::view-transition-new(language-header-care),
   html[data-language-transition]::view-transition-new(language-header-reminder),
   html[data-language-transition]::view-transition-new(language-header-contact),
   html[data-language-transition]::view-transition-new(language-header-switch),
   html[data-language-transition]::view-transition-new(language-header-call){animation:language-label-enter 380ms ease-in-out 280ms both;mix-blend-mode:normal}
+  /* The subtitle fades in place, then the new lettering is revealed from the left. */
+  html[data-language-transition]::view-transition-old(language-header-tagline){animation:language-tagline-leave 280ms ease-in-out both;transform:none;mix-blend-mode:normal}
+  html[data-language-transition]::view-transition-new(language-header-tagline){animation:language-tagline-reveal 380ms ease-in-out 280ms both;opacity:1;transform:none;mix-blend-mode:normal}
+  @supports (mask-image:linear-gradient(90deg,#000,transparent)) or (-webkit-mask-image:linear-gradient(90deg,#000,transparent)){
+    html[data-language-transition]::view-transition-new(language-header-tagline){
+      animation-name:language-tagline-reveal-soft;
+      -webkit-mask-image:linear-gradient(90deg,#000 calc(50% - 6px),transparent calc(50% + 6px));
+      mask-image:linear-gradient(90deg,#000 calc(50% - 6px),transparent calc(50% + 6px));
+      -webkit-mask-size:calc(200% + 12px) 100%;
+      mask-size:calc(200% + 12px) 100%;
+      -webkit-mask-repeat:no-repeat;
+      mask-repeat:no-repeat;
+      -webkit-mask-position:0% 0;
+      mask-position:0% 0;
+      mask-mode:alpha;
+    }
+  }
 }
 @keyframes language-leave{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-10px)}}
 @keyframes language-enter{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes language-label-leave{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-3px)}}
 @keyframes language-label-enter{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+@keyframes language-tagline-leave{from{opacity:1}to{opacity:0}}
+@keyframes language-tagline-reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+@keyframes language-tagline-reveal-soft{from{-webkit-mask-position:100% 0;mask-position:100% 0}to{-webkit-mask-position:0% 0;mask-position:0% 0}}
 @media(prefers-reduced-motion:reduce){
   @view-transition{navigation:none}
   ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
