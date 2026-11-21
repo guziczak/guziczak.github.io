@@ -60,6 +60,10 @@
     const ending = count === 1 ? 'plik' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'pliki' : 'plików';
     return `${count} ${ending}`;
   }
+  function fragmentCount(count) {
+    const ending = count === 1 ? 'fragment' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'fragmenty' : 'fragmentów';
+    return `${count} ${ending}`;
+  }
   function cleanName(name, fallback = 'wireguard.conf') {
     const cleaned = String(name || '').replace(/[\u0000-\u001f\u007f/\\:*?"<>|]/g, '_').replace(/^\.+/, '').trim().slice(0, 120);
     return cleaned || fallback;
@@ -249,7 +253,7 @@
     drawQR(frameMatrix(frameIndex));
     ui['frame-position'].textContent = `Fragment ${frameIndex + 1} z ${series.total}`;
     ui['frame-slider'].value = String(frameIndex + 1);
-    ui['qr-caption'].textContent = `${byteCount(series.size)} · ${series.total} ${series.total === 1 ? 'fragment' : 'fragmentów'} QR`;
+    ui['qr-caption'].textContent = `${byteCount(series.size)} · ${fragmentCount(series.total)} QR`;
   }
   function makeAnimationOrder(start) {
     const direction = animationCycle % 2 ? -1 : 1;
@@ -439,7 +443,7 @@
         ui['transfer-info'].textContent = inputIsZip
           ? 'Na drugim urządzeniu wybierz „Odczytaj QR”. Po odebraniu całości pobierzesz ZIP do rozpakowania.'
           : 'Serię odczytasz na tej stronie na drugim urządzeniu. Aplikacja WireGuard nie importuje jej bezpośrednio.';
-        ui['capacity-note'].textContent = `${series.total} fragmentów po maksymalnie 600 B danych. Odtwarzaj w pętli lub wybieraj brakujące numery ręcznie.`;
+        ui['capacity-note'].textContent = `${fragmentCount(series.total)} po maksymalnie 600 B danych. Odtwarzaj w pętli lub wybieraj brakujące numery ręcznie.`;
       } else {
         qr = window.WGQR.encodeBytes(bytes);
         drawQR(qr);
