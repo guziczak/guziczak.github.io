@@ -20,8 +20,8 @@
   <link rel="icon" href="../assets/favicon.svg?v=20261121paw1" type="image/svg+xml">
   <link rel="preload" as="image" href="../assets/hero-clinic.webp" imagesrcset="../assets/hero-clinic-640.webp 640w, ../assets/hero-clinic.webp 1536w" imagesizes="(max-width: 370px) calc(100vw - 32px), (max-width: 580px) calc(100vw - 40px), (max-width: 760px) 540px, (max-width: 950px) calc(56.25vw - 54px), (max-width: 1150px) calc(56.25vw - 57.375px), (max-width: 1376px) calc(65.25vw - 93.96px), 804px" fetchpriority="high">
   <link rel="stylesheet" href="../assets/fonts.css">
-  <link rel="stylesheet" href="../styles.css?v=20261121text4">
-  <script src="../site.js?v=20261121a" defer></script>
+  <link rel="stylesheet" href="../styles.css?v=20261121controls5">
+  <script src="../site.js?v=20261121controls5" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#tresc">Skip to content</a>
@@ -74,10 +74,10 @@
       <div class="hero-copy">
         <p class="eyebrow"><span class="eyebrow-line"></span>Cztery Łapy i Ty</p>
         <h1 id="hero-title">Veterinary<br>practice<br><em>in Wysoka.</em></h1>
-        <p class="hero-description">We see dogs and cats for consultations, vaccinations and diagnostic tests. The practice is run by veterinarian Agnieszka Janeczek.</p>
+        <p class="hero-description" data-description-reserve="Przyjmujemy psy i koty na wizyty, szczepienia i badania. Przychodnię prowadzi lek. wet. Agnieszka Janeczek."><span>We see dogs and cats for consultations, vaccinations and diagnostic tests. The practice is run by veterinarian Agnieszka Janeczek.</span></p>
         <div class="hero-cta">
-          <a class="button button-dark" href="tel:+48717867884"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg>Book an appointment</a>
-          <a class="text-link" href="#opieka">View our services</a>
+          <a class="button button-dark" href="tel:+48717867884"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg><span data-hero-label="book">Book an appointment</span></a>
+          <a class="text-link" href="#opieka"><span data-hero-label="services">View our services</span></a>
         </div>
         <div class="hero-welcome">
           <div class="opening-hanger" data-opening-state role="status" aria-live="polite" aria-atomic="true">
@@ -93,7 +93,7 @@
               </div>
             </div>
           </div>
-          <div class="hero-welcome-copy"><p>ul. Chabrowa 2D<br>52-200 Wysoka</p><a class="text-link" href="#godziny">Opening hours</a></div>
+          <div class="hero-welcome-copy"><p>ul. Chabrowa 2D<br>52-200 Wysoka</p><a class="text-link" href="#godziny"><span data-hero-label="hours">Opening hours</span></a></div>
         </div>
       </div>
       <figure class="hero-image">

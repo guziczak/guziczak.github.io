@@ -629,7 +629,8 @@
   initializeAnchorNavigation(document, window, motionPreference);
   initializeManualTop(document, window);
   const openingSign = document.querySelector('[data-opening-sign]');
-  if (openingSign && !motionPreference.matches && 'IntersectionObserver' in window &&
+  if (openingSign && document.documentElement.dataset.languageTransition !== 'incoming' &&
+    !motionPreference.matches && 'IntersectionObserver' in window &&
     typeof openingSign.animate === 'function' && typeof CSS !== 'undefined' &&
     typeof CSS.supports === 'function' && CSS.supports('rotate', '1deg')) {
     let signAnimation = null;
@@ -664,12 +665,28 @@
       }
       if (motionPreference.removeEventListener) motionPreference.removeEventListener('change', onSignMotionChange);
       else if (motionPreference.removeListener) motionPreference.removeListener(onSignMotionChange);
+      document.removeEventListener('click', onLanguageChoice);
+      window.removeEventListener('pagereveal', onLanguageEntry);
     }
     function onSignMotionChange() {
       if (motionPreference.matches) stopSignMotion();
     }
+    function onLanguageChoice(event) {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
+        event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target.closest && event.target.closest('a[data-language-switch]');
+      if (!link || link.hasAttribute('download') ||
+        (link.target && link.target.toLowerCase() !== '_self')) return;
+      // Capture the sign at rest before leaving for the other language.
+      stopSignMotion();
+    }
+    function onLanguageEntry() {
+      if (document.documentElement.dataset.languageTransition === 'incoming') stopSignMotion();
+    }
     if (motionPreference.addEventListener) motionPreference.addEventListener('change', onSignMotionChange);
     else if (motionPreference.addListener) motionPreference.addListener(onSignMotionChange);
+    document.addEventListener('click', onLanguageChoice);
+    window.addEventListener('pagereveal', onLanguageEntry);
     signObserver.observe(openingSign);
   }
 
