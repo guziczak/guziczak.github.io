@@ -4,6 +4,12 @@ Lekki kalkulator dawkowania i zapotrzebowania na preparaty z interfejsem po pols
 
 Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym pliku nie stanowi potwierdzenia publikacji.
 
+## Uzupełnienie brakującego wieku w koszyku — 22.11.2026
+
+Jeśli wiek pacjenta był pusty przy zapisie wcześniejszego leku, wpisanie go przy kolejnym może automatycznie uzupełnić wcześniejsze pozycje. Przy dodawaniu pozycji, otwieraniu lub kopiowaniu koszyka aplikacja ponownie sprawdza zapisany preparat, schemat, limity, zaokrąglenie i ilości. Uzupełnia wiek tylko wtedy, gdy wynik, limity i reguła zaokrąglenia pozostają takie same, wszystkie kontrole przechodzą i nie pojawiają się nowe ostrzeżenia. Dane aktualnie otwartego leku pozostają jego własnymi danymi.
+
+Zmiana już podanego wieku, innych danych pacjenta albo wynik wymagający nowej oceny nadal oznacza pozycję do sprawdzenia. Nie są automatycznie ponawiane potwierdzenia warunków zależnych od wieku. Uzupełnienie obejmuje pacjentów ludzkich i działa w pamięci bieżącej karty; nie zapisuje danych poza nią. Nie uruchamia się na każdej cyfrze wpisywanego wieku.
+
 ## Komunikaty o przekroczeniu dawki — 22.11.2026
 
 Panel wyniku łączy powtarzające się przekroczenia w jeden komunikat dla dawki jednorazowej i jeden dla dobowej. Pokazuje wartość dawki, próg i jego pochodzenie: wybrany schemat, dane preparatu lub limit wprowadzony przez lekarza. Jeśli dawka wpisana i podawana po zaokrągleniu albo przekroczone progi są różne, te informacje pozostają jawne w tym samym komunikacie.
