@@ -20,6 +20,16 @@ function transfer(total, compact = true, manifestInterval = 16) {
     ...(compact ? { manifestFrame: () => Uint8Array.of(3) } : {}) };
 }
 const keys = batch => Array.from(batch.frames, frame => frame.key);
+function referenceOrder(total, startIndex = 0, interleave = true) {
+  const order = [];
+  if (interleave) {
+    for (let local = 0; local < 32; local++) for (let block = 0; block < Math.ceil(total / 32); block++) {
+      if (block * 32 + local < total) order.push(block * 32 + local);
+    }
+  } else for (let index = 0; index < total; index++) order.push(index);
+  const start = order.indexOf(startIndex);
+  return [...order.slice(start), ...order.slice(0, start)];
+}
 
 test('periodic manifests count data symbols, including across two lanes and repairs', () => {
   for (const lanes of [1, 2]) {
@@ -27,7 +37,7 @@ test('periodic manifests count data symbols, including across two lanes and repa
     const packets = [];
     while (packets.length < 180) packets.push(...planner.next().frames);
     const sources = packets.filter(packet => packet.kind === 'source');
-    assert.deepEqual(sources.map(packet => packet.index), Array.from({ length: 37 }, (_, index) => index));
+    assert.deepEqual(sources.map(packet => packet.index), referenceOrder(37));
     let sinceManifest = 16;
     for (const packet of packets) {
       if (packet.kind === 'manifest') { assert.equal(sinceManifest, 16); sinceManifest = 0; }
@@ -58,8 +68,8 @@ test('manual stepping can show the chosen source immediately and wraps every sou
 });
 
 test('restoring a displayed checkpoint discards prefetched advancement without skipping source frames', () => {
-  for (const lanes of [1, 2]) {
-    const planner = api.create(transfer(70), { lanes });
+  for (const lanes of [1, 2]) for (const interleave of [false, true]) {
+    const planner = api.create(transfer(70), { lanes, interleave });
     const displayed = planner.next();
     const expected = Array.from({ length: 20 }, () => planner.next());
     assert.equal(planner.restore(displayed.checkpoint), true);
@@ -179,7 +189,7 @@ test('invalid planning inputs do not create an unbounded or unusable source sequ
     { ...transfer(3), frame: null }, { ...transfer(3), manifestFrame: undefined }, transfer(3, true, 0)]) {
     assert.throws(() => api.create(value), { name: 'TypeError' });
   }
-  for (const options of [{ lanes: 3 }, { startIndex: NaN }, { initialManifest: 1 }]) {
+  for (const options of [{ lanes: 3 }, { startIndex: NaN }, { initialManifest: 1 }, { interleave: 1 }]) {
     assert.throws(() => api.create(transfer(3), options), { name: 'TypeError' });
   }
   const planner = api.create(transfer(3));
@@ -188,4 +198,78 @@ test('invalid planning inputs do not create an unbounded or unusable source sequ
     assert.throws(() => planner.applyFeedback(feedback), { name: 'TypeError' });
   }
   for (const args of [[0], [1, 3], [1, 1, -1], [1, 1, 1.5]]) assert.equal(api.firstPassDisplays(...args), 0);
+});
+
+test('source interleaving rotates to the requested index and covers every partial-block source once', () => {
+  const cases = [];
+  for (const total of [1, 2, 31, 32, 33, 34, 63, 64, 65, 95, 96, 97]) {
+    for (const startIndex of new Set([0, Math.min(31, total - 1), Math.min(32, total - 1), total - 1])) {
+      for (const lanes of [1, 2]) cases.push({ total, startIndex, lanes });
+    }
+  }
+  cases.push({ total: 27307, startIndex: 27306, lanes: 2 });
+  for (const { total, startIndex, lanes } of cases) {
+    const planner = api.create(transfer(total), { startIndex, lanes, initialManifest: false });
+    assert.equal(planner.interleave, true);
+    const sourceIndices = [];
+    while (sourceIndices.length < total) {
+      for (const frame of planner.next().frames) if (frame.kind === 'source') sourceIndices.push(frame.index);
+    }
+    assert.equal(sourceIndices[0], startIndex);
+    assert.deepEqual(sourceIndices, referenceOrder(total, startIndex));
+    assert.equal(new Set(sourceIndices).size, total);
+  }
+});
+
+test('v2 stays sequential and explicit interleave:false preserves compact comparison mode', () => {
+  for (const compact of [false, true]) {
+    const planner = api.create(transfer(69, compact), { startIndex: 35, lanes: 2, interleave: false });
+    assert.equal(planner.interleave, false);
+    const indices = [];
+    while (indices.length < 69) {
+      for (const frame of planner.next().frames) if (frame.kind === 'source') indices.push(frame.index);
+    }
+    assert.deepEqual(indices, referenceOrder(69, 35, false));
+  }
+  assert.equal(api.create(transfer(69, false)).interleave, false);
+});
+
+test('interleaving reduces the repair tail for a deterministic contiguous burst, while targeted ACK restores equal losses', async context => {
+  const bytes = pattern(384 * 32 * 8);
+  async function simulate(interleave, withFeedback) {
+    const sender = await wire.createTransfer(bytes, 'burst.bin', { compact: true });
+    const planner = api.create(sender, { interleave }), collector = wire.createCollector();
+    const firstPass = api.firstPassDisplays(sender.total, 1, sender.manifestInterval);
+    for (let display = 0; display < firstPass; display++) {
+      const frame = planner.next().frames[0];
+      // 33 adjacent displays lose exactly 32 data symbols and one manifest.
+      // The initial manifest was already received, so both modes lose equal information.
+      if (display >= 35 && display < 68) continue;
+      await collector.accept(frame.bytes);
+    }
+    assert.equal(collector.state.received, sender.total - 32);
+    const incompleteBlocks = collector.state.missingCount;
+    if (withFeedback) planner.applyFeedback(sender.acceptFeedback(collector.createFeedback()));
+    let dataSymbols = 0, displays = 0, result;
+    while (displays < 1000) {
+      const frame = planner.next().frames[0];
+      displays++;
+      if (frame.kind !== 'manifest') dataSymbols++;
+      result = await collector.accept(frame.bytes);
+      if (result.kind === 'complete') break;
+    }
+    assert.equal(result.kind, 'complete');
+    assert.deepEqual(Buffer.from(result.bytes), Buffer.from(bytes));
+    sender.dispose(); collector.dispose();
+    return { incompleteBlocks, dataSymbols, displays };
+  }
+  const sequential = await simulate(false, false), interleaved = await simulate(true, false);
+  assert.equal(sequential.incompleteBlocks, 1);
+  assert.equal(interleaved.incompleteBlocks, 8);
+  assert.ok(interleaved.dataSymbols < sequential.dataSymbols);
+  const feedbackSequential = await simulate(false, true), feedbackInterleaved = await simulate(true, true);
+  assert.equal(feedbackSequential.dataSymbols, 32);
+  assert.equal(feedbackInterleaved.dataSymbols, 32);
+  context.diagnostic(JSON.stringify({ model: '8 full blocks; 33 adjacent displays lost; no later loss',
+    sequential, interleaved, feedbackSequential, feedbackInterleaved }));
 });

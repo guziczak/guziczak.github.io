@@ -95,6 +95,7 @@
     }
   }
   function validChunkSize(size) { return size === 384 || size === 600; }
+  function validRate(rate, version) { return (version === 3 ? [1, 2, 5, 10, 15, 20] : [1, 2, 5, 10]).includes(rate); }
   function dimensions(size, chunkBytes) {
     const total = Math.ceil(size / chunkBytes);
     return { total, blockCount: Math.ceil(total / BLOCK_CHUNKS) };
@@ -140,7 +141,7 @@
     const format = bytes[8];
     const targetCount = view.getUint16(74);
     if (!((format === 1 && (version === 1 || version === 2)) || (format === 2 && version === 3)) || flags > 1
-      || ![1, 2, 5, 10].includes(suggestedRate) || size < 1 || size > MAX_FILE_BYTES
+      || !validRate(suggestedRate, version) || size < 1 || size > MAX_FILE_BYTES
       || !validChunkSize(chunkBytes) || (version === 1 && chunkBytes !== 600)
       || total !== Math.ceil(size / chunkBytes) || blockCount !== Math.ceil(total / BLOCK_CHUNKS)
       || bitmapLength !== Math.ceil(blockCount / 8) || targetCount > MAX_REPAIR_TARGETS
@@ -196,6 +197,7 @@
     const version = compact ? 3 : 2;
     const crypto = requireCrypto();
     const content = new Uint8Array(bytes);
+    const contentWords = new Uint32Array(content.buffer, content.byteOffset, content.length >>> 2);
     const idBytes = crypto.getRandomValues(new Uint8Array(16));
     let digestBytes;
     try { digestBytes = await sha256(content); }
@@ -236,11 +238,33 @@
         frame.set(nameBytes, HEADER_BYTES);
       }
       const payload = frame.subarray(headerLength, headerLength + chunkBytes);
-      for (let local = 0; local < count; local++) {
-        if (!((mask >>> local) & 1)) continue;
-        const offset = (blockIndex * BLOCK_CHUNKS + local) * chunkBytes;
-        const end = Math.min(size, offset + chunkBytes);
-        for (let index = offset; index < end; index++) payload[index - offset] ^= content[index];
+      if ((mask & (mask - 1)) === 0) {
+        // A systematic symbol is a copy, including one-bit repair equations.
+        const offset = (blockIndex * BLOCK_CHUNKS + 31 - Math.clz32(mask)) * chunkBytes;
+        payload.set(content.subarray(offset, Math.min(size, offset + chunkBytes)));
+        return appendCrc(frame);
+      }
+      if ((payload.byteOffset & 3) === 0) {
+        // One output view per frame; the source view is shared without copying.
+        // Both use native byte order, so XOR preserves the exact bytewise result.
+        const words = new Uint32Array(payload.buffer, payload.byteOffset, chunkBytes >>> 2);
+        for (let local = 0; local < count; local++) {
+          if (!((mask >>> local) & 1)) continue;
+          const offset = (blockIndex * BLOCK_CHUNKS + local) * chunkBytes;
+          const length = Math.min(chunkBytes, size - offset);
+          const countWords = length >>> 2;
+          const wordOffset = offset >>> 2;
+          for (let word = 0; word < countWords; word++) words[word] ^= contentWords[wordOffset + word];
+          for (let byte = countWords * 4; byte < length; byte++) payload[byte] ^= content[offset + byte];
+        }
+      } else {
+        // A v2 filename can make the payload unaligned. Keep the scalar path.
+        for (let local = 0; local < count; local++) {
+          if (!((mask >>> local) & 1)) continue;
+          const offset = (blockIndex * BLOCK_CHUNKS + local) * chunkBytes;
+          const end = Math.min(size, offset + chunkBytes);
+          for (let index = offset; index < end; index++) payload[index - offset] ^= content[index];
+        }
       }
       return appendCrc(frame);
     }
@@ -611,7 +635,7 @@
         if (!active) throw fail('NO_TRANSFER', 'Najpierw zeskanuj fragment serii.');
         if (!options || typeof options !== 'object') throw fail('INVALID_INPUT', 'Nieprawidłowe opcje potwierdzenia.');
         const suggestedRate = options.suggestedRate === undefined ? 2 : options.suggestedRate;
-        if (![1, 2, 5, 10].includes(suggestedRate)) throw fail('INVALID_INPUT', 'Nieprawidłowe sugerowane tempo.');
+        if (!validRate(suggestedRate, active.version)) throw fail('INVALID_INPUT', 'Nieprawidłowe sugerowane tempo.');
         const session = active;
         const bitmap = blockBitmap(session);
         const targets = [];

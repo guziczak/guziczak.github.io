@@ -4,11 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { webcrypto } from 'node:crypto';
+import { unzipSync } from 'fflate';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const sources = ['assets/qr-core.js', 'assets/qr-transfer.js', 'assets/qr-resilient.js', 'assets/zip-core.js',
-  'assets/qr-telemetry.js', 'assets/qr-playback.js', 'assets/qr-calibration.js']
+  'assets/qr-telemetry.js', 'assets/qr-playback.js', 'assets/qr-calibration.js', 'assets/qr-encoder.js']
   .map((name) => fs.readFileSync(path.join(root, name), 'utf8'));
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 
@@ -25,11 +26,21 @@ function corruptPayloadWithValidCrc(frame) {
   return bytes;
 }
 
+async function collectTransfer(protocol, transfer) {
+  const receiver = protocol.createCollector();
+  if (transfer.manifestFrame) await receiver.accept(transfer.manifestFrame());
+  let result;
+  for (let index = 0; index < transfer.total; index++) result = await receiver.accept(transfer.frame(index));
+  assert.equal(result.kind, 'complete');
+  return result.bytes;
+}
+
 function harness() {
   const h = { now: 1000, serial: 0, timers: new Map(), zeroTimers: new Map(), videoCallbacks: new Map(), urls: new Map(),
     encoded: [], encodings: [], rendered: [], matrixBytes: new WeakMap(), canvases: [], downloads: [], transfers: [],
     streams: [], mediaRequests: [], cameraConstraints: [], scannerOptions: [], scanCalls: [], deferMedia: false,
-    disposedScanners: 0, events: {}, optical: null };
+    disposedScanners: 0, events: {}, optical: null, encoderJobs: [], encoderResets: 0, activeEncodes: 0,
+    deferEncoding: false, scanJobs: [], activeScans: 0, maxActiveScans: 0, deferScans: false };
   class Element {
     constructor(id = '') {
       this.id = id; this.listeners = {}; this.dataset = {}; this.value = ''; this.hidden = false;
@@ -74,8 +85,8 @@ function harness() {
   }
   h.els = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map((m) => [m[1], new Element(m[1])]));
   h.els['transfer-mode'].value = 'auto'; h.els['qr-density'].value = '384';
-  for (const [id, value] of Object.entries({ 'qr-layout': 'single', 'series-ecc': 'M', 'scan-layout': 'single', 'camera-profile': 'auto' })) h.els[id].value = value;
-  for (const rate of [1, 2, 5, 10]) { const radio = new Element(`rate-${rate}`); radio.value = String(rate); radio.checked = rate === 2; h.els['frame-rate'].appendChild(radio); }
+  for (const [id, value] of Object.entries({ 'qr-layout': 'single', 'series-ecc': 'M', 'scan-layout': 'single', 'camera-profile': 'auto', 'calibration-range': 'basic' })) h.els[id].value = value;
+  for (const rate of [1, 2, 5, 10, 15, 20]) { const radio = new Element(`rate-${rate}`); radio.value = String(rate); radio.checked = rate === 2; h.els['frame-rate'].appendChild(radio); }
   h.document = { body: new Element('body'), documentElement: { dataset: { appVersion: html.match(/data-app-version="([^"]+)"/)?.[1] || 'test' } }, activeElement: h.els['expand-qr'], hidden: false, getElementById: (id) => h.els[id], createElement: (tag) => { const element = new Element(); element.tagName = tag.toUpperCase(); if (tag === 'canvas') h.canvases.push(element); return element; }, querySelectorAll: () => [], addEventListener: (name, fn) => { (h.events[name] ??= []).push(fn); } };
   for (const id of ['close-expanded', 'expand-qr', 'animation-toggle', 'frame-slider', 'scan-feedback']) h.els['qr-result'].appendChild(h.els[id]);
   class FakeImage {
@@ -99,18 +110,37 @@ function harness() {
   const encode = h.context.WGQR.encodeBytes;
   h.context.WGQR = { ...h.context.WGQR, encodeBytes(bytes, options) {
     const copy = Uint8Array.from(bytes); const matrix = encode(bytes, options);
-    h.encoded.push(copy); h.encodings.push({ bytes: copy, options, matrix }); h.matrixBytes.set(matrix, copy);
+    h.encoded.push(copy); h.encodings.push({ bytes: copy, options, matrix }); h.matrixBytes.set(matrix, copy); h.matrixBytes.set(matrix.data, copy);
     return matrix;
   }, decodePixels: () => h.optical ? { bytes: Uint8Array.from(h.optical) } : null };
   // Preparation can encode several future packets. Assertions about transmission
   // must follow the matrices actually painted on each canvas, not the encoder log.
   h.context.WGRender = { drawQR(matrix, canvas, options = {}) {
-    const bytes = h.matrixBytes.get(matrix); assert.ok(bytes, 'Rendered a matrix without encoded bytes');
+    const bytes = h.matrixBytes.get(matrix) || h.matrixBytes.get(matrix.data); assert.ok(bytes, 'Rendered a matrix without encoded bytes');
     canvas.payload = Uint8Array.from(bytes); canvas.matrix = matrix;
     const scale = Math.max(1, Math.floor((options.cssWidth || 600) / (matrix.size + 8)));
     canvas.width = canvas.height = (matrix.size + 8) * scale;
     h.rendered.push({ canvas, bytes: Uint8Array.from(bytes), matrix, options });
     return { size: canvas.width, scale };
+  } };
+  const createEncoder = h.context.WGEncoder.create;
+  h.context.WGEncoder = { ...h.context.WGEncoder, create(options) {
+    const encoder = createEncoder(options);
+    return {
+      encodeBatch(batch) {
+        const job = { held: h.deferEncoding, inputs: batch.map(item => Uint8Array.from(item.bytes)), ready: false };
+        h.encoderJobs.push(job); h.activeEncodes++;
+        return encoder.encodeBatch(batch).then(matrices => {
+          job.matrices = matrices; job.ready = true;
+          if (!job.held) return matrices;
+          // A delayed delivery can outlive reset even if the worker finished first.
+          // The app's epoch guard must reject this otherwise valid stale result.
+          return new Promise(resolve => { job.release = () => { job.release = null; resolve(matrices); }; });
+        }).finally(() => { h.activeEncodes--; job.settled = true; });
+      },
+      reset() { h.encoderResets++; encoder.reset(); },
+      dispose() { encoder.dispose(); }
+    };
   } };
   h.context.WGResilient = { ...h.protocol, async createTransfer(...args) { const transfer = await h.protocol.createTransfer(...args); h.transfers.push(transfer); return transfer; } };
   const createTelemetry = h.context.WGTelemetry.create;
@@ -118,16 +148,32 @@ function harness() {
   h.context.WGCamera = { createScanner(options) {
     h.scannerOptions.push(options); let disposed = false; let lanes = options.lanes;
     const scan = (video) => {
-      assert.equal(disposed, false); h.scanCalls.push({ video, lanes });
+      assert.equal(disposed, false);
       const payloads = Array.isArray(video.payload) ? video.payload : [video.payload];
       const results = payloads.filter(Boolean).map((bytes) => ({ bytes: Uint8Array.from(bytes) }));
+      h.scanCalls.push({ video, lanes, payloads: results.map(result => result.bytes) });
       return { result: results[0] || null, results, attempts: lanes, decodeMs: 25, region: 'tracked', pixels: { width: 300, height: 300 } };
     };
-    return { scan, async scanAsync(video) { return scan(video); }, setLanes(value) { lanes = value; }, reset() {}, dispose() { if (!disposed) h.disposedScanners++; disposed = true; } };
+    return { scan, async scanAsync(video) {
+      h.activeScans++; h.maxActiveScans = Math.max(h.maxActiveScans, h.activeScans);
+      try {
+        const sample = scan(video);
+        if (!h.deferScans) return sample;
+        return await new Promise(resolve => { h.scanJobs.push({ sample, release: () => resolve(sample) }); });
+      } finally { h.activeScans--; }
+    }, setLanes(value) { lanes = value; }, reset() {}, dispose() { if (!disposed) h.disposedScanners++; disposed = true; } };
   } };
   vm.runInContext(app, h.context);
   h.wait = async (predicate) => { for (let i = 0; i < 600; i++) { if (predicate()) return; await new Promise((resolve) => setTimeout(resolve, 2)); } throw new Error('Timed out waiting for app state'); };
   h.micro = async () => { for (let i = 0; i < 15; i++) await Promise.resolve(); };
+  h.flush = async () => {
+    for (let attempt = 0; attempt < 300; attempt++) {
+      await h.micro();
+      if (!h.zeroTimers.size && !h.activeEncodes) return;
+      await new Promise(resolve => setTimeout(resolve, 2));
+    }
+    throw new Error('Timed out draining asynchronous preparation');
+  };
   h.display = (id = 'qr-canvas') => h.els[id].payload && Uint8Array.from(h.els[id].payload);
   h.pair = () => [h.display(), ...(h.els['qr-paper-second'].hidden ? [] : [h.display('qr-canvas-second')])];
   h.change = (id, value) => { h.els[id].value = value; h.els[id].dispatch('change'); };
@@ -144,13 +190,15 @@ function harness() {
     await fn(h.now, { presentedFrames: Math.round(video.currentTime * 10), mediaTime: video.currentTime });
     return fn;
   };
-  h.tick = async (name = 'tick') => {
+  h.tick = async (name = 'tick', { flush = true } = {}) => {
+    if (flush) await h.flush();
     const item = [...h.timers.entries()].find(([, entry]) => entry.fn.name === name); assert.ok(item, `No ${name} timer`);
     const [id, entry] = item; h.timers.delete(id); h.now += entry.delay; await entry.fn();
+    await h.micro();
   };
   h.rate = () => Number(h.els['frame-rate'].children.find((radio) => radio.checked).value);
   h.setRate = (rate) => { for (const radio of h.els['frame-rate'].children) radio.checked = Number(radio.value) === rate; h.els['frame-rate'].dispatch('change'); };
-  h.close = () => { h.els['clear-all'].click(); for (const timer of h.zeroTimers.values()) clearTimeout(timer); h.zeroTimers.clear(); h.timers.clear(); h.videoCallbacks.clear(); };
+  h.close = () => { h.els['clear-all'].click(); for (const job of h.encoderJobs) job.release?.(); for (const job of h.scanJobs) job.release(); for (const timer of h.zeroTimers.values()) clearTimeout(timer); h.zeroTimers.clear(); h.timers.clear(); h.videoCallbacks.clear(); };
   return h;
 }
 
@@ -163,7 +211,7 @@ test('sender sends all source packets once, then advances repair serials; pause 
     assert.deepEqual(h.display(), transfer.manifestFrame());
     const collector = h.protocol.createCollector(); await collector.accept(h.display());
     h.els['animation-toggle'].click();
-    await h.wait(() => h.zeroTimers.size === 0);
+    await h.flush();
     assert.deepEqual(h.display(), transfer.manifestFrame(), 'Prefetch must not replace the visible packet');
     for (let index = 0; index < 5; index++) { await h.tick(); assert.deepEqual(h.display(), transfer.frame(index)); if (index === 0) await collector.accept(h.display()); }
     await h.tick();
@@ -354,14 +402,14 @@ test('dual sender presents distinct source packets and resumes after prefetched 
     assert.match(h.els['estimate-five-label'].textContent, /5 par\/s.*10 QR\/s/);
     assert.deepEqual(h.pair(), [transfer.manifestFrame(), transfer.frame(0)]);
     assert.equal(h.els['qr-canvas'].matrix.level, 'M'); assert.equal(h.els['qr-canvas-second'].matrix.level, 'L');
-    h.els['animation-toggle'].click(); await h.wait(() => h.zeroTimers.size === 0);
+    h.els['animation-toggle'].click(); await h.flush();
     assert.ok(h.encodings.length >= 8, 'The bounded prefetch queue should contain three future pairs');
     assert.deepEqual(h.pair(), [transfer.manifestFrame(), transfer.frame(0)], 'Encoding ahead must not transmit ahead');
     await h.tick(); assert.deepEqual(h.pair(), [transfer.frame(1), transfer.frame(2)]);
-    await h.wait(() => h.zeroTimers.size === 0);
+    await h.flush();
     h.els['animation-toggle'].click(); const paused = h.pair(); const paints = h.rendered.length;
     h.setRate(5); await h.micro(); assert.equal(h.rendered.length, paints); assert.deepEqual(h.pair(), paused);
-    h.els['animation-toggle'].click(); await h.wait(() => h.zeroTimers.size === 0);
+    h.els['animation-toggle'].click(); await h.flush();
     await h.tick(); assert.deepEqual(h.pair(), [transfer.frame(3), transfer.frame(4)]);
     await h.tick(); assert.deepEqual(h.pair(), [transfer.repairFrame(0, 0), transfer.repairFrame(0, 1)]);
     assert.match(h.els['frame-position'].textContent, /Naprawa/);
@@ -427,12 +475,12 @@ test('v3 feedback presents targeted missing source packets before fountain repai
     const feedback = receiver.createFeedback({ suggestedRate: 5 }); const parsed = transfer.acceptFeedback(feedback);
     assert.deepEqual(Array.from(parsed.missingBlocks), [0, 2]);
     assert.deepEqual(Array.from(parsed.repairTargets, target => Array.from(target.missingFrames)), [[2], [66]]);
-    h.els['animation-toggle'].click(); await h.wait(() => h.zeroTimers.size === 0);
+    h.els['animation-toggle'].click(); await h.flush();
     h.upload(feedback, true); await h.wait(() => !h.els['choose-feedback-image'].disabled);
     assert.equal(h.rate(), 5); assert.equal(h.els['animation-toggle'].getAttribute('aria-pressed'), 'false');
     assert.deepEqual(h.pair(), [transfer.manifestFrame(), transfer.frame(2)]);
     await receiver.accept(h.display()); await receiver.accept(h.display('qr-canvas-second'));
-    h.els['animation-toggle'].click(); await h.wait(() => h.zeroTimers.size === 0);
+    h.els['animation-toggle'].click(); await h.flush();
     await h.tick(); assert.deepEqual(h.pair(), [transfer.frame(66), transfer.repairFrame(0, 0)]);
     const completed = await receiver.accept(h.display()); assert.equal(completed.kind, 'complete'); assert.deepEqual(completed.bytes, original);
     await h.tick(); assert.deepEqual(h.pair(), [transfer.repairFrame(2, 1), transfer.repairFrame(0, 2)]);
@@ -465,7 +513,7 @@ test('dual PNG export captures both visible symbols at integer module pitch and 
   const h = harness();
   try {
     h.change('qr-layout', 'dual'); h.els['series-sample'].click(); await h.wait(() => !h.els['choose-file'].disabled);
-    h.els['animation-toggle'].click(); await h.wait(() => h.zeroTimers.size === 0); await h.tick();
+    h.els['animation-toggle'].click(); await h.flush(); await h.tick();
     const pair = h.pair(); h.els['download-qr'].click();
     assert.equal(h.els['animation-toggle'].getAttribute('aria-pressed'), 'false');
     const download = h.downloads.at(-1); assert.equal(download.blob.type, 'image/png');
@@ -512,6 +560,8 @@ test('calibration exchanges a measured dual profile, regenerates the transfer, a
     receiver.els['decode-tab'].click(); receiver.change('scan-layout', 'dual'); receiver.els['start-camera'].click();
     await receiver.wait(() => receiver.videoCallbacks.size === 1);
     const started = sender.now; sender.els['start-calibration'].click();
+    await sender.flush();
+    await sender.wait(() => sender.context.WGCalibration.isFrame(sender.display()));
     assert.equal(sender.els['stop-calibration'].hidden, false); assert.equal(sender.els['animation-toggle'].disabled, true);
     for (let index = 0; index < 6; index++) {
       const parsed = sender.context.WGCalibration.parse(sender.display());
@@ -549,4 +599,172 @@ test('calibration exchanges a measured dual profile, regenerates the transfer, a
     assert.equal(receiver.els['download-file'].disabled, false); assert.equal(receiver.telemetry.snapshot().cameraAttempts, 3);
     receiver.els['download-file'].click(); assert.deepEqual(new Uint8Array(await receiver.downloads.at(-1).blob.arrayBuffer()), original);
   } finally { sender.close(); receiver.close(); }
+});
+
+test('late asynchronous encoding holds the visible pair and cannot skip packets or repaint after pause and reset', async () => {
+  const h = harness();
+  try {
+    h.change('qr-layout', 'dual'); h.els['series-sample'].click(); await h.wait(() => !h.els['choose-file'].disabled);
+    const transfer = h.transfers.at(-1), initial = h.pair();
+    h.deferEncoding = true; h.els['animation-toggle'].click();
+    await h.wait(() => h.encoderJobs.at(-1)?.ready && h.encoderJobs.at(-1)?.release);
+    const pending = h.encoderJobs.at(-1), jobCount = h.encoderJobs.length;
+    await h.tick('tick', { flush: false }); await h.tick('tick', { flush: false });
+    assert.deepEqual(h.pair(), initial, 'A missed preparation deadline must hold both current QR symbols');
+    assert.equal(h.encoderJobs.length, jobCount, 'A busy encoder must not accumulate more work');
+    assert.equal(h.els['animation-toggle'].getAttribute('aria-pressed'), 'true');
+    h.els['animation-toggle'].click(); h.deferEncoding = false; pending.release(); await h.flush();
+    assert.deepEqual(h.pair(), initial); assert.ok(pending.matrices.every(matrix => matrix.data.every(value => value === 0)));
+    h.els['animation-toggle'].click(); await h.tick();
+    assert.deepEqual(h.pair(), [transfer.frame(1), transfer.frame(2)], 'Resume starts from the last presented checkpoint');
+    h.els['animation-toggle'].click();
+    h.choose([new File([new Uint8Array(5000).fill(71)], 'replacement-series.bin')]); await h.wait(() => !h.els['choose-file'].disabled);
+    h.deferEncoding = true; h.els['animation-toggle'].click();
+    await h.wait(() => h.encoderJobs.at(-1)?.ready && h.encoderJobs.at(-1)?.release);
+    const stale = h.encoderJobs.at(-1);
+    h.els['clear-all'].click(); const paints = h.rendered.length;
+    h.deferEncoding = false; stale.release(); await h.flush();
+    assert.equal(h.rendered.length, paints); assert.equal(h.els['qr-result'].hidden, true);
+    assert.ok(stale.matrices.every(matrix => matrix.data.every(value => value === 0)));
+    assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tick'));
+  } finally { h.close(); }
+});
+
+test('camera keeps the newest frame during a slow decode and starts it without waiting for another callback', async () => {
+  const h = harness();
+  try {
+    const original = Uint8Array.from({ length: 1152 }, (_, index) => index % 251);
+    const transfer = await h.protocol.createTransfer(original, 'latest-frame.bin', { chunkBytes: 384 });
+    h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    h.deferScans = true;
+    const first = h.fireFrame('camera-video', transfer.frame(0)); await h.wait(() => h.scanJobs.length === 1);
+    assert.equal(h.videoCallbacks.size, 1, 'The next video callback is armed while the decoder is busy');
+    await h.fireFrame('camera-video', transfer.frame(1));
+    await h.fireFrame('camera-video', transfer.frame(2));
+    assert.equal(h.scanCalls.length, 1); assert.equal(h.activeScans, 1);
+    h.deferScans = false; h.scanJobs[0].release(); await first;
+    await h.wait(() => h.scanCalls.length === 2 && h.telemetry.snapshot().usefulUnits === 2);
+    assert.deepEqual(h.scanCalls.map(call => call.payloads[0]), [transfer.frame(0), transfer.frame(2)]);
+    assert.equal(h.maxActiveScans, 1); assert.equal(h.els['download-file'].disabled, true);
+    await h.fireFrame('camera-video', transfer.frame(1));
+    assert.equal(h.els['download-file'].disabled, false); assert.equal(h.telemetry.snapshot().cameraAttempts, 3);
+    assert.equal(h.videoCallbacks.size, 0);
+    h.els['download-file'].click(); assert.deepEqual(new Uint8Array(await h.downloads.at(-1).blob.arrayBuffer()), original);
+  } finally { h.close(); }
+});
+
+test('stopping the camera discards both the pending latest frame and a late worker result', async () => {
+  const h = harness();
+  try {
+    const transfer = await h.protocol.createTransfer(new Uint8Array(768).fill(23), 'cancelled-camera.bin', { chunkBytes: 384 });
+    h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    h.deferScans = true;
+    const first = h.fireFrame('camera-video', transfer.frame(0)); await h.wait(() => h.scanJobs.length === 1);
+    await h.fireFrame('camera-video', transfer.frame(1)); h.els['stop-camera'].click();
+    h.deferScans = false; h.scanJobs[0].release(); await first; await h.micro();
+    assert.equal(h.scanCalls.length, 1); assert.equal(h.videoCallbacks.size, 0); assert.equal(h.activeScans, 0);
+    assert.equal(h.telemetry.snapshot().transfer, null); assert.equal(h.els['download-file'].disabled, true);
+    assert.equal(h.streams.at(-1).track.stopped, true);
+  } finally { h.close(); }
+});
+
+test('optional single-file ZIP reduces useful series data and unchecking it restores the original bytes', async () => {
+  const h = harness();
+  try {
+    const original = new TextEncoder().encode('\uFEFF' + 'Zażółć gęślą jaźń — dane do przesłania.\r\n'.repeat(700));
+    const file = new File([original], 'large-notes.txt');
+    h.els['compress-single'].checked = true; h.choose([file]); await h.wait(() => !h.els['choose-file'].disabled);
+    const compressed = h.transfers.at(-1); assert.equal(compressed.name, 'large-notes.zip');
+    assert.ok(compressed.size < original.length * 0.1); assert.equal(h.els['zip-details'].hidden, false);
+    const archive = await collectTransfer(h.protocol, compressed);
+    const entries = unzipSync(archive); assert.deepEqual(Object.keys(entries), ['large-notes.txt']);
+    assert.deepEqual(entries['large-notes.txt'], original);
+    h.els['download-source-zip'].click(); assert.deepEqual(new Uint8Array(await h.downloads.at(-1).blob.arrayBuffer()), archive);
+    h.els['compress-single'].checked = false; h.els['compress-single'].dispatch('change');
+    await h.wait(() => h.transfers.length === 2 && !h.els['choose-file'].disabled);
+    const restored = h.transfers.at(-1); assert.equal(restored.name, 'large-notes.txt'); assert.equal(restored.size, original.length);
+    assert.deepEqual(await collectTransfer(h.protocol, restored), original);
+    assert.equal(h.els['zip-details'].hidden, true); assert.equal(h.els['download-source-zip'].disabled, true);
+    assert.deepEqual(new Uint8Array(await file.arrayBuffer()), original);
+    assert.throws(() => compressed.frame(0), error => error.code === 'TRANSFER_DISPOSED');
+  } finally { h.close(); }
+});
+
+test('optional ZIP retains incompressible bytes, direct WireGuard and pre-existing archives', async () => {
+  const h = harness();
+  try {
+    let seed = 0x1234abcd;
+    const original = Uint8Array.from({ length: 6000 }, () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return seed & 255; });
+    h.els['compress-single'].checked = true; h.choose([new File([original], 'noise.bin')]);
+    await h.wait(() => !h.els['choose-file'].disabled);
+    const unchanged = h.transfers.at(-1); assert.equal(unchanged.name, 'noise.bin'); assert.equal(unchanged.size, original.length);
+    assert.deepEqual(await collectTransfer(h.protocol, unchanged), original); assert.equal(h.els['zip-details'].hidden, true);
+    assert.match(h.els['encode-message'].textContent, /ZIP nie zmniejszyłby/);
+    const conf = new TextEncoder().encode('[Interface]\r\nPrivateKey = DEMO\r\n[Peer]\r\nPublicKey = DEMO\r\n');
+    h.els['transfer-mode'].value = 'auto'; const count = h.transfers.length;
+    h.choose([new File([conf], 'direct.conf')]); await h.wait(() => !h.els['choose-file'].disabled);
+    assert.equal(h.transfers.length, count); assert.equal(h.els['series-controls'].hidden, true); assert.deepEqual(h.display(), conf);
+    const archive = await h.context.WGZip.createArchive([new File([conf], 'inside.conf')]);
+    const expected = Uint8Array.from(archive.bytes); h.els['transfer-mode'].value = 'series';
+    h.choose([new File([expected], 'existing.zip', { type: 'application/zip' })]); await h.wait(() => !h.els['choose-file'].disabled);
+    const existing = h.transfers.at(-1); assert.equal(existing.name, 'existing.zip');
+    assert.deepEqual(await collectTransfer(h.protocol, existing), expected);
+    assert.deepEqual(Object.keys(unzipSync(expected)), ['inside.conf']); archive.bytes.fill(0);
+  } finally { h.close(); }
+});
+
+test('extended calibration displays ten profiles and applies the measured 20 Hz result to a fresh transfer', async () => {
+  const h = harness();
+  try {
+    h.change('qr-layout', 'dual'); h.change('calibration-range', 'fast');
+    h.els['series-sample'].click(); await h.wait(() => !h.els['choose-file'].disabled);
+    const old = h.transfers.at(-1), observer = h.context.WGCalibration.createObserver();
+    const started = h.now; h.els['start-calibration'].click(); await h.flush();
+    assert.match(h.els['calibration-status'].textContent, /40 s/);
+    for (let index = 0; index < 10; index++) {
+      const parsed = h.context.WGCalibration.parse(h.display());
+      assert.equal(parsed.version, 2); assert.equal(parsed.index, index);
+      if (index === 9) for (let step = 0; step < 3; step++) {
+        if (step) await h.tick('tickCalibration');
+        const pair = h.pair();
+        assert.equal(h.context.WGCalibration.parse(pair[0]).sequence, step * 2);
+        for (const bytes of pair) observer.accept(bytes, h.now);
+      }
+      const timer = [...h.timers.values()].find(item => item.fn.name === 'tickCalibration');
+      assert.ok(timer);
+      h.now = started + (index + 1) * 4000 - timer.delay;
+      await h.tick('tickCalibration');
+    }
+    observer.accept(h.display(), h.now);
+    assert.equal(observer.state.best.fps, 20); assert.equal(observer.state.best.chunkBytes, 600);
+    h.upload(observer.createFeedback(), true); await h.wait(() => h.transfers.length === 2 && !h.els['choose-file'].disabled);
+    const transfer = h.transfers.at(-1); assert.notEqual(transfer.id, old.id); assert.equal(transfer.chunkBytes, 600);
+    assert.equal(h.rate(), 20); assert.equal(h.els['estimate-twenty-cell'].classList.contains('is-selected'), true);
+    assert.match(h.els['estimate-twenty-label'].textContent, /20 par\/s.*40 QR\/s/);
+    assert.equal(h.els['animation-toggle'].getAttribute('aria-pressed'), 'false');
+    h.els['animation-toggle'].click(); await h.flush();
+    const timer = [...h.timers.values()].find(item => item.fn.name === 'tick');
+    assert.ok(timer.delay > 0 && timer.delay <= 60, '20 Hz must schedule around 50 ms, not the default 500 ms');
+    await h.tick(); assert.deepEqual(h.pair(), [transfer.frame(1), transfer.frame(2)]);
+  } finally { h.close(); }
+});
+
+test('calibration discards a missed encoding slot and cannot repaint after the trial is stopped', async () => {
+  const h = harness();
+  try {
+    h.change('qr-layout', 'dual'); h.els['series-sample'].click(); await h.wait(() => !h.els['choose-file'].disabled);
+    const initial = h.pair(); h.deferEncoding = true; h.els['start-calibration'].click();
+    await h.wait(() => h.encoderJobs.at(-1)?.ready && h.encoderJobs.at(-1)?.release);
+    const late = h.encoderJobs.at(-1); h.now += 550; h.deferEncoding = false; late.release(); await h.flush();
+    assert.deepEqual(h.pair(), initial); assert.ok(late.matrices.every(matrix => matrix.data.every(value => value === 0)));
+    await h.tick('tickCalibration');
+    assert.equal(h.context.WGCalibration.parse(h.display()).sequence, 2);
+    const current = h.pair(); h.deferEncoding = true;
+    const next = h.tick('tickCalibration'); await h.wait(() => h.encoderJobs.at(-1)?.ready && h.encoderJobs.at(-1)?.release);
+    const cancelled = h.encoderJobs.at(-1); h.els['stop-calibration'].click();
+    h.deferEncoding = false; cancelled.release(); await next; await h.flush();
+    assert.deepEqual(h.pair(), current); assert.equal(h.els['stop-calibration'].hidden, true);
+    assert.equal(h.els['animation-toggle'].disabled, false); assert.ok(cancelled.matrices.every(matrix => matrix.data.every(value => value === 0)));
+    assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tickCalibration'));
+  } finally { h.close(); }
 });
