@@ -55,7 +55,7 @@ function missingContext(source, form, context, veterinary, instruction) {
   if (weightNeeded && !has(context.weight)) reasons.push('Uzupełnij masę ciała, aby porównać schemat.');
   if (!has(context.age) && (source.minimumAge || has(source.minAgeMonths) || has(source.maxAgeMonths) || has(form.minAge)))
     reasons.push('Uzupełnij wiek, aby sprawdzić warunki schematu i preparatu.');
-  if (source.requireCrCl && !has(context.crcl)) reasons.push('Uzupełnij CrCl, aby sprawdzić warunki schematu.');
+  if (source.requireCrCl && context.ignoreCrCl !== true && !has(context.crcl)) reasons.push('Uzupełnij CrCl, aby sprawdzić warunki schematu.');
   return reasons;
 }
 

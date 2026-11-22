@@ -1,10 +1,18 @@
 # Czynność nerek, CrCl i kwalifikacja schematu
 
-Stan implementacji i przeglądu źródeł: **2026-11-21**. Zakres dotyczy panelu nerkowego, normalizacji danych i prezentacji istniejących schematów. Nie dodano nowych dawek ani automatycznego wyboru leczenia.
+Stan implementacji: **2026-11-22**; ostatni przegląd źródeł: **2026-11-21**. Zakres dotyczy panelu nerkowego, normalizacji danych i prezentacji istniejących schematów. Nie dodano nowych dawek ani automatycznego wyboru leczenia.
+
+## Pomijanie CrCl
+
+Checkbox **Ignoruj** w nagłówku panelu jest domyślnie zaznaczony. Stan `ignoreCrCl` pomija wymaganie, poprawność i przedziały liczbowego CrCl oraz wejścia potrzebne wyłącznie do obliczenia CG. Pola i wybrany tryb pozostają w pamięci bieżącego pacjenta; po odznaczeniu wracają i są ponownie sprawdzane. Nowy pacjent otrzymuje domyślne zaznaczenie.
+
+Pomijanie nie wstawia zastępczej wartości CrCl ani prawidłowego statusu nerek, nie wybiera innego schematu i nie zmienia jego limitów. Wynik ma `crclIgnored: true`, komunikat **CrCl pominięty** i neutralne porównanie liczbowe. Kopiowanie nadal wymaga kompletu pozostałych danych oraz końcowego potwierdzenia. Zgłoszone zaburzenia czynności nerek, warunki źródłowe (w tym dializoterapia) i niezależna kreatynina w kryteriach NVAF pozostają sprawdzane. W niskopoziomowym silniku pomijanie wymaga jawnego `context.ignoreCrCl === true`; brak tej flagi zachowuje dotychczasową walidację.
+
+Kreatynina potrzebna wyłącznie do nieużywanego wzoru CG nie jest wymagana. Gdy stanowi niezależne kryterium apiksabanu, jej jednostki i poprawność pozostają walidowane, a obowiązek uzupełnienia wynika z reguły 2 z 3. Zmiana checkboxa cofa końcowe potwierdzenie i zmienia kontekst koszyka; wcześniejsze pozycje wymagają ponownego przeliczenia. Edycja zapisanej pozycji zachowuje aktualny wybór checkboxa.
 
 ## Dwa jawne tryby
 
-Domyślny tryb **Mam oceniony CrCl** przyjmuje ustaloną wartość w ml/min. **Oblicz z kreatyniny** jest osobnym wyborem użytkownika i udostępnia oszacowanie Cockcrofta–Gaulta (CG) dla dorosłych. Wybranie leku lub wpisanie kreatyniny nie uruchamia CG samoczynnie. Podczas obliczania nie używa się poprzedniej wartości ręcznej jako zastępczego wyniku.
+Po odznaczeniu **Ignoruj** domyślny tryb **Mam oceniony CrCl** przyjmuje ustaloną wartość w ml/min. **Oblicz z kreatyniny** jest osobnym wyborem użytkownika i udostępnia oszacowanie Cockcrofta–Gaulta (CG) dla dorosłych. Wybranie leku lub wpisanie kreatyniny nie uruchamia CG samoczynnie. Podczas obliczania nie używa się poprzedniej wartości ręcznej jako zastępczego wyniku.
 
 CrCl jest odrębny od kreatyniny w surowicy i eGFR. MHRA wskazuje CG do oceny CrCl przy dawkowaniu DOAC; nie przenosimy tego na twierdzenie, że eGFR jest niewłaściwe dla wszystkich leków. Wymaganie CrCl w aplikacji nadal wynika z konkretnego schematu. [MHRA, sekcje „Advice for healthcare professionals” i „When to use estimated creatinine clearance”](https://www.gov.uk/drug-safety-update/prescribing-medicines-in-renal-impairment-using-the-appropriate-estimate-of-renal-function-to-avoid-the-risk-of-adverse-drug-reactions).
 
@@ -52,7 +60,7 @@ Wpisana nieprawidłowa kreatynina nadal jest błędem. Rozstrzygnięte zliczenie
 
 ## Neutralny wykres i osobny status
 
-Znana dawka i znana wartość odniesienia mogą być porównane liczbowo przed ukończeniem kwalifikacji pacjenta. Przykład testowy: 10 mg/dobę wobec źródłowych 10 mg/dobę daje neutralne 100%. Brak CrCl nie usuwa tej arytmetyki, ale pozostaje przeszkodą do ukończenia odpowiedniego schematu.
+Znana dawka i znana wartość odniesienia mogą być porównane liczbowo przed ukończeniem kwalifikacji pacjenta. Przykład testowy: 10 mg/dobę wobec źródłowych 10 mg/dobę daje neutralne 100%. Przy odznaczonym **Ignoruj** brak wymaganego CrCl nie usuwa tej arytmetyki, ale pozostaje przeszkodą do ukończenia odpowiedniego schematu. Przy zaznaczonym checkboxie porównanie pozostaje neutralne i jest opisane jako pomijające CrCl.
 
 `issues` rozróżniają brak danych, błędne dane i wartości poza zakresem. Wspólny status grupuje brakujące pola i prowadzi do nich przyciskiem `complete-patient-data`. W trybie CG wskazuje konkretnie np. płeć do wzoru albo warunki oszacowania, zamiast dodatkowej prośby o ręczny CrCl. Nie dopisuje się mianownika, maksimum ani zerowej dawki dla potrzeb grafiki. Przekroczenie wartości źródłowej i przekroczenie osobnego limitu pozostają jawne. Szczegóły: [dose-safety-notes.md](dose-safety-notes.md) i [dose-regimen-notes.md](dose-regimen-notes.md).
 

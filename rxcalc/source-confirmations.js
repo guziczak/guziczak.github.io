@@ -13,7 +13,7 @@
  * Unknown source/requirement/field: clear. Adding a new rule requires review.
  */
 const INDEPENDENT_FIELDS = new Set([
-  'humanCrCl', 'humanSerumCreatinine', 'renalInputMode', 'renalCreatinineUnit',
+  'humanCrCl', 'humanSerumCreatinine', 'ignoreCrCl', 'renalInputMode', 'renalCreatinineUnit',
   'renalSex', 'renalCalculationWeight', 'renalCalculationReviewed',
   'renalStatus', 'renalImpairment', 'weight',
 ]);

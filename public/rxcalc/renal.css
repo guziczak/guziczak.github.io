@@ -1,8 +1,12 @@
 .renal-panel{margin-top:16px;padding-top:16px;border-top:1px solid var(--border);min-width:0;scroll-margin-top:110px}
-.renal-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.renal-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 10px;margin-bottom:12px}
 .renal-heading h4{display:flex;align-items:center;gap:7px;margin:0;color:var(--ink);font-size:13px;font-weight:650}
 .renal-heading svg{width:16px;height:16px;color:var(--accent)}
-.renal-heading>span{font-size:11px;color:var(--muted);text-align:right}
+.renal-heading-controls{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-left:auto}
+.renal-heading-controls>span{font-size:11px;color:var(--muted);text-align:right}
+.renal-ignore-option{display:inline-flex;align-items:center;gap:7px;min-height:44px;font-size:12px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.renal-ignore-option input{width:18px;height:18px;margin:0;accent-color:var(--accent);cursor:pointer}
+.renal-ignored{margin:0;font-size:12px;line-height:1.6;color:var(--muted)}
 .renal-modes{display:grid;grid-template-columns:1fr 1fr;gap:4px;border:1px solid var(--border);padding:4px;border-radius:10px;background:var(--surface-soft);margin-bottom:14px}
 .renal-modes button{min-height:44px;min-width:0;padding:8px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--muted);font-size:12px;line-height:1.4}
 .renal-modes button.active{border-color:var(--border);background:var(--surface);color:var(--ink);font-weight:650}
@@ -33,5 +37,5 @@
 .renal-criteria[hidden]{display:none}
 .renal-panel :is(input,select,button,summary):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .renal-panel .field{scroll-margin-top:110px}
-@media(max-width:600px){.renal-fields{grid-template-columns:minmax(0,1fr)}.renal-modes button{font-size:12px}.renal-heading{align-items:flex-start}.renal-heading>span{max-width:120px}.renal-review,.renal-help,.renal-weight-details{font-size:12px}.renal-estimate p,.renal-estimate>small,.renal-criteria{font-size:12px}}
+@media(max-width:600px){.renal-fields{grid-template-columns:minmax(0,1fr)}.renal-modes button{font-size:12px}.renal-heading-controls>span{max-width:120px}.renal-review,.renal-help,.renal-weight-details{font-size:12px}.renal-estimate p,.renal-estimate>small,.renal-criteria{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.renal-panel{scroll-behavior:auto}}

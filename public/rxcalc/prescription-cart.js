@@ -3,7 +3,7 @@
  * This module neither persists patient data nor validates combinations of drugs.
  * The calculator supplies its already validated text in both output modes.
  */
-import { RENAL_STATE_DEFAULTS, RENAL_STATE_FIELDS, renalAssessmentForState } from './renal-state.js';
+import { RENAL_STATE_DEFAULTS, RENAL_STATE_FIELDS, renalAssessmentForState, isCrClIgnored } from './renal-state.js';
 
 export const PATIENT_CONTEXT_FIELDS = Object.freeze([
   'specialty', 'patientType', 'age', 'weight', 'species', 'vetAgeUnit',
@@ -47,6 +47,7 @@ export function normalizePatientContext(state = {}) {
     age: numeric(state.age),
     ageUnit: (animal ? state.vetAgeUnit : state.humanAgeUnit) || 'years',
     renalStatus: animal ? null : state.renalStatus || 'unknown',
+    ignoreCrCl: animal ? null : isCrClIgnored(state),
     crcl: animal ? null : calculated ? renal.crcl : renal.crcl ?? numeric(state.humanCrCl),
     serumCreatinine: animal ? null : renal.serumCreatinineMgDl ?? numeric(state.humanSerumCreatinine),
     renalInputMode: animal ? null : state.renalInputMode ?? 'manual',
