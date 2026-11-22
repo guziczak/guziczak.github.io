@@ -7,7 +7,7 @@
   const BUCKET_MS = 100;
   const BUCKET_COUNT = 51;
   const MAX_COUNT = Number.MAX_SAFE_INTEGER;
-  const TYPES = ['single', 'mixed', 'legacy', 'plain', 'unknown'];
+  const TYPES = ['single', 'mixed', 'legacy', 'plain', 'manifest', 'unknown'];
   const REASONS = ['foreign', 'invalid', 'feedback'];
   const TRANSFER_FIELDS = ['version', 'size', 'total', 'chunkBytes', 'blockCount', 'received', 'blocksComplete'];
 
@@ -94,11 +94,11 @@
       histogram = new Float64Array(342);
       recent = Array.from({ length: BUCKET_COUNT }, () => ({ slot: -1, units: 0 }));
       counters = {
-        cameraStarts: 0, cameraAttempts: 0, opticalReads: 0, imageReads: 0,
+        cameraStarts: 0, cameraAttempts: 0, decodeAttempts: 0, opticalReads: 0, imageReads: 0,
         acceptedPackets: 0, usefulPackets: 0, redundantPackets: 0, usefulUnits: 0,
         cameraPackets: 0, imagePackets: 0,
         singleFragmentPackets: 0, mixedEquationPackets: 0,
-        legacyPackets: 0, plainPackets: 0, unknownPackets: 0,
+        legacyPackets: 0, plainPackets: 0, manifestPackets: 0, unknownPackets: 0,
         rejectedPackets: 0, latencySamples: 0, trackedAttempts: 0, searchAttempts: 0
       };
       rejections = { foreign: 0, invalid: 0, feedback: 0 };
@@ -175,7 +175,11 @@
       if (frozen) return;
       const input = sample && typeof sample === 'object' ? sample : {};
       increment('cameraAttempts');
-      if (input.result) increment('opticalReads');
+      const attempts = integer(input.attempts, 2);
+      increment('decodeAttempts', attempts === null ? 1 : attempts);
+      const symbols = integer(input.symbols, 2);
+      if (symbols !== null) increment('opticalReads', symbols);
+      else if (input.result) increment('opticalReads');
       if (input.region === 'tracked') increment('trackedAttempts');
       else if (input.region === 'search') increment('searchAttempts');
       const latency = finite(input.decodeMs);
@@ -209,18 +213,20 @@
       const type = TYPES.includes(input.packetType) ? input.packetType : 'unknown';
       const counter = {
         single: 'singleFragmentPackets', mixed: 'mixedEquationPackets',
-        legacy: 'legacyPackets', plain: 'plainPackets', unknown: 'unknownPackets'
+        legacy: 'legacyPackets', plain: 'plainPackets', manifest: 'manifestPackets', unknown: 'unknownPackets'
       }[type];
       increment(counter);
       const delta = integer(input.delta) || 0;
       if (delta > 0) {
-        increment('usefulPackets');
+        // A manifest can unlock previously buffered data. Count those rank gains,
+        // while keeping the metadata packet separate from data and duplicates.
+        if (type !== 'manifest') increment('usefulPackets');
         increment('usefulUnits', delta);
         const slot = Math.floor(timestamp / BUCKET_MS);
         const bucket = recent[slot % BUCKET_COUNT];
         if (bucket.slot !== slot) { bucket.slot = slot; bucket.units = 0; }
         bucket.units = add(bucket.units, delta);
-      } else increment('redundantPackets');
+      } else if (type !== 'manifest') increment('redundantPackets');
       if (metadata.complete === true) {
         if (cameraStartedAt !== null) {
           cameraMs += Math.max(0, timestamp - cameraStartedAt);
