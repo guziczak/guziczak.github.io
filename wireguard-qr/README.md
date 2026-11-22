@@ -66,7 +66,9 @@ Wynik wybiera spośród przetestowanych profili na podstawie nowych odczytanych 
 
 W **Odporność kodów serii** domyślna korekcja **M** zapewnia większą nadmiarowość wewnątrz QR. Eksperymentalne **L** może dla tej samej porcji danych zmniejszyć liczbę modułów, kosztem słabszej korekcji uszkodzonych fragmentów obrazu. To odrębna warstwa od kodów naprawczych całej serii. Próba dobiera tempo i gęstość dla aktualnie wybranego M/L; nie przełącza automatycznie poziomu korekcji.
 
-**Kadr kamery** oferuje **Automatycznie**, **Szeroki · 16:9** i **Klasyczny · 4:3**. Są to preferencje przekazywane przeglądarce, a nie gwarancja trybu sensora. Faktyczne wymiary i zgłoszone FPS pochodzą z ustawień uruchomionej kamery i są dostępne w diagnostyce. Proporcje kadru nie zmieniają kwadratowego kształtu QR.
+**Kadr kamery** oferuje **Automatycznie**, **Szeroki · 16:9** i **Klasyczny · 4:3**. Są to preferencje przekazywane przeglądarce, a nie gwarancja trybu sensora. Diagnostyka zapisuje rozdzielczość i FPS zgłoszone przez kamerę przy uruchomieniu. Pod podglądem pokazywane są aktualne wymiary obrazu video, które mogą zmieniać się po obróceniu telefonu. Proporcje kadru nie zmieniają kwadratowego kształtu QR.
+
+Podgląd kamery oraz odczytu potwierdzenia zachowuje proporcje aktualnych `videoWidth` i `videoHeight`. Jego szerokość i wysokość dopasowują się razem do dostępnego miejsca, także po obrocie telefonu albo zmianie wielkości okna. Jedna obwódka oznacza obszar podglądu; nie trzeba trafiać kodami w dwa osobne pola. Skaner szuka dwóch symboli zarówno obok siebie, jak i jeden nad drugim oraz odczytuje kody obrócone o 90°. Obrót urządzenia i zmiana rozmiaru podglądu nie uruchamiają ponownie kamery ani nie resetują odebranych danych. Aparat warto skierować na wprost ekranu i zmieścić całe białe marginesy; ułożenie telefonu pionowo lub poziomo pozostaje wyborem użytkownika.
 
 ### Jak porównać szybkość na swoich urządzeniach
 
