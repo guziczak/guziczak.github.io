@@ -6,6 +6,131 @@ The site preserves raw file bytes in QR byte segments. A small ordinary configur
 
 Both helpers work in browser memory without network requests, workers, persistence, compression, or new dependencies. Web Crypto provides random session IDs and SHA-256, so framed transfer completion needs HTTPS or localhost. ZIP compression is a separate application feature.
 
+## Segmented version 4 for large files
+
+`assets/qr-large.js` adds `WGLarge`, a separate large-file transport with a maximum of **209,715,200 bytes (200 MiB)**. It preserves any selected single file or existing ZIP without extracting or recompressing it. Existing v1/v2/v3 limits and wire formats are unchanged. Both devices must support v4; an ordinary QR scanner cannot assemble this protocol.
+
+The file is divided into **2,097,152-byte (2 MiB) segments**, with a shorter final segment when needed. There are 1–100 segments. Each segment uses the existing compact v3 source symbols, 32-source XOR generations, fountain repairs and SHA-256 check. A new outer envelope binds every symbol to the identity of the whole file and a zero-based segment index. Interleaving operates only inside the current segment.
+
+The sender reads the source `File` in sequential slices during preparation, retaining only the segment digests. `loadSegment(index)` reads and retains one segment, checks its digest against preparation, and releases the preceding segment. The receiver retains one inner collector and writes a segment only after its SHA-256 has passed. It discards an incomplete inner session when a manifest selects a different segment or a new inner session for the same segment. Already committed segments remain available. Partial equations are not persisted in v4; an interrupted segment may need to be sent again.
+
+The active source/equation buffers are bounded by the segment size, not the total file size. Durable files, final assembly, temporary browser buffers, camera frames and QR matrices have separate storage/memory costs. This framing does not guarantee that every device can receive or export a 200 MiB file, or shorten the optical transmission time. The application must verify that its storage adapter is available before starting the large-file receiver.
+
+### Stable identity: ordered segment-hash root
+
+The descriptor is exactly:
+
+```js
+{ version: 4, id, name, size, segmentBytes: 2097152, segmentCount }
+```
+
+`name` is the same canonical sanitized UTF-8 basename used by v3, at most 120 encoded bytes. `segmentCount` must equal `ceil(size/2097152)`. `id` is a lowercase 64-character hex encoding of SHA-256 over this canonical byte sequence, in the order shown:
+
+| Length | Input to the root hash |
+| --- | --- |
+| 16 | ASCII `WGQR-LARGE-ROOT` followed by one zero byte |
+| 1 | Version `4` |
+| 4 | Original file length, unsigned big-endian |
+| 4 | Segment size `2097152`, unsigned big-endian |
+| 2 | Segment count, unsigned big-endian |
+| 2 | UTF-8 filename byte length, unsigned big-endian |
+| nameLength | Canonical filename bytes |
+| 32 × segmentCount | SHA-256 digests of the unpadded segments, in ascending segment-index order |
+
+This is an **ordered segment-hash root**, not the ordinary SHA-256 of the whole file. Reopening the same bytes with the same canonical name produces the same descriptor, regardless of source chunk size, display lanes, QR ECC, rate or fresh inner v3 session IDs. A changed filename or changed file contents produces a different root. After loading a segment, the sender compares its new digest against the preparation digest before exposing any symbols for that segment.
+
+The receiver recomputes the root from the descriptor and the digests of all durably committed segments before asking the store to finish. A mismatched root never produces a completion flag or a downloadable result. The store independently verifies the actual segment bytes during write, reopening and final assembly. Checksums detect corruption and inconsistent content; they do not authenticate the sender.
+
+### Version 4 outer data and manifest envelopes
+
+All integer fields are unsigned **big-endian**. Both outer and inner CRCs use CRC-32/ISO-HDLC. The inner v3 frame is retained verbatim, including its CRC and random 16-byte inner session ID.
+
+| Byte offset | Length | Common field |
+| --- | --- | --- |
+| 0 | 8 | ASCII `WGQR-LRG` |
+| 8 | 1 | Version `4` |
+| 9 | 1 | `0` for a data symbol, `1` for a manifest; other values invalid |
+| 10 | 2 | Outer header length |
+| 12 | 32 | Whole-file ordered segment-hash root |
+| 44 | 2 | Zero-based segment index, less than segmentCount |
+| 46 | 2 | Exact inner-frame byte length |
+
+For data, the header length is exactly **48**. A complete inner v3 data symbol of **424 or 640 bytes** follows at offset 48. The final four bytes contain the outer CRC over every preceding outer-packet byte. Total QR payload length is therefore **476 or 692 bytes**, adding 52 bytes to the corresponding v3 symbol.
+
+For a manifest, the common header is followed by:
+
+| Byte offset | Length | Manifest field |
+| --- | --- | --- |
+| 48 | 4 | Whole-file original length, `1..209715200` |
+| 52 | 4 | Segment size, exactly `2097152` |
+| 56 | 2 | Whole-file segment count, exactly `ceil(size/2097152)` |
+| 58 | 2 | Canonical UTF-8 filename byte length, `1..120` |
+| 60 | 32 | SHA-256 of this original unpadded segment |
+| 92 | nameLength | Whole-file canonical UTF-8 basename |
+| headerLength | 91 | Complete inner v3 manifest |
+| headerLength + 91 | 4 | Outer CRC |
+
+The outer manifest header length is `92 + nameLength`. Its inner manifest uses the fixed name **`segment.bin`**, has the exact length of this segment, and repeats the same segment digest as the outer header. Its chunk count, block count and 384/600-byte chunk size must all match. The outer filename is the final output name. Manifest packets are **188–307 bytes**.
+
+Repeat a manifest initially and after at most 16 data symbols, including repairs, as with v3. A valid data symbol before the appropriate manifest is `pending` and is discarded without allocating an output segment. Data bearing a different inner session ID cannot reset a partial segment by itself; a matching outer manifest is required. Matching manifests cannot change the whole-file descriptor or an already-known segment digest. A different whole-file root is `foreign`, including when a stored transfer is resumed before the first new camera frame.
+
+The parser validates exact lengths, versions, flags, canonical UTF-8 names, both CRCs, segment limits and inner dimensions before creating an inner collector. A maximum-sized or malformed declared length cannot allocate an arbitrary buffer. `isFrame`, `isFeedback` and `isReserved` recognize their eight-byte prefixes even when the rest of a packet is malformed; an ACK or a corrupted framed packet must never become a raw downloaded file.
+
+### Version 4 durable feedback
+
+The v4 ACK reports only **committed, verified segments**. It has no list of partial FEC pivots. Segment `i` uses bit `i % 8` in bitmap byte `floor(i / 8)`; unused high bits must be zero.
+
+| Byte offset | Length | Field |
+| --- | --- | --- |
+| 0 | 8 | ASCII `WGQR-LAK` |
+| 8 | 1 | Version `4` |
+| 9 | 1 | Completion flag: `0` or `1` |
+| 10 | 1 | Suggested display changes/s: `1, 2, 5, 10, 15, 20` |
+| 11 | 1 | Reserved `0` |
+| 12 | 32 | Whole-file ordered segment-hash root |
+| 44 | 4 | Whole-file length |
+| 48 | 4 | Segment size `2097152` |
+| 52 | 2 | Segment count |
+| 54 | 2 | Bitmap length, exactly `ceil(segmentCount/8)` |
+| 56 | bitmapLength | Durable completed-segment bitmap |
+| 56 + bitmapLength | 4 | CRC over all preceding ACK bytes |
+
+ACK length is **61–73 bytes**. The sender checks identity and dimensions, and returns `{complete, missingSegments, suggestedRate}`. All-complete bitmap bits with a zero completion flag mean that final root verification/assembly has not been confirmed; an empty missing list alone is not proof of completion. A completion flag with any missing segment is invalid.
+
+The sender can cycle through segments and use an occasional aggregate ACK to skip committed ones. No per-symbol or per-segment return channel is required by the protocol. A bounded repair pass can still leave a segment incomplete; only the receiver's durable bitmap confirms that it can be skipped. The ACK is an unauthenticated receiver report, as with the earlier protocols.
+
+### Version 4 JavaScript and storage contract
+
+```js
+const sender = await WGLarge.createSender(file, { chunkBytes: 600, onProgress, isCurrent });
+const transfer = await sender.loadSegment(index);
+const planner = WGPlayback.create(transfer, { lanes: 2 });
+const receiver = WGLarge.createCollector({ store, onProgress });
+const resumed = await receiver.resume();
+const result = await receiver.accept(qrBytes);
+```
+
+`createSender` reports hash preparation using `{phase:'hash', completedBytes, totalBytes, segmentIndex, segmentCount}`. The sender exposes its frozen `.descriptor`, whole-file `.id/.name/.size`, segment dimensions, `loadSegment`, synchronous `acceptFeedback`, and `dispose`. A loaded transfer has `.version:4`, `.descriptor`, `.segmentIndex`, `.id` equal to the whole-file root, `.name`, segment `.size/.digest`, `.total/.blockCount/.chunkBytes`, `.manifestInterval:16`, and fresh owned `manifestFrame()/frame()/repairFrame()` buffers. It is compatible with `WGPlayback`; switching or reloading a segment invalidates the previous transfer. The application must also invalidate its prepared displays and QR matrix cache at that transition, including when reloading the same segment under a new inner session ID.
+
+The receiver exposes `.state`, `accept`, synchronous `createFeedback({suggestedRate})`, asynchronous `resume`, `reset`, and `dispose`. Results are `pending`, `foreign`, `manifest`, `progress` or `complete`. A newly committed segment returns `segmentComplete:true` and its `segmentIndex`. The final `complete` result contains a disk-backed **`file`**, never a whole-file `.bytes` array. `packetType` is `manifest`, `single`, `mixed`, or `unknown` before any optical packet has been accepted.
+
+State contains the descriptor fields and `.descriptor`, plus:
+
+| Field | Meaning |
+| --- | --- |
+| `completedSegments` | Number of durably committed segments |
+| `savedBytes`, `receivedBytes` | Bytes in those committed segments; neither includes partial equations |
+| `pendingBytes` | Active inner rank × chunkBytes, capped at that segment's length; provisional progress only |
+| `currentSegment`, `segmentSize`, `chunkBytes` | Active inner segment information, or null/zero when none is retained |
+| `received`, `total`, `recovered` | Active inner source/equation counters; separate from whole-file durable progress |
+| `complete` | True only after ordered-root verification and successful durable final assembly |
+
+Stored descriptor/progress and a durable feedback bitmap are available immediately after creating a collector, before a new manifest. `await resume()` rechecks the ordered root when all segments are present and returns the existing finished file, or retries final assembly if it had not completed. Until that check, all durable segments may be present while the completion flag is false. A later manifest also retries finalization.
+
+The supplied store has `.state = {descriptor, completed, digests, savedBytes, complete}`, asynchronous `begin(descriptor)`, `putSegment(index, bytes, digestHex)`, `finish({onProgress})`, and `file()`. `begin` resumes only the same complete descriptor. The store verifies segment SHA and length, commits completion after durable write/close, and revalidates stored data on reopening. `finish` sequentially rechecks and assembles the file without returning a full byte array. The caller owns storage permissions, disk availability, explicit deletion, and store disposal.
+
+Collector reset/disposal invalidates in-flight replies and releases partial equations without calling `store.clear()` or `store.dispose()`. An already-started correct disk write can finish durably during reset; its stale reply cannot update a replacement collector session, and the segment will be checked when resumed. Sender cancellation and superseded loads likewise cannot return a segment from an older selection. All temporary source/decoded byte arrays owned by the transport are cleared after hashing or storage consumption.
+
 ## Compact version 3
 
 `await createTransfer(bytes, filename, {chunkBytes: 384, compact: true})` selects v3. Omitting `compact`, or setting it to `false`, preserves the v2 sender and wire layout. Chunk sizes remain **384 or 600 bytes**, with the same maximum file size, 32-chunk generations, explicit XOR masks, bounded Gaussian elimination, SHA-256 verification, and owned-buffer cleanup as v2. Display lanes have no protocol identity: symbols shown side by side belong to one session and may arrive in either order.
@@ -214,6 +339,8 @@ Calibration is separate from file transfer. `WGCalibration.create({lanes: 1, ecc
 Each profile lasts four seconds: a full legacy trial takes 24 seconds, and an extended trial takes 40 seconds. The sender retains the selected lane count and QR error-correction level for the whole trial. `WGQR-CAL` data symbols contain only reproducible synthetic bytes and a fresh random trial ID, never the selected file. They have exactly the same 424/640-byte binary lengths as compact data symbols. The rate-code field uses `[2,5,10]` in v1 and `[2,5,10,15,20]` in v2; profile index, payload code, rate code, sequence range, duration and flags must all agree.
 
 Both `WGQR-CAL` and its 40-byte `WGQR-SET` result carry calibration version 1 or 2 at byte 8, keeping their existing field positions. A trial's end symbol is 40 bytes, uses sequence 65535, and must name its version's final profile (5 or 9). Observers reject mixing versions even if the trial ID matches. SET acceptance also requires the original version, ID, lane count, ECC and a valid profile, sample count and measured rate. An older receiver must be refreshed before an extended trial; version-1 trials remain available through the default API.
+
+`WGCalibration.create({large:true})` measures the larger v4 envelope without transmitting the selected file. It adds 52 synthetic bytes, so profile packets have exactly **476/692 bytes**; the end marker stays 40 bytes. In CAL byte 9, the flags are ended=`1`, ECC L=`2`, and large=`4`. In SET byte 11, ECC L=`1` and large=`2`. The large flag is part of the trial identity: observers and the sender reject a changed value within the same session. Standard trials retain their previous bytes and default `large:false`. Earlier clients reject the new flag bits and must be refreshed for a large-file trial; both calibration versions 1 and 2 can carry the flag.
 
 The observer deduplicates sequence numbers and waits for the end symbol before selecting a profile or emitting SET. A candidate needs at least three distinct display steps. Its score is unique accepted payload bytes divided by the full four-second period, including missed frames; an already-running profile observed after a late join is scored conservatively. Entirely missed profiles have zero samples and cannot win. In the largest profile, two lanes at 20 changes/s produce at most 160 unique symbols and **24,000 B/s**, within SET's unsigned 16-bit rate field. This synthetic result selects a candidate configuration; it is not a measured completed-file throughput and does not account for manifests, fountain dependence or later changes in camera conditions.
 

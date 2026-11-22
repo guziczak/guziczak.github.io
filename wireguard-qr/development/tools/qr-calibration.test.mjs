@@ -42,6 +42,7 @@ test('calibration uses bounded synthetic v3-sized symbols and immutable six-prof
   const two = api.create({ lanes: 2, ecc: 'L', fileData: new TextEncoder().encode('PRIVATE FILE CONTENT') });
   assert.notEqual(one.id, two.id);
   assert.equal(one.version, 1);
+  assert.equal(one.large, false);
   assert.equal(one.duration, 4000);
   assert.ok(Object.isFrozen(one.profiles));
   for (let index = 0; index < one.profiles.length; index++) {
@@ -221,6 +222,7 @@ test('reset/dispose erase owned calibration identity buffers and permit a fresh 
   assert.throws(() => api.create({ lanes: 3 }), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => api.create({ ecc: 'H' }), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => api.create({ extended: 1 }), { code: 'CALIBRATION_INVALID' });
+  assert.throws(() => api.create({ large: 1 }), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => next.frame(0, 8), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => next.frame(0, 0, true), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => runtime({ crypto: null }).create(), { code: 'CALIBRATION_INVALID' });
@@ -298,4 +300,51 @@ test('extended profiles reject unsupported versions and malformed bounds before 
   assert.equal(observer.state.version, 1); assert.equal(observer.state.results.length, 6);
   observer.reset(); observer.accept(sender.frame(9, 0), 36000);
   assert.equal(observer.state.version, 2); assert.equal(observer.state.results.length, 10);
+});
+
+test('large calibration includes the exact 52-byte v4 envelope in both densities and keeps useful-byte rates', () => {
+  for (const extended of [false, true]) for (const ecc of ['M', 'L']) {
+    const sender = api.create({ lanes: 2, extended, ecc, large: true }), observer = api.createObserver();
+    assert.equal(sender.large, true);
+    for (const index of [0, sender.profiles.length - 1]) {
+      const profile = sender.profiles[index], frame = sender.frame(index, 0), parsed = api.parse(frame);
+      assert.equal(frame.length, profile.chunkBytes + 92);
+      assert.equal(frame[9], 4 | (ecc === 'L' ? 2 : 0));
+      assert.equal(parsed.large, true); assert.equal(parsed.ecc, ecc); assert.equal(parsed.chunkBytes, profile.chunkBytes);
+      assert.equal(parsed.version, extended ? 2 : 1);
+    }
+    const index = sender.profiles.length - 1;
+    observeProfile(sender, observer, index, sequence => sequence < 6);
+    observer.accept(sender.endFrame(), sender.profiles.length * sender.duration);
+    assert.equal(sender.endFrame().length, 40); assert.equal(api.parse(sender.endFrame()).large, true);
+    assert.equal(observer.state.large, true);
+    const feedback = observer.createFeedback(); assert.equal(feedback[11], 2 | (ecc === 'L' ? 1 : 0));
+    const chosen = sender.acceptFeedback(feedback);
+    assert.equal(chosen.large, true); assert.equal(chosen.ecc, ecc); assert.equal(chosen.bytesPerSecond, 900);
+    assert.equal(chosen.samples, 6, 'Envelope bytes do not count as useful file bytes');
+  }
+});
+
+test('large flags require matching frame length and cannot switch the active calibration or its result', () => {
+  const large = api.create({ extended: true, lanes: 2, large: true });
+  const ordinary = api.create({ extended: true, lanes: 2 });
+  for (const [sender, bitChange] of [[large, value => { value[9] &= ~4; }], [ordinary, value => { value[9] |= 4; }]]) {
+    const observer = api.createObserver();
+    assert.throws(() => observer.accept(edit(sender.frame(0), bitChange), 0), { code: 'CALIBRATION_INVALID' });
+    assert.equal(observer.state, null);
+    assert.throws(() => observer.accept(edit(sender.frame(0), value => { value[9] |= 8; }), 0), { code: 'CALIBRATION_INVALID' });
+  }
+  const observer = api.createObserver();
+  observer.accept(ordinary.frame(0), 0);
+  const changedEnd = edit(ordinary.endFrame(), value => { value[9] |= 4; });
+  assert.equal(observer.accept(changedEnd, 40000).foreign, true);
+  assert.equal(observer.state.large, false); assert.equal(observer.state.ended, false);
+  observeProfile(ordinary, observer, 1); observer.accept(ordinary.endFrame(), 40000);
+  const normalFeedback = observer.createFeedback(); assert.equal(normalFeedback[11] & 2, 0);
+  assert.throws(() => ordinary.acceptFeedback(edit(normalFeedback, value => { value[11] |= 2; })), { code: 'CALIBRATION_INVALID' });
+  observer.reset(); observeProfile(large, observer, 9, sequence => sequence < 6); observer.accept(large.endFrame(), 40000);
+  const largeFeedback = observer.createFeedback();
+  for (const change of [value => { value[11] &= ~2; }, value => { value[11] |= 4; }]) {
+    assert.throws(() => large.acceptFeedback(edit(largeFeedback, change)), { code: 'CALIBRATION_INVALID' });
+  }
 });
