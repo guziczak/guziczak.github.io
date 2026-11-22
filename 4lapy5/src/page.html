@@ -65,7 +65,8 @@
     </defs>
   </svg>
 
-  <header class="site-header wrap">
+  <header class="site-header">
+    <div class="wrap header-inner">
     <a class="brand" href="#start" aria-label="{{brandLabel}}">
       <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><use href="#i-paw"/></svg>
       <span>Cztery Łapy i Ty</span>
@@ -76,8 +77,10 @@
       <a href="#dojazd">{{navDirections}}</a>
     </nav>
     <div class="header-tools">
+      <a class="header-call" href="{{phoneHref}}" aria-label="{{call}}: {{phoneDisplay}}"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg><span>{{phoneDisplay}}</span></a>
       <a class="tool" href="{{otherHref}}" hreflang="{{otherLang}}" lang="{{otherLang}}" aria-label="{{langSwitchLabel}}" title="{{langSwitchLabel}}" data-language-link>{{otherLangText}}</a>
       <button class="tool theme-toggle" type="button" data-theme-toggle aria-label="{{themeLabel}}" hidden><svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
+    </div>
     </div>
   </header>
 

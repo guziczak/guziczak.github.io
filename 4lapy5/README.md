@@ -39,6 +39,7 @@ Godziny otwarcia są zapisane raz, w tablicy `HOURS` w `site.js`. Z niej powstaj
 - **Wpis o szczepieniu.** Wybrana data pojawia się cyfra po cyfrze w kratkach, a treść przypomnienia na „naklejce” z przerywaną ramką.
 - **Pole daty i kalendarz.** Systemowego okienka z datami nie da się ostylować, więc pole jest zwykłym polem tekstowym z klawiaturą numeryczną: datę wpisuje się jak w książeczce (`15032027`, `15.03.2027`, `1.3.2027` — kropki wstawiają się same). Przycisk obok otwiera własny kalendarz w formie kartki: niedziele i polskie święta są na czerwono, dzisiejszy dzień zakreślony długopisem, wybrany zaznaczony zakreślaczem, minione dni nieaktywne. Strzałki przechodzą po dniach i tygodniach, Home i End na krańce tygodnia, PageUp i PageDown zmieniają miesiąc (z Shift — rok), Escape zamyka. Data, której nie ma w kalendarzu (31.02), dostaje własny komunikat.
 - **Tabliczka adresowa.** Granatowa emaliowana tabliczka „ul. Chabrowa 2D” na mapie; między mapą a adresem biegnie perforacja.
+- **Nagłówek i dolny pasek.** Na telefonie nagłówek przewija się razem ze stroną, a trzy główne akcje (Zadzwoń, Trasa, Godziny) są w stałym pasku na dole — dwa stałe paski zabierałyby około jednej piątej małego ekranu. Od 720 px dolnego paska nie ma, więc nagłówek jest przyklejony do góry i ma numer telefonu; od 960 px także odnośniki do sekcji. Sekcje otwierane odnośnikiem zatrzymują się pod nagłówkiem (`scroll-padding-top`).
 
 ## Status na żywo
 

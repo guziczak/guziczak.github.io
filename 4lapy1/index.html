@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Projekt poglądowy strony dla Przychodni Weterynaryjnej „Cztery Łapy i Ty” (Wysoka).
+
+  Zanim to będzie oficjalna strona przychodni:
+  1. Usuń dopisek w stopce (.foot__demo) i „(projekt)” z tytułu strony.
+  2. Usuń <meta name="robots" content="noindex, nofollow">.
+  3. Potwierdź z przychodnią godziny (także obiekt HOURS w skrypcie na dole), usługi i dane kontaktowe.
+     Sobota: profil w Google podaje 10:00–12:00, a Facebook i PetHelp 10:00–14:00 (stan na 31.10.2026).
+  4. Podepnij własną domenę i wpisz adres strony w profilu firmy w Google („Dodaj witrynę”).
+-->
+<meta name="robots" content="noindex, nofollow">
+<title>Cztery Łapy i Ty – przychodnia weterynaryjna w Wysokiej (projekt)</title>
+<meta name="description" content="Przychodnia weterynaryjna Cztery Łapy i Ty w Wysokiej pod Wrocławiem. Lek. wet. Agnieszka Janeczek. Psy i koty: szczepienia, czipowanie, badania krwi, USG, RTG.">
+<meta name="theme-color" content="#0F5247">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pl_PL">
+<meta property="og:title" content="Cztery Łapy i Ty – przychodnia weterynaryjna w Wysokiej">
+<meta property="og:description" content="Psy i koty: szczepienia, czipowanie, badania krwi, USG i RTG. ul. Chabrowa 2D, Wysoka pod Wrocławiem. Tel. 71 786 78 84.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%230F5247'/%3E%3Cg fill='%23E3EE4B'%3E%3Cellipse cx='20' cy='26' rx='7.2' ry='6.2'/%3E%3Cellipse cx='11.2' cy='18.2' rx='2.9' ry='3.6' transform='rotate(-18 11.2 18.2)'/%3E%3Cellipse cx='16.6' cy='12.6' rx='2.9' ry='3.7' transform='rotate(-6 16.6 12.6)'/%3E%3Cellipse cx='23.4' cy='12.6' rx='2.9' ry='3.7' transform='rotate(6 23.4 12.6)'/%3E%3Cellipse cx='28.8' cy='18.2' rx='2.9' ry='3.6' transform='rotate(18 28.8 18.2)'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&amp;display=swap" rel="stylesheet">
+<style>
+  :root {
+    --forest: #0F5247;
+    --forest-deep: #0A3B33;
+    --ink: #173A33;
+    --muted: #4E665F;
+    --mint: #F1F6F3;
+    --leaf: #CFE3D8;
+    --paper: #FFFFFF;
+    --ball: #E3EE4B;
+    --brick: #A63D2B;
+    --wrap: 1120px;
+    --gutter: clamp(16px, 4vw, 32px);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--mint);
+    color: var(--ink);
+    font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-optical-sizing: auto;
+    font-size: 1.0625rem;
+    line-height: 1.6;
+  }
+  svg { display: block; }
+  a { color: var(--forest); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--forest); outline-offset: 3px; border-radius: 6px; }
+  .wrap { max-width: var(--wrap); margin-inline: auto; padding-inline: var(--gutter); }
+
+  .skip { position: absolute; left: -9999px; top: 0; }
+  .skip:focus { left: 16px; top: 16px; z-index: 100; background: var(--paper); padding: 10px 14px; }
+
+  /* Nagłówek */
+  .top { border-bottom: 1px solid var(--leaf); }
+  .top__in { display: flex; align-items: center; gap: 28px; min-height: 72px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-right: auto; color: var(--ink); text-decoration: none; }
+  .brand__mark { width: 40px; height: 40px; flex: none; }
+  .brand__name { font-size: 1.25rem; font-weight: 720; font-stretch: 92%; letter-spacing: -.01em; white-space: nowrap; }
+  .top nav ul { display: flex; gap: 24px; margin: 0; padding: 0; list-style: none; }
+  .top nav a { color: var(--ink); font-weight: 520; text-decoration: none; }
+  .top nav a:hover { color: var(--forest); text-decoration: underline; }
+
+  /* Przyciski */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 48px; padding: 0 22px;
+    border: 2px solid transparent; border-radius: 999px;
+    font: inherit; font-weight: 650; text-decoration: none; cursor: pointer;
+    transition: background-color .15s, color .15s;
+  }
+  .btn--primary { background: var(--forest); color: #fff; }
+  .btn--primary:hover { background: var(--forest-deep); }
+  .btn--ghost { border-color: var(--forest); color: var(--forest); background: transparent; }
+  .btn--ghost:hover { background: var(--paper); }
+  .btn--small { min-height: 40px; padding: 0 18px; background: var(--forest); color: #fff; }
+  .btn--small:hover { background: var(--forest-deep); }
+  .btn--light { background: var(--paper); color: var(--forest); }
+  .btn--light:hover { background: var(--ball); }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  /* Hero */
+  .hero { padding: clamp(40px, 7vw, 88px) 0 0; }
+  .hero__in {
+    display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+    gap: clamp(40px, 6vw, 88px); align-items: start;
+  }
+  h1 {
+    max-width: 14ch; margin: 0 0 24px;
+    color: var(--forest);
+    font-size: clamp(2.4rem, 1.4rem + 4.2vw, 4.6rem); line-height: 1.02;
+    font-weight: 780; font-stretch: 86%; letter-spacing: -.025em;
+  }
+  .lead { max-width: 44ch; margin: 0 0 28px; font-size: clamp(1.0625rem, 1rem + .4vw, 1.25rem); }
+  .rating { margin: 22px 0 0; font-size: .95rem; }
+  .rating a { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); text-decoration: none; }
+  .rating a:hover { color: var(--forest); text-decoration: underline; }
+  .stars { width: 100px; height: 20px; flex: none; }
+
+  /* Wiszący szyld „Otwarte / Zamknięte” */
+  .hanger { position: relative; width: min(100%, 320px); margin: 0 auto 32px; }
+  .nail {
+    position: absolute; top: 0; left: 50%; z-index: 2;
+    width: 14px; height: 14px; margin-left: -7px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #9DB2AA, #3E524C);
+  }
+  .swing { transform-origin: 50% 7px; }
+  .swing.is-swinging { animation: swing 2.4s cubic-bezier(.36, .07, .19, .97) .15s both; }
+  @keyframes swing {
+    0% { transform: rotate(-9deg); }
+    20% { transform: rotate(7deg); }
+    40% { transform: rotate(-4.5deg); }
+    60% { transform: rotate(2.5deg); }
+    80% { transform: rotate(-1deg); }
+    100% { transform: rotate(0); }
+  }
+  .strings { position: relative; z-index: 1; width: 100%; height: 64px; overflow: visible; }
+  .strings path { fill: none; stroke: #6B7F78; stroke-width: 2; stroke-linecap: round; }
+  .sign {
+    position: relative; margin-top: -14px; padding: 36px 20px 24px;
+    border: 2px solid var(--forest); border-radius: 16px;
+    background: var(--paper); color: var(--forest); text-align: center;
+    box-shadow: 0 22px 30px -20px rgba(10, 59, 51, .6);
+  }
+  .sign[data-state="open"] { background: var(--forest); color: #fff; }
+  .sign__hole {
+    position: absolute; top: 10px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--mint); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .35);
+  }
+  .sign__hole--l { left: calc(13.333% - 5px); }
+  .sign__hole--r { left: calc(86.667% - 5px); }
+  .sign__state {
+    display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0;
+    font-size: clamp(2.2rem, 1.6rem + 2vw, 3rem); line-height: 1;
+    font-weight: 800; font-stretch: 88%; letter-spacing: -.02em;
+  }
+  .sign__dot { width: 14px; height: 14px; flex: none; border-radius: 50%; background: var(--muted); }
+  .sign[data-state="open"] .sign__dot { background: var(--ball); box-shadow: 0 0 0 4px rgba(227, 238, 75, .25); }
+  .sign[data-state="closed"] .sign__dot { background: var(--brick); }
+  .sign__detail { margin: 12px 0 0; font-weight: 520; }
+
+  .hours__title { margin: 0 0 10px; font-size: 1.125rem; font-weight: 700; }
+  .hours__list { margin: 0; border-top: 1px solid var(--leaf); }
+  .hours__row {
+    display: flex; justify-content: space-between; gap: 16px;
+    padding: 12px; border-bottom: 1px solid var(--leaf); border-radius: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .hours__row dt { font-weight: 560; }
+  .hours__row dd { margin: 0; }
+  .hours__row.is-today { background: var(--ball); border-bottom-color: transparent; }
+  .hours__row.is-today dt::after { content: " – dziś"; font-weight: 400; }
+  .hours__note { margin: 12px 0 0; color: var(--muted); font-size: .9rem; }
+
+  /* Pasek z adresem */
+  .strip { background: var(--forest); color: #fff; }
+  .strip__in {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px 32px; padding-block: 22px;
+  }
+  .strip p { max-width: 70ch; margin: 0; }
+  .strip strong { color: var(--ball); font-weight: 700; }
+  .strip a { color: #fff; font-weight: 650; }
+
+  /* Sekcje */
+  .section { padding: clamp(56px, 8vw, 104px) 0; }
+  .section--paper { background: var(--paper); }
+  .section h2 {
+    margin: 0 0 16px; color: var(--forest);
+    font-size: clamp(1.9rem, 1.3rem + 2.2vw, 2.9rem); line-height: 1.05;
+    font-weight: 760; font-stretch: 88%; letter-spacing: -.02em;
+  }
+  .section__head {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 8px 64px; align-items: end; margin-bottom: 40px;
+  }
+  .section__head h2 { margin: 0; }
+  .section__head p { max-width: 52ch; margin: 0; color: var(--muted); }
+
+  .services { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 64px; }
+  .service { padding: 20px 0 32px; border-top: 2px solid var(--forest); }
+  .service h3 { margin: 0 0 10px; font-size: 1.25rem; font-weight: 700; }
+  .service ul { margin: 0; padding: 0; list-style: none; }
+  .service li { position: relative; padding: 8px 0 8px 22px; border-bottom: 1px solid var(--leaf); }
+  .service li:last-child { border-bottom: 0; }
+  .service li::before {
+    content: ""; position: absolute; left: 2px; top: 1.05em;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--forest);
+  }
+  .note { display: inline-block; margin: 8px 0 0; padding: 10px 16px; border: 1px solid var(--leaf); border-radius: 10px; background: var(--paper); }
+
+  .split { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 48px 88px; align-items: start; }
+  .split p { max-width: 58ch; }
+  .reviews__score { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px; }
+  .reviews__num { color: var(--forest); font-size: 3.5rem; line-height: 1; font-weight: 780; font-stretch: 86%; }
+  .reviews .stars { width: 130px; height: 26px; margin-bottom: 14px; }
+  .reviews p { margin: 0 0 14px; }
+
+  .addr { margin: 0 0 16px; font-size: 1.25rem; font-style: normal; font-weight: 560; line-height: 1.5; }
+  .map { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 20px; background: var(--forest); }
+  .map iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .map__roads { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .map__inner {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    padding: 24px; color: #fff; text-align: center;
+  }
+  .map__pin { width: 36px; height: 46px; }
+  .map__note { margin: 0; font-size: .875rem; color: #DDE9E3; }
+
+  .phone {
+    display: inline-block; margin: 4px 0 28px;
+    color: var(--forest); text-decoration: none;
+    font-size: clamp(2.4rem, 1.5rem + 4vw, 4.4rem); line-height: 1.05;
+    font-weight: 780; font-stretch: 86%; letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .phone:hover { text-decoration: underline; text-decoration-thickness: 3px; }
+  .contact { max-width: 720px; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--leaf); }
+  .contact li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--leaf); }
+  .contact li > span:first-child { color: var(--muted); }
+
+  .foot { padding: 40px 0 48px; background: var(--forest-deep); color: #DDE9E3; font-size: .95rem; }
+  .foot p { max-width: 70ch; margin: 0 0 10px; }
+  .foot__demo { color: #B9CEC5; }
+
+  .js .sign { cursor: pointer; }
+
+  /* Ślady: cztery łapy i Ty */
+  .trail { padding-top: clamp(28px, 4vw, 48px); padding-bottom: 6px; }
+  .trail svg {
+    width: 100%; height: 100px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%);
+    mask-image: linear-gradient(90deg, transparent, #000 12%);
+  }
+  .trail .shoe { fill: var(--forest); fill-opacity: .25; }
+  .trail .paw { fill: var(--forest); fill-opacity: .38; }
+  .trail .step { transform-box: fill-box; transform-origin: center; }
+  .trail--ready .step { opacity: 0; }
+  .trail--walking .step { animation: stamp .5s cubic-bezier(.2, .8, .3, 1) forwards; animation-delay: calc(var(--i) * 45ms); }
+  @keyframes stamp {
+    from { opacity: 0; transform: scale(1.4); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .service__link { display: inline-block; margin-top: 14px; font-weight: 650; }
+
+  /* Przypomnienie o szczepieniu */
+  .section--forest { background: var(--forest); color: #fff; }
+  .section--forest h2 { color: #fff; }
+  .remind { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 40px 80px; align-items: center; }
+  .remind__intro p { max-width: 44ch; margin: 0 0 16px; color: #DDE9E3; font-size: clamp(1.0625rem, 1rem + .3vw, 1.2rem); }
+  .remind__intro .remind__privacy { color: #B9CEC5; font-size: .95rem; }
+  .remind__card {
+    padding: clamp(20px, 3vw, 32px); border-radius: 24px;
+    background: var(--paper); color: var(--ink);
+    box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .5);
+  }
+  .remind__card .btn--ghost:hover { background: var(--mint); }
+  .tile { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; padding-bottom: 22px; border-bottom: 1px solid var(--leaf); }
+  .tile__page { flex: none; width: 96px; overflow: hidden; border: 2px solid var(--forest); border-radius: 14px; background: #fff; text-align: center; }
+  .tile__month { display: block; padding: 5px 4px; background: var(--forest); color: #fff; font-size: .85rem; font-weight: 650; }
+  .tile__day { display: block; padding-top: 6px; color: var(--forest); font-size: 3rem; line-height: 1; font-weight: 800; font-stretch: 86%; font-variant-numeric: tabular-nums; }
+  .tile__week { display: block; padding: 2px 4px 8px; color: var(--muted); font-size: .8rem; }
+  .tile[data-empty] .tile__page { border-style: dashed; }
+  .tile[data-empty] .tile__month { background: var(--leaf); color: var(--forest); }
+  .tile[data-empty] .tile__day { color: #9DB8AD; }
+  .tile__title { margin: 0 0 4px; font-size: 1.25rem; font-weight: 750; line-height: 1.25; overflow-wrap: anywhere; }
+  .tile__meta { margin: 0; color: var(--muted); font-size: .95rem; }
+  .tile.is-pop .tile__page { animation: pop .45s cubic-bezier(.2, .9, .3, 1.3); }
+  @keyframes pop {
+    from { transform: rotate(-6deg) scale(.9); }
+    to { transform: none; }
+  }
+  .field { display: grid; gap: 6px; margin-bottom: 16px; }
+  .field label { font-weight: 650; }
+  .field label span { color: var(--muted); font-weight: 400; }
+  .field input, .field select {
+    width: 100%; min-height: 50px; padding: 0 14px;
+    border: 1.5px solid #9DB8AD; border-radius: 12px;
+    background: #fff; color: var(--ink); font: inherit;
+  }
+  .field input[aria-invalid="true"] { border-color: var(--brick); }
+  /* iOS i Android rysują listy i daty po swojemu – wyrównujemy wygląd i wysokość */
+  .field select {
+    -webkit-appearance: none; appearance: none; padding-right: 44px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 6l4.5 4.5L12.5 6' fill='none' stroke='%230F5247' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; background-size: 16px 16px;
+  }
+  .field input[type="date"] { display: block; min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; }
+  .field input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+  /* Pole daty: własny wygląd, a pod spodem systemowy wybór daty (kółka na iPhonie, kalendarz na komputerze) */
+  .date-field { position: relative; }
+  .date-field__text, .date-field__icon { display: none; }
+  .date-field.is-custom .date-field__text {
+    display: flex; align-items: center; min-height: 50px; padding: 0 46px 0 14px;
+    border: 1.5px solid #9DB8AD; border-radius: 12px; background: #fff; color: var(--ink);
+    white-space: nowrap;
+  }
+  .date-field.is-custom.is-empty .date-field__text { color: var(--muted); }
+  .date-field.is-custom .date-field__icon {
+    display: block; position: absolute; top: 50%; right: 14px; width: 22px; height: 22px; margin-top: -11px;
+    color: var(--forest); pointer-events: none;
+  }
+  .date-field.is-custom input {
+    position: absolute; top: 0; left: 0; z-index: 1; width: 100%; height: 100%; min-height: 0;
+    margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer;
+  }
+  .date-field.is-custom { overflow: hidden; border-radius: 12px; }
+  .date-field.is-custom:focus-within { outline: 3px solid var(--forest); outline-offset: 2px; }
+  .date-field.is-custom input[aria-invalid="true"] ~ .date-field__text { border-color: var(--brick); }
+  .field__error { margin: 0; color: var(--brick); font-size: .9rem; font-weight: 600; }
+  .field__error:empty { display: none; }
+  .fields-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 14px; }
+  .remind__actions { display: grid; gap: 10px; margin-top: 6px; }
+  .remind__msg { margin: 14px 0 0; color: var(--forest); font-weight: 600; }
+  .remind__msg:empty { display: none; }
+
+  .dock { display: none; }
+
+  @media (max-width: 900px) {
+    .hero__in { grid-template-columns: 1fr; }
+    .split { grid-template-columns: 1fr; }
+    .remind { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 760px) {
+    .top nav, .top .btn--small { display: none; }
+    .trail svg { height: 84px; }
+    .section__head, .services { grid-template-columns: 1fr; }
+    .foot { padding-bottom: 112px; }
+    .dock {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      background: var(--mint); border-top: 1px solid var(--leaf); box-shadow: 0 -10px 24px -16px rgba(10, 59, 51, .45);
+    }
+    .dock a {
+      display: flex; align-items: center; justify-content: center; min-height: 50px;
+      border: 2px solid var(--forest); border-radius: 999px;
+      background: var(--paper); color: var(--forest); font-weight: 700; text-decoration: none;
+    }
+    .dock a.dock__call { background: var(--forest); color: #fff; }
+    .dock { transition: transform .25s ease, visibility 0s; }
+    .dock.is-hidden { transform: translateY(110%); visibility: hidden; transition: transform .25s ease, visibility 0s linear .25s; }
+  }
+  @media (max-width: 520px) {
+    .contact li { grid-template-columns: 1fr; gap: 2px; }
+    .fields-2 { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .swing.is-swinging { animation: none; }
+    .dock, .dock.is-hidden { transition: none; }
+    .trail--ready .step { opacity: 1; }
+    .trail--walking .step, .tile.is-pop .tile__page { animation: none; }
+  }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VeterinaryCare",
+  "name": "Przychodnia Weterynaryjna Cztery Łapy i Ty Agnieszka Janeczek",
+  "telephone": "+48 71 786 78 84",
+  "email": "agajaneczek@gmail.com",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "ul. Chabrowa 2D",
+    "postalCode": "52-200",
+    "addressLocality": "Wysoka",
+    "addressRegion": "dolnośląskie",
+    "addressCountry": "PL"
+  },
+  "openingHoursSpecification": [
+    { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "10:00", "closes": "18:00" },
+    { "@type": "OpeningHoursSpecification", "dayOfWeek": "Saturday", "opens": "10:00", "closes": "12:00" }
+  ],
+  "sameAs": ["https://facebook.com/Przychodnia-Weterynaryjna-Cztery-%C5%81apy-i-Ty-Agnieszka-Janeczek-100057667470103"]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#tresc">Przejdź do treści</a>
+
+<header class="top">
+  <div class="wrap top__in">
+    <a class="brand" href="#">
+      <svg class="brand__mark" viewBox="0 0 40 40" aria-hidden="true">
+        <rect width="40" height="40" rx="11" fill="#0F5247"/>
+        <g fill="#E3EE4B">
+          <ellipse cx="20" cy="26" rx="7.2" ry="6.2"/>
+          <ellipse cx="11.2" cy="18.2" rx="2.9" ry="3.6" transform="rotate(-18 11.2 18.2)"/>
+          <ellipse cx="16.6" cy="12.6" rx="2.9" ry="3.7" transform="rotate(-6 16.6 12.6)"/>
+          <ellipse cx="23.4" cy="12.6" rx="2.9" ry="3.7" transform="rotate(6 23.4 12.6)"/>
+          <ellipse cx="28.8" cy="18.2" rx="2.9" ry="3.6" transform="rotate(18 28.8 18.2)"/>
+        </g>
+      </svg>
+      <span class="brand__name">Cztery Łapy i Ty</span>
+    </a>
+    <nav aria-label="Główna nawigacja">
+      <ul>
+        <li><a href="#uslugi">Usługi</a></li>
+        <li><a href="#godziny">Godziny</a></li>
+        <li><a href="#przypomnienie">Przypomnienie</a></li>
+        <li><a href="#dojazd">Dojazd</a></li>
+        <li><a href="#kontakt">Kontakt</a></li>
+      </ul>
+    </nav>
+    <a class="btn btn--small" href="tel:+48717867884">Zadzwoń</a>
+  </div>
+</header>
+
+<main id="tresc">
+  <section class="hero">
+    <div class="wrap hero__in">
+      <div>
+        <h1>Przychodnia weterynaryjna w&nbsp;Wysokiej pod Wrocławiem</h1>
+        <p class="lead">Leczymy psy i koty: od szczepień i czipowania, przez badania krwi, USG i RTG, po wizyty kontrolne. Przychodnię prowadzi lek.&nbsp;wet. Agnieszka Janeczek.</p>
+        <div class="actions">
+          <a class="btn btn--primary" href="tel:+48717867884">Zadzwoń: 71&nbsp;786&nbsp;78&nbsp;84</a>
+          <a class="btn btn--ghost" href="https://www.google.com/maps/dir/?api=1&amp;destination=ul.+Chabrowa+2D%2C+52-200+Wysoka" target="_blank" rel="noopener">Wyznacz trasę</a>
+        </div>
+        <p class="rating">
+          <a href="https://www.google.com/maps/search/?api=1&amp;query=Przychodnia+Weterynaryjna+Cztery+%C5%81apy+i+Ty+Wysoka" target="_blank" rel="noopener">
+            <svg class="stars" viewBox="0 0 120 24" aria-hidden="true">
+              <defs>
+                <path id="star" d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/>
+                <clipPath id="stars-fill"><rect width="112.8" height="24"/></clipPath>
+              </defs>
+              <g fill="#CFE3D8"><use href="#star"/><use href="#star" x="24"/><use href="#star" x="48"/><use href="#star" x="72"/><use href="#star" x="96"/></g>
+              <g fill="#0F5247" clip-path="url(#stars-fill)"><use href="#star"/><use href="#star" x="24"/><use href="#star" x="48"/><use href="#star" x="72"/><use href="#star" x="96"/></g>
+            </svg>
+            4,7 na 5 w opiniach Google (133&nbsp;opinie)
+          </a>
+        </p>
+      </div>
+
+      <div id="godziny">
+        <div class="hanger">
+          <span class="nail" aria-hidden="true"></span>
+          <div class="swing">
+            <svg class="strings" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M150 7 L40 64 M150 7 L260 64" vector-effect="non-scaling-stroke"/>
+            </svg>
+            <div class="sign" data-state="unknown" role="status">
+              <span class="sign__hole sign__hole--l" aria-hidden="true"></span>
+              <span class="sign__hole sign__hole--r" aria-hidden="true"></span>
+              <p class="sign__state"><span class="sign__dot" aria-hidden="true"></span><span class="js-state">Zapraszamy</span></p>
+              <p class="sign__detail js-detail">Godziny otwarcia znajdziesz poniżej.</p>
+            </div>
+          </div>
+        </div>
+        <h2 class="hours__title">Godziny otwarcia</h2>
+        <dl class="hours__list">
+          <div class="hours__row" data-days="1,2,3,4,5"><dt>Poniedziałek–piątek</dt><dd>10:00–18:00</dd></div>
+          <div class="hours__row" data-days="6"><dt>Sobota</dt><dd>10:00–12:00</dd></div>
+          <div class="hours__row" data-days="0"><dt>Niedziela</dt><dd>nieczynne</dd></div>
+        </dl>
+        <p class="hours__note">W święta godziny mogą się różnić. W razie wątpliwości zadzwoń.</p>
+      </div>
+    </div>
+    <div class="wrap trail" aria-hidden="true">
+      <svg viewBox="0 0 1056 100" preserveAspectRatio="xMinYMid slice" focusable="false">
+        <defs>
+          <g id="shoe">
+            <path d="M21.5 -1.5C21.5 -5.8 16.5 -7.6 10.5 -7.4C5 -7.2 .5 -5.6 -2.5 -3.6C-4 -2.4 -4 2.6 -2.5 3.6C1 5.6 6 7.2 11.5 7C17 6.8 21.5 3.8 21.5 -1.5Z"/>
+            <path d="M-7.5 -4.4C-7 -1.5 -7 1.5 -7.5 4.6L-13 4.8C-18.8 4.8 -18.8 -4.8 -13 -4.6Z"/>
+          </g>
+          <g id="paw-print">
+            <ellipse cx="0" cy="6" rx="7.2" ry="6.2"/>
+            <ellipse cx="-8.8" cy="-1.8" rx="2.9" ry="3.6" transform="rotate(-18 -8.8 -1.8)"/>
+            <ellipse cx="-3.4" cy="-7.4" rx="2.9" ry="3.7" transform="rotate(-6 -3.4 -7.4)"/>
+            <ellipse cx="3.4" cy="-7.4" rx="2.9" ry="3.7" transform="rotate(6 3.4 -7.4)"/>
+            <ellipse cx="8.8" cy="-1.8" rx="2.9" ry="3.6" transform="rotate(18 8.8 -1.8)"/>
+          </g>
+        </defs>
+        <g transform="translate(16 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:0"/></g>
+        <g transform="translate(30 25) rotate(-5) scale(1 -1)"><use class="step shoe" href="#shoe" style="--i:1"/></g>
+        <g transform="translate(53 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:2"/></g>
+        <g transform="translate(90 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:3"/></g>
+        <g transform="translate(100 43) rotate(5)"><use class="step shoe" href="#shoe" style="--i:4"/></g>
+        <g transform="translate(127 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:5"/></g>
+        <g transform="translate(164 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:6"/></g>
+        <g transform="translate(170 25) rotate(-5) scale(1 -1)"><use class="step shoe" href="#shoe" style="--i:7"/></g>
+        <g transform="translate(201 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:8"/></g>
+        <g transform="translate(238 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:9"/></g>
+        <g transform="translate(240 43) rotate(5)"><use class="step shoe" href="#shoe" style="--i:10"/></g>
+        <g transform="translate(275 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:11"/></g>
+        <g transform="translate(310 25) rotate(-5) scale(1 -1)"><use class="step shoe" href="#shoe" style="--i:12"/></g>
+        <g transform="translate(312 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:13"/></g>
+        <g transform="translate(349 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:14"/></g>
+        <g transform="translate(380 43) rotate(5)"><use class="step shoe" href="#shoe" style="--i:15"/></g>
+        <g transform="translate(386 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:16"/></g>
+        <g transform="translate(423 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:17"/></g>
+        <g transform="translate(450 25) rotate(-5) scale(1 -1)"><use class="step shoe" href="#shoe" style="--i:18"/></g>
+        <g transform="translate(460 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:19"/></g>
+        <g transform="translate(497 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:20"/></g>
+        <g transform="translate(520 43) rotate(5)"><use class="step shoe" href="#shoe" style="--i:21"/></g>
+        <g transform="translate(534 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:22"/></g>
+        <g transform="translate(571 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:23"/></g>
+        <g transform="translate(590 25) rotate(-5) scale(1 -1)"><use class="step shoe" href="#shoe" style="--i:24"/></g>
+        <g transform="translate(608 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:25"/></g>
+        <g transform="translate(645 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:26"/></g>
+        <g transform="translate(660 43) rotate(5)"><use class="step shoe" href="#shoe" style="--i:27"/></g>
+        <g transform="translate(682 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:28"/></g>
+        <g transform="translate(719 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:29"/></g>
+        <g transform="translate(730 25) rotate(-5) scale(1 -1)"><use class="step shoe" href="#shoe" style="--i:30"/></g>
+        <g transform="translate(756 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:31"/></g>
+        <g transform="translate(793 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:32"/></g>
+        <g transform="translate(800 43) rotate(5)"><use class="step shoe" href="#shoe" style="--i:33"/></g>
+        <g transform="translate(830 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:34"/></g>
+        <g transform="translate(867 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:35"/></g>
+        <g transform="translate(870 25) rotate(-5) scale(1 -1)"><use class="step shoe" href="#shoe" style="--i:36"/></g>
+        <g transform="translate(904 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:37"/></g>
+        <g transform="translate(940 43) rotate(5)"><use class="step shoe" href="#shoe" style="--i:38"/></g>
+        <g transform="translate(941 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:39"/></g>
+        <g transform="translate(978 71) rotate(82) scale(.62)"><use class="step paw" href="#paw-print" style="--i:40"/></g>
+        <g transform="translate(1010 25) rotate(-5) scale(1 -1)"><use class="step shoe" href="#shoe" style="--i:41"/></g>
+        <g transform="translate(1015 85) rotate(98) scale(.62)"><use class="step paw" href="#paw-print" style="--i:42"/></g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="strip" aria-label="Adres przychodni">
+    <div class="wrap strip__in">
+      <p><strong>Jesteśmy przy ul. Chabrowej 2D w Wysokiej.</strong> W części katalogów internetowych wciąż widnieje stary adres – Chabrowa 95BC.</p>
+      <a href="#dojazd">Jak dojechać</a>
+    </div>
+  </section>
+
+  <section id="uslugi" class="section">
+    <div class="wrap">
+      <div class="section__head">
+        <h2>Usługi</h2>
+        <p>Wybrane usługi przychodni. O inne zabiegi, ceny i wolne terminy zapytaj telefonicznie.</p>
+      </div>
+      <div class="services">
+        <div class="service">
+          <h3>Wizyty</h3>
+          <ul>
+            <li>Wizyta, gdy zwierzę choruje</li>
+            <li>Wizyta kontrolna</li>
+            <li>Profilaktyczny przegląd zdrowia</li>
+            <li>Pomiar ciśnienia krwi</li>
+          </ul>
+        </div>
+        <div class="service">
+          <h3>Szczepienia i profilaktyka</h3>
+          <ul>
+            <li>Szczepienie przeciw wściekliźnie</li>
+            <li>Szczepienia psów: choroby zakaźne, kaszel kenelowy, leptospiroza</li>
+            <li>Szczepienia kotów: choroby zakaźne, białaczka kotów (FeLV)</li>
+            <li>Czipowanie</li>
+            <li>Usuwanie kleszczy</li>
+          </ul>
+          <a class="service__link" href="#przypomnienie">Ustaw przypomnienie o szczepieniu</a>
+        </div>
+        <div class="service">
+          <h3>Diagnostyka</h3>
+          <ul>
+            <li>Badania krwi: profil podstawowy, rozszerzony, geriatryczny i tarczycowy</li>
+            <li>Badanie moczu</li>
+            <li>Badanie kału, w tym test na Giardię</li>
+            <li>Test FIV/FeLV u kotów</li>
+            <li>USG jamy brzusznej</li>
+            <li>RTG</li>
+          </ul>
+        </div>
+        <div class="service">
+          <h3>Pielęgnacja</h3>
+          <ul>
+            <li>Przycinanie pazurów</li>
+            <li>Toaleta uszu</li>
+            <li>Toaleta gruczołów okołoodbytowych</li>
+          </ul>
+        </div>
+      </div>
+      <p class="note">Przyjmujemy pakiety weterynaryjne PETHELP.</p>
+    </div>
+  </section>
+
+  <section id="przypomnienie" class="section section--forest">
+    <div class="wrap remind">
+      <div class="remind__intro">
+        <h2>Nie przegap szczepienia</h2>
+        <p>Wpisz datę kolejnego szczepienia z książeczki zdrowia. Przypomnienie trafi do kalendarza w Twoim telefonie – razem z numerem, pod który wystarczy zadzwonić, żeby umówić wizytę.</p>
+        <p class="remind__privacy">Niczego nie wysyłamy ani nie zapisujemy. Wydarzenie powstaje w Twojej przeglądarce.</p>
+      </div>
+      <form class="remind__card remind__form" novalidate>
+        <div class="tile" data-empty>
+          <div class="tile__page" aria-hidden="true">
+            <span class="tile__month js-t-month">miesiąc</span>
+            <span class="tile__day js-t-day">?</span>
+            <span class="tile__week js-t-week">dzień</span>
+          </div>
+          <div>
+            <p class="tile__title js-t-title">Szczepienie zwierzaka</p>
+            <p class="tile__meta js-t-alarm">Przypomnienie: tydzień wcześniej, 9:00</p>
+            <p class="tile__meta">Umów wizytę: 71&nbsp;786&nbsp;78&nbsp;84</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="pet-name">Imię zwierzaka <span>(opcjonalnie)</span></label>
+          <input id="pet-name" name="pet-name" type="text" maxlength="30" placeholder="np. Burek" autocomplete="off">
+        </div>
+        <div class="fields-2">
+          <div class="field">
+            <label for="vacc-date">Data szczepienia</label>
+            <div class="date-field is-empty">
+              <input id="vacc-date" name="vacc-date" type="date" required aria-describedby="vacc-date-error">
+              <span class="date-field__text js-date-text" aria-hidden="true">Wybierz datę</span>
+              <svg class="date-field__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <rect x="3.5" y="5" width="17" height="15.5" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                <path d="M3.5 10h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <p class="field__error" id="vacc-date-error" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="vacc-alarm">Przypomnienie</label>
+            <select id="vacc-alarm" name="vacc-alarm">
+              <option value="week" selected>tydzień wcześniej</option>
+              <option value="two">dwa tygodnie wcześniej</option>
+              <option value="day">dzień wcześniej</option>
+            </select>
+          </div>
+        </div>
+        <div class="remind__actions">
+          <a class="btn btn--primary js-gcal" href="https://calendar.google.com/calendar/" target="_blank" rel="noopener">Dodaj do Kalendarza Google</a>
+          <button class="btn btn--ghost js-ics" type="button">Dodaj w iPhonie lub Outlooku</button>
+        </div>
+        <p class="remind__msg js-remind-msg" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <section class="section section--paper">
+    <div class="wrap split">
+      <div>
+        <h2>O przychodni</h2>
+        <p>Cztery Łapy i Ty to przychodnia prowadzona przez lek.&nbsp;wet. Agnieszkę Janeczek. Przyjmujemy psy i koty w każdym wieku – od pierwszych szczepień szczeniąt i kociąt po opiekę nad zwierzętami w podeszłym wieku.</p>
+        <p>Na wizytę najlepiej umówić się telefonicznie.</p>
+      </div>
+      <div class="reviews">
+        <h2>Opinie</h2>
+        <p class="reviews__score"><span class="reviews__num">4,7</span><span>na 5</span></p>
+        <svg class="stars" viewBox="0 0 120 24" aria-hidden="true">
+          <g fill="#CFE3D8"><use href="#star"/><use href="#star" x="24"/><use href="#star" x="48"/><use href="#star" x="72"/><use href="#star" x="96"/></g>
+          <g fill="#0F5247" clip-path="url(#stars-fill)"><use href="#star"/><use href="#star" x="24"/><use href="#star" x="48"/><use href="#star" x="72"/><use href="#star" x="96"/></g>
+        </svg>
+        <p>Średnia ze 133 opinii w Google (stan na październik 2026).</p>
+        <a href="https://www.google.com/maps/search/?api=1&amp;query=Przychodnia+Weterynaryjna+Cztery+%C5%81apy+i+Ty+Wysoka" target="_blank" rel="noopener">Przeczytaj opinie w Google</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="dojazd" class="section">
+    <div class="wrap split">
+      <div>
+        <h2>Dojazd</h2>
+        <address class="addr">ul. Chabrowa 2D<br>52-200 Wysoka<br>gmina Kobierzyce</address>
+        <p>Wysoka leży tuż za południową granicą Wrocławia. Łatwy dojazd, bez szlabanu.</p>
+        <div class="actions">
+          <a class="btn btn--primary" href="https://www.google.com/maps/dir/?api=1&amp;destination=ul.+Chabrowa+2D%2C+52-200+Wysoka" target="_blank" rel="noopener">Wyznacz trasę w Mapach Google</a>
+        </div>
+      </div>
+      <div class="map" id="mapa">
+        <svg class="map__roads" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <g fill="#2C7466" opacity=".55">
+            <rect x="28" y="118" width="64" height="42" rx="6"/>
+            <rect x="228" y="104" width="52" height="36" rx="6"/>
+            <rect x="250" y="222" width="72" height="42" rx="6"/>
+            <rect x="60" y="232" width="48" height="34" rx="6"/>
+          </g>
+          <g fill="none" stroke="#3A8576" stroke-linecap="round">
+            <path d="M-20 205 C 80 186, 170 228, 420 168" stroke-width="14"/>
+            <path d="M118 -20 C 140 80, 172 160, 208 320" stroke-width="8"/>
+            <path d="M-20 88 C 90 108, 262 58, 420 78" stroke-width="5"/>
+            <path d="M302 -20 C 282 90, 302 200, 262 320" stroke-width="5"/>
+          </g>
+        </svg>
+        <div class="map__inner">
+          <svg class="map__pin" viewBox="0 0 36 46" aria-hidden="true">
+            <path d="M18 0C8.1 0 0 7.9 0 17.7 0 30.6 18 46 18 46s18-15.4 18-28.3C36 7.9 27.9 0 18 0z" fill="#E3EE4B"/>
+            <circle cx="18" cy="17.5" r="6.5" fill="#0F5247"/>
+          </svg>
+          <button type="button" class="btn btn--light js-map">Pokaż mapę</button>
+          <p class="map__note">Mapa Google wczyta się dopiero po kliknięciu.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="kontakt" class="section section--paper">
+    <div class="wrap">
+      <h2>Kontakt</h2>
+      <a class="phone" href="tel:+48717867884">71&nbsp;786&nbsp;78&nbsp;84</a>
+      <ul class="contact">
+        <li><span>E-mail</span><a href="mailto:agajaneczek@gmail.com">agajaneczek@gmail.com</a></li>
+        <li><span>Facebook</span><a href="https://facebook.com/Przychodnia-Weterynaryjna-Cztery-%C5%81apy-i-Ty-Agnieszka-Janeczek-100057667470103" target="_blank" rel="noopener">Przychodnia Weterynaryjna Cztery Łapy i Ty</a></li>
+        <li><span>Adres</span><span class="contact__value">ul. Chabrowa 2D, 52-200 Wysoka</span></li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p>Przychodnia Weterynaryjna Cztery Łapy i Ty Agnieszka Janeczek<br>ul. Chabrowa 2D, 52-200 Wysoka</p>
+    <p class="foot__demo">Projekt poglądowy przygotowany jako propozycja dla przychodni. Godziny, usługi i dane kontaktowe pochodzą z publicznych źródeł (październik 2026) i wymagają potwierdzenia.</p>
+  </div>
+</footer>
+
+<nav class="dock" aria-label="Szybki kontakt">
+  <a class="dock__call" href="tel:+48717867884">Zadzwoń</a>
+  <a href="https://www.google.com/maps/dir/?api=1&amp;destination=ul.+Chabrowa+2D%2C+52-200+Wysoka" target="_blank" rel="noopener">Trasa</a>
+</nav>
+
+<script>
+(function () {
+  document.documentElement.classList.add('js');
+
+  // Godziny otwarcia w minutach od północy: [otwarcie, zamknięcie]. 0 = niedziela.
+  var HOURS = {
+    0: null,
+    1: [600, 1080],
+    2: [600, 1080],
+    3: [600, 1080],
+    4: [600, 1080],
+    5: [600, 1080],
+    6: [600, 720]
+  };
+  var DAY_IN = ['w niedzielę', 'w poniedziałek', 'we wtorek', 'w środę', 'w czwartek', 'w piątek', 'w sobotę'];
+
+  var sign = document.querySelector('.sign');
+  var stateEl = document.querySelector('.js-state');
+  var detailEl = document.querySelector('.js-detail');
+  var rows = document.querySelectorAll('.hours__row');
+
+  function fmt(m) {
+    var h = Math.floor(m / 60), mm = m % 60;
+    return h + ':' + (mm < 10 ? '0' : '') + mm;
+  }
+
+  // Czas polski niezależnie od strefy czasowej odwiedzającego.
+  function now() {
+    try {
+      var parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/Warsaw', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+      }).formatToParts(new Date());
+      var o = {};
+      parts.forEach(function (p) { o[p.type] = p.value; });
+      var days = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+      return { day: days[o.weekday], min: (parseInt(o.hour, 10) % 24) * 60 + parseInt(o.minute, 10) };
+    } catch (e) {
+      var d = new Date();
+      return { day: d.getDay(), min: d.getHours() * 60 + d.getMinutes() };
+    }
+  }
+
+  function status(t) {
+    var today = HOURS[t.day];
+    if (today && t.min >= today[0] && t.min < today[1]) {
+      var left = today[1] - t.min;
+      return {
+        state: 'open',
+        label: 'Otwarte',
+        detail: left <= 60
+          ? 'Zamykamy o ' + fmt(today[1]) + ' – za ' + left + ' min'
+          : 'Zapraszamy dziś do ' + fmt(today[1])
+      };
+    }
+    if (today && t.min < today[0]) {
+      return { state: 'closed', label: 'Zamknięte', detail: 'Otwieramy dziś o ' + fmt(today[0]) };
+    }
+    for (var i = 1; i <= 7; i++) {
+      var d = (t.day + i) % 7;
+      if (HOURS[d]) {
+        return {
+          state: 'closed',
+          label: 'Zamknięte',
+          detail: 'Otwieramy ' + (i === 1 ? 'jutro' : DAY_IN[d]) + ' o ' + fmt(HOURS[d][0])
+        };
+      }
+    }
+    return { state: 'closed', label: 'Zamknięte', detail: 'Zadzwoń, aby umówić wizytę' };
+  }
+
+  function update() {
+    var t = now();
+    var s = status(t);
+    sign.setAttribute('data-state', s.state);
+    if (stateEl.textContent !== s.label) stateEl.textContent = s.label;
+    if (detailEl.textContent !== s.detail) detailEl.textContent = s.detail;
+    for (var i = 0; i < rows.length; i++) {
+      var days = rows[i].getAttribute('data-days').split(',').map(Number);
+      rows[i].classList.toggle('is-today', days.indexOf(t.day) !== -1);
+    }
+  }
+
+  update();
+  setInterval(update, 30000);
+
+  // Mapa Google ładuje się dopiero po kliknięciu (bez ciasteczek Google przy samym wejściu na stronę).
+  var mapBtn = document.querySelector('.js-map');
+  if (mapBtn) {
+    mapBtn.addEventListener('click', function () {
+      var frame = document.createElement('iframe');
+      frame.src = 'https://www.google.com/maps?q=' + encodeURIComponent('ul. Chabrowa 2D, 52-200 Wysoka') + '&z=15&output=embed';
+      frame.title = 'Mapa dojazdu: ul. Chabrowa 2D, Wysoka';
+      frame.loading = 'lazy';
+      frame.referrerPolicy = 'no-referrer-when-downgrade';
+      var box = document.getElementById('mapa');
+      box.innerHTML = '';
+      box.appendChild(frame);
+      frame.focus();
+    });
+  }
+
+  // Szyld kołysze się, gdy pojawi się na ekranie (na telefonie jest niżej niż na komputerze).
+  // Dolny pasek „Zadzwoń / Trasa” na telefonie pokazuje się, gdy przyciski z góry strony znikną z ekranu.
+  var swing = document.querySelector('.swing');
+  var dock = document.querySelector('.dock');
+  var heroActions = document.querySelector('.hero .actions');
+  if ('IntersectionObserver' in window) {
+    var swingObserver = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting) {
+        swing.classList.add('is-swinging');
+        swingObserver.disconnect();
+      }
+    }, { threshold: 0.6 });
+    swingObserver.observe(swing);
+
+    dock.classList.add('is-hidden');
+    new IntersectionObserver(function (entries) {
+      dock.classList.toggle('is-hidden', entries[0].isIntersecting);
+    }).observe(heroActions);
+
+    // Ślady łap i butów pojawiają się po kolei, gdy pas wejdzie na ekran.
+    var trail = document.querySelector('.trail');
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (trail && !reduceMotion) {
+      trail.classList.add('trail--ready');
+      var trailObserver = new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting) {
+          trail.classList.add('trail--walking');
+          trailObserver.disconnect();
+        }
+      }, { threshold: 0.5 });
+      trailObserver.observe(trail);
+    }
+  } else {
+    swing.classList.add('is-swinging');
+  }
+
+  // Stuknięcie w szyld rozkołysze go jeszcze raz.
+  sign.addEventListener('click', function () {
+    swing.classList.remove('is-swinging');
+    void swing.offsetWidth;
+    swing.classList.add('is-swinging');
+  });
+
+  // Przypomnienie o szczepieniu. Wydarzenie powstaje w przeglądarce – nic nie jest wysyłane ani zapisywane.
+  var form = document.querySelector('.remind__form');
+  if (form) {
+    var CLINIC = 'Przychodnia Weterynaryjna Cztery Łapy i Ty';
+    var ADDRESS = 'ul. Chabrowa 2D, 52-200 Wysoka';
+    var PHONE = '71 786 78 84';
+    var ALARMS = {
+      week: { days: 7, label: 'tydzień wcześniej' },
+      two: { days: 14, label: 'dwa tygodnie wcześniej' },
+      day: { days: 1, label: 'dzień wcześniej' }
+    };
+    var nameIn = form.querySelector('#pet-name');
+    var dateIn = form.querySelector('#vacc-date');
+    var dateField = dateIn.parentNode;
+    var dateText = dateField.querySelector('.js-date-text');
+    var alarmIn = form.querySelector('#vacc-alarm');
+    var gcal = form.querySelector('.js-gcal');
+    var icsBtn = form.querySelector('.js-ics');
+    var msg = form.querySelector('.js-remind-msg');
+    var err = form.querySelector('#vacc-date-error');
+    var tile = form.querySelector('.tile');
+    var tMonth = tile.querySelector('.js-t-month');
+    var tDay = tile.querySelector('.js-t-day');
+    var tWeek = tile.querySelector('.js-t-week');
+    var tTitle = tile.querySelector('.js-t-title');
+    var tAlarm = tile.querySelector('.js-t-alarm');
+    var fMonth = new Intl.DateTimeFormat('pl-PL', { month: 'long', timeZone: 'UTC' });
+    var fWeek = new Intl.DateTimeFormat('pl-PL', { weekday: 'long', timeZone: 'UTC' });
+    var fDayMonth = new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+    var fFull = new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    var local = new Date();
+    dateIn.min = local.getFullYear() + '-' + pad(local.getMonth() + 1) + '-' + pad(local.getDate());
+
+    var parse = function (value) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+      return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
+    };
+    var today = parse(dateIn.min);
+    var addDays = function (d, n) { return new Date(d.getTime() + n * 864e5); };
+    var ymd = function (d) { return d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()); };
+    var petName = function () { return nameIn.value.replace(/\s+/g, ' ').trim().slice(0, 30); };
+    var alarm = function () { return ALARMS[alarmIn.value] || ALARMS.week; };
+
+    var render = function () {
+      var d = parse(dateIn.value);
+      var a = alarm();
+      var name = petName();
+      dateField.classList.toggle('is-empty', !d);
+      dateText.textContent = d ? fFull.format(d) : 'Wybierz datę';
+      tTitle.textContent = name ? 'Szczepienie – ' + name : 'Szczepienie zwierzaka';
+      if (!d) {
+        tile.setAttribute('data-empty', '');
+        tMonth.textContent = 'miesiąc';
+        tDay.textContent = '?';
+        tWeek.textContent = 'dzień';
+        tAlarm.textContent = 'Przypomnienie: ' + a.label + ', 9:00';
+        return;
+      }
+      var remind = addDays(d, -a.days);
+      tile.removeAttribute('data-empty');
+      tMonth.textContent = fMonth.format(d);
+      tDay.textContent = d.getUTCDate();
+      tWeek.textContent = fWeek.format(d);
+      tAlarm.textContent = 'Przypomnienie: ' + fDayMonth.format(remind).replace(' ', ' ') + ', 9:00' +
+        (remind < today ? ' – ta data już minęła, wybierz krótszy termin' : '');
+      // W Kalendarzu Google wydarzeniem jest samo przypomnienie: tego dnia o 9:00, z numerem do przychodni.
+      gcal.href = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+        '&text=' + encodeURIComponent(name ? 'Umów szczepienie – ' + name : 'Umów szczepienie zwierzaka') +
+        '&dates=' + ymd(remind) + 'T090000/' + ymd(remind) + 'T091500&ctz=Europe/Warsaw' +
+        '&details=' + encodeURIComponent('Szczepienie wypada ' + fDayMonth.format(d) + ' (' + fWeek.format(d) + '). ' +
+          'Zadzwoń, żeby umówić wizytę: ' + PHONE + '.\n' + CLINIC + ', ' + ADDRESS) +
+        '&location=' + encodeURIComponent(CLINIC + ', ' + ADDRESS);
+    };
+
+    var check = function () {
+      var d = parse(dateIn.value);
+      var text = !d ? 'Wpisz datę szczepienia – znajdziesz ją w książeczce zdrowia.'
+        : d < today ? 'Ta data już minęła. Wpisz datę kolejnego szczepienia.' : '';
+      err.textContent = text;
+      if (text) {
+        dateIn.setAttribute('aria-invalid', 'true');
+        msg.textContent = '';
+        dateIn.focus();
+        return null;
+      }
+      dateIn.removeAttribute('aria-invalid');
+      return d;
+    };
+
+    var esc = function (s) {
+      return s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    };
+    var fold = function (line) {
+      var enc = new TextEncoder();
+      var out = '';
+      var size = 0;
+      Array.from(line).forEach(function (ch) {
+        var n = enc.encode(ch).length;
+        if (size + n > 74) { out += '\r\n '; size = 1; }
+        out += ch;
+        size += n;
+      });
+      return out;
+    };
+    // Plik .ics: całodniowe wydarzenie w dniu szczepienia + alarm o 9:00 wybranego dnia wcześniej.
+    var ics = function (d) {
+      var name = petName();
+      var hours = alarm().days * 24 - 9;
+      var lines = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cztery Lapy i Ty//Przypomnienie//PL',
+        'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+        'UID:' + Date.now() + '-' + Math.random().toString(36).slice(2) + '@cztery-lapy-i-ty',
+        'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''),
+        'DTSTART;VALUE=DATE:' + ymd(d),
+        'DTEND;VALUE=DATE:' + ymd(addDays(d, 1)),
+        'SUMMARY:' + esc(name ? 'Szczepienie – ' + name : 'Szczepienie zwierzaka'),
+        'DESCRIPTION:' + esc('Umów wizytę: ' + PHONE + '.\n' + CLINIC + ', ' + ADDRESS),
+        'LOCATION:' + esc(CLINIC + ', ' + ADDRESS),
+        'TRANSP:TRANSPARENT',
+        'BEGIN:VALARM', 'ACTION:DISPLAY',
+        'DESCRIPTION:' + esc((name ? 'Umów szczepienie – ' + name : 'Umów szczepienie zwierzaka') + ': ' + PHONE),
+        'TRIGGER:-P' + (hours >= 24 ? Math.floor(hours / 24) + 'D' : '') + 'T' + (hours % 24) + 'H',
+        'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'
+      ];
+      return lines.map(fold).join('\r\n') + '\r\n';
+    };
+    var slug = function (s) {
+      return s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    };
+
+    // Na telefonie dotknięcie niewidocznego pola otwiera systemowy wybór daty.
+    // Na komputerze otwieramy kalendarz przeglądarki po kliknięciu w dowolne miejsce pola.
+    var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    var canPick = typeof dateIn.showPicker === 'function';
+    if (coarse || canPick) dateField.classList.add('is-custom');
+    var openPicker = function () {
+      if (coarse || !canPick) return;
+      try { dateIn.showPicker(); } catch (e) { /* kalendarz jest już otwarty */ }
+    };
+    dateIn.addEventListener('click', openPicker);
+    dateIn.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(); }
+    });
+
+    [nameIn, dateIn, alarmIn].forEach(function (el) { el.addEventListener('input', render); });
+    alarmIn.addEventListener('change', render);
+    dateIn.addEventListener('change', function () {
+      render();
+      if (err.textContent) check();
+      tile.classList.remove('is-pop');
+      void tile.offsetWidth;
+      tile.classList.add('is-pop');
+    });
+    form.addEventListener('submit', function (e) { e.preventDefault(); });
+
+    gcal.addEventListener('click', function (e) {
+      if (!check()) { e.preventDefault(); return; }
+      msg.textContent = 'Kalendarz Google otworzy się w nowej karcie – zapisz tam wydarzenie.';
+    });
+
+    icsBtn.addEventListener('click', function () {
+      var d = check();
+      if (!d) return;
+      var text = ics(d);
+      var iOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (iOS) {
+        window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(text);
+      } else {
+        var url = URL.createObjectURL(new Blob([text], { type: 'text/calendar;charset=utf-8' }));
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'szczepienie' + (petName() ? '-' + slug(petName()) : '') + '.ics';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      }
+      msg.textContent = 'Gotowe. Otwórz pobrany plik, a przypomnienie trafi do Twojego kalendarza.';
+    });
+
+    render();
+  }
+
+  // Do testów w konsoli: window.__status({day: 6, min: 690})
+  window.__status = status;
+})();
+</script>
+</body>
+</html>

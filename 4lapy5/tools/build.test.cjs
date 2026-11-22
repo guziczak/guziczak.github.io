@@ -79,6 +79,9 @@ test('ids are unique and every in-page reference resolves', () => {
     }
     for (const link of html.match(/<a\b[^>]*target="_blank"[^>]*>/g) || []) assert.match(link, /rel="noopener noreferrer"/);
     assert.equal((html.match(/<h1\b/g) || []).length, 1, `${file}: exactly one h1`);
+    // The header that stays in view on wide screens carries the phone number.
+    const header = /<header class="site-header">[\s\S]*?<\/header>/.exec(html)[0];
+    assert.ok(header.includes(`class="header-call" href="${content.shared.phoneHref}"`), `${file}: phone link in the header`);
   }
 });
 

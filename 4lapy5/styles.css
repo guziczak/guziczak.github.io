@@ -128,7 +128,11 @@ button { cursor: pointer; }
 .label, .tile-label { color: var(--ink-soft); font: 500 .8125rem/1.45 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 
 /* ---------- Header ---------- */
-.site-header { display: flex; align-items: center; gap: 10px; padding-block: 12px; }
+/* On a phone the header scrolls away: the bottom bar already holds the three actions, and
+   two fixed bars would take a fifth of a small screen. From 720px up there is no bottom bar,
+   so the header stays in view instead and carries the phone number (see "Wider screens"). */
+.header-inner { display: flex; align-items: center; gap: 10px; padding-block: 12px; }
+.header-call { display: none; }
 .brand { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font: 800 1.3125rem/1.1 var(--display); font-stretch: 90%; text-decoration: none; white-space: nowrap; }
 .brand-mark { width: 38px; height: 38px; padding: 8px; border-radius: 11px; background: var(--ink); color: var(--paper); fill: currentColor; }
 .site-nav { display: none; }
@@ -154,7 +158,7 @@ button { cursor: pointer; }
 .btn-number { padding-left: 11px; border-left: 1.5px solid; font: 700 1rem/1.2 var(--mono); }
 @media (hover: hover) {
   .btn-primary:hover { filter: brightness(1.18); }
-  .btn-ghost:hover, .tool:hover { background: var(--rule); }
+  .btn-ghost:hover, .tool:hover, .header-call:hover { background: var(--rule); }
 }
 
 /* ---------- Hero: today's entry ---------- */
@@ -326,6 +330,9 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
 @media (max-width: 359px) {
   .calendar-head { grid-template-columns: 30px 30px minmax(0, 1fr) 30px 30px; }
   .calendar-title { font-size: 1rem; }
+  /* The name and both header buttons have to share 296px. */
+  .brand { gap: 8px; font-size: 1.125rem; }
+  .brand-mark { width: 34px; height: 34px; padding: 7px; }
 }
 @media (hover: hover) {
   .date-button:hover, .calendar-head button:hover, .calendar-grid button:not([aria-disabled='true'], [data-selected]):hover { background: var(--rule); }
@@ -407,7 +414,11 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
 }
 @media (min-width: 720px) {
   .wrap { width: min(100% - 48px, 1240px); }
-  .site-header { padding-block: 16px; }
+  /* Sections reached through a link stop below the header, not under it. */
+  html { scroll-padding-top: 88px; }
+  .site-header { position: sticky; top: 0; z-index: 30; border-bottom: 1.5px solid var(--rule); background: var(--desk); }
+  .header-call { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border: 1.5px solid var(--ink); border-radius: 11px; background: var(--paper); font: 700 .9375rem/1 var(--mono); text-decoration: none; white-space: nowrap; }
+  .header-call .icon { width: 1.125rem; height: 1.125rem; }
   .brand { font-size: 1.5rem; }
   .bento { grid-template-columns: repeat(6, minmax(0, 1fr)); padding-bottom: 28px; }
   .t-hero, .t-services, .t-reminder, .t-map { grid-column: span 6; }
@@ -420,7 +431,7 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
   .site-footer { padding-bottom: 40px; }
   .dock { display: none; }
 }
-@media (min-width: 860px) {
+@media (min-width: 960px) {
   .site-nav { display: flex; gap: 2px; margin-left: auto; }
   .site-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 10px; font-size: .9375rem; font-weight: 700; text-decoration: none; }
   .site-nav a:hover { background: var(--paper); }
@@ -440,6 +451,15 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
   .t-vet, .t-contact { grid-column: span 4; }
   .t-hero .hero-foot { margin-top: auto; }
   .week-track { height: 84px; }
+}
+
+/* The rule and the shadow under the fixed header appear once the page has been scrolled.
+   Browsers without scroll timelines keep the plain rule set above. */
+@keyframes header-edge { to { border-bottom-color: var(--edge); box-shadow: 0 8px 20px rgb(13 16 32 / .1); } }
+@supports (animation-timeline: scroll()) {
+  @media (min-width: 720px) {
+    .site-header { border-bottom-color: transparent; animation: header-edge linear both; animation-timeline: scroll(); animation-range: 0 72px; }
+  }
 }
 
 /* ---------- Motion (only when welcome) ---------- */
@@ -473,6 +493,7 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
   body { background: #fff; }
   .header-tools, .site-nav, .dock, .map-figure, .hero-actions .btn-ghost, .reminder-actions, .rating-link { display: none !important; }
   .bento { display: block; }
+  .site-header { position: static; border: 0; animation: none !important; }
   .tile { margin-bottom: 10px; animation: none !important; break-inside: avoid; }
   .stamp { animation: none !important; }
   .headline, .headline[data-compact] { font-size: 2.4rem; }
