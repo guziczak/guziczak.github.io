@@ -21,7 +21,7 @@ function isTypedArray(value, name) {
  * Returns a row-major, unpadded QR matrix: data[y * size + x], 1 = black.
  * The caller must add a four-module white quiet zone when rendering it.
  */
-export function encodeBytes(bytes) {
+export function encodeBytes(bytes, options = {}) {
   if (!isTypedArray(bytes, 'Uint8Array')) {
     throw error('INVALID_INPUT', 'Oczekiwano tablicy bajtów Uint8Array.');
   }
@@ -35,7 +35,14 @@ export function encodeBytes(bytes) {
     );
   }
 
-  const level = bytes.byteLength <= MEDIUM_BYTE_LIMIT ? 'M' : 'L';
+  if (!options || typeof options !== 'object'
+    || (options.errorCorrectionLevel !== undefined && !['M', 'L'].includes(options.errorCorrectionLevel))) {
+    throw error('INVALID_OPTIONS', 'Nieprawidłowy poziom korekcji QR.');
+  }
+  const level = options.errorCorrectionLevel || (bytes.byteLength <= MEDIUM_BYTE_LIMIT ? 'M' : 'L');
+  if (level === 'M' && bytes.byteLength > MEDIUM_BYTE_LIMIT) {
+    throw error('INPUT_TOO_LARGE', 'Plik jest za duży na jeden kod z korekcją M.');
+  }
   const qr = QRCode.create([{ data: bytes, mode: 'byte' }], {
     errorCorrectionLevel: level
   });

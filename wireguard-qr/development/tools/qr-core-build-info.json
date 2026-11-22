@@ -5,8 +5,8 @@
     "dijkstrajs": "1.0.3",
     "jsqr": "1.4.0"
   },
-  "bundleBytes": 153099,
-  "bundleSha256": "427f49581f68b508c6807cc5126bf4d487941d5e76f1c27609b7dce69554250e",
+  "bundleBytes": 153433,
+  "bundleSha256": "4f0fcfa9c1ca6567efb69935ec45f32a5454abb3ee3706119b4b171f9ded2a7e",
   "inputs": [
     "node_modules/dijkstrajs/dijkstra.js",
     "node_modules/jsqr/dist/jsQR.js",

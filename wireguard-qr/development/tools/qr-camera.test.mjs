@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { runInThisContext } from 'node:vm';
+import { Worker as NodeWorker } from 'node:worker_threads';
 
 // Main-realm evaluation avoids sandbox-realm overhead in the small timing check.
 runInThisContext(await readFile(new URL('../../assets/qr-core.js', import.meta.url), 'utf8'), { filename: 'qr-core.js' });
@@ -36,6 +37,8 @@ class PixelCanvas {
   get width() { return this.pixelWidth; }
   set width(value) { this.pixelWidth = value; this.resizes++; this.rgba = new Uint8ClampedArray(this.width * this.height * 4); }
   get height() { return this.pixelHeight; }
+  get videoWidth() { return this.width; }
+  get videoHeight() { return this.height; }
   set height(value) { this.pixelHeight = value; this.resizes++; this.rgba = new Uint8ClampedArray(this.width * this.height * 4); }
   getContext(type, options) {
     assert.equal(type, '2d');
@@ -46,7 +49,7 @@ class PixelCanvas {
     assert.equal(dx, 0);
     assert.equal(dy, 0);
     assert.ok(sx >= 0 && sy >= 0 && sx + sw <= video.videoWidth && sy + sh <= video.videoHeight);
-    this.draws.push({ sx, sy, sw, sh, dw, dh });
+    this.draws.push({ sx, sy, sw, sh, dw, dh, source: video });
     for (let y = 0; y < dh; y++) {
       const sourceY = Math.min(video.videoHeight - 1, Math.floor(sy + (y + 0.5) * sh / dh));
       for (let x = 0; x < dw; x++) {
@@ -62,17 +65,22 @@ class PixelCanvas {
   }
 }
 
-function scannerWithCanvas(decode = WGQR.decodePixels) {
-  const canvas = new PixelCanvas();
+function scannerWithCanvas(decode = WGQR.decodePixels, options = {}) {
+  const canvases = [];
   const previous = globalThis.document;
-  globalThis.document = { createElement: name => { assert.equal(name, 'canvas'); return canvas; } };
+  globalThis.document = { createElement: name => {
+    assert.equal(name, 'canvas');
+    const canvas = new PixelCanvas();
+    canvases.push(canvas);
+    return canvas;
+  } };
   let scanner;
-  try { scanner = WGCamera.createScanner({ decode }); }
+  try { scanner = WGCamera.createScanner({ ...options, decode }); }
   finally {
     if (previous === undefined) delete globalThis.document;
     else globalThis.document = previous;
   }
-  return { scanner, canvas };
+  return { scanner, canvas: canvases[0], canvases };
 }
 
 function scene({ matrix = qr, width = 1600, height = 900, scale = 4, left = 560, top = 220, inverted = false, blank = false } = {}) {
@@ -271,4 +279,233 @@ test('one representative tracked crop reduces decoder work while preserving the 
   const median = samples => [...samples].sort((a, b) => a - b)[2];
   context.diagnostic(`Synthetic Node runner, not phone performance: QRv${qr.version}, ${frame.length} framed bytes; full ${video.videoWidth}x${video.videoHeight} median ${median(fullTimes).toFixed(1)}ms, tracked crop ${crop.width}x${crop.height} median ${median(cropTimes).toFixed(1)}ms, ratio ${(median(fullTimes) / median(cropTimes)).toFixed(2)}x. Same normal polarity; two warmups and five verified decodes per image.`);
   scanner.dispose();
+});
+
+const secondTransfer = await WGTransfer.createTransfer(original.map(value => value ^ 0xa5), 'kamera-druga.bin');
+const secondFrame = secondTransfer.frames[0];
+const secondQR = WGQR.encodeBytes(secondFrame);
+
+function twoSymbols({ vertical = false, swapped = false, identical = false, only = null, shift = 0 } = {}) {
+  const size = { width: 1600, height: 1000 };
+  const positions = vertical ? [{ left: 580, top: 20 }, { left: 580, top: 545 }]
+    : [{ left: 100 + shift, top: 280 }, { left: 1040 - shift, top: 280 }];
+  const matrices = identical ? [qr, qr] : swapped ? [secondQR, qr] : [qr, secondQR];
+  const output = scene({ ...size, blank: true });
+  for (let index = 0; index < 2; index++) {
+    if (only !== null && only !== index) continue;
+    const layer = scene({ ...size, ...positions[index], matrix: matrices[index] });
+    for (let offset = 0; offset < layer.rgba.length; offset += 4) {
+      if (layer.rgba[offset] === 216) continue;
+      output.rgba.set(layer.rgba.subarray(offset, offset + 4), offset);
+    }
+  }
+  return output;
+}
+
+function assertBoth(sample) {
+  assert.equal(sample.results.length, 2);
+  assert.ok(sample.results.some(result => Buffer.from(result.bytes).equals(Buffer.from(frame))));
+  assert.ok(sample.results.some(result => Buffer.from(result.bytes).equals(Buffer.from(secondFrame))));
+}
+
+test('dual scanner freezes one image, reads both independent payloads, and follows swapped/moved symbols', () => {
+  const { scanner, canvases } = scannerWithCanvas(WGQR.decodePixels, { lanes: 2 });
+  const video = twoSymbols();
+  const first = scanner.scan(video);
+  assertBoth(first);
+  assert.equal(first.attempts, 2);
+  assert.equal(canvases[2].draws.length, 1, 'One snapshot must feed both ROI decoders.');
+  assert.equal(canvases[2].draws[0].source, video);
+  assert.equal(canvases[0].draws[0].source, canvases[2]);
+  assert.equal(canvases[1].draws[0].source, canvases[2]);
+  assertBoth(scanner.scan(twoSymbols({ swapped: true, shift: 45 })));
+  assertBoth(scanner.scan(twoSymbols({ shift: 80 })));
+  scanner.dispose();
+});
+
+test('dual reception accepts one readable symbol without requiring its partner', () => {
+  const { scanner } = scannerWithCanvas(WGQR.decodePixels, { lanes: 2 });
+  const first = scanner.scan(twoSymbols({ only: 0 }));
+  assert.equal(first.results.length, 1);
+  assertResult(first.result, frame);
+  let acquired;
+  for (let attempt = 0; attempt < 7; attempt++) {
+    const sample = scanner.scan(twoSymbols({ only: 1 }));
+    if (sample.results.some(result => Buffer.from(result.bytes).equals(Buffer.from(secondFrame)))) { acquired = sample; break; }
+  }
+  assert.ok(acquired, 'The other symbol must remain independently receivable after movement/loss.');
+  scanner.dispose();
+});
+
+test('two physical copies remain two optical reads; protocol packet deduplication belongs to the receiver', () => {
+  const { scanner } = scannerWithCanvas(WGQR.decodePixels, { lanes: 2 });
+  const sample = scanner.scan(twoSymbols({ identical: true }));
+  assert.equal(sample.results.length, 2);
+  for (const result of sample.results) assertResult(result, frame);
+  assert.ok(Math.abs(sample.results[0].location.topLeftCorner.x - sample.results[1].location.topLeftCorner.x) > 500);
+  scanner.dispose();
+});
+
+test('dual scanner discovers vertically arranged codes in a landscape camera frame', () => {
+  const { scanner, canvases } = scannerWithCanvas(WGQR.decodePixels, { lanes: 2 });
+  let found;
+  const trace = [];
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const sample = scanner.scan(twoSymbols({ vertical: true }));
+    trace.push({ attempt, reads: sample.results.length, regions: canvases.slice(0, 2).map(canvas => {
+      const { sx, sy, sw, sh, dw, dh } = canvas.draws.at(-1); return { sx, sy, sw, sh, dw, dh };
+    }) });
+    if (sample.results.length === 2) { found = sample; break; }
+  }
+  assert.ok(found, `Orientation search must find both vertically arranged symbols: ${JSON.stringify(trace)}`);
+  assertBoth(found);
+  scanner.dispose();
+});
+
+test('dual search can reacquire a centered single dense QR that crosses both half-frame seams', () => {
+  const bytes = Uint8Array.from({ length: 2953 }, (_, index) => (index * 53 + Math.floor(index / 256)) % 256);
+  const matrix = WGQR.encodeBytes(bytes);
+  const video = scene({ matrix, width: 1600, height: 1000, scale: 4, left: 430, top: 130 });
+  const { scanner } = scannerWithCanvas(WGQR.decodePixels, { lanes: 2 });
+  let found;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const sample = scanner.scan(video);
+    if (sample.result) { found = sample; break; }
+  }
+  assert.ok(found, 'A full-frame detail pass must preserve single-symbol compatibility.');
+  assert.equal(found.results.length, 1, 'Overlapping ROI results must be deduplicated.');
+  assertResult(found.result, bytes);
+  scanner.dispose();
+});
+
+test('stable large QR crops adapt their pixel budget without changing decoded bytes', () => {
+  const { scanner } = scannerWithCanvas();
+  const video = scene({ width: 1600, height: 1200, scale: 8, left: 300, top: 130 });
+  assertResult(acquire(scanner, video).result);
+  const initial = scanner.scan(video);
+  assertResult(initial.result);
+  const adapted = scanner.scan(video);
+  assertResult(adapted.result);
+  assert.ok(adapted.pixelCount < initial.pixelCount * 0.75, 'A well-sampled stable QR needs fewer pixels than its original large ROI.');
+  scanner.setLanes(2);
+  assertBoth(scanner.scan(twoSymbols()));
+  scanner.setLanes(1);
+  assertResult(acquire(scanner, video).result);
+  scanner.dispose();
+});
+
+// Run the actual browser worker in an isolated Node thread. Only its host bridge
+// is adapted; importScripts, raw pixel decoding and byte transfer are exercised.
+class LocalDecoderWorker {
+  constructor(url) {
+    assert.equal(url, './assets/qr-decoder-worker.js');
+    const script = new URL('../../assets/qr-decoder-worker.js', import.meta.url).href;
+    this.thread = new NodeWorker(`
+      const { parentPort } = require('node:worker_threads');
+      const { readFileSync } = require('node:fs');
+      const { runInThisContext } = require('node:vm');
+      const script = ${JSON.stringify(script)};
+      globalThis.self = globalThis;
+      globalThis.importScripts = name => {
+        if (name !== 'qr-core.js?v=3') throw new Error('Unexpected dependency');
+        runInThisContext(readFileSync(new URL(name, script), 'utf8'));
+      };
+      globalThis.postMessage = (message, transfer) => parentPort.postMessage(message, transfer);
+      runInThisContext(readFileSync(new URL(script), 'utf8'));
+      parentPort.on('message', data => globalThis.onmessage({ data }));
+    `, { eval: true });
+    this.thread.on('message', data => this.onmessage?.({ data }));
+    this.thread.on('error', error => this.onerror?.({ error, preventDefault() {} }));
+  }
+  postMessage(message) { this.thread.postMessage(message); }
+  terminate() { void this.thread.terminate(); }
+}
+
+test('local worker decodes both real QR images and returns byte-exact binary payloads', async () => {
+  const previous = globalThis.Worker;
+  globalThis.Worker = LocalDecoderWorker;
+  let fallbackCalls = 0;
+  const { scanner } = scannerWithCanvas((...args) => { fallbackCalls++; return WGQR.decodePixels(...args); },
+    { lanes: 2, workerUrl: './assets/qr-decoder-worker.js' });
+  try {
+    const sample = await scanner.scanAsync(twoSymbols());
+    assertBoth(sample);
+    assert.equal(sample.decoder, 'worker');
+    assert.equal(fallbackCalls, 0);
+    assertBoth(await scanner.scanAsync(twoSymbols({ swapped: true })));
+  } finally { scanner.dispose(); globalThis.Worker = previous; }
+});
+
+test('worker startup/error falls back to retained pixels instead of losing the current QR', async () => {
+  const previous = globalThis.Worker;
+  for (const failure of ['constructor', 'decode']) {
+    globalThis.Worker = class {
+      constructor() { if (failure === 'constructor') throw new Error('Worker unavailable'); }
+      postMessage() { queueMicrotask(() => this.onerror?.({ preventDefault() {} })); }
+      terminate() {}
+    };
+    const { scanner } = scannerWithCanvas(WGQR.decodePixels, { lanes: 2, workerUrl: './assets/qr-decoder-worker.js' });
+    try {
+      const sample = await scanner.scanAsync(twoSymbols());
+      assertBoth(sample);
+      assert.equal(sample.decoder, 'main');
+    } finally { scanner.dispose(); }
+  }
+  globalThis.Worker = previous;
+});
+
+test('worker scans are bounded; reset/dispose cancel pending replies without decoding stale pixels', async () => {
+  const previous = globalThis.Worker;
+  const workers = [];
+  globalThis.Worker = class {
+    constructor() { this.messages = []; workers.push(this); }
+    postMessage(message) { this.messages.push(message); }
+    terminate() { this.terminated = true; }
+  };
+  let decodes = 0;
+  const { scanner } = scannerWithCanvas((...args) => { decodes++; return WGQR.decodePixels(...args); },
+    { workerUrl: './assets/qr-decoder-worker.js' });
+  try {
+    const pending = scanner.scanAsync(scene());
+    assert.equal((await scanner.scanAsync(scene())).busy, true);
+    assert.equal(workers[0].messages.length, 1);
+    scanner.reset();
+    assert.equal((await pending).results.length, 0);
+    assert.equal(workers[0].terminated, true);
+    const next = scanner.scanAsync(scene());
+    workers[0].onerror({ preventDefault() {} });
+    assert.equal(workers[1].terminated, undefined, 'A stale worker error must not kill the replacement.');
+    scanner.dispose();
+    assert.equal((await next).results.length, 0);
+    assert.equal(workers[1].terminated, true);
+    assert.equal(decodes, 0);
+    assert.equal((await scanner.scanAsync(scene())).attempts, 0);
+  } finally { scanner.dispose(); globalThis.Worker = previous; }
+});
+
+test('a silent worker timeout terminates the worker and retries the captured pixels locally', async () => {
+  const previousWorker = globalThis.Worker;
+  const previousTimeout = globalThis.setTimeout;
+  let terminated = 0;
+  let created = 0;
+  globalThis.Worker = class {
+    constructor() { created++; }
+    postMessage() {}
+    terminate() { terminated++; }
+  };
+  globalThis.setTimeout = (callback, delay, ...args) => previousTimeout(callback, delay === 3000 ? 5 : delay, ...args);
+  const { scanner } = scannerWithCanvas(WGQR.decodePixels, { workerUrl: './assets/qr-decoder-worker.js' });
+  const video = scene({ width: 960, height: 900, left: 200, top: 220 });
+  try {
+    const sample = await scanner.scanAsync(video);
+    assertResult(sample.result);
+    assert.equal(sample.decoder, 'main');
+    assert.equal(terminated, 1);
+    assertResult((await scanner.scanAsync(video)).result);
+    assert.equal(created, 1, 'A known unavailable worker must not repeatedly stall scanning.');
+  } finally {
+    scanner.dispose();
+    globalThis.Worker = previousWorker;
+    globalThis.setTimeout = previousTimeout;
+  }
 });

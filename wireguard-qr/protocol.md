@@ -2,9 +2,87 @@
 
 The site preserves raw file bytes in QR byte segments. A small ordinary configuration QR contains the configuration itself and remains suitable for WireGuard's native QR importer. Framed animations and feedback are a custom protocol between instances of this site, not a WireGuard, UR, or general QR-scanner format.
 
-`assets/qr-resilient.js` exposes `WGResilient`: a version-2 sender, a receiver for v2/v1/plain QR, and offline feedback. The unchanged `assets/qr-transfer.js` exposes `WGTransfer` and is retained as the v1 receiver. Load it before `qr-resilient.js`.
+`assets/qr-resilient.js` exposes `WGResilient`: a version-2 sender by default, an opt-in compact version-3 sender, a receiver for v3/v2/v1/plain QR, and offline feedback. The unchanged `assets/qr-transfer.js` exposes `WGTransfer` and is retained as the v1 receiver. Load it before `qr-resilient.js`.
 
 Both helpers work in browser memory without network requests, workers, persistence, compression, or new dependencies. Web Crypto provides random session IDs and SHA-256, so framed transfer completion needs HTTPS or localhost. ZIP compression is a separate application feature.
+
+## Compact version 3
+
+`await createTransfer(bytes, filename, {chunkBytes: 384, compact: true})` selects v3. Omitting `compact`, or setting it to `false`, preserves the v2 sender and wire layout. Chunk sizes remain **384 or 600 bytes**, with the same maximum file size, 32-chunk generations, explicit XOR masks, bounded Gaussian elimination, SHA-256 verification, and owned-buffer cleanup as v2. Display lanes have no protocol identity: symbols shown side by side belong to one session and may arrive in either order.
+
+A v3 transfer adds `manifestFrame()` and `manifestInterval: 16` to the existing sender API. `frame(index)` and `repairFrame(blockIndex, serial)` still produce fresh caller-owned binary QR payloads, but the frequently sent data symbols omit the filename, whole-file digest, original size, and sender serial. The serial still selects a deterministic repair mask; the receiver needs only that explicit mask.
+
+The application sends a manifest **before the first data symbols and again at least every 16 data symbols**, including during repairs. It must count symbols, not display changes: two data symbols shown together consume two of those 16. Manifest repetition also continues if sending starts partway through the original source sequence. Calling these helpers alone does not schedule manifests.
+
+`collector.accept(bytes)` adds these outcomes:
+
+| Kind | Meaning |
+| --- | --- |
+| `pending` | A valid v3 data symbol arrived before its manifest. Returns `{kind, version:3, id, reason:'manifest', packetType}`. The payload is discarded, no session or output buffer is allocated, `state` remains `null`, and no progress or successful delivery is claimed. |
+| `manifest` | A valid manifest started or repeated the active v3 session. Returns the ordinary detached state fields plus `{kind, packetType:'manifest'}`. The first manifest has `received:0`; repeats do not add rank or replace accepted data. |
+
+Data symbols discarded before a manifest can be recovered by subsequent source or repair symbols. This allows late joining and recovery from a lost initial manifest without retaining an unbounded queue. There is no fixed completion-time guarantee if manifests continue to be lost. A different ID or data protocol version remains `foreign`, even when that symbol is a manifest or has no full metadata. Compact foreign data has an empty `foreignName`, because it does not contain a name.
+
+Matching manifests must keep exactly the same original size, chunk size, sanitized name, and digest. Data symbols must match the active manifest's chunk length, block range, and exact source count in that block. Malformed/foreign symbols do not replace the session. The final padded chunk and original unpadded SHA-256 are checked before releasing any file. Repeated matching data or manifests can retry a transient digest failure; reset invalidates any pending digest just as for v2.
+
+All data `progress` and `complete` results now include `packetType: 'single' | 'mixed'` for v2/v3, or `'legacy'` for v1. Single means a one-bit mask, including a repair mask that happens to select one source chunk. Mixed means two or more selected chunks. A manifest that retries/finalizes hashing can return `complete` with `packetType:'manifest'`.
+
+### Version 3 data symbol
+
+All multibyte integers are unsigned **big-endian**. Block indices are zero-based.
+
+| Byte offset | Length | Field |
+| --- | --- | --- |
+| 0 | 8 | ASCII `WGQR-XFR` |
+| 8 | 1 | Data version `3` |
+| 9 | 1 | Symbol flags `0` (data) |
+| 10 | 2 | Header length, exactly `36` |
+| 12 | 16 | Cryptographically random transfer ID |
+| 28 | 2 | Block index |
+| 30 | 4 | Nonzero XOR mask within the block |
+| 34 | 2 | Actual source count in this block, `1..32` |
+| 36 | chunkBytes | XOR equation payload, always 384 or 600 bytes |
+| 36 + chunkBytes | 4 | CRC-32/ISO-HDLC over all preceding symbol bytes |
+
+The nominal chunk length is inferred from the exact symbol length and then checked against the manifest. Before a manifest, block indices are bounded by the maximum block count for the inferred chunk length, and the mask may not refer to a bit outside the declared count. These checks and CRC validation happen before any session allocation.
+
+Data symbols are exactly **424 or 640 bytes**, independent of filename length. Their protocol overhead is 40 bytes; v2 uses `84 + filenameLength` bytes. Thus each data symbol saves `44 + filenameLength` bytes. This is a reduction in encoded binary length, not a claim about physical camera throughput. Periodic manifests consume additional display capacity, and QR version/size changes are discrete.
+
+### Version 3 manifest
+
+| Byte offset | Length | Field |
+| --- | --- | --- |
+| 0 | 8 | ASCII `WGQR-XFR` |
+| 8 | 1 | Data version `3` |
+| 9 | 1 | Symbol flags `1` (manifest) |
+| 10 | 2 | Header length, `76 + filenameLength` |
+| 12 | 16 | Transfer ID, identical to data symbols |
+| 28 | 4 | Original unpadded file length, `1..10485760` |
+| 32 | 2 | Source chunk length, `384` or `600` |
+| 34 | 2 | Block count, derived exactly from size and chunk length |
+| 36 | 4 | Source chunk count, derived exactly from size and chunk length |
+| 40 | 2 | UTF-8 filename byte length, `1..120` |
+| 42 | 2 | Reserved `0` |
+| 44 | 32 | SHA-256 of the original unpadded file |
+| 76 | filenameLength | Sanitized UTF-8 basename, using the unchanged v1/v2 rules |
+| headerLength | 4 | CRC-32/ISO-HDLC over all preceding manifest bytes |
+
+Manifest size is **81..200 bytes**. Unknown flags, inconsistent dimensions/lengths, invalid UTF-8 or filenames, and CRC failures are rejected before creating a session. A manifest can allocate only the same capped output and block-index structures used by a validated v2 frame.
+
+### Version 3 feedback and targeted repairs
+
+V3 uses **ACK format 2**, retaining the common ACK fields and completed-block bitmap described below. Byte 8 is `2`, byte 9 is data version `3`, and the two bytes at offset 74 contain a target-record count from **0 to 16**. Immediately after the bitmap are that many six-byte records; the trailing CRC follows the records and covers the whole ACK.
+
+| Record offset | Length | Field |
+| --- | --- | --- |
+| 0 | 2 | Incomplete block index |
+| 2 | 4 | Nonzero bitmap of missing Gaussian-elimination pivots in that block |
+
+Records are strictly increasing by block index, refer only to incomplete blocks, and cannot set bits beyond the block's actual count. The receiver reports the first at most 16 incomplete blocks, so even the largest 10 MiB transfer has an ACK no larger than **283 bytes**. The full completed-block bitmap still covers every block. The ACK remains bound to the data version, random transfer ID, original file size, chunk/block dimensions, and whole-file digest.
+
+For v3, `sender.acceptFeedback(bytes)` returns the usual `{missingBlocks, complete, suggestedRate}` plus `repairTargets: [{blockIndex, missingFrames}]`. Each `missingFrames` array contains at most 32 **global zero-based source indices**, suitable for `sender.frame(index)`. These are missing pivots, not a claim that those original QR symbols were never seen. Sending each of those systematic unit vectors increases the rank relative to the reported basis. If further data has arrived since the ACK, some targets can already be redundant; stale ACKs remain harmless. The sender should prioritize these targets, then continue fountain repair for incomplete blocks and request newer feedback when useful.
+
+ACKs with all blocks solved but `complete:false` still do not confirm delivery; only the successful whole-file digest sets the completion flag. V1/v2 continue to use ACK format 1, with no target records and no change to their wire layout or default sender API.
 
 ## Version 2 API
 
