@@ -19,7 +19,7 @@ const LANGUAGES = { pl: 'index.html', en: 'en/index.html' };
 
 // Attributes whose values are translated or language-specific; everything else is structure.
 const TEXT_ATTRIBUTES = new Set(['aria-label', 'title', 'alt', 'content', 'placeholder', 'lang', 'hreflang', 'href', 'src', 'srcset',
-  'data-placeholder', 'data-tip', 'data-tip-holiday']);
+  'data-placeholder', 'data-tip', 'data-tip-holiday', 'abbr']);
 function skeleton(html) {
   const tags = [];
   const tagPattern = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s"'<>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'<>]+))?)*)\s*\/?>/g;
@@ -153,6 +153,26 @@ test('the stamp is a neutral graphic and the date boxes match the placeholder', 
     assert.equal(boxes, content[language].combPlaceholder);
     assert.equal(boxes.length, 8);
     assert.equal((html.match(/aria-hidden="true">0\d · <\/span>/g) || []).length, 7, `${file}: seven numbered rubrics`);
+  }
+});
+
+test('the date field can be typed and has its own calendar sheet', () => {
+  for (const [language, file] of Object.entries(LANGUAGES)) {
+    const html = pages[file];
+    const field = /<input id="vacc-date"[^>]*>/.exec(html)[0];
+    // Plain text with a numeric keypad: no browser date popup to clash with the page.
+    assert.match(field, /type="text"/);
+    assert.match(field, /inputmode="numeric"/);
+    assert.match(field, new RegExp(`placeholder="${content[language].datePlaceholder}"`));
+    assert.equal(html.includes('type="date"'), false);
+    const opener = /<button class="date-button"[^>]*>/.exec(html)[0];
+    for (const attribute of ['type="button"', 'aria-haspopup="dialog"', 'aria-expanded="false"', 'aria-controls="calendar"']) {
+      assert.ok(opener.includes(attribute), `${file}: calendar button has ${attribute}`);
+    }
+    assert.match(html, /<div class="calendar" id="calendar" role="dialog"[^>]*hidden>/);
+    assert.deepEqual([...html.matchAll(/data-calendar-step="(-?\d+)"/g)].map(match => Number(match[1])), [-12, -1, 1, 12]);
+    const headers = [...html.matchAll(/<th scope="col" abbr="([^"]+)">([^<]+)<\/th>/g)].map(match => [match[1], match[2]]);
+    assert.deepEqual(headers, content[language].daysFull.map((day, index) => [day, content[language].weekdays[index]]));
   }
 });
 

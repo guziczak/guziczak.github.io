@@ -272,7 +272,9 @@ html:not(.js) .stamp { display: none; }
 .text-link { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; font-weight: 700; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
 
 /* ---------- Reminder: an entry for your own calendar ---------- */
-.t-reminder { container-type: inline-size; display: grid; }
+.t-reminder { container-type: inline-size; display: grid; overflow: visible; }
+/* While the calendar hangs over the edge of this sheet, the sheet lies on top of its neighbours. */
+.t-reminder[data-calendar-open] { z-index: 5; }
 .reminder { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 /* When the row is taller than the form, the entry and the buttons settle at the bottom. */
 .reminder-copy, #reminder-form { display: flex; flex-direction: column; }
@@ -299,9 +301,35 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
 .field label span { color: var(--ink-soft); font-weight: 500; }
 .field input, .field select { width: 100%; min-width: 0; height: 52px; margin: 0; padding: 0 14px; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--field); font-size: 1rem; line-height: 1.4; }
 .field input::placeholder { color: var(--ink-soft); opacity: 1; }
-/* Keep the native date picker, but stop the iOS skin from resizing the field. */
-.field input[type='date'] { -webkit-appearance: none; appearance: none; font-family: var(--mono); text-align: start; }
-.field input[type='date']::-webkit-date-and-time-value { min-height: 1.4em; text-align: inherit; }
+/* The date is typed like in the booklet (DD.MM.YYYY) or picked from the calendar sheet.
+   The browser's own date popup cannot be styled, so the field is plain text. */
+.date-wrap { position: relative; }
+.date-wrap input { padding-right: 54px; font-family: var(--mono); letter-spacing: .03em; }
+.date-button { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--ink); }
+/* A page of a wall calendar: Sundays and holidays in red, today circled with the pen,
+   the chosen day marked with the highlighter. */
+.calendar { position: absolute; z-index: 15; top: calc(100% + 8px); left: 0; width: 20rem; max-width: min(20rem, 100vw - 64px); padding: 12px; border: 1.5px solid var(--ink); border-radius: 14px; background: var(--paper); box-shadow: 0 14px 34px rgb(13 16 32 / .3); }
+.calendar-head { display: grid; grid-template-columns: 36px 36px minmax(0, 1fr) 36px 36px; align-items: center; gap: 2px; }
+.calendar-head button { height: 36px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--ink); font: 700 1.25rem/1 var(--mono); }
+.calendar-title { font: 800 1.1875rem/1.2 var(--display); font-stretch: 90%; text-align: center; }
+.calendar-grid { width: 100%; margin-top: 8px; border-collapse: collapse; table-layout: fixed; }
+.calendar-grid th { padding: 4px 0 6px; color: var(--ink-soft); font: 500 .8125rem/1 var(--mono); }
+.calendar-grid th:last-child { color: var(--stamp-closed); }
+.calendar-grid td { padding: 1px; }
+.calendar-grid button { display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 1.5px solid transparent; border-radius: 50%; background: none; color: var(--ink); font: 500 .9375rem/1 var(--mono); }
+.calendar-grid button[data-red] { color: var(--stamp-closed); }
+.calendar-grid button[data-today] { border-color: currentColor; }
+.calendar-grid button[data-selected] { border-color: transparent; border-radius: 7px; background: var(--marker); color: var(--navy); font-weight: 700; }
+.calendar-grid button[aria-disabled='true'] { opacity: .36; cursor: default; }
+.calendar-note { margin-top: 8px; color: var(--ink-soft); font-size: .8125rem; line-height: 1.4; }
+/* On the narrowest phones the month name needs the room more than the arrows do. */
+@media (max-width: 359px) {
+  .calendar-head { grid-template-columns: 30px 30px minmax(0, 1fr) 30px 30px; }
+  .calendar-title { font-size: 1rem; }
+}
+@media (hover: hover) {
+  .date-button:hover, .calendar-head button:hover, .calendar-grid button:not([aria-disabled='true'], [data-selected]):hover { background: var(--rule); }
+}
 .select-wrap { position: relative; }
 .select-wrap select { -webkit-appearance: none; appearance: none; padding-right: 40px; }
 .select-wrap::after { content: ''; position: absolute; right: 17px; top: 50%; width: 9px; height: 9px; margin-top: -7px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; }
@@ -427,6 +455,7 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
   @supports (animation-timeline: view()) {
     .t-services, .t-reminder, .t-map, .t-vet, .t-contact { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 40%; }
   }
+  .calendar:not([hidden]) { animation: rise .18s ease both; }
   .week li::after { transition: opacity .14s ease, transform .14s ease; }
   .week li::before { transition: opacity .14s ease; }
   /* The stamp lands once, a moment after the sheet. */

@@ -166,7 +166,24 @@
           <div class="fields-row">
             <div class="field">
               <label for="vacc-date">{{dateLabel}}</label>
-              <input id="vacc-date" name="vacc-date" type="date" required aria-describedby="reminder-help reminder-message">
+              <div class="date-wrap">
+                <input id="vacc-date" name="vacc-date" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="{{datePlaceholder}}" required aria-describedby="reminder-help reminder-message">
+                <button class="date-button" type="button" data-calendar-open aria-haspopup="dialog" aria-expanded="false" aria-controls="calendar" aria-label="{{openCalendar}}"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></button>
+                <div class="calendar" id="calendar" role="dialog" aria-label="{{calendarLabel}}" data-calendar hidden>
+                  <div class="calendar-head">
+                    <button type="button" data-calendar-step="-12" aria-label="{{prevYear}}">«</button>
+                    <button type="button" data-calendar-step="-1" aria-label="{{prevMonth}}">‹</button>
+                    <p class="calendar-title" data-calendar-title aria-live="polite"></p>
+                    <button type="button" data-calendar-step="1" aria-label="{{nextMonth}}">›</button>
+                    <button type="button" data-calendar-step="12" aria-label="{{nextYear}}">»</button>
+                  </div>
+                  <table class="calendar-grid">
+                    <thead><tr>{{{calendarWeekdays}}}</tr></thead>
+                    <tbody data-calendar-days></tbody>
+                  </table>
+                  <p class="calendar-note">{{calendarNote}}</p>
+                </div>
+              </div>
             </div>
             <div class="field">
               <label for="vacc-alarm">{{leadLabel}}</label>

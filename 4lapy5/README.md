@@ -20,7 +20,7 @@ To niezależna propozycja obok `/4lapy2/`, `/4lapy3/` i `/4lapy4/`. Logika, test
 
 ```
 node 4lapy5/tools/build.cjs                 # po każdej zmianie szablonu, treści, CSS lub JS
-node --test "4lapy5/tools/*.test.cjs"       # 23 testy, bez przeglądarki i sieci
+node --test "4lapy5/tools/*.test.cjs"       # 27 testów, bez przeglądarki i sieci
 python -m http.server                       # z katalogu głównego repo → http://localhost:8000/4lapy5/
 ```
 
@@ -36,7 +36,8 @@ Godziny otwarcia są zapisane raz, w tablicy `HOURS` w `site.js`. Z niej powstaj
 - **Słupki tygodnia.** Godziny przyjęć są zakreskowane długopisem, dzisiejszy słupek jest wypełniony, czerwona kreska pokazuje bieżącą godzinę. Najechanie na słupek pokazuje etykietę z dniem i godzinami; na ekranie dotykowym etykietę przypina stuknięcie, a zdejmuje drugie stuknięcie albo stuknięcie obok. Escape chowa etykietę. Słupki są ozdobnikiem (`aria-hidden`), a tę samą informację dla klawiatury i czytników ekranu niesie lista pod spodem.
 - **Zakreślacz.** Żółty z granatowym pismem, taki sam w obu motywach: dzisiejszy dzień, dzisiejsze godziny, godzina w zdaniu, ocena.
 - **Fajki.** Pozycje usług to drukowane kratki odhaczone odręcznie: fajka jest narysowanym pociągnięciem pióra (maska SVG), zaczyna się w kratce i wychodzi przez prawy górny róg; kolejne różnią się lekko kątem.
-- **Wpis o szczepieniu.** Wybrana data pojawia się cyfra po cyfrze w kratkach, a treść przypomnienia na „naklejce” z przerywaną ramką. Pole daty pozostaje natywne.
+- **Wpis o szczepieniu.** Wybrana data pojawia się cyfra po cyfrze w kratkach, a treść przypomnienia na „naklejce” z przerywaną ramką.
+- **Pole daty i kalendarz.** Systemowego okienka z datami nie da się ostylować, więc pole jest zwykłym polem tekstowym z klawiaturą numeryczną: datę wpisuje się jak w książeczce (`15032027`, `15.03.2027`, `1.3.2027` — kropki wstawiają się same). Przycisk obok otwiera własny kalendarz w formie kartki: niedziele i polskie święta są na czerwono, dzisiejszy dzień zakreślony długopisem, wybrany zaznaczony zakreślaczem, minione dni nieaktywne. Strzałki przechodzą po dniach i tygodniach, Home i End na krańce tygodnia, PageUp i PageDown zmieniają miesiąc (z Shift — rok), Escape zamyka. Data, której nie ma w kalendarzu (31.02), dostaje własny komunikat.
 - **Tabliczka adresowa.** Granatowa emaliowana tabliczka „ul. Chabrowa 2D” na mapie; między mapą a adresem biegnie perforacja.
 
 ## Status na żywo
@@ -76,4 +77,4 @@ msedge --headless=new --window-size=1200,630 --hide-scrollbars --screenshot=4lap
 
 ## Nie sprawdzono
 
-Stronę renderowano w Edge i Chrome 158: desktop, 1024, 768, 600, 390 i 320 px, oba motywy, oba języki, trzy stany pieczątki i tryb bez JavaScript. Nie sprawdzono Safari i iOS (w szczególności filtra SVG na pieczątce, maski z fajką i jednostki `lh`), czytników ekranu, faktycznego pobrania pliku `.ics` ani otwarcia Kalendarza Google oraz przeglądarek wbudowanych w aplikacje.
+Stronę renderowano w Edge i Chrome 158: desktop, 1024, 768, 600, 390 i 320 px, oba motywy, oba języki, trzy stany pieczątki i tryb bez JavaScript. Nie sprawdzono Safari i iOS (w szczególności filtra SVG na pieczątce, maski z fajką, jednostki `lh` oraz wpisywania daty na klawiaturze telefonu), czytników ekranu, faktycznego pobrania pliku `.ics` ani otwarcia Kalendarza Google oraz przeglądarek wbudowanych w aplikacje.

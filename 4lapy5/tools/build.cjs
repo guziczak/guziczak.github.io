@@ -73,6 +73,11 @@ function comb(copy) {
   return [...boxes.slice(0, 2), '<i>.</i>', ...boxes.slice(2, 4), '<i>.</i>', ...boxes.slice(4)].join('');
 }
 
+// The header row of the calendar sheet: Monday first, with the full day name for screen readers.
+function calendarWeekdays(copy) {
+  return copy.weekdays.map((short, index) => `<th scope="col" abbr="${escapeHtml(copy.daysFull[index])}">${escapeHtml(short)}</th>`).join('');
+}
+
 function jsonLd(shared, pageUrl) {
   return JSON.stringify({
     '@context': 'https://schema.org',
@@ -110,6 +115,7 @@ function render(language) {
     hoursList: hoursList(copy),
     servicesHtml: services(copy),
     combHtml: comb(copy),
+    calendarWeekdays: calendarWeekdays(copy),
     jsonLd: jsonLd(content.shared, pageUrl)
   };
   // {{key}} is escaped text; {{{key}}} is markup produced by the helpers above.

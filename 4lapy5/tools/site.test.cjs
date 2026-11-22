@@ -6,6 +6,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   HOURS, AXIS, parseDate, atWarsaw, atWarsawNine, easterSunday, isHoliday, clinicStatus, todayLabel, previewInstant,
+  maskDate, typedDate, monthGrid,
   buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename
 } = require('../site.js');
 
@@ -123,6 +124,54 @@ test('the week strip axis contains every opening interval', () => {
   }
 });
 
+test('typing shapes the date as DD.MM.YYYY and tolerates the usual ways of writing it', () => {
+  const typed = [
+    ['', ''], ['1', '1'], ['15', '15'], ['150', '15.0'], ['1503', '15.03'], ['15032', '15.03.2'],
+    ['15032027', '15.03.2027'], ['150320279', '15.03.2027'], ['15.03.2027', '15.03.2027'],
+    ['15.', '15.'], ['15.03.', '15.03.'], ['1.', '01.'], ['01.3.', '01.03.'], ['1.3.2027', '01.03.2027'],
+    ['15/03/2027', '15.03.2027'], ['15-03-2027', '15.03.2027'], ['15 03 2027', '15.03.2027'],
+    ['2027-03-15', '15.03.2027'], [' 2027-03-15 ', '15.03.2027'], ['abc', ''], ['.5', '5']
+  ];
+  for (const [raw, shaped] of typed) assert.equal(maskDate(raw), shaped, JSON.stringify(raw));
+  // The mask is stable: shaping its own output changes nothing, and backspace over a dot works.
+  for (const [, shaped] of typed) assert.equal(maskDate(shaped), shaped);
+  assert.equal(maskDate('15.0'.slice(0, -1)), '15.');
+  assert.equal(maskDate('15.'.slice(0, -1)), '15');
+});
+
+test('a typed date becomes an ISO day only when it is complete and exists', () => {
+  assert.deepEqual(typedDate('15.03.2027'), { iso: '2027-03-15', complete: true });
+  assert.deepEqual(typedDate('15032027'), { iso: '2027-03-15', complete: true });
+  assert.deepEqual(typedDate('1.3.2027'), { iso: '2027-03-01', complete: true });
+  assert.deepEqual(typedDate('29.02.2028'), { iso: '2028-02-29', complete: true });
+  assert.deepEqual(typedDate('29.02.2027'), { iso: '', complete: true });
+  assert.deepEqual(typedDate('31.04.2027'), { iso: '', complete: true });
+  assert.deepEqual(typedDate('00.00.0000'), { iso: '', complete: true });
+  for (const partial of ['', '15', '15.03', '15.03.202']) assert.deepEqual(typedDate(partial), { iso: '', complete: false });
+});
+
+test('the calendar sheet lays a month out in weeks that start on Monday', () => {
+  const november = monthGrid(2026, 11); // 1 November 2026 is a Sunday
+  assert.equal(november.length, 6);
+  assert.deepEqual(november[0], [null, null, null, null, null, null, '2026-11-01']);
+  assert.deepEqual(november[1], ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08']);
+  assert.deepEqual(november[5], ['2026-11-30', null, null, null, null, null, null]);
+  const february = monthGrid(2027, 2); // starts on a Monday and has exactly four weeks
+  assert.equal(february.length, 4);
+  assert.equal(february[0][0], '2027-02-01');
+  assert.equal(february[3][6], '2027-02-28');
+  assert.equal(monthGrid(2028, 2).flat().filter(Boolean).length, 29);
+  for (let month = 1; month <= 12; month += 1) {
+    const weeks = monthGrid(2027, month);
+    assert.ok(weeks.every(week => week.length === 7));
+    const days = weeks.flat().filter(Boolean);
+    assert.deepEqual(days, [...days].sort());
+    days.forEach(day => assert.ok(parseDate(day), day));
+    // Sundays sit in the last column, where the sheet prints them in red.
+    weeks.forEach(week => { if (week[6]) assert.equal(parseDate(week[6]).getUTCDay(), 0); });
+  }
+});
+
 const now = new Date('2026-01-01T00:00:00Z');
 const values = { name: 'Łatek', date: '2026-02-10', days: 7 };
 const create = language => buildReminder(values, now, language);
@@ -153,6 +202,14 @@ test('validation rejects invalid dates and past alarms with localized messages',
   assert.equal(parseDate('2026-04-31'), null);
   assert.equal(parseDate('2028-02-29').toISOString(), '2028-02-29T00:00:00.000Z');
   for (const language of ['pl', 'en']) {
+    // A fully typed date that does not exist has its own message; a half-typed one stays quiet.
+    const impossible = buildReminder({ ...values, date: '', invalidDate: true }, now, language);
+    assert.equal(impossible.field, 'date');
+    assert.match(impossible.error, language === 'pl' ? /^Takiej daty nie ma/ : /^There is no such date/);
+    const impossiblePreview = reminderPreview({ ...values, date: '', invalidDate: true }, now, language);
+    assert.equal(impossiblePreview.error, impossible.error);
+    assert.equal(impossiblePreview.note, language === 'pl' ? 'Sprawdź datę szczepienia.' : 'Check the vaccination date.');
+    assert.equal(reminderPreview({ ...values, date: '' }, now, language).error, '');
     const invalid = buildReminder({ ...values, date: '2026-02-29' }, now, language);
     assert.equal(invalid.field, 'date');
     assert.match(invalid.error, language === 'pl' ? /^Wybierz datę/ : /^Choose the vaccination date/);

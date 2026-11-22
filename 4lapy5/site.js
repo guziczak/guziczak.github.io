@@ -33,6 +33,8 @@
       previewTime: label => `Podgląd statusu dla: ${label}`,
       themeToDark: 'Włącz ciemny motyw', themeToLight: 'Włącz jasny motyw',
       dateRequired: 'Wybierz datę szczepienia z książeczki zdrowia.',
+      dateInvalid: 'Takiej daty nie ma w kalendarzu. Sprawdź dzień i miesiąc.',
+      calendarToday: 'dziś', calendarHoliday: 'święto',
       datePast: 'Ta data już minęła. Wpisz datę kolejnego szczepienia.',
       leadRequired: 'Wybierz termin przypomnienia z listy.',
       reminderPast: 'Wybrany termin przypomnienia już minął. Wybierz krótsze wyprzedzenie.',
@@ -66,6 +68,8 @@
       previewTime: label => `Status preview for: ${label}`,
       themeToDark: 'Switch to dark theme', themeToLight: 'Switch to light theme',
       dateRequired: 'Choose the vaccination date from your pet’s health record.',
+      dateInvalid: 'There is no such date. Check the day and the month.',
+      calendarToday: 'today', calendarHoliday: 'public holiday',
       datePast: 'That date has passed. Enter the date of the next vaccination.',
       leadRequired: 'Choose a reminder time from the list.',
       reminderPast: 'The selected reminder time has passed. Choose a shorter lead time.',
@@ -201,6 +205,44 @@
     return atWarsaw(day, Number(match[2]), Number(match[3]));
   }
 
+  // The date field is plain text shaped as DD.MM.YYYY, the way the booklet prints dates.
+  // "15032027", "15.03.2027" and "1.3.2027" all end up as the same text.
+  function maskDate(raw) {
+    const text = String(raw || '');
+    const iso = /^\s*(\d{4})-(\d{2})-(\d{2})\s*$/.exec(text);
+    if (iso) return `${iso[3]}.${iso[2]}.${iso[1]}`; // a pasted ISO date
+    const groups = text.split(/[^0-9]+/);
+    let digits = '';
+    groups.forEach((group, index) => {
+      const closed = index < groups.length - 1; // a separator was typed after this group
+      // "1." means the first: a closed single digit of a day or month gets its zero.
+      digits += closed && group.length === 1 && (digits.length === 0 || digits.length === 2) ? `0${group}` : group;
+    });
+    digits = digits.slice(0, 8);
+    const masked = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)].filter(Boolean).join('.');
+    // Keep a dot the visitor has just typed after a complete day or month.
+    return /[^0-9]$/.test(text) && (digits.length === 2 || digits.length === 4) ? `${masked}.` : masked;
+  }
+
+  // The typed text as an ISO day. complete: day, month and year are all there;
+  // iso stays empty when no such day exists.
+  function typedDate(text) {
+    const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(maskDate(text));
+    if (!match) return { iso: '', complete: false };
+    const iso = `${match[3]}-${match[2]}-${match[1]}`;
+    return { iso: parseDate(iso) ? iso : '', complete: true };
+  }
+
+  // One month as weeks that start on Monday. Days outside the month are null.
+  function monthGrid(year, month) {
+    const lead = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
+    const length = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const cells = Array.from({ length: lead }, () => null);
+    for (let day = 1; day <= length; day += 1) cells.push(`${year}-${pad(month)}-${pad(day)}`);
+    while (cells.length % 7) cells.push(null);
+    return Array.from({ length: cells.length / 7 }, (_, week) => cells.slice(week * 7, week * 7 + 7));
+  }
+
   function cleanName(value) {
     return Array.from(String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 30).join('');
   }
@@ -209,6 +251,8 @@
     language = normalizeLanguage(language);
     const copy = MESSAGES[language];
     const current = now || new Date();
+    // A fully typed date that does not exist (31.02) gets its own message.
+    if (values.invalidDate) return { error: copy.dateInvalid, field: 'date' };
     const vaccination = parseDate(values.date);
     if (!vaccination) return { error: copy.dateRequired, field: 'date' };
     if (values.date < warsawDateKey(current)) return { error: copy.datePast, field: 'date' };
@@ -241,7 +285,8 @@
       note: copy.previewNote(copy.leads[Number(values.days)] || copy.leads[7]),
       error: '', field: ''
     };
-    if (!values.date) return preview; // An untouched date stays neutral; submit still requires it.
+    // An untouched or half-typed date stays neutral; submit still requires it.
+    if (!values.date && !values.invalidDate) return preview;
     const reminder = buildReminder(values, now, language);
     if (reminder.error) {
       preview.error = reminder.error;
@@ -309,7 +354,8 @@
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { HOURS, AXIS, parseDate, atWarsaw, atWarsawNine, easterSunday, isHoliday, clinicStatus,
-      todayLabel, previewInstant, buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename };
+      todayLabel, previewInstant, maskDate, typedDate, monthGrid, buildReminder, reminderPreview,
+      googleUrl, calendarFile, calendarFilename };
   }
   if (typeof document === 'undefined') return;
 
@@ -410,6 +456,116 @@
     }
   }
 
+  // The booklet's own calendar sheet replaces the browser's date popup, which cannot be
+  // styled. The field stays an ordinary text input, so the date can always be typed.
+  // Keys follow the usual date-grid pattern: arrows move by day and week, Home and End go to
+  // the ends of the week, PageUp and PageDown change the month (with Shift, the year).
+  function initCalendar(dateInput) {
+    const panel = document.querySelector('[data-calendar]');
+    const opener = document.querySelector('[data-calendar-open]');
+    if (!panel || !opener) return;
+    const sheet = panel.closest('.tile');
+    const title = panel.querySelector('[data-calendar-title]');
+    const body = panel.querySelector('[data-calendar-days]');
+    const monthName = new Intl.DateTimeFormat(copy.locale, { timeZone: 'UTC', month: 'long', year: 'numeric' });
+    const dayName = new Intl.DateTimeFormat(copy.locale, { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const today = () => warsawDateKey(new Date());
+    let cursor = today(); // the day that holds keyboard focus; never in the past
+
+    function draw(focus) {
+      const day = parseDate(cursor);
+      const now = today();
+      const selected = typedDate(dateInput.value).iso;
+      title.textContent = monthName.format(day);
+      body.replaceChildren(...monthGrid(day.getUTCFullYear(), day.getUTCMonth() + 1).map(week => {
+        const row = document.createElement('tr');
+        week.forEach((key, column) => {
+          const cell = row.appendChild(document.createElement('td'));
+          if (!key) return;
+          const button = cell.appendChild(document.createElement('button'));
+          const notes = [dayName.format(parseDate(key))];
+          button.type = 'button';
+          button.textContent = String(Number(key.slice(8)));
+          button.dataset.day = key;
+          button.tabIndex = key === cursor ? 0 : -1;
+          if (key === now) { button.dataset.today = ''; notes.push(copy.calendarToday); }
+          // Sundays and public holidays are printed in red, as on a Polish wall calendar.
+          if (column === 6 || isHoliday(key)) button.dataset.red = '';
+          if (isHoliday(key)) notes.push(copy.calendarHoliday);
+          if (key === selected) { button.dataset.selected = ''; button.setAttribute('aria-pressed', 'true'); }
+          if (key < now) button.setAttribute('aria-disabled', 'true');
+          button.setAttribute('aria-label', notes.join(', '));
+        });
+        return row;
+      }));
+      if (focus) {
+        const target = body.querySelector(`[data-day="${cursor}"]`);
+        if (target) target.focus();
+      }
+    }
+
+    function show(key, focus) {
+      cursor = key < today() ? today() : key;
+      draw(focus);
+    }
+
+    // Moving by months keeps the day where the new month has it (the 31st becomes the 30th).
+    function step(months, focus) {
+      const day = parseDate(cursor);
+      const target = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth() + months, 1));
+      const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+      target.setUTCDate(Math.min(day.getUTCDate(), last));
+      show(dateKey(target), focus);
+    }
+
+    function close(returnFocus) {
+      if (panel.hidden) return;
+      panel.hidden = true;
+      opener.setAttribute('aria-expanded', 'false');
+      if (sheet) sheet.removeAttribute('data-calendar-open');
+      if (returnFocus) opener.focus();
+    }
+
+    function open() {
+      panel.hidden = false;
+      opener.setAttribute('aria-expanded', 'true');
+      // The sheet rises above its neighbours while the calendar hangs over its edge.
+      if (sheet) sheet.setAttribute('data-calendar-open', '');
+      show(typedDate(dateInput.value).iso || today(), true);
+      if (panel.scrollIntoView) panel.scrollIntoView({ block: 'nearest' });
+    }
+
+    opener.addEventListener('click', () => { if (panel.hidden) open(); else close(true); });
+    panel.querySelectorAll('[data-calendar-step]').forEach(button => {
+      button.addEventListener('click', () => step(Number(button.dataset.calendarStep), false));
+    });
+    body.addEventListener('click', event => {
+      const button = event.target.closest ? event.target.closest('[data-day]') : null;
+      if (!button || button.getAttribute('aria-disabled') === 'true') return;
+      dateInput.value = maskDate(button.dataset.day);
+      dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+      close(true);
+    });
+    body.addEventListener('keydown', event => {
+      const day = parseDate(cursor);
+      const weekday = (day.getUTCDay() + 6) % 7;
+      const days = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7, Home: -weekday, End: 6 - weekday }[event.key];
+      if (days !== undefined) show(dateKey(addDays(day, days)), true);
+      else if (event.key === 'PageUp' || event.key === 'PageDown') step((event.key === 'PageUp' ? -1 : 1) * (event.shiftKey ? 12 : 1), true);
+      else return;
+      event.preventDefault();
+    });
+    panel.addEventListener('keydown', event => { if (event.key === 'Escape') close(true); });
+    // A press or a focus move outside the calendar puts it away.
+    document.addEventListener('pointerdown', event => {
+      if (!panel.contains(event.target) && !opener.contains(event.target)) close(false);
+    });
+    panel.addEventListener('focusout', event => {
+      const next = event.relatedTarget;
+      if (next && !panel.contains(next) && next !== opener) close(false);
+    });
+  }
+
   function initReminder() {
     const form = document.getElementById('reminder-form');
     if (!form) return;
@@ -418,7 +574,10 @@
     const alarmInput = form.querySelector('#vacc-alarm');
     const message = form.querySelector('#reminder-message');
     if (!nameInput || !dateInput || !alarmInput || !message) return;
-    const values = () => ({ name: nameInput.value, date: dateInput.value, days: alarmInput.value });
+    const values = () => {
+      const typed = typedDate(dateInput.value);
+      return { name: nameInput.value, date: typed.iso, invalidDate: typed.complete && !typed.iso, days: alarmInput.value };
+    };
     const say = (text, isError) => {
       if (message.textContent !== text) message.textContent = text;
       message.dataset.state = isError ? 'error' : 'ok';
@@ -432,7 +591,7 @@
       setText('[data-reminder-title]', view.title);
       setText('[data-reminder-date]', view.date);
       // The same date, one digit per box, as on a paper form.
-      const digits = parseDate(dateInput.value) ? dateInput.value.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3$2$1') : '';
+      const digits = typedDate(dateInput.value).iso.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3$2$1');
       each('[data-comb]', comb => {
         comb.toggleAttribute('data-filled', Boolean(digits));
         comb.querySelectorAll('b').forEach((box, index) => {
@@ -444,8 +603,13 @@
       each('[data-reminder-note]', element => { element.dataset.state = view.error ? 'error' : 'ready'; });
       mark(view.field);
       say(view.error, Boolean(view.error));
-      dateInput.min = warsawDateKey(new Date());
     };
+    // Typing is shaped into DD.MM.YYYY as it happens (not while an IME is composing).
+    dateInput.addEventListener('input', event => {
+      if (event.isComposing) return;
+      const masked = maskDate(dateInput.value);
+      if (dateInput.value !== masked) dateInput.value = masked;
+    });
     [nameInput, dateInput, alarmInput].forEach(input => {
       input.addEventListener('input', render);
       input.addEventListener('change', render);
@@ -490,6 +654,7 @@
         if (blobUrl) window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
       }
     });
+    initCalendar(dateInput);
     render();
   }
 
