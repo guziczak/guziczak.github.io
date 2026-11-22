@@ -469,7 +469,7 @@ test('the exact 10 MiB boundary reconstructs with 27307 chunks/854 blocks and bo
   collector.dispose();
 });
 
-test('binary v2 repair and ACK survive actual QR matrix → PNG → jsQR without text conversion', async () => {
+test('binary v2/v3 repair, manifests and ACK survive QR matrix → PNG → jsQR without text conversion', async () => {
   runInContext(coreSource, api.browser, { timeout: 3000 });
   const { encodeBytes, decodePixels } = api.browser.WGQR;
   function throughQr(bytes) {
@@ -494,14 +494,351 @@ test('binary v2 repair and ACK survive actual QR matrix → PNG → jsQR without
     return decoded.bytes;
   }
   const original = Uint8Array.from([0xef, 0xbb, 0xbf, ...utf8('[Interface]\r\n# Zażółć 🔑\r\n'), ...pattern(900)]);
-  const file = await api.createTransfer(original, 'real.conf');
+  for (const compact of [false, true]) {
+    const file = await api.createTransfer(original, 'real.conf', { compact });
+    const collector = api.createCollector();
+    if (compact) assert.equal((await collector.accept(throughQr(file.manifestFrame()))).kind, 'manifest');
+    let result;
+    for (let serial = 0; serial < 40; serial++) {
+      result = await collector.accept(throughQr(file.repairFrame(0, serial)));
+      if (result.kind === 'complete') break;
+    }
+    assert.equal(result.kind, 'complete');
+    assertBytes(result.bytes, original);
+    assert.equal(file.acceptFeedback(throughQr(collector.createFeedback({ suggestedRate: 2 }))).complete, true);
+  }
+});
+
+test('compact v3 has an independently specified binary layout and smaller data symbols', async () => {
+  const deterministic = runtime({
+    getRandomValues: bytes => { for (let index = 0; index < bytes.length; index++) bytes[index] = index; return bytes; },
+    subtle: webcrypto.subtle
+  });
+  const bytes = pattern(17);
+  for (const chunkBytes of [384, 600]) {
+    const file = await deterministic.createTransfer(bytes, 'a.bin', { compact: true, chunkBytes });
+    assert.equal(file.version, 3);
+    assert.equal(file.manifestInterval, 16);
+    const expected = Buffer.alloc(36 + chunkBytes + 4);
+    expected.write('WGQR-XFR');
+    expected[8] = 3;
+    expected.writeUInt16BE(36, 10);
+    for (let index = 0; index < 16; index++) expected[12 + index] = index;
+    expected.writeUInt32BE(1, 30);
+    expected.writeUInt16BE(1, 34);
+    expected.set(bytes, 36);
+    expected.writeUInt32BE(crc(expected.subarray(0, -4)), expected.length - 4);
+    assertBytes(file.frame(0), expected);
+    assert.equal(file.frame(0).length, chunkBytes + 40);
+    const manifest = Buffer.alloc(85);
+    manifest.write('WGQR-XFR');
+    manifest[8] = 3;
+    manifest[9] = 1;
+    manifest.writeUInt16BE(81, 10);
+    for (let index = 0; index < 16; index++) manifest[12 + index] = index;
+    manifest.writeUInt32BE(bytes.length, 28);
+    manifest.writeUInt16BE(chunkBytes, 32);
+    manifest.writeUInt16BE(1, 34);
+    manifest.writeUInt32BE(1, 36);
+    manifest.writeUInt16BE(5, 40);
+    manifest.set(createHash('sha256').update(bytes).digest(), 44);
+    manifest.write('a.bin', 76);
+    manifest.writeUInt32BE(crc(manifest.subarray(0, -4)), manifest.length - 4);
+    assertBytes(file.manifestFrame(), manifest);
+    const collector = api.createCollector();
+    const metadata = await collector.accept(manifest);
+    assert.equal(metadata.kind, 'manifest');
+    assert.equal(metadata.size, bytes.length);
+    assert.equal(metadata.received, 0);
+    assert.equal(metadata.complete, false);
+    assertBytes((await collector.accept(expected)).bytes, bytes);
+    const detached = file.manifestFrame();
+    detached.fill(0);
+    assertBytes(file.manifestFrame(), manifest);
+    const maximumName = await api.createTransfer(bytes, 'n'.repeat(120), { compact: true, chunkBytes });
+    assert.equal(maximumName.manifestFrame().length, 200);
+    assert.equal(maximumName.frame(0).length, chunkBytes + 40);
+    const legacy = await api.createTransfer(bytes, 'n'.repeat(120), { chunkBytes });
+    assert.equal(legacy.frame(0).length - maximumName.frame(0).length, 164);
+    file.dispose();
+    assert.throws(() => file.manifestFrame(), { code: 'TRANSFER_DISPOSED' });
+  }
+  await assert.rejects(api.createTransfer(bytes, 'bad', { compact: 1 }), { code: 'INVALID_INPUT' });
+});
+
+test('dropped manifests and late join never invent progress, and paired reordered symbols recover byte-exactly', async () => {
+  for (const chunkBytes of [384, 600]) {
+    const bytes = pattern(chunkBytes * 68 + 9);
+    const file = await api.createTransfer(bytes, 'late-join.bin', { compact: true, chunkBytes });
+    const collector = api.createCollector();
+    for (let index = 0; index < 16; index++) {
+      const result = await collector.accept(file.frame(index));
+      assert.equal(result.kind, 'pending');
+      assert.equal(result.reason, 'manifest');
+      assert.equal(result.packetType, 'single');
+      assert.equal(collector.state, null);
+    }
+    assert.throws(() => collector.createFeedback(), { code: 'NO_TRANSFER' });
+    const joined = await collector.accept(file.manifestFrame());
+    assert.equal(joined.received, 0);
+    for (const index of shuffle(Array.from({ length: file.total - 16 }, (_, index) => index + 16))) {
+      const result = await collector.accept(file.frame(index));
+      assert.equal(result.packetType, 'single');
+      if (index % 7 === 0) {
+        assert.equal((await collector.accept(file.frame(index))).duplicate, true);
+        const repeated = await collector.accept(file.manifestFrame());
+        assert.equal(repeated.kind, 'manifest');
+        assert.equal(repeated.received, result.received);
+      }
+    }
+    const feedback = file.acceptFeedback(collector.createFeedback());
+    assert.deepEqual([...feedback.missingBlocks], [0]);
+    assert.deepEqual([...feedback.repairTargets[0].missingFrames], Array.from({ length: 16 }, (_, index) => index));
+    let complete;
+    // Two display lanes may arrive in either order; neither lane is a protocol session.
+    for (let index = 0; index < 16; index += 2) {
+      await collector.accept(file.frame(index + 1));
+      complete = await collector.accept(file.frame(index));
+    }
+    assert.equal(complete.kind, 'complete');
+    assert.equal(complete.received, file.total);
+    assertBytes(complete.bytes, bytes);
+  }
+});
+
+test('compact repair-only reception works after lost metadata and identifies mixed equations', async () => {
+  const bytes = pattern(384 * 33 - 7);
+  const file = await api.createTransfer(bytes, 'repair-only.bin', { compact: true });
   const collector = api.createCollector();
+  assert.equal((await collector.accept(file.repairFrame(0, 1))).kind, 'pending');
+  await collector.accept(file.manifestFrame());
+  let mixed = false;
+  let complete;
+  for (const block of [1, 0]) {
+    for (let serial = 2; serial < 160; serial++) {
+      complete = await collector.accept(file.repairFrame(block, serial));
+      mixed ||= complete.packetType === 'mixed';
+      if (!file.acceptFeedback(collector.createFeedback()).missingBlocks.includes(block)) break;
+    }
+  }
+  assert.ok(mixed);
+  assert.equal(complete.kind, 'complete');
+  assertBytes(complete.bytes, bytes);
+});
+
+test('compact metadata, data bounds, CRC and session isolation reject malformed inputs without replacing progress', async () => {
+  const file = await api.createTransfer(pattern(385), 'ok.bin', { compact: true });
+  const manifest = file.manifestFrame();
+  for (const [change, code] of [
+    [bytes => { bytes[9] = 2; }, 'MALFORMED_FRAME'],
+    [(_, view) => view.setUint16(10, 1), 'MALFORMED_FRAME'],
+    [(_, view) => view.setUint32(28, 0), 'MALFORMED_FRAME'],
+    [(_, view) => view.setUint32(28, api.MAX_FILE_BYTES + 1), 'FILE_TOO_LARGE'],
+    [(_, view) => view.setUint16(32, 512), 'MALFORMED_FRAME'],
+    [(_, view) => view.setUint16(34, 2), 'MALFORMED_FRAME'],
+    [(_, view) => view.setUint32(36, 100), 'MALFORMED_FRAME'],
+    [(_, view) => view.setUint16(40, 121), 'MALFORMED_FRAME'],
+    [(_, view) => view.setUint16(42, 1), 'MALFORMED_FRAME'],
+    [bytes => { bytes[76] = 0xff; }, 'MALFORMED_FRAME'],
+    [bytes => { bytes[76] = 47; }, 'MALFORMED_FRAME']
+  ]) {
+    const collector = api.createCollector();
+    await assert.rejects(collector.accept(edit(manifest, change)), { code });
+    assert.equal(collector.state, null);
+  }
+  for (const change of [
+    bytes => { bytes[9] = 2; }, (_, view) => view.setUint16(10, 40),
+    (_, view) => view.setUint16(28, 65535), (_, view) => view.setUint32(30, 0),
+    (_, view) => view.setUint32(30, 4), (_, view) => view.setUint16(34, 0),
+    (_, view) => view.setUint16(34, 33)
+  ]) {
+    const collector = api.createCollector();
+    await assert.rejects(collector.accept(edit(file.frame(0), change)), { code: 'MALFORMED_FRAME' });
+    assert.equal(collector.state, null);
+  }
+  const collector = api.createCollector();
+  await assert.rejects(collector.accept(edit(manifest, bytes => { bytes[44] ^= 1; }, false)), { code: 'CRC_MISMATCH' });
+  await assert.rejects(collector.accept(edit(file.frame(0), bytes => { bytes[36] ^= 1; }, false)), { code: 'CRC_MISMATCH' });
+  await assert.rejects(collector.accept(file.frame(0).subarray(0, -1)), { code: 'MALFORMED_FRAME' });
+  await collector.accept(manifest);
+  await collector.accept(file.frame(0));
+  await assert.rejects(collector.accept(edit(file.frame(1), (_, view) => view.setUint16(34, 3))), { code: 'METADATA_CONFLICT' });
+  await assert.rejects(collector.accept(edit(manifest, bytes => { bytes[44] ^= 1; })), { code: 'METADATA_CONFLICT' });
+  const other = await api.createTransfer(pattern(385), 'other.bin', { compact: true });
+  assert.equal((await collector.accept(other.frame(0))).kind, 'foreign');
+  assert.equal((await collector.accept(other.manifestFrame())).kind, 'foreign');
+  const v2 = await api.createTransfer(pattern(385), 'old.bin');
+  assert.equal((await collector.accept(edit(v2.frame(0), bytes => bytes.set(Buffer.from(file.id, 'hex'), 12)))).kind, 'foreign');
+  assert.equal(collector.state.received, 1);
+  assertBytes((await collector.accept(file.frame(1))).bytes, pattern(385));
+});
+
+test('compact ACK targets missing pivots and each requested systematic chunk increases the reported rank', async () => {
+  const bytes = pattern(384 * 48 - 1);
+  const file = await api.createTransfer(bytes, 'targeted.bin', { compact: true });
+  const collector = api.createCollector();
+  await collector.accept(file.manifestFrame());
+  for (let serial = 0; serial < 12; serial++) await collector.accept(file.repairFrame(0, serial));
+  const ack = collector.createFeedback({ suggestedRate: 10 });
+  assert.equal(ack[8], 2);
+  assert.equal(ack[9], 3);
+  assert.equal(new DataView(ack.buffer).getUint16(74), 2);
+  const feedback = file.acceptFeedback(ack);
+  assert.equal(feedback.suggestedRate, 10);
+  assert.equal(feedback.complete, false);
   let result;
-  for (let serial = 0; serial < 40; serial++) {
-    result = await collector.accept(throughQr(file.repairFrame(0, serial)));
-    if (result.kind === 'complete') break;
+  for (const target of feedback.repairTargets) {
+    for (const index of shuffle(target.missingFrames)) {
+      const previous = collector.state.received;
+      result = await collector.accept(file.frame(index));
+      assert.equal(result.received, previous + 1);
+    }
   }
   assert.equal(result.kind, 'complete');
-  assertBytes(result.bytes, original);
-  assert.equal(file.acceptFeedback(throughQr(collector.createFeedback({ suggestedRate: 2 }))).complete, true);
+  assertBytes(result.bytes, bytes);
+  const completed = file.acceptFeedback(collector.createFeedback());
+  assert.equal(completed.complete, true);
+  assert.equal(completed.repairTargets.length, 0);
+  await assert.rejects(collector.accept(ack), { code: 'FEEDBACK_FRAME' });
+});
+
+test('compact ACK target bounds and conflicting entries are checked, including at 10 MiB', async () => {
+  const file = await api.createTransfer(pattern(384 * 35), 'targets.bin', { compact: true });
+  const collector = api.createCollector();
+  await collector.accept(file.manifestFrame());
+  const ack = collector.createFeedback();
+  const first = 76 + new DataView(ack.buffer).getUint16(72);
+  for (const change of [
+    bytes => { bytes[8] = 1; }, bytes => { bytes[9] = 2; },
+    (_, view) => view.setUint16(74, 17), (_, view) => view.setUint16(first, 2),
+    (_, view) => view.setUint32(first + 2, 0),
+    (_, view) => view.setUint16(first + 6, 0),
+    (_, view) => view.setUint32(first + 8, 8),
+    bytes => { bytes[76] = 1; }
+  ]) assert.throws(() => file.acceptFeedback(edit(ack, change)), { code: 'MALFORMED_FEEDBACK' });
+  assert.throws(() => file.acceptFeedback(edit(ack, bytes => { bytes[12] ^= 1; })), { code: 'FEEDBACK_SESSION_MISMATCH' });
+  const maximum = await api.createTransfer(new Uint8Array(api.MAX_FILE_BYTES), 'maximum.bin', { compact: true });
+  const bounded = api.createCollector();
+  await bounded.accept(maximum.manifestFrame());
+  assert.equal(bounded.state.total, 27307);
+  assert.equal(bounded.state.blockCount, 854);
+  const largestAck = bounded.createFeedback();
+  assert.equal(largestAck.length, 283);
+  const targets = maximum.acceptFeedback(largestAck).repairTargets;
+  assert.equal(targets.length, 16);
+  assert.ok(targets.every(target => target.missingFrames.length <= 32));
+  const last = await bounded.accept(maximum.frame(maximum.total - 1));
+  assert.equal(last.received, 1);
+  targets[0].missingFrames.length = 0;
+  assert.equal(maximum.acceptFeedback(bounded.createFeedback()).repairTargets[0].missingFrames.length, 32);
+  bounded.dispose();
+  maximum.dispose();
+});
+
+test('compact final digest, padding and reset protection remain byte-exact', async () => {
+  const file = await api.createTransfer(pattern(385), 'hash.bin', { compact: true });
+  const collector = api.createCollector();
+  await collector.accept(edit(file.manifestFrame(), bytes => { bytes[44] ^= 1; }));
+  await collector.accept(file.frame(0));
+  await assert.rejects(collector.accept(file.frame(1)), { code: 'DIGEST_MISMATCH' });
+  assert.equal(collector.state, null);
+  await collector.accept(file.manifestFrame());
+  await collector.accept(file.frame(0));
+  await assert.rejects(collector.accept(edit(file.frame(1), bytes => { bytes[37] = 1; })), { code: 'DIGEST_MISMATCH' });
+  assert.equal(collector.state, null);
+  let release;
+  let hashed;
+  const gated = runtime({ getRandomValues: bytes => webcrypto.getRandomValues(bytes), subtle: { digest: (algorithm, bytes) => {
+    hashed = bytes;
+    const copy = new Uint8Array(bytes);
+    return new Promise(resolve => { release = async () => resolve(await webcrypto.subtle.digest(algorithm, copy)); });
+  } } }).createCollector();
+  await gated.accept(file.manifestFrame());
+  await gated.accept(file.frame(0));
+  const finishing = gated.accept(file.frame(1));
+  const rejected = assert.rejects(finishing, { code: 'TRANSFER_RESET' });
+  const beforeHash = file.acceptFeedback(gated.createFeedback());
+  assert.equal(beforeHash.complete, false);
+  assert.equal(beforeHash.missingBlocks.length, 0);
+  assert.equal(beforeHash.repairTargets.length, 0);
+  gated.reset();
+  assert.ok(hashed.every(byte => byte === 0));
+  const next = await api.createTransfer(pattern(700), 'next.bin', { compact: true });
+  await gated.accept(next.manifestFrame());
+  await release();
+  await rejected;
+  assert.equal(gated.state.id, next.id);
+  assert.equal(gated.state.received, 0);
+});
+
+test('systematic copy and aligned/unaligned XOR preserve independent payload bytes and transport offsets', async () => {
+  for (const chunkBytes of [384, 600]) for (const compact of [false, true]) for (const nameLength of [1, 2, 3, 4]) {
+    const original = pattern(chunkBytes * 34 - 3);
+    const borrowed = new Uint8Array(original.length + 7);
+    borrowed.set(original, 3);
+    const file = await api.createTransfer(borrowed.subarray(3, 3 + original.length), 'x'.repeat(nameLength), { compact, chunkBytes });
+    for (const index of [0, 31, 32, 33]) {
+      const frame = file.frame(index), view = new DataView(frame.buffer);
+      const expected = new Uint8Array(chunkBytes);
+      expected.set(original.subarray(index * chunkBytes, Math.min(original.length, (index + 1) * chunkBytes)));
+      assertBytes(frame.subarray(view.getUint16(10), -4), expected);
+    }
+    for (const blockIndex of [0, 1]) for (let serial = 0; serial < 10; serial++) {
+      const frame = file.repairFrame(blockIndex, serial), view = new DataView(frame.buffer);
+      const mask = view.getUint32(compact ? 30 : 36);
+      const expected = new Uint8Array(chunkBytes);
+      for (let local = 0; local < Math.min(32, file.total - blockIndex * 32); local++) {
+        if (!((mask >>> local) & 1)) continue;
+        for (let byte = 0; byte < chunkBytes; byte++) expected[byte] ^= original[(blockIndex * 32 + local) * chunkBytes + byte] || 0;
+      }
+      assertBytes(frame.subarray(view.getUint16(10), -4), expected);
+      assert.equal(view.getUint32(frame.length - 4), crc(frame.subarray(0, -4)));
+    }
+    const collector = api.createCollector();
+    if (compact) await collector.accept(file.manifestFrame());
+    let result;
+    for (const block of [1, 0]) for (let serial = 0; serial < 160; serial++) {
+      const frame = file.repairFrame(block, serial);
+      const offset = serial % 4;
+      const transport = new Uint8Array(frame.length + 7);
+      transport.set(frame, offset);
+      result = await collector.accept(transport.subarray(offset, offset + frame.length));
+      if (!file.acceptFeedback(collector.createFeedback()).missingBlocks.includes(block)) break;
+    }
+    assert.equal(result.kind, 'complete');
+    assertBytes(result.bytes, original);
+    assertBytes(borrowed.subarray(3, 3 + original.length), original);
+    file.dispose(); collector.dispose();
+  }
+  const frozenV1 = Buffer.from('V0dRUi1YRlIBAABSlEBocNGfZgKXB1k4IpoYFwAAACAAAAABAlgACgAAeTD+ii78v0LLvsVpa5XdIPvqRPznTjsOGhRooGk2c3RhcnkuY29uZltJbnRlcmZhY2VdDQojIFphxbzDs8WCxIcg8J+UkQ0KI6GTEw==', 'base64');
+  const transport = new Uint8Array(frozenV1.length + 3);
+  transport.set(frozenV1, 1);
+  assert.equal((await api.createCollector().accept(transport.subarray(1, 1 + frozenV1.length))).version, 1);
+});
+
+test('only compact v3 feedback supports the optional 15 and 20 display rates', async () => {
+  for (const compact of [false, true]) {
+    const file = await api.createTransfer(pattern(385), 'rates.bin', { compact });
+    const collector = api.createCollector();
+    await collector.accept(compact ? file.manifestFrame() : file.frame(0));
+    for (const suggestedRate of [1, 2, 5, 10]) {
+      assert.equal(file.acceptFeedback(collector.createFeedback({ suggestedRate })).suggestedRate, suggestedRate);
+    }
+    for (const suggestedRate of [15, 20]) {
+      if (compact) assert.equal(file.acceptFeedback(collector.createFeedback({ suggestedRate })).suggestedRate, suggestedRate);
+      else {
+        assert.throws(() => collector.createFeedback({ suggestedRate }), { code: 'INVALID_INPUT' });
+        assert.throws(() => file.acceptFeedback(edit(collector.createFeedback(), bytes => { bytes[11] = suggestedRate; })), { code: 'MALFORMED_FEEDBACK' });
+      }
+    }
+    for (const suggestedRate of [0, 3, 11, 25, 60]) {
+      assert.throws(() => collector.createFeedback({ suggestedRate }), { code: 'INVALID_INPUT' });
+      assert.throws(() => file.acceptFeedback(edit(collector.createFeedback(), bytes => { bytes[11] = suggestedRate; })), { code: 'MALFORMED_FEEDBACK' });
+    }
+  }
+  const old = await api.legacy.createTransfer(pattern(601), 'legacy-rates.bin');
+  const legacyCollector = api.createCollector();
+  await legacyCollector.accept(old.frames[0]);
+  assert.throws(() => legacyCollector.createFeedback({ suggestedRate: 15 }), { code: 'INVALID_INPUT' });
+  assert.throws(() => legacyCollector.createFeedback({ suggestedRate: 20 }), { code: 'INVALID_INPUT' });
 });

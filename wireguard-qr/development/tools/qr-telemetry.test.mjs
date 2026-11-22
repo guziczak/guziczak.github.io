@@ -127,6 +127,58 @@ test('optical attempts, reads, accepted equations and rank gains are distinct; i
   assert.equal('lostPackets' in state, false);
 });
 
+test('dual symbols count as two reads in one captured frame while legacy scans retain their meaning', () => {
+  const { telemetry: t } = harness();
+  t.recordScan({ ...scan(30), symbols: 2, attempts: 2 });
+  t.recordScan({ ...scan(25), symbols: 1, attempts: 2 });
+  t.recordScan({ ...scan(15), symbols: 0, attempts: 2 });
+  t.recordScan(scan(10, true));
+  const state = t.snapshot();
+  assert.equal(state.cameraAttempts, 4);
+  assert.equal(state.decodeAttempts, 7);
+  assert.equal(state.opticalReads, 4);
+  assert.equal(state.qrReads, 4);
+  assert.equal(state.latencySamples, 4, 'Latency describes a captured frame/batch, not each symbol.');
+  assert.equal(state.latencyAvgMs, 20);
+  assert.equal(state.acceptedPackets, 0);
+  t.reset();
+  assert.equal(t.snapshot().decodeAttempts, 0);
+});
+
+test('manifests are required metadata rather than redundant data packets, including buffered rank gains', () => {
+  const { telemetry: t, at } = harness();
+  const metadata = { version: 3, size: 1152, total: 3, chunkBytes: 384, blockCount: 1,
+    received: 0, blocksComplete: 0, complete: false };
+  t.recordScan({ ...scan(), symbols: 2, attempts: 2 });
+  t.recordPacket(metadata, { packetType: 'manifest', delta: 0, source: 'camera' });
+  t.recordPacket({ ...metadata, received: 1 }, { packetType: 'single', delta: 1, source: 'camera' });
+  at(500);
+  t.recordPacket({ ...metadata, received: 2 }, { packetType: 'manifest', delta: 1, source: 'image' });
+  t.recordPacket({ ...metadata, received: 2 }, { packetType: 'mixed', delta: 0, source: 'camera' });
+  const state = t.snapshot();
+  assert.equal(state.acceptedPackets, 4);
+  assert.equal(state.manifestPackets, 2);
+  assert.equal(state.usefulPackets, 1);
+  assert.equal(state.redundantPackets, 1);
+  assert.equal(state.usefulUnits, 2);
+  assert.equal(state.recentUsefulUnitsPerSecond, 4);
+  assert.equal(state.elapsedMs, 500, 'Elapsed transfer time includes manifest reception.');
+  assert.equal(state.imageReads, 1);
+  t.reset();
+  assert.equal(t.snapshot().manifestPackets, 0);
+});
+
+test('invalid multi-symbol counters cannot inflate reads or leak nonnumeric diagnostic input', () => {
+  const { telemetry: t } = harness();
+  for (const value of [-1, 3, 1000000, NaN, Infinity, 'PRIVATE_BYTES', { bytes: 'PRIVATE_BYTES' }]) {
+    t.recordScan({ ...scan(20, false), symbols: value, attempts: value });
+  }
+  assert.equal(t.snapshot().cameraAttempts, 7);
+  assert.equal(t.snapshot().decodeAttempts, 7);
+  assert.equal(t.snapshot().opticalReads, 0);
+  assert.doesNotMatch(t.report(), /PRIVATE_BYTES|NaN|Infinity/);
+});
+
 test('latency p95 uses a bounded upper-bucket estimate, independently of transfer acceptance', () => {
   const { telemetry: t } = harness();
   for (let index = 0; index < 19; index++) t.recordScan(scan(10, false, 'search'));

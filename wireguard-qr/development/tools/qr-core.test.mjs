@@ -109,6 +109,31 @@ test('2954-byte input is rejected without truncating it', () => {
   assert.throws(() => encodeBytes(new Uint8Array(2954)), { code: 'INPUT_TOO_LARGE' });
 });
 
+test('explicit L and M correction both preserve arbitrary binary bytes through actual PNG decoding', () => {
+  const backing = Uint8Array.from({ length: 640 }, (_, index) => (index * 73 + Math.floor(index / 256)) % 256);
+  const bytes = backing.subarray(17, 617);
+  const codes = {};
+  for (const level of ['L', 'M']) {
+    const qr = encodeBytes(bytes, { errorCorrectionLevel: level });
+    assert.equal(qr.level, level);
+    const decoded = decodePng(renderPng(qr));
+    assert.ok(decoded);
+    assert.deepEqual(Buffer.from(decoded.bytes), Buffer.from(bytes));
+    codes[level] = qr;
+  }
+  assert.ok(codes.L.size < codes.M.size, 'This payload should use fewer modules with correction L.');
+  assert.equal(encodeBytes(bytes).level, 'M', 'Ordinary single-QR calls keep their original default.');
+});
+
+test('explicit correction settings reject unsupported levels and never silently weaken requested M', () => {
+  const bytes = Uint8Array.from([0, 255, 0xc0, 0x80, 13, 10]);
+  for (const options of [null, false, 'L', { errorCorrectionLevel: 'H' }, { errorCorrectionLevel: 'm' }]) {
+    assert.throws(() => encodeBytes(bytes, options), { code: 'INVALID_OPTIONS' });
+  }
+  assert.throws(() => encodeBytes(new Uint8Array(2332), { errorCorrectionLevel: 'M' }), { code: 'INPUT_TOO_LARGE' });
+  assert.equal(encodeBytes(new Uint8Array(2332), { errorCorrectionLevel: 'L' }).level, 'L');
+});
+
 test('empty input has an explicit coded error', () => {
   assert.throws(() => encodeBytes(new Uint8Array()), { code: 'EMPTY_INPUT' });
 });
