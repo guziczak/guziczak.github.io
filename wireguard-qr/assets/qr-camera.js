@@ -115,6 +115,20 @@
       return Math.min(TRACK_EDGE, Math.max(240,
         Math.ceil(Math.max(region.width, region.height) * Math.min(1, samples / pitch))));
     }
+    function sameCrop(a, b) {
+      return a.region.x === b.region.x && a.region.y === b.region.y
+        && a.region.width === b.region.width && a.region.height === b.region.height
+        && a.width === b.width && a.height === b.height
+        && a.inversionAttempts === b.inversionAttempts;
+    }
+    function sizeSnapshot(width, height) {
+      // Small changes in detected bounds must not repeatedly reallocate the
+      // snapshot canvas. Only the valid captured rectangle below is sampled.
+      const roundedWidth = Math.ceil(width / 64) * 64;
+      const roundedHeight = Math.ceil(height / 64) * 64;
+      if (snapshot.canvas.width < width || snapshot.canvas.width > roundedWidth * 1.5) snapshot.canvas.width = roundedWidth;
+      if (snapshot.canvas.height < height || snapshot.canvas.height > roundedHeight * 1.5) snapshot.canvas.height = roundedHeight;
+    }
     function prepare(video) {
       if (disposed || !video) return null;
       const width = video.videoWidth;
@@ -124,15 +138,6 @@
         clearTracking(); sourceWidth = width; sourceHeight = height;
       }
       const started = now();
-      let image = video;
-      if (lanes === 2) {
-        // Freeze one camera image before extracting either ROI. A worker await must
-        // never pair the left symbol from one video frame with a later right symbol.
-        if (snapshot.canvas.width !== width) snapshot.canvas.width = width;
-        if (snapshot.canvas.height !== height) snapshot.canvas.height = height;
-        snapshot.context.drawImage(video, 0, 0, width, height, 0, 0, width, height);
-        image = snapshot.canvas;
-      }
       const frames = states.map((lane, index) => {
         const tracked = lane.tracked !== null;
         const detail = !tracked && (lane.forceDetail || lane.searches % 4 === 3);
@@ -142,24 +147,56 @@
         const ratio = Math.min(1, edge / Math.max(region.width, region.height));
         const pixelWidth = Math.max(1, Math.round(region.width * ratio));
         const pixelHeight = Math.max(1, Math.round(region.height * ratio));
-        const { canvas, context } = surfaces[index];
-        if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
-        if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
-        context.drawImage(image, region.x, region.y, region.width, region.height, 0, 0, pixelWidth, pixelHeight);
-        const pixels = context.getImageData(0, 0, pixelWidth, pixelHeight);
         let inversionAttempts = 'dontInvert';
         if (tracked && lane.preferBoth && ++lane.polarityProbe % 8 !== 0) inversionAttempts = 'attemptBoth';
         if (lane.misses > 0 && (tracked || detail || lane.misses % 3 === 2)) inversionAttempts = 'attemptBoth';
-        return { index, tracked, region, width: pixelWidth, height: pixelHeight, data: pixels.data, inversionAttempts };
+        return { index, tracked, region, width: pixelWidth, height: pixelHeight, inversionAttempts, sourceIndex: index };
       });
+      let image = video;
+      let captureX = 0, captureY = 0;
+      if (lanes === 2) {
+        // Freeze ONE source frame, at 1:1 resolution, covering the union of the
+        // two planned crops. Stable tracks do not need a full-frame extra copy.
+        captureX = Math.min(...frames.map(frame => frame.region.x));
+        captureY = Math.min(...frames.map(frame => frame.region.y));
+        const captureWidth = Math.max(...frames.map(frame => frame.region.x + frame.region.width)) - captureX;
+        const captureHeight = Math.max(...frames.map(frame => frame.region.y + frame.region.height)) - captureY;
+        sizeSnapshot(captureWidth, captureHeight);
+        snapshot.context.drawImage(video, captureX, captureY, captureWidth, captureHeight, 0, 0, captureWidth, captureHeight);
+        image = snapshot.canvas;
+      }
+      for (const frame of frames) {
+        const previous = frames.find(candidate => candidate.index < frame.index && sameCrop(candidate, frame));
+        if (previous) {
+          // Full-frame reacquisition can give both lanes the identical crop.
+          // Share that one pixel buffer and decode it once, not twice.
+          frame.sourceIndex = previous.sourceIndex;
+          frame.data = previous.data;
+          continue;
+        }
+        const { canvas, context } = surfaces[frame.index];
+        if (canvas.width !== frame.width) canvas.width = frame.width;
+        if (canvas.height !== frame.height) canvas.height = frame.height;
+        context.drawImage(image, frame.region.x - captureX, frame.region.y - captureY,
+          frame.region.width, frame.region.height, 0, 0, frame.width, frame.height);
+        frame.data = context.getImageData(0, 0, frame.width, frame.height).data;
+      }
       return { started, width, height, frames, generation };
     }
     function decodeSync(frames) {
-      return frames.map(frame => {
+      const answers = [];
+      for (const frame of frames) {
+        if (frame.sourceIndex !== frame.index) { answers.push(answers[frame.sourceIndex]); continue; }
+        // Successful transfer detached this buffer. On worker failure only, read
+        // the SAME frozen crop again; never capture a later video frame as fallback.
+        if (frame.data.byteLength !== frame.width * frame.height * 4) {
+          frame.data = surfaces[frame.index].context.getImageData(0, 0, frame.width, frame.height).data;
+        }
         const started = now();
         const decoded = decode(frame.data, frame.width, frame.height, { inversionAttempts: frame.inversionAttempts });
-        return { decoded, decodeMs: Math.max(0, now() - started) };
-      });
+        answers.push({ decoded, decodeMs: Math.max(0, now() - started) });
+      }
+      return answers;
     }
     function finish(batch, answers, decoder) {
       if (disposed || batch.generation !== generation) return empty();
@@ -200,8 +237,8 @@
       return { result: results[0] || null, results, decodeMs: Math.max(0, now() - batch.started),
         region: batch.frames.every(frame => frame.tracked) ? 'tracked' : 'search',
         pixels: { width: largest.width, height: largest.height },
-        pixelCount: batch.frames.reduce((sum, frame) => sum + frame.width * frame.height, 0),
-        attempts: batch.frames.length, decoder };
+        pixelCount: batch.frames.reduce((sum, frame) => sum + (frame.sourceIndex === frame.index ? frame.width * frame.height : 0), 0),
+        attempts: batch.frames.filter(frame => frame.sourceIndex === frame.index).length, decoder };
     }
     function stopWorker(cancelled = false) {
       if (worker) { worker.terminate(); worker = null; }
@@ -243,9 +280,11 @@
         const timer = root.setTimeout(failWorker, WORKER_TIMEOUT);
         workerPending = { id, count: frames.length, timer, resolve };
         try {
-          // One bounded clone keeps the source pixels available if a worker dies.
-          // There is no queue of old camera frames, and returned byte buffers transfer.
-          target.postMessage({ id, frames: frames.map(({ data, width, height, inversionAttempts }) => ({ data, width, height, inversionAttempts })) });
+          // Transfer ownership instead of cloning megabytes of RGBA per scan.
+          // The crop canvases stay unchanged until this bounded batch finishes,
+          // so a worker failure can re-read them without retaining a pixel copy.
+          const buffers = [...new Set(frames.map(frame => frame.data.buffer))];
+          target.postMessage({ id, frames: frames.map(({ data, width, height, inversionAttempts }) => ({ data, width, height, inversionAttempts })) }, buffers);
         } catch { failWorker(); }
       }).then(answer => disposed || epoch !== generation ? { cancelled: true } : answer.cancelled ? answer : answer.answers
         ? { ...answer, decoder: 'worker' } : { answers: decodeSync(frames), decoder: 'main' });

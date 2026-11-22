@@ -41,6 +41,7 @@ test('calibration uses bounded synthetic v3-sized symbols and immutable six-prof
   const one = api.create({ lanes: 2, ecc: 'L' });
   const two = api.create({ lanes: 2, ecc: 'L', fileData: new TextEncoder().encode('PRIVATE FILE CONTENT') });
   assert.notEqual(one.id, two.id);
+  assert.equal(one.version, 1);
   assert.equal(one.duration, 4000);
   assert.ok(Object.isFrozen(one.profiles));
   for (let index = 0; index < one.profiles.length; index++) {
@@ -145,6 +146,7 @@ test('foreign identities, layout and ECC cannot replace an active calibration or
   const sender = api.create(), foreign = api.create(), observer = api.createObserver();
   observer.accept(sender.frame(0), 0);
   for (const bytes of [foreign.frame(0), foreign.endFrame(),
+    edit(sender.frame(0), value => { value[8] = 2; }),
     edit(sender.frame(0), value => { value[11] = 2; }),
     edit(sender.frame(0), value => { value[9] = 2; })]) {
     const result = observer.accept(bytes, 1);
@@ -161,7 +163,7 @@ test('foreign identities, layout and ECC cannot replace an active calibration or
 test('malformed profiles, flags, sequence bounds and CRC fail before observer state changes', () => {
   const sender = api.create(), frame = sender.frame(0), observer = api.createObserver();
   for (const change of [
-    value => { value[8] = 2; }, value => { value[9] = 4; }, value => { value[10] = 6; },
+    value => { value[8] = 3; }, value => { value[9] = 4; }, value => { value[10] = 6; },
     value => { value[11] = 3; }, (_, view) => view.setUint16(28, 8),
     (_, view) => view.setUint16(30, 1), (_, view) => view.setUint16(32, 3999),
     value => { value[34] = 1; }, value => { value[35] = 2; }
@@ -218,7 +220,82 @@ test('reset/dispose erase owned calibration identity buffers and permit a fresh 
   assert.equal(observer.accept(next.frame(0), 1).id, next.id);
   assert.throws(() => api.create({ lanes: 3 }), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => api.create({ ecc: 'H' }), { code: 'CALIBRATION_INVALID' });
+  assert.throws(() => api.create({ extended: 1 }), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => next.frame(0, 8), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => next.frame(0, 0, true), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => runtime({ crypto: null }).create(), { code: 'CALIBRATION_INVALID' });
+});
+
+test('extended v2 calibration adds 15 and 20 Hz profiles while keeping the legacy six-profile prefix', () => {
+  const expected = [[384, 2], [384, 5], [384, 10], [600, 2], [600, 5], [600, 10],
+    [384, 15], [384, 20], [600, 15], [600, 20]];
+  assert.deepEqual(Array.from(api.fastProfiles, profile => [profile.chunkBytes, profile.fps]), expected);
+  const sender = api.create({ extended: true, lanes: 2, ecc: 'L' });
+  assert.equal(sender.version, 2); assert.equal(sender.duration * sender.profiles.length, 40000);
+  assert.ok(Object.isFrozen(sender.profiles)); assert.ok(sender.profiles.every(Object.isFrozen));
+  for (let index = 0; index < sender.profiles.length; index++) {
+    const [chunkBytes, fps] = expected[index];
+    const last = fps * 4 * sender.lanes - 1;
+    const frame = sender.frame(index, last), parsed = api.parse(frame);
+    assert.equal(frame.length, chunkBytes + 40); assert.equal(parsed.version, 2);
+    assert.equal(parsed.index, index); assert.equal(parsed.chunkBytes, chunkBytes); assert.equal(parsed.fps, fps);
+    assert.equal(parsed.sequence, last); assert.equal(parsed.lanes, 2); assert.equal(parsed.ecc, 'L');
+    assert.throws(() => sender.frame(index, last + 1), { code: 'CALIBRATION_INVALID' });
+  }
+  const end = api.parse(sender.endFrame());
+  assert.equal(end.version, 2); assert.equal(end.index, 9); assert.equal(end.ended, true);
+  assert.equal(api.create().profiles.length, 6, 'Old callers retain their 24-second, version-1 trial');
+});
+
+test('extended dual calibration counts 160 distinct symbols at 20 Hz and returns a matching v2 result', () => {
+  const sender = api.create({ extended: true, lanes: 2, ecc: 'L' }), observer = api.createObserver();
+  observeProfile(sender, observer, 8); // 120 symbols of 600 B: 18000 B/s.
+  observeProfile(sender, observer, 9, () => true, 3); // 160 unique symbols: 24000 B/s.
+  assert.equal(observer.state.best, null); assert.equal(observer.state.results.length, 10);
+  observer.accept(sender.endFrame(), 40000);
+  const state = observer.state;
+  assert.equal(state.version, 2); assert.equal(state.best.index, 9); assert.equal(state.best.steps, 80);
+  assert.equal(state.best.samples, 160); assert.equal(state.best.bytesPerSecond, 24000);
+  const feedback = observer.createFeedback(); assert.equal(feedback[8], 2);
+  const selected = sender.acceptFeedback(feedback);
+  assert.deepEqual([selected.chunkBytes, selected.fps, selected.lanes, selected.ecc, selected.samples, selected.bytesPerSecond],
+    [600, 20, 2, 'L', 160, 24000]);
+  for (const change of [
+    value => { value[8] = 1; }, value => { value[8] = 3; }, value => { value[9] = 10; },
+    (_, view) => view.setUint16(28, 161), (_, view) => view.setUint16(30, 24001)
+  ]) assert.throws(() => sender.acceptFeedback(edit(feedback, change)), { code: 'CALIBRATION_INVALID' });
+});
+
+test('fast calibration still prefers measured useful throughput when 20 Hz loses symbols', () => {
+  const sender = api.create({ extended: true, lanes: 2 }), observer = api.createObserver();
+  observeProfile(sender, observer, 8, sequence => sequence < 100); // 15000 B/s.
+  observeProfile(sender, observer, 9, sequence => sequence < 60, 5); // Only 9000 B/s, regardless of repeated reads.
+  observer.accept(sender.endFrame(), 40000);
+  const selected = sender.acceptFeedback(observer.createFeedback());
+  assert.equal(selected.fps, 15); assert.equal(selected.bytesPerSecond, 15000);
+  assert.equal(observer.state.results[9].samples, 60);
+});
+
+test('extended profiles reject unsupported versions and malformed bounds before observation state changes', () => {
+  const sender = api.create({ extended: true, lanes: 2 }), observer = api.createObserver();
+  const frame = sender.frame(9, 159);
+  for (const change of [
+    value => { value[8] = 0; }, value => { value[8] = 1; }, value => { value[8] = 3; },
+    value => { value[8] = 255; }, value => { value[10] = 10; },
+    value => { value[35] = 5; }, value => { value[35] = 3; },
+    (_, view) => view.setUint16(28, 160)
+  ]) {
+    assert.throws(() => observer.accept(edit(frame, change), 39000), { code: 'CALIBRATION_INVALID' });
+    assert.equal(observer.state, null);
+  }
+  assert.throws(() => observer.accept(edit(sender.endFrame(), value => { value[10] = 5; value[35] = 2; }), 40000),
+    { code: 'CALIBRATION_INVALID' });
+  assert.equal(observer.state, null);
+  const legacy = api.create();
+  observer.accept(legacy.frame(0), 0);
+  const sameIdentityNewVersion = edit(legacy.frame(0), value => { value[8] = 2; });
+  assert.equal(observer.accept(sameIdentityNewVersion, 1).foreign, true);
+  assert.equal(observer.state.version, 1); assert.equal(observer.state.results.length, 6);
+  observer.reset(); observer.accept(sender.frame(9, 0), 36000);
+  assert.equal(observer.state.version, 2); assert.equal(observer.state.results.length, 10);
 });

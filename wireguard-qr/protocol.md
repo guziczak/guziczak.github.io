@@ -14,6 +14,16 @@ A v3 transfer adds `manifestFrame()` and `manifestInterval: 16` to the existing 
 
 The application sends a manifest **before the first data symbols and again at least every 16 data symbols**, including during repairs. It must count symbols, not display changes: two data symbols shown together consume two of those 16. Manifest repetition also continues if sending starts partway through the original source sequence. Calling these helpers alone does not schedule manifests.
 
+### Source ordering and framing cost
+
+`WGPlayback.create(transfer, {lanes: 1, startIndex: 0, initialManifest: true, interleave: true})` plans the display stream separately from the wire format. Compact v3 transfers default to interleaving; v2 remains sequential by default. Passing `{interleave:false}` restores sequential order for controlled comparisons.
+
+Interleaving visits the same local chunk position in successive blocks before advancing that position: for three full blocks the order starts `0, 32, 64, 1, 33, 65, …`. Missing positions in a short final block are skipped. The permutation is rotated so the **first source symbol is exactly the requested `startIndex`**, and every source appears once before fountain repairs. The implementation converts between permutation positions and source indices in constant time, without retaining a file-sized order array. Checkpoints preserve the permutation cursor, so pausing after precomputation does not skip sources. Manifests, paired display lanes, and targeted feedback retain their existing semantics.
+
+This spreads a contiguous optical dropout across generations instead of erasing most of one generation. It can shorten the no-feedback repair tail because the existing round-robin repair scheduler then advances several similarly incomplete blocks in parallel. It does not reduce the number of lost source bytes, guarantee a gain for every loss pattern, or remove the need for feedback. More blocks can remain partially open at once, so the receiver may retain more equation rows earlier in the transfer; the existing maximum of one row per source chunk and capped output buffer is unchanged.
+
+Systematic symbols and one-bit repair masks copy their source slice directly into the zero-initialized payload. Mixed equations use a shared source `Uint32Array` view and one aligned payload view when possible; unaligned v2 payloads retain bytewise XOR. A final partial word is handled bytewise and untouched padding stays zero. Both word views use the same native byte order, which leaves the bytewise XOR result unchanged. No extra source copy, wire-format change, new chunk size, or receiver-specific interpretation is introduced by these framing optimizations.
+
 `collector.accept(bytes)` adds these outcomes:
 
 | Kind | Meaning |
@@ -81,6 +91,8 @@ V3 uses **ACK format 2**, retaining the common ACK fields and completed-block bi
 Records are strictly increasing by block index, refer only to incomplete blocks, and cannot set bits beyond the block's actual count. The receiver reports the first at most 16 incomplete blocks, so even the largest 10 MiB transfer has an ACK no larger than **283 bytes**. The full completed-block bitmap still covers every block. The ACK remains bound to the data version, random transfer ID, original file size, chunk/block dimensions, and whole-file digest.
 
 For v3, `sender.acceptFeedback(bytes)` returns the usual `{missingBlocks, complete, suggestedRate}` plus `repairTargets: [{blockIndex, missingFrames}]`. Each `missingFrames` array contains at most 32 **global zero-based source indices**, suitable for `sender.frame(index)`. These are missing pivots, not a claim that those original QR symbols were never seen. Sending each of those systematic unit vectors increases the rank relative to the reported basis. If further data has arrived since the ACK, some targets can already be redundant; stale ACKs remain harmless. The sender should prioritize these targets, then continue fountain repair for incomplete blocks and request newer feedback when useful.
+
+For v3 only, `suggestedRate` accepts **1, 2, 5, 10, 15, or 20 display changes per second**. This is the rate of a whole display, including a paired layout, not the count of individual QR symbols. The higher rates do not alter the ACK header or field widths, but an older v3 sender that only accepted rates up to 10 must be refreshed before consuming a 15/20 ACK. Existing v3 ACKs at 1/2/5/10 remain compatible; v1/v2 continue to reject 15/20. The application must select a rate supported by both ends rather than treating a higher advertised number as measured throughput.
 
 ACKs with all blocks solved but `complete:false` still do not confirm delivery; only the successful whole-file digest sets the completion flag. V1/v2 continue to use ACK format 1, with no target records and no change to their wire layout or default sender API.
 
@@ -162,9 +174,9 @@ A default 384-byte frame has at most **588 bytes**; a 600-byte frame at most **8
 
 ## Offline feedback QR
 
-`collector.createFeedback({suggestedRate: 2})` creates a fresh caller-owned ACK, with suggested rate `1`, `2`, `5`, or `10`. The default is `2`. It contains a bitmap of completely solved blocks, even if many equations were received for other blocks. It is valid before and after full-file verification. No transfer produces `NO_TRANSFER`.
+For v1/v2, `collector.createFeedback({suggestedRate: 2})` creates a fresh caller-owned ACK, with suggested rate `1`, `2`, `5`, or `10`. The default is `2`. It contains a bitmap of completely solved blocks, even if many equations were received for other blocks. It is valid before and after full-file verification. No transfer produces `NO_TRANSFER`. V3 uses the extended format and allowed rates specified above.
 
-ACKs are at most **187 bytes** for the largest supported file. Every ACK is bound to the data protocol version, random session ID, original byte length, chunk/block dimensions, and whole-file digest. The sender rejects an ACK from another or earlier transfer. Re-reading an ACK from the same active transfer is harmless; it may cause extra repairs if it describes older progress. ACKs have no sequence counter so resetting a receiver can request all blocks again without creating a different source transfer.
+V1/v2 ACKs are at most **187 bytes** for the largest supported file. Every ACK is bound to the data protocol version, random session ID, original byte length, chunk/block dimensions, and whole-file digest. The sender rejects an ACK from another or earlier transfer. Re-reading an ACK from the same active transfer is harmless; it may cause extra repairs if it describes older progress. ACKs have no sequence counter so resetting a receiver can request all blocks again without creating a different source transfer.
 
 | Byte offset | Length | Field |
 | --- | --- | --- |
@@ -187,6 +199,23 @@ ACKs are at most **187 bytes** for the largest supported file. Every ACK is boun
 Unused bitmap bits must be zero. A verified-completion flag with any incomplete block is invalid. All blocks may be solved with the flag still zero while SHA-256 is pending; `{missingBlocks:[], complete:false}` must **not** be reported as successful delivery. The receiver sets the flag only after successful hashing. V1 ACKs can describe legacy reception, but the unchanged v1 sender has no feedback API; the v2 sender rejects their version.
 
 The page must explicitly show the receiver's ACK to a sender camera; these helpers do not schedule scans or provide a return network channel. Front/rear-camera placement remains an application concern. Feedback is intended for occasional batches, not a round trip for every frame.
+
+## Synthetic calibration versions 1 and 2
+
+Calibration is separate from file transfer. `WGCalibration.create({lanes: 1, ecc: 'M'})` preserves the six-profile version-1 trial: 384-byte then 600-byte payloads, each at 2, 5 and 10 display changes/s. `extended:true` selects calibration version 2, retaining those first six profile indices and appending:
+
+| Profile index | Synthetic payload | Display changes/s |
+| --- | --- | --- |
+| 6 | 384 bytes | 15 |
+| 7 | 384 bytes | 20 |
+| 8 | 600 bytes | 15 |
+| 9 | 600 bytes | 20 |
+
+Each profile lasts four seconds: a full legacy trial takes 24 seconds, and an extended trial takes 40 seconds. The sender retains the selected lane count and QR error-correction level for the whole trial. `WGQR-CAL` data symbols contain only reproducible synthetic bytes and a fresh random trial ID, never the selected file. They have exactly the same 424/640-byte binary lengths as compact data symbols. The rate-code field uses `[2,5,10]` in v1 and `[2,5,10,15,20]` in v2; profile index, payload code, rate code, sequence range, duration and flags must all agree.
+
+Both `WGQR-CAL` and its 40-byte `WGQR-SET` result carry calibration version 1 or 2 at byte 8, keeping their existing field positions. A trial's end symbol is 40 bytes, uses sequence 65535, and must name its version's final profile (5 or 9). Observers reject mixing versions even if the trial ID matches. SET acceptance also requires the original version, ID, lane count, ECC and a valid profile, sample count and measured rate. An older receiver must be refreshed before an extended trial; version-1 trials remain available through the default API.
+
+The observer deduplicates sequence numbers and waits for the end symbol before selecting a profile or emitting SET. A candidate needs at least three distinct display steps. Its score is unique accepted payload bytes divided by the full four-second period, including missed frames; an already-running profile observed after a late join is scored conservatively. Entirely missed profiles have zero samples and cannot win. In the largest profile, two lanes at 20 changes/s produce at most 160 unique symbols and **24,000 B/s**, within SET's unsigned 16-bit rate field. This synthetic result selects a candidate configuration; it is not a measured completed-file throughput and does not account for manifests, fountain dependence or later changes in camera conditions.
 
 ## Integrity, interoperability and errors
 
@@ -258,5 +287,7 @@ CRC and SHA-256 detect corrupted or inconsistent transfer data; they do not auth
 From `development/`, run `npm test`, or run the focused v2 suite with `node --test tools/qr-resilient.test.mjs`.
 
 V2 tests cover an independently constructed invertible equation basis; repair-only reception with one-, two-, and 32-chunk blocks; more than 50% source-frame loss with additional repair loss, arbitrary order and duplicates; rank and bounded progress; CRC and malicious dimensions/masks; mixed protocol versions; zero padding and final SHA; reset while hashing; owned-buffer cleanup; detached outputs; selective repair driven by feedback; malformed and foreign ACKs; the exact 10 MiB boundary; frozen v1 compatibility; and binary repair/feedback through the actual QR encoder, PNG pipeline, and jsQR decoder.
+
+The compact and playback suites also cover independent v3 wire bytes; missing/repeated manifests; paired out-of-order delivery and a permanently unreadable lane; targeted missing pivots; partial final blocks; rotated interleaving through the 27,307-chunk boundary; checkpoint rewind in sequential and interleaved modes; and v3-only 15/20 feedback. Aligned and unaligned framing is compared with an independent bytewise XOR calculation, including borrowed transport buffers and partial-word padding. A deterministic burst-loss fixture reports both sequential and interleaved recovery counts, with and without targeted feedback, rather than assuming interleaving always improves completion time.
 
 These mathematical and image round-trip tests are not a measurement of a physical phone camera's throughput. Transmission rate and completion time still depend on camera capture, decoder cost, frame readability, losses, and the number of independent equations received.

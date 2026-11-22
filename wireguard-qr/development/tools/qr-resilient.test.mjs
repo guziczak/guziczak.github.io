@@ -770,3 +770,75 @@ test('compact final digest, padding and reset protection remain byte-exact', asy
   assert.equal(gated.state.id, next.id);
   assert.equal(gated.state.received, 0);
 });
+
+test('systematic copy and aligned/unaligned XOR preserve independent payload bytes and transport offsets', async () => {
+  for (const chunkBytes of [384, 600]) for (const compact of [false, true]) for (const nameLength of [1, 2, 3, 4]) {
+    const original = pattern(chunkBytes * 34 - 3);
+    const borrowed = new Uint8Array(original.length + 7);
+    borrowed.set(original, 3);
+    const file = await api.createTransfer(borrowed.subarray(3, 3 + original.length), 'x'.repeat(nameLength), { compact, chunkBytes });
+    for (const index of [0, 31, 32, 33]) {
+      const frame = file.frame(index), view = new DataView(frame.buffer);
+      const expected = new Uint8Array(chunkBytes);
+      expected.set(original.subarray(index * chunkBytes, Math.min(original.length, (index + 1) * chunkBytes)));
+      assertBytes(frame.subarray(view.getUint16(10), -4), expected);
+    }
+    for (const blockIndex of [0, 1]) for (let serial = 0; serial < 10; serial++) {
+      const frame = file.repairFrame(blockIndex, serial), view = new DataView(frame.buffer);
+      const mask = view.getUint32(compact ? 30 : 36);
+      const expected = new Uint8Array(chunkBytes);
+      for (let local = 0; local < Math.min(32, file.total - blockIndex * 32); local++) {
+        if (!((mask >>> local) & 1)) continue;
+        for (let byte = 0; byte < chunkBytes; byte++) expected[byte] ^= original[(blockIndex * 32 + local) * chunkBytes + byte] || 0;
+      }
+      assertBytes(frame.subarray(view.getUint16(10), -4), expected);
+      assert.equal(view.getUint32(frame.length - 4), crc(frame.subarray(0, -4)));
+    }
+    const collector = api.createCollector();
+    if (compact) await collector.accept(file.manifestFrame());
+    let result;
+    for (const block of [1, 0]) for (let serial = 0; serial < 160; serial++) {
+      const frame = file.repairFrame(block, serial);
+      const offset = serial % 4;
+      const transport = new Uint8Array(frame.length + 7);
+      transport.set(frame, offset);
+      result = await collector.accept(transport.subarray(offset, offset + frame.length));
+      if (!file.acceptFeedback(collector.createFeedback()).missingBlocks.includes(block)) break;
+    }
+    assert.equal(result.kind, 'complete');
+    assertBytes(result.bytes, original);
+    assertBytes(borrowed.subarray(3, 3 + original.length), original);
+    file.dispose(); collector.dispose();
+  }
+  const frozenV1 = Buffer.from('V0dRUi1YRlIBAABSlEBocNGfZgKXB1k4IpoYFwAAACAAAAABAlgACgAAeTD+ii78v0LLvsVpa5XdIPvqRPznTjsOGhRooGk2c3RhcnkuY29uZltJbnRlcmZhY2VdDQojIFphxbzDs8WCxIcg8J+UkQ0KI6GTEw==', 'base64');
+  const transport = new Uint8Array(frozenV1.length + 3);
+  transport.set(frozenV1, 1);
+  assert.equal((await api.createCollector().accept(transport.subarray(1, 1 + frozenV1.length))).version, 1);
+});
+
+test('only compact v3 feedback supports the optional 15 and 20 display rates', async () => {
+  for (const compact of [false, true]) {
+    const file = await api.createTransfer(pattern(385), 'rates.bin', { compact });
+    const collector = api.createCollector();
+    await collector.accept(compact ? file.manifestFrame() : file.frame(0));
+    for (const suggestedRate of [1, 2, 5, 10]) {
+      assert.equal(file.acceptFeedback(collector.createFeedback({ suggestedRate })).suggestedRate, suggestedRate);
+    }
+    for (const suggestedRate of [15, 20]) {
+      if (compact) assert.equal(file.acceptFeedback(collector.createFeedback({ suggestedRate })).suggestedRate, suggestedRate);
+      else {
+        assert.throws(() => collector.createFeedback({ suggestedRate }), { code: 'INVALID_INPUT' });
+        assert.throws(() => file.acceptFeedback(edit(collector.createFeedback(), bytes => { bytes[11] = suggestedRate; })), { code: 'MALFORMED_FEEDBACK' });
+      }
+    }
+    for (const suggestedRate of [0, 3, 11, 25, 60]) {
+      assert.throws(() => collector.createFeedback({ suggestedRate }), { code: 'INVALID_INPUT' });
+      assert.throws(() => file.acceptFeedback(edit(collector.createFeedback(), bytes => { bytes[11] = suggestedRate; })), { code: 'MALFORMED_FEEDBACK' });
+    }
+  }
+  const old = await api.legacy.createTransfer(pattern(601), 'legacy-rates.bin');
+  const legacyCollector = api.createCollector();
+  await legacyCollector.accept(old.frames[0]);
+  assert.throws(() => legacyCollector.createFeedback({ suggestedRate: 15 }), { code: 'INVALID_INPUT' });
+  assert.throws(() => legacyCollector.createFeedback({ suggestedRate: 20 }), { code: 'INVALID_INPUT' });
+});
