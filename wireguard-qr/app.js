@@ -36,20 +36,36 @@
     'estimate-fifteen', 'estimate-twenty', 'estimate-fifteen-label', 'estimate-twenty-label',
     'estimate-fifteen-cell', 'estimate-twenty-cell', 'compress-single', 'calibration-range',
     'start-calibration', 'stop-calibration', 'speed-sample', 'calibration-status', 'calibration-panel',
-    'calibration-progress', 'calibration-status-receiver', 'calibration-result', 'show-calibration-feedback', 'reset-calibration'
+    'calibration-progress', 'calibration-status-receiver', 'calibration-result', 'show-calibration-feedback', 'reset-calibration',
+    'large-sender-controls', 'large-segment', 'large-segment-status', 'large-auto', 'large-next', 'large-previous',
+    'large-sample', 'enable-large-receiver', 'large-storage-status', 'large-storage-details',
+    'large-resume', 'large-delete', 'large-delete-confirm', 'large-delete-cancel', 'large-delete-question', 'large-repair', 'estimate-title'
   ].forEach((id) => { ui[id] = $(id); });
 
   const MAX_BYTES = 2953;
   const FRAME_RATES = [1, 2, 5, 10, 15, 20];
   const RATE_LABELS = [['one', 1], ['two', 2], ['five', 5], ['ten', 10], ['fifteen', 15], ['twenty', 20]];
   const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-  const DEFAULT_CAPACITY = 'Jeden QR: do 2953 B. Seria QR: do 10 MiB. Odtwarzanie serii zaczyna się od pauzy.';
+  const DEFAULT_CAPACITY = 'Jeden QR: do 2953 B. Seria: do 10 MiB. Duży plik z zapisem części: do 200 MiB. Odtwarzanie zaczyna się od pauzy.';
   let mode = 'encode';
   let sourceBytes = null;
   let decodedBytes = null;
   let sourceName = '';
   let sourceZipMetadata = null;
   let sourceOriginalFile = null;
+  let largeSender = null;
+  let largeSourceFile = null;
+  let largeSegmentIndex = 0;
+  let largeSegmentEpoch = 0;
+  let largeLoading = false;
+  let largeMissingSegments = null;
+  let largeConfirmed = false;
+  let largeStore = null;
+  let largeReceiver = null;
+  let largeStorageEpoch = 0;
+  let largeStorageBusy = false;
+  let largeResumeBytes = 0;
+  let decodedFile = null;
   let sourceEpoch = 0;
   let decodeEpoch = 0;
   let cameraEpoch = 0;
@@ -147,7 +163,7 @@
     ui['decoded-preview'].textContent = '';
   }
   function openExpanded() {
-    if (!sourceBytes || ui['qr-result'].hidden) return;
+    if ((!sourceBytes && !largeSourceFile) || ui['qr-result'].hidden) return;
     expandedReturnFocus = document.activeElement;
     document.body.classList.add('qr-expanded');
     ui['qr-result'].setAttribute('role', 'dialog');
@@ -176,11 +192,12 @@
     ui['sample-file'].disabled = busy;
     ui['series-sample'].disabled = busy;
     ui['speed-sample'].disabled = busy;
+    ui['large-sample'].disabled = busy;
     ui['zip-sample'].disabled = busy;
     ui['qr-density'].disabled = busy;
     ui['qr-layout'].disabled = busy;
     ui['series-ecc'].disabled = busy;
-    ui['compress-single'].disabled = busy;
+    ui['compress-single'].disabled = busy || Boolean(largeSourceFile);
     ui['calibration-range'].disabled = busy;
     ui['start-calibration'].disabled = busy || !series;
     ui['download-source-zip'].disabled = busy || !sourceBytes || !window.WGZip.isZip(sourceBytes);
@@ -193,6 +210,8 @@
     ui['image-drop'].setAttribute('aria-busy', String(busy));
   }
   function clearSource() {
+    largeSegmentEpoch++;
+    largeLoading = false;
     stopCalibration(false);
     if (calibration) calibration.dispose();
     calibration = null;
@@ -200,6 +219,12 @@
     stopFeedbackCamera();
     closeExpanded(false);
     if (series) series.dispose();
+    if (largeSender) largeSender.dispose();
+    largeSender = null;
+    largeSourceFile = null;
+    largeMissingSegments = null;
+    largeConfirmed = false;
+    largeSegmentIndex = 0;
     series = null;
     playback = null;
     presentedCheckpoint = null;
@@ -252,11 +277,15 @@
     ui['scan-feedback'].disabled = true;
     ui['feedback-message'].textContent = '';
     ui['feedback-image-input'].value = '';
+    ui['large-sender-controls'].hidden = true;
+    ui['large-segment'].replaceChildren();
+    ui['large-segment-status'].textContent = '';
     updateTransferEstimate();
   }
   function clearDecoded() {
     if (decodedBytes) decodedBytes.fill(0);
     decodedBytes = null;
+    decodedFile = null;
     ui['image-input'].value = '';
     ui['decoded-empty'].hidden = false;
     ui['decoded-result'].hidden = true;
@@ -312,10 +341,12 @@
     message('encode-message');
     message('decode-message');
     document.querySelectorAll('.is-dragover').forEach((el) => el.classList.remove('is-dragover'));
-    status('Wyczyszczono plik, kod QR i podglądy');
+    renderLargeStorage();
+    status(largeStore?.state?.descriptor ? 'Wyczyszczono widok. Zapisane części pozostają do wznowienia.' : 'Wyczyszczono plik, kod QR i podglądy');
   }
   function selectMode(nextMode, focus = false) {
     if (mode !== nextMode) {
+      if (largeLoading) { largeSegmentEpoch++; largeLoading = false; }
       stopCalibration(false);
       sourceEpoch += 1;
       decodeEpoch += 1;
@@ -336,6 +367,7 @@
       ui[`${value}-panel`].hidden = !active;
     });
     status(mode === 'encode' ? 'Gotowe do utworzenia QR' : 'Gotowe do odczytania QR');
+    if (mode === 'encode' && largeSender && !series && !largeLoading) void loadLargeSegment(largeSegmentIndex);
     if (focus) ui[`${mode}-tab`].focus();
   }
   function selectedLanes() { return series && ui['qr-layout'].value === 'dual' ? 2 : 1; }
@@ -368,6 +400,7 @@
     clearPrepared();
     ui['animation-toggle'].textContent = transmissionPhase === 'confirmed' ? 'Odbiór potwierdzony' : 'Odtwórz serię';
     ui['animation-toggle'].setAttribute('aria-pressed', 'false');
+    lockLargeWaiting();
     if (series && mode === 'encode' && transmissionPhase !== 'confirmed' && !calibrationActive) {
       message('encode-message', 'Seria jest wstrzymana. Możesz ją wznowić lub wybrać fragment ręcznie.', 'success');
       status('Seria QR — odtwarzanie wstrzymane');
@@ -453,6 +486,10 @@
     ui['frame-position'].textContent = `${transmissionPhase === 'repair' ? 'Naprawa' : 'Dane'} · ${descriptions.join(' + ')}`;
     ui['frame-slider'].value = String(frameIndex + 1);
     setText(ui['qr-caption'], `${byteCount(series.size)} · ${fragmentCount(series.total)} · ${selectedLanes() === 2 ? 'dwa niezależne QR' : 'jeden QR'}`);
+    if (largeSender) {
+      setText(ui['qr-caption'], 'Część ' + (largeSegmentIndex + 1) + ' / ' + largeSender.descriptor.segmentCount
+        + ' · ' + byteCount(largeSender.descriptor.size) + ' łącznie · ' + selectedLanes() + ' QR');
+    }
     if (animationPlaying) {
       senderMetrics.displays++;
       senderMetrics.symbols += display.frames.length;
@@ -495,6 +532,7 @@
     ui['animation-toggle'].disabled = false;
     ui['animation-toggle'].textContent = 'Odtwórz serię';
     presentDisplay(prepareDisplay());
+    lockLargeWaiting();
   }
   function showRepairFrame() {
     if (!series || !playback) return;
@@ -506,6 +544,7 @@
     return FRAME_RATES.includes(value) ? value : 2;
   }
   function formatPassTime(frames, rate) {
+    if (frames === 0) return '0 s';
     const nominalSeconds = frames / rate;
     if (nominalSeconds < 1) return '< 1 s';
     const totalSeconds = Math.ceil(nominalSeconds);
@@ -518,13 +557,25 @@
     syncLayout();
     ui['transfer-estimate'].hidden = !series;
     const rate = series ? selectedFrameRate() : null;
+    let displays = series ? window.WGPlayback.firstPassDisplays(series.total, selectedLanes(), series.version >= 3 ? series.manifestInterval : 0) : 0;
+    if (largeSender && series) {
+      const descriptor = largeSender.descriptor;
+      const indices = largeMissingSegments ?? Array.from({ length: descriptor.segmentCount }, (_, index) => index);
+      displays = indices.reduce((sum, index) => {
+        const size = Math.min(descriptor.segmentBytes, descriptor.size - index * descriptor.segmentBytes);
+        const sources = Math.ceil(size / series.chunkBytes);
+        return sum + window.WGPlayback.firstPassDisplays(sources + Math.ceil(sources * largeRepairRatio()), selectedLanes(), 16);
+      }, 0);
+    }
+    setText(ui['estimate-title'], largeSender ? 'Szacowany obieg wszystkich potrzebnych części z zapasem naprawy' : 'Czas pierwszej serii danych');
     for (const [label, value] of RATE_LABELS) {
-      ui[`estimate-${label}`].textContent = series ? formatPassTime(window.WGPlayback.firstPassDisplays(series.total, selectedLanes(), series.version >= 3 ? series.manifestInterval : 0), value) : '';
+      ui[`estimate-${label}`].textContent = series ? formatPassTime(displays, value) : '';
       ui[`estimate-${label}-cell`].classList.toggle('is-selected', rate === value);
     }
+    lockLargeWaiting();
   }
   function startAnimation() {
-    if (!series || transmissionPhase === 'confirmed' || mode !== 'encode' || document.hidden) return;
+    if (!series || transmissionPhase === 'confirmed' || largeHasNoMissing() || mode !== 'encode' || document.hidden) return;
     stopCalibration(false);
     pauseAnimation();
     if (lastDisplayFrames.some(frame => frame.kind === 'calibration')) showFrame(0, true);
@@ -549,6 +600,12 @@
       animationRaf = null;
       if (!active()) return;
       try {
+        // The boundary QR gets its full display interval before loading another part.
+        if (largeSender && ui['large-auto'].checked && presentedCheckpoint?.phase === 'repair'
+          && presentedCheckpoint.serial >= Math.ceil(series.total * largeRepairRatio())) {
+          const next = nextLargeSegment();
+          if (next !== null && next !== largeSegmentIndex) { void loadLargeSegment(next, { resume: true }); return; }
+        }
         // Never advance the planner synchronously past an in-flight Worker batch.
         // Hold the current symbol until the next prepared display is ready.
         if (!preparedDisplays.length) {
@@ -580,6 +637,333 @@
     pauseAnimation();
     showFrame(index);
     status('Seria wstrzymana — wybrano fragment ręcznie');
+  }
+  function largeSenderStatus() {
+    if (!largeSender) return;
+    const descriptor = largeSender.descriptor;
+    ui['large-segment'].value = String(largeSegmentIndex);
+    ui['large-segment-status'].textContent = 'Część ' + (largeSegmentIndex + 1) + ' z ' + descriptor.segmentCount
+      + ' · ' + byteCount(descriptor.size) + (largeMissingSegments ? ' · pozostało ' + largeMissingSegments.length + ' części' : '');
+  }
+  function largeRepairRatio() {
+    const value = Number(ui['large-repair'].value);
+    return [0.25, 0.5, 1].includes(value) ? value : 1;
+  }
+  function largeHasNoMissing() { return Boolean(largeSender && largeMissingSegments && largeMissingSegments.length === 0); }
+  function lockLargeWaiting() {
+    if (!largeHasNoMissing()) return;
+    transmissionPhase = largeConfirmed ? 'confirmed' : 'waiting';
+    ui['animation-toggle'].disabled = true;
+    ui['animation-toggle'].textContent = largeConfirmed ? 'Odbiór potwierdzony' : 'Oczekiwanie na sprawdzenie';
+    for (const id of ['large-segment', 'large-previous', 'large-next']) ui[id].disabled = true;
+  }
+  function nextLargeSegment(direction = 1) {
+    if (!largeSender || largeHasNoMissing()) return null;
+    const indices = largeMissingSegments !== null ? largeMissingSegments
+      : Array.from({ length: largeSender.descriptor.segmentCount }, (_, index) => index);
+    const current = indices.indexOf(largeSegmentIndex);
+    return indices[(Math.max(0, current) + direction + indices.length) % indices.length];
+  }
+  async function loadLargeSegment(index, { resume = false } = {}) {
+    if (!largeSender || largeHasNoMissing() || largeLoading || !Number.isInteger(index) || index < 0 || index >= largeSender.descriptor.segmentCount) return;
+    const sender = largeSender, token = sourceEpoch, generation = ++largeSegmentEpoch;
+    stopCalibration(false);
+    pauseAnimation();
+    largeLoading = true;
+    largeSegmentIndex = index;
+    encodeBusy(true);
+    for (const id of ['large-segment', 'large-previous', 'large-next', 'animation-toggle']) ui[id].disabled = true;
+    message('encode-message', 'Przygotowuję część ' + (index + 1) + ' z ' + sender.descriptor.segmentCount + '…');
+    try {
+      if (series) series.dispose();
+      series = null;
+      playback = null;
+      presentedCheckpoint = null;
+      lastDisplayFrames.forEach(frame => frame.matrix.data.fill(0));
+      lastDisplayFrames = [];
+      matrixCache.forEach(matrix => matrix.data.fill(0));
+      matrixCache.clear();
+      const transfer = await sender.loadSegment(index);
+      if (token !== sourceEpoch || generation !== largeSegmentEpoch || sender !== largeSender || mode !== 'encode') {
+        transfer.dispose(); return;
+      }
+      series = transfer;
+      largeSegmentIndex = index;
+      frameIndex = 0;
+      ui['series-controls'].hidden = false;
+      ui['frame-slider'].max = String(series.total);
+      ui['frame-slider'].value = '1';
+      ui['scan-feedback'].disabled = false;
+      showFrame(0, true);
+      updateTransferEstimate();
+      largeSenderStatus();
+      ui['qr-empty'].hidden = true;
+      ui['qr-result'].hidden = false;
+      ui['download-qr'].disabled = false;
+      ui['download-qr-label'].textContent = 'Pobierz tę klatkę';
+      redrawCurrent();
+      message('encode-message', 'Część jest gotowa. Odbiornik zapisuje ukończone części; po przerwie pokaż nadajnikowi kod braków.', 'success');
+      status('Duży plik — część ' + (index + 1) + ' / ' + sender.descriptor.segmentCount);
+    } catch (error) {
+      if (token === sourceEpoch && generation === largeSegmentEpoch) {
+        message('encode-message', error.code === 'FILE_CHANGED'
+          ? 'Plik zmienił się od przygotowania. Wybierz ponownie niezmieniony plik.'
+          : 'Nie udało się przygotować części. Wybierz plik ponownie i przekaż kod braków z odbiornika.', 'error');
+        status('Nadawanie dużego pliku zatrzymane');
+      }
+    } finally {
+      if (generation === largeSegmentEpoch && sender === largeSender) {
+        largeLoading = false;
+        encodeBusy(false);
+        for (const id of ['large-segment', 'large-previous', 'large-next']) ui[id].disabled = false;
+        ui['animation-toggle'].disabled = !series;
+        if (resume && series && token === sourceEpoch && mode === 'encode' && !document.hidden) startAnimation();
+      }
+    }
+  }
+  async function encodeLargeFile(file) {
+    const token = ++sourceEpoch;
+    clearSource();
+    encodeBusy(false);
+    if (!file || !file.size || file.size > window.WGLarge.MAX_FILE_BYTES) {
+      message('encode-message', 'Duży transfer przyjmuje jeden niepusty plik lub gotowy ZIP do 200 MiB.', 'error');
+      return;
+    }
+    let sender;
+    let attached = false;
+    const current = () => attached ? sender === largeSender : token === sourceEpoch && mode === 'encode';
+    encodeBusy(true);
+    ui['transfer-mode'].value = 'large';
+    message('encode-message', 'Sprawdzam plik małymi częściami. Przygotowanie nie wysyła danych przez sieć.');
+    status('Przygotowanie dużego pliku…');
+    try {
+      sender = await window.WGLarge.createSender(file, {
+        chunkBytes: ui['qr-density'].value === '600' ? 600 : 384,
+        isCurrent: current,
+        onProgress: (progress) => {
+          if (!current()) return;
+          const done = progress?.completedSegments ?? (Number.isInteger(progress?.segmentIndex) ? progress.segmentIndex + 1 : undefined);
+          message('encode-message', Number.isInteger(done)
+            ? 'Sprawdzanie części pliku: ' + done + ' / ' + Math.ceil(file.size / window.WGLarge.SEGMENT_BYTES)
+            : 'Sprawdzam kolejne części pliku…');
+        }
+      });
+      if (!current()) { sender.dispose(); return; }
+      largeSender = sender;
+      attached = true;
+      largeSourceFile = file;
+      sourceOriginalFile = file;
+      sourceName = sender.descriptor.name;
+      ui['source-name'].textContent = sourceName;
+      ui['source-size'].textContent = byteCount(file.size);
+      ui['source-format'].textContent = 'Duży plik · ' + sender.descriptor.segmentCount + ' części';
+      ui['source-details'].hidden = false;
+      ui['large-sender-controls'].hidden = false;
+      ui['large-segment'].replaceChildren();
+      for (let index = 0; index < sender.descriptor.segmentCount; index++) {
+        const option = document.createElement('option');
+        option.value = String(index); option.textContent = 'Część ' + (index + 1) + ' / ' + sender.descriptor.segmentCount;
+        ui['large-segment'].appendChild(option);
+      }
+      ui['transfer-info'].textContent = 'Na odbiorniku wybierz „Włącz zapis i wznawianie”. Dane i potwierdzenia przechodzą wyłącznie przez QR.';
+      ui['capacity-note'].textContent = 'Każda część ma do 2 MiB. Po danych wysyłany jest dodatkowy przebieg naprawczy. Całość może wymagać wielogodzinnego skanowania.';
+      await loadLargeSegment(0);
+    } catch (error) {
+      if (sender && sender !== largeSender) sender.dispose();
+      if (current()) {
+        clearSource();
+        message('encode-message', error.code === 'FILE_CHANGED'
+          ? 'Plik zmienił się podczas odczytu. Wybierz go ponownie.'
+          : 'Nie udało się przygotować dużego pliku. Sprawdź dostęp do pliku i otwórz stronę przez HTTPS.', 'error');
+      }
+    } finally { if (current()) encodeBusy(false); }
+  }
+  function renderLargeStorage() {
+    const state = largeStore?.state;
+    ui['large-storage-details'].hidden = !largeStore;
+    ui['large-resume'].disabled = largeStorageBusy || !state?.descriptor || Boolean(state?.corrupt);
+    ui['large-delete'].disabled = largeStorageBusy || !largeStore;
+    ui['enable-large-receiver'].disabled = largeStorageBusy || Boolean(largeStore);
+    if (!largeStore) return;
+    const done = state?.completed?.filter(Boolean).length || 0;
+    ui['large-storage-status'].textContent = state?.corrupt
+      ? 'Zapis lokalny jest uszkodzony. Usuń zapisany transfer, aby przygotować nowy odbiór.'
+      : state?.descriptor ? 'Zapisano ' + done + ' / ' + state.descriptor.segmentCount + ' części · '
+        + byteCount(state.savedBytes || 0) + ' · ' + state.descriptor.name
+        + (state.complete && largeReceiver?.state?.complete && largeReceiver.state.id === state.descriptor.id
+          ? '. Całość jest sprawdzona i gotowa do pobrania.' : '. Wznów zapisany transfer, aby sprawdzić postęp i kontynuować.')
+        : 'Zapis lokalny jest gotowy. Możesz uruchomić kamerę lub wczytać migawki QR.';
+  }
+  function largeStorageError(error) {
+    const code = error?.code || '';
+    if (/UNSUPPORTED|UNAVAILABLE/.test(code)) return 'Ta przeglądarka nie obsługuje wymaganego zapisu dużych plików. Otwórz stronę w aktualnej przeglądarce z obsługą zapisu lokalnego; małe serie nadal działają.';
+    if (/BUSY|LOCK/.test(code)) return 'Zapis jest używany w innej karcie. Zamknij drugi odbiornik tej strony i spróbuj ponownie.';
+    if (/QUOTA|SPACE/.test(code) || error?.name === 'QuotaExceededError') return 'Brakuje miejsca na zapis i złożenie pliku. Zwolnij miejsce na urządzeniu; zapisane części pozostają do wznowienia.';
+    if (/SESSION|CONFLICT/.test(code)) return 'Jest już zapisany inny transfer. Wznów go albo jawnie usuń zapisany transfer przed odbiorem nowego pliku.';
+    if (/CORRUPT|HASH|DIGEST|INTEGRITY|ROOT/.test(code)) return 'Sprawdzenie zapisanych danych nie powiodło się. Plik nie jest gotowy do pobrania. Wznów sprawdzanie zapisu lub ponów brakujące części.';
+    return 'Nie udało się zapisać lub sprawdzić części. Zatrzymano odbiór; użyj „Wznów zapisany transfer”, aby sprawdzić zachowane dane.';
+  }
+  async function resumeLargeReceiver() {
+    if (!largeStore || largeStorageBusy || largeStore.state?.corrupt) return;
+    decodeEpoch++;
+    cancelImageRead();
+    stopCamera();
+    resetCollector();
+    clearDecoded();
+    const epoch = receiverEpoch, storage = largeStore;
+    largeStorageBusy = true;
+    decodeBusy(true);
+    renderLargeStorage();
+    try {
+      if (largeReceiver) largeReceiver.dispose();
+      await receiverChain;
+      if (epoch !== receiverEpoch || storage !== largeStore) return;
+      if (storage.state?.descriptor) await storage.begin(storage.state.descriptor);
+      if (epoch !== receiverEpoch || storage !== largeStore) return;
+      largeReceiver = window.WGLarge.createCollector({ store: storage });
+      const active = largeReceiver;
+      const result = typeof active.resume === 'function' ? await active.resume() : active.state;
+      if (epoch !== receiverEpoch || storage !== largeStore || active !== largeReceiver) return;
+      largeResumeBytes = storage.state?.savedBytes || 0;
+      receiverSnapshot = result?.descriptor ? result : active.state;
+      if (receiverSnapshot?.descriptor) {
+        showReceiving(receiverSnapshot, true);
+        if (receiverSnapshot.complete) {
+          const file = result?.file || await storage.file();
+          if (epoch === receiverEpoch && active === largeReceiver && file) acceptLargeDecoded(file, receiverSnapshot);
+        } else message('decode-message', 'Przywrócono zapisane części. Pokaż nadajnikowi „Uzupełnij brakujące”, a potem wróć do skanowania.', 'success');
+      }
+    } catch (error) {
+      if (epoch === receiverEpoch) message('decode-message', largeStorageError(error), 'error');
+    } finally {
+      if (storage === largeStore) { largeStorageBusy = false; decodeBusy(false); renderLargeStorage(); }
+    }
+  }
+  async function enableLargeReceiver() {
+    if (largeStore || largeStorageBusy) return;
+    if (receiverSnapshot && receiverSnapshot.version !== 4 && !receiverSnapshot.complete && receiverSnapshot.received > 0) {
+      message('decode-message', 'Najpierw dokończ obecną serię lub użyj „Reset odbioru”.', 'warning'); return;
+    }
+    decodeEpoch++; cancelImageRead(); stopCamera();
+    largeStorageBusy = true;
+    decodeBusy(true);
+    const epoch = ++largeStorageEpoch;
+    const receiverToken = receiverEpoch;
+    renderLargeStorage();
+    message('large-storage-status', 'Sprawdzam możliwość zapisu i zachowane części…');
+    let storage;
+    try {
+      storage = await window.WGLargeStore.open();
+      if (epoch !== largeStorageEpoch || receiverToken !== receiverEpoch) { await storage.dispose(); return; }
+      largeStore = storage;
+      largeStorageBusy = false;
+      if (!storage.state?.corrupt) await resumeLargeReceiver();
+      renderLargeStorage();
+    } catch (error) {
+      if (epoch === largeStorageEpoch) message('large-storage-status', largeStorageError(error), 'error');
+      if (storage && storage !== largeStore) storage.dispose();
+    } finally {
+      if (epoch === largeStorageEpoch) { largeStorageBusy = false; decodeBusy(false); renderLargeStorage(); }
+    }
+  }
+  async function deleteLargeStorage() {
+    if (!largeStore || largeStorageBusy) return;
+    const storage = largeStore;
+    decodeEpoch++; cancelImageRead(); stopCamera(); resetCollector(); clearDecoded();
+    if (largeReceiver) largeReceiver.dispose();
+    largeReceiver = null;
+    largeStorageBusy = true;
+    decodeBusy(true);
+    ui['large-delete-question'].hidden = true;
+    renderLargeStorage();
+    try {
+      await storage.clear();
+      if (storage !== largeStore) return;
+      largeResumeBytes = 0;
+      largeReceiver = window.WGLarge.createCollector({ store: storage });
+      message('decode-message', 'Usunięto lokalnie zapisany transfer. Możesz odebrać nowy duży plik.', 'success');
+    } catch (error) { message('decode-message', largeStorageError(error), 'error'); }
+    finally { if (storage === largeStore) { largeStorageBusy = false; decodeBusy(false); renderLargeStorage(); } }
+  }
+  function acceptLargeDecoded(file, state) {
+    if (!file || file.size !== state.size) return false;
+    clearDecoded();
+    decodedFile = file;
+    ui['decoded-empty'].hidden = true;
+    ui['decoded-result'].hidden = false;
+    ui['decoded-size'].textContent = byteCount(state.size);
+    ui['decoded-kind'].textContent = 'Duży plik · sprawdzone części';
+    ui['output-name'].value = cleanName(state.name, 'plik.bin');
+    ui['download-file'].disabled = false;
+    message('decode-message', 'Odebrano i zapisano wszystkie części. Sprawdzono ich skróty i kolejność. Cały plik jest gotowy do pobrania.', 'success');
+    status('Duży plik odtworzony i sprawdzony');
+    renderLargeStorage();
+    return true;
+  }
+  async function receiveLargeBytes(payload, epoch, source) {
+    if (window.WGLarge.isFeedback(payload)) {
+      telemetry.recordRejected('feedback', { source });
+      message('decode-message', 'To potwierdzenie dużego transferu. Pokaż je nadajnikowi po wybraniu „Zeskanuj potwierdzenie”.', 'warning');
+      return { done: false, blocked: true };
+    }
+    if (!largeStore || !largeReceiver || largeStorageBusy || largeStore.state?.corrupt) {
+      message('decode-message', 'To duży transfer. Najpierw wybierz „Włącz zapis i wznawianie” albo sprawdź zapisany transfer.', 'warning');
+      return { done: false, blocked: true };
+    }
+    if (receiverSnapshot && receiverSnapshot.version !== 4 && !receiverSnapshot.complete && receiverSnapshot.received > 0) {
+      message('decode-message', 'Trwa odbiór innego pliku. Dokończ go albo użyj „Reset odbioru”.', 'warning');
+      return { done: false, blocked: true };
+    }
+    if (calibrationObserver.state) {
+      calibrationObserver.reset(); ui['calibration-panel'].hidden = true; ui['show-calibration-feedback'].hidden = true;
+      resetMetrics(); resetTelemetry();
+      if (cameraStream) startCameraTelemetry(cameraStream);
+    }
+    // The serial receive queue has settled earlier writes, including a part
+    // committed just after Reset. Never count those durable bytes as new speed.
+    if (!telemetry.snapshot().transfer) largeResumeBytes = largeStore.state?.savedBytes || 0;
+    const active = largeReceiver;
+    const before = active.state;
+    const savedBefore = largeStore.state?.completed?.filter(Boolean).length || 0;
+    try {
+      const result = await active.accept(payload);
+      if (epoch !== receiverEpoch || active !== largeReceiver) return { done: false, stale: true };
+      if (result.kind === 'pending') {
+        message('decode-message', 'Widzę duży transfer. Czekam na powtarzany opis jego części.', 'success');
+        return { done: false, pending: true };
+      }
+      if (result.kind === 'foreign') {
+        telemetry.recordRejected('foreign', { source });
+        message('decode-message', 'To inny duży plik. Zapisany transfer pozostaje zachowany; możesz go wznowić albo jawnie usunąć.', 'warning');
+        return { done: false, foreign: true };
+      }
+      const state = active.state || result;
+      const sameSegment = before?.currentSegment === state.currentSegment;
+      const delta = Math.max(0, (state.received || 0) - (sameSegment ? before?.received || 0 : 0));
+      receiverSnapshot = { ...state, kind: result.kind, file: undefined };
+      const savedDelta = Math.max(0, state.completedSegments - savedBefore);
+      recordPacketTelemetry({
+        version: 4, size: state.size, total: state.segmentCount, chunkBytes: state.segmentBytes,
+        blockCount: state.segmentCount, received: state.completedSegments, blocksComplete: state.completedSegments,
+        complete: Boolean(state.complete), packetType: result.packetType || (result.kind === 'manifest' ? 'manifest' : 'unknown')
+      }, savedDelta, source);
+      showReceiving(receiverSnapshot, Boolean(result.segmentComplete || state.complete));
+      if (state.complete && result.file) {
+        stopCamera();
+        return { done: acceptLargeDecoded(result.file, state), delta };
+      }
+      return { done: false, progress: true, delta };
+    } catch (error) {
+      if (epoch !== receiverEpoch || active !== largeReceiver || /RESET|CANCELLED|DISPOSED/.test(error.code || '')) return { done: false, stale: true };
+      receiverSnapshot = active.state;
+      showReceiving(receiverSnapshot, true);
+      telemetry.recordRejected('invalid', { source });
+      const storageFailure = /^STORE_|ROOT_|HASH_|DIGEST_/.test(error.code || '') || error.name === 'QuotaExceededError';
+      if (storageFailure) stopCamera();
+      message('decode-message', storageFailure ? largeStorageError(error)
+        : 'Ten kod dużego transferu jest nieprawidłowy. Poprawnie zapisane części pozostają zachowane.', 'error');
+      return { done: false, error: true };
+    }
   }
   function clearQR(canvas) {
     if (window.WGRender?.clear) window.WGRender.clear(canvas);
@@ -621,6 +1005,9 @@
   async function selectFiles(fileList) {
     const files = Array.from(fileList);
     const single = files.length === 1;
+    if (single && ui['transfer-mode'].value === 'large') return encodeLargeFile(files[0]);
+    if (single && ui['transfer-mode'].value !== 'single' && files[0].size > window.WGTransfer.MAX_FILE_BYTES
+      && (!ui['compress-single'].checked || files[0].size > window.WGZip.MAX_INPUT_BYTES)) return encodeLargeFile(files[0]);
     const compressSingle = single && ui['compress-single'].checked && ui['transfer-mode'].value !== 'single'
       && (ui['transfer-mode'].value === 'series' || files[0].size > MAX_BYTES);
     if (single && !compressSingle) return encodeFile(files[0], { originalFile: files[0] });
@@ -690,6 +1077,8 @@
     }
   }
   async function encodeFile(file, options = {}) {
+    if (file && ui['transfer-mode'].value !== 'single'
+      && (file.size > window.WGTransfer.MAX_FILE_BYTES || ui['transfer-mode'].value === 'large')) return encodeLargeFile(file);
     const token = ++sourceEpoch;
     clearSource();
     encodeBusy(false);
@@ -728,7 +1117,9 @@
         [87, 71, 81, 82, 45, 88, 70, 82], // WGQR-XFR transfer marker
         [87, 71, 81, 82, 45, 65, 67, 75], // WGQR-ACK feedback marker
         [87, 71, 81, 82, 45, 67, 65, 76], // WGQR-CAL synthetic calibration
-        [87, 71, 81, 82, 45, 83, 69, 84] // WGQR-SET calibration result
+        [87, 71, 81, 82, 45, 83, 69, 84], // WGQR-SET calibration result
+        [87, 71, 81, 82, 45, 76, 82, 71], // WGQR-LRG large transfer
+        [87, 71, 81, 82, 45, 76, 65, 75] // WGQR-LAK large feedback
       ];
       const protocolLike = bytes.length >= 8 && reservedPrefixes.some((prefix) => prefix.every((value, index) => bytes[index] === value));
       if (protocolLike && requestedMode === 'single') {
@@ -831,7 +1222,7 @@
   function renderReceiving(state) {
     if (!state) {
       ui['receiving-progress'].hidden = true;
-      ui['decoded-empty'].hidden = Boolean(decodedBytes);
+      ui['decoded-empty'].hidden = Boolean(decodedBytes || decodedFile);
       ui['receiving-name'].textContent = '';
       ui['receiving-count'].textContent = '';
       ui['receiving-progressbar'].max = 1;
@@ -841,6 +1232,26 @@
       ui['receiving-label'].textContent = 'ODBIERANIE SERII';
       ui['show-feedback'].textContent = 'Uzupełnij brakujące';
       ui['show-feedback'].hidden = true;
+      return;
+    }
+    if (state.version === 4) {
+      ui['receiving-label'].textContent = state.complete ? 'DUŻY PLIK ZAPISANY' : 'ODBIERANIE DUŻEGO PLIKU';
+      ui['receiving-progress'].hidden = false;
+      ui['decoded-empty'].hidden = true;
+      ui['receiving-name'].textContent = state.name;
+      ui['receiving-count'].textContent = 'Zapisano ' + state.completedSegments + ' / ' + state.segmentCount
+        + ' części · ' + byteCount(state.savedBytes) + ' / ' + byteCount(state.size);
+      ui['receiving-progressbar'].max = state.size;
+      ui['receiving-progressbar'].value = state.savedBytes;
+      ui['receiving-missing'].textContent = state.complete ? 'Wszystkie części są sprawdzone i zapisane.'
+        : Number.isInteger(state.currentSegment) ? 'Bieżąca część ' + (state.currentSegment + 1) + ': '
+          + (state.received || 0) + ' / ' + (state.total || 0) + ' porcji. Ten postęp zostanie zapisany po ukończeniu części.'
+          : 'Czekam na opis kolejnej potrzebnej części.';
+      ui['receiving-help'].textContent = 'Zapisane części pozostają na tym urządzeniu. Po przerwie wybierz „Wznów zapisany transfer”. Kod zwrotny wskazuje brakujące części.';
+      ui['show-feedback'].hidden = false;
+      ui['show-feedback'].textContent = state.complete ? 'Pokaż potwierdzenie' : 'Uzupełnij brakujące';
+      if (!state.complete && mode === 'decode') status('Duży plik: zapisano ' + state.completedSegments + ' / ' + state.segmentCount + ' części');
+      renderLargeStorage();
       return;
     }
     const received = state.complete || state.kind === 'complete' ? state.total : state.received;
@@ -983,17 +1394,32 @@
       `Analizowane klatki kamery: ${count(data.cameraAttempts)}; obszary dekodowania: ${count(data.decodeAttempts)}; poprawne odczyty QR: ${count(data.opticalReads)}.`,
       `QR odczytane z obrazów: ${count(data.imageReads)}; przyjęte z obrazów: ${count(data.imagePackets)}.`,
       `Przyjęte pakiety: ${count(data.acceptedPackets)} (kamera: ${count(data.cameraPackets)}, obrazy: ${count(data.imagePackets)}).`,
-      `Pakiety wnoszące nowe dane: ${count(data.usefulPackets)}; przyjęte bez nowych danych: ${count(data.redundantPackets)}.`,
-      `Nowe porcje danych: ${count(data.usefulUnits)} / ${count(transfer.total)}; opisy pliku: ${count(data.manifestPackets)}.`,
+      transfer.version === 4
+        ? `Pakiety kończące zapis części: ${count(data.usefulPackets)}; pozostałe przyjęte pakiety: ${count(data.redundantPackets)}.`
+        : `Pakiety wnoszące nowe dane: ${count(data.usefulPackets)}; przyjęte bez nowych danych: ${count(data.redundantPackets)}.`,
+      transfer.version === 4
+        ? `Części dopisane w tej sesji: ${count(data.usefulUnits)}; opisy części: ${count(data.manifestPackets)}.`
+        : `Nowe porcje danych: ${count(data.usefulUnits)} / ${count(transfer.total)}; opisy pliku: ${count(data.manifestPackets)}.`,
       `Odrzucone odczyty: ${count(data.rejectedPackets)} (inny plik: ${count(data.rejections.foreign)}, nieprawidłowy: ${count(data.rejections.invalid)}, potwierdzenie: ${count(data.rejections.feedback)}).`,
       `Obróbka klatki — średnio: ${milliseconds(data.latencyAvgMs)}; p95${data.latencyP95Approximate ? ' w przybliżeniu' : ''}: ${milliseconds(data.latencyP95Ms)}.`,
       `Tryb skanowania — śledzenie: ${count(data.trackedAttempts)}, szukanie: ${count(data.searchAttempts)}.`,
       `Kamera zgłasza: ${resolution}; ${reportedFps}. To nie jest tempo odczytu kodów ani tempo nadajnika.`,
       `Ostatni obszar dekodowania: ${pixels ? `${count(pixels.width)} × ${count(pixels.height)}` : 'brak pomiaru'}.`,
       `Wersja aplikacji: ${data.appVersion}. Protokół: ${protocol}.`,
-      `Rozmiar pliku: ${byteCount(transfer.size)}. Porcja: ${byteCount(transfer.chunkBytes)}. Bloki: ${count(transfer.blocksComplete)} / ${count(transfer.blockCount)}.`,
-      'Próba bez odczytu nie oznacza zgubionego QR. Pakiet bez nowych danych może być powtórzeniem lub zależnym równaniem naprawczym.'
+      transfer.version === 4
+        ? `Rozmiar pliku: ${byteCount(transfer.size)}. Część: ${byteCount(transfer.chunkBytes)}. Zapisane części: ${count(transfer.blocksComplete)} / ${count(transfer.blockCount)}.`
+        : `Rozmiar pliku: ${byteCount(transfer.size)}. Porcja: ${byteCount(transfer.chunkBytes)}. Bloki: ${count(transfer.blocksComplete)} / ${count(transfer.blockCount)}.`,
+      transfer.version === 4
+        ? 'Wiele pakietów składa się na jedną część. Pakiety przed jej ukończeniem nadal mogą wnosić nowe dane, ale nie zwiększają jeszcze licznika trwale zapisanych części.'
+        : 'Próba bez odczytu nie oznacza zgubionego QR. Pakiet bez nowych danych może być powtórzeniem lub zależnym równaniem naprawczym.'
     ].join('\n');
+    if (transfer.version === 4) {
+      const newlySaved = Math.max(0, (receiverSnapshot?.savedBytes || 0) - largeResumeBytes);
+      ui['telemetry-useful'].textContent = count(transfer.blocksComplete) + ' / ' + count(transfer.blockCount) + ' zapisanych części';
+      ui['telemetry-speed'].textContent = data.elapsedMs > 0 && newlySaved > 0
+        ? decimal(newlySaved * 1000 / data.elapsedMs / 1024) + ' KiB/s' : 'po zapisaniu części';
+      ui['telemetry-detail'].textContent += '\nDuży transfer: prędkość dotyczy bajtów zapisanych w tej sesji, bez części przywróconych wcześniej. Postęp bieżącej części nie jest jeszcze trwały. Przywrócono: ' + byteCount(largeResumeBytes) + '.';
+    }
   }
   function recordPacketTelemetry(result, delta, source) {
     // Only numerical protocol metadata enters diagnostics. No filename, content, ID or digest.
@@ -1008,7 +1434,16 @@
   async function copyDiagnostics() {
     if (!telemetry || !telemetry.snapshot().transfer || copyingDiagnostics) return;
     const epoch = receiverEpoch;
-    const report = telemetry.report();
+    const data = JSON.parse(telemetry.report());
+    if (receiverSnapshot?.version === 4) {
+      const newlySaved = Math.max(0, receiverSnapshot.savedBytes - largeResumeBytes);
+      data.averageBytesPerSecond = data.complete && data.elapsedMs > 0
+        ? Math.round(newlySaved * 1000 / data.elapsedMs * 1000) / 1000 : null;
+      data.large = { savedBytes: receiverSnapshot.savedBytes, restoredBytes: largeResumeBytes,
+        pendingBytes: receiverSnapshot.pendingBytes || 0, segmentCount: receiverSnapshot.segmentCount,
+        completedSegments: receiverSnapshot.completedSegments, measurement: 'newly-saved-bytes-in-this-session' };
+    }
+    const report = JSON.stringify(data, null, 2);
     copyingDiagnostics = true;
     ui['copy-diagnostics'].disabled = true;
     message('diagnostics-message');
@@ -1037,8 +1472,16 @@
     }
   }
   function resetCollector() {
+    if (largeStorageBusy && !largeStore) {
+      largeStorageEpoch++;
+      largeStorageBusy = false;
+      decodeBusy(false);
+      message('large-storage-status');
+      renderLargeStorage();
+    }
     receiverEpoch += 1;
     if (collector) collector.reset();
+    if (largeReceiver) largeReceiver.reset();
     resetTelemetry();
     if (calibrationObserver) calibrationObserver.reset();
     ui['calibration-panel'].hidden = true;
@@ -1049,7 +1492,7 @@
     resetMetrics();
   }
   function prepareReceiver() {
-    if ((receiverSnapshot && receiverSnapshot.complete) || decodedBytes || telemetry?.snapshot().complete) resetCollector();
+    if ((receiverSnapshot && receiverSnapshot.complete) || decodedBytes || decodedFile || telemetry?.snapshot().complete) resetCollector();
     clearDecoded();
     showReceiving(receiverSnapshot, true);
   }
@@ -1087,6 +1530,11 @@
         if (window.WGCalibration.isFrame(payload)) return receiveCalibration(payload);
         if (window.WGCalibration.isFeedback(payload)) {
           message('decode-message', 'To wynik próby. Pokaż go kamerze nadajnika po wybraniu „Zeskanuj potwierdzenie”.', 'warning');
+          return { done: false, blocked: true };
+        }
+        if (window.WGLarge.isReserved(payload)) return await receiveLargeBytes(payload, epoch, source);
+        if (receiverSnapshot?.version === 4 && !receiverSnapshot.complete) {
+          message('decode-message', 'Trwa odbiór dużego pliku. Aby odebrać zwykły QR lub inną serię, najpierw użyj „Reset odbioru”.', 'warning');
           return { done: false, blocked: true };
         }
         if (calibrationObserver.state) {
@@ -1163,13 +1611,14 @@
     stopCamera();
     let bytes;
     try {
-      bytes = collector.createFeedback({ suggestedRate: metrics.recommended });
+      bytes = (receiverSnapshot.version === 4 ? largeReceiver : collector).createFeedback({ suggestedRate: metrics.recommended });
       ui['feedback-panel'].hidden = false;
       drawQR(window.WGQR.encodeBytes(bytes), ui['feedback-canvas']);
       ui['resume-receiving'].hidden = Boolean(receiverSnapshot.complete);
       ui['feedback-caption'].textContent = receiverSnapshot.complete
         ? 'Odbiór pliku został sprawdzony. Na nadajniku wybierz „Zeskanuj potwierdzenie”, aby potwierdzić zakończenie.'
         : `Na nadajniku wybierz „Zeskanuj potwierdzenie”. Kod wskaże niepełne bloki i zaproponuje ${metrics.recommended} zmian/s. Potem wznowisz odbiór.`;
+      if (receiverSnapshot.version === 4 && !receiverSnapshot.complete) ui['feedback-caption'].textContent = 'Kod wskazuje całe brakujące części. Po zeskanowaniu nadajnik rozpocznie pierwszą z nich. Zapisane części pozostają na odbiorniku; nieukończona część może zacząć się od początku.';
       ui['close-feedback'].focus();
     } catch {
       message('decode-message', 'Kod zwrotny jest dostępny po odebraniu fragmentu nowej serii. Odśwież obie strony, jeśli używasz starszej wersji.', 'error');
@@ -1186,8 +1635,9 @@
     ui['calibration-range'].disabled = false;
     ui['stop-calibration'].hidden = true;
     ui['start-calibration'].disabled = !series;
-    for (const id of ['qr-density', 'qr-layout', 'series-ecc', 'previous-frame', 'next-frame', 'frame-slider']) ui[id].disabled = false;
+    for (const id of ['qr-density', 'qr-layout', 'series-ecc', 'previous-frame', 'next-frame', 'frame-slider', 'large-segment', 'large-previous', 'large-next']) ui[id].disabled = false;
     ui['animation-toggle'].disabled = transmissionPhase === 'confirmed';
+    lockLargeWaiting();
     if (showEnd && calibration && series) {
       const bytes = calibration.endFrame();
       let matrix;
@@ -1200,17 +1650,17 @@
     } else if (wasActive) ui['calibration-status'].textContent = 'Próba zatrzymana. Możesz rozpocząć ją ponownie.';
   }
   function startCalibration() {
-    if (!series || !sourceBytes || document.hidden) return;
+    if (!series || (!sourceBytes && !largeSourceFile) || largeLoading || document.hidden) return;
     stopCalibration(false);
     pauseAnimation();
     stopFeedbackCamera();
     if (calibration) calibration.dispose();
-    calibration = window.WGCalibration.create({ lanes: selectedLanes(), ecc: selectedEcc(), extended: ui['calibration-range'].value === 'fast' });
+    calibration = window.WGCalibration.create({ lanes: selectedLanes(), ecc: selectedEcc(), extended: ui['calibration-range'].value === 'fast', large: Boolean(largeSender) });
     calibrationActive = true;
     ui['calibration-range'].disabled = true;
     ui['start-calibration'].disabled = true;
     ui['stop-calibration'].hidden = false;
-    for (const id of ['qr-density', 'qr-layout', 'series-ecc', 'animation-toggle', 'previous-frame', 'next-frame', 'frame-slider']) ui[id].disabled = true;
+    for (const id of ['qr-density', 'qr-layout', 'series-ecc', 'animation-toggle', 'previous-frame', 'next-frame', 'frame-slider', 'large-segment', 'large-previous', 'large-next']) ui[id].disabled = true;
     const token = sourceEpoch;
     const trial = calibration;
     const started = window.performance.now();
@@ -1262,7 +1712,7 @@
     tickCalibration();
   }
   function receiveCalibration(bytes) {
-    if (receiverSnapshot && !receiverSnapshot.complete && receiverSnapshot.received > 0) {
+    if (receiverSnapshot && !receiverSnapshot.complete && (receiverSnapshot.received > 0 || receiverSnapshot.version === 4)) {
       message('decode-message', 'Trwa odbiór pliku. Aby wykonać próbę, najpierw wybierz „Reset odbioru”.', 'warning');
       return { done: false, blocked: true };
     }
@@ -1309,13 +1759,13 @@
     finally { if (bytes) bytes.fill(0); }
   }
   async function applyCalibrationFeedback(bytes, isCurrent) {
-    if (!calibration || !isCurrent() || !sourceBytes) return false;
+    if (!calibration || !isCurrent() || (!sourceBytes && !largeSourceFile)) return false;
     const result = calibration.acceptFeedback(bytes);
     if (!isCurrent()) return false;
     stopCalibration(false);
     pauseAnimation();
     stopFeedbackCamera();
-    const file = new File([sourceBytes], sourceName, { type: 'application/octet-stream' });
+    const file = largeSourceFile || new File([sourceBytes], sourceName, { type: 'application/octet-stream' });
     const zipMetadata = sourceZipMetadata;
     const originalFile = sourceOriginalFile;
     ui['qr-density'].value = String(result.chunkBytes);
@@ -1327,6 +1777,7 @@
     if (sourceEpoch === expectedEpoch && series) {
       ui['calibration-status'].textContent = `Zastosowano wynik: ${result.chunkBytes} B, ${result.fps} zmian/s, ${result.lanes} QR. Nowa seria jest gotowa.`;
       message('feedback-message', 'Ustawienia dobrane. Na odbiorniku wróć do skanowania, a tutaj odtwórz serię. Jeśli wcześniej odbierano już plik, zresetuj jego odbiór.', 'success');
+      if (largeSender) message('feedback-message', 'Ustawienia dobrane dla dużych kodów. Zapisane części pozostają zgodne. Przekaż kod braków z odbiornika, aby kontynuować od potrzebnej części.', 'success');
     }
     return true;
   }
@@ -1356,6 +1807,31 @@
     if (!transfer || !isCurrent()) return false;
     try {
       if (window.WGCalibration.isFeedback(bytes)) return await applyCalibrationFeedback(bytes, isCurrent);
+      if (largeSender) {
+        const sender = largeSender;
+        const result = sender.acceptFeedback(bytes);
+        if (!isCurrent() || epoch !== sourceEpoch || sender !== largeSender) return false;
+        pauseAnimation(); stopFeedbackCamera(); applyRecommendedRate(result.suggestedRate);
+        largeMissingSegments = result.missingSegments.slice();
+        largeConfirmed = result.complete;
+        largeSenderStatus();
+        updateTransferEstimate();
+        if (result.complete) {
+          transmissionPhase = 'confirmed';
+          ui['animation-toggle'].disabled = true;
+          ui['animation-toggle'].textContent = 'Odbiór potwierdzony';
+          message('feedback-message', 'Odbiornik potwierdził zapis i sprawdzenie całego dużego pliku.', 'success');
+          status('Duży transfer zakończony');
+        } else if (largeMissingSegments.length) {
+          await loadLargeSegment(largeMissingSegments[0]);
+          if (epoch === sourceEpoch && sender === largeSender) message('feedback-message', 'Pozostało ' + largeMissingSegments.length
+            + ' części. Wznów odbiór i odtwarzanie; zapisane części będą pomijane.', 'success');
+        } else {
+          message('feedback-message', 'Wszystkie części są zapisane, ale odbiornik jeszcze nie potwierdził sprawdzenia i złożenia całości. Pokaż nowy kod zwrotny po zakończeniu.', 'warning');
+          lockLargeWaiting();
+        }
+        return true;
+      }
       const result = await transfer.acceptFeedback(bytes);
       if (!isCurrent() || series !== transfer || epoch !== sourceEpoch) return false;
       pauseAnimation();
@@ -1840,9 +2316,9 @@
     });
   }
 
-  if (!window.WGQR || !window.WGTransfer || !window.WGResilient || !window.WGCamera || !window.WGTelemetry || !window.WGZip || !window.WGPlayback || !window.WGCalibration || !window.WGRender || !window.WGEncoder || !scanContext) {
+  if (!window.WGQR || !window.WGTransfer || !window.WGResilient || !window.WGCamera || !window.WGTelemetry || !window.WGZip || !window.WGPlayback || !window.WGCalibration || !window.WGRender || !window.WGEncoder || !window.WGLarge || !window.WGLargeStore || !scanContext) {
     message('encode-message', 'Nie udało się wczytać narzędzia. Odśwież stronę.', 'error');
-    ui['choose-file'].disabled = ui['choose-image'].disabled = ui['sample-file'].disabled = ui['series-sample'].disabled = ui['speed-sample'].disabled = ui['zip-sample'].disabled = ui['start-camera'].disabled = true;
+    ui['choose-file'].disabled = ui['choose-image'].disabled = ui['sample-file'].disabled = ui['series-sample'].disabled = ui['speed-sample'].disabled = ui['large-sample'].disabled = ui['zip-sample'].disabled = ui['start-camera'].disabled = true;
     return;
   }
   matrixEncoder = window.WGEncoder.create({ encode: window.WGQR.encodeBytes, workerUrl: './assets/qr-encoder-worker.js?v=1' });
@@ -1861,6 +2337,15 @@
   }
   ui['clear-all'].addEventListener('click', resetAll);
   ui['copy-diagnostics'].addEventListener('click', copyDiagnostics);
+  ui['enable-large-receiver'].addEventListener('click', enableLargeReceiver);
+  ui['large-resume'].addEventListener('click', resumeLargeReceiver);
+  ui['large-delete'].addEventListener('click', () => { ui['large-delete-question'].hidden = false; ui['large-delete-cancel'].focus(); });
+  ui['large-delete-cancel'].addEventListener('click', () => { ui['large-delete-question'].hidden = true; ui['large-delete'].focus(); });
+  ui['large-delete-confirm'].addEventListener('click', deleteLargeStorage);
+  ui['large-segment'].addEventListener('change', () => { void loadLargeSegment(Number(ui['large-segment'].value)); });
+  ui['large-previous'].addEventListener('click', () => { const next = nextLargeSegment(-1); if (next !== null) void loadLargeSegment(next); });
+  ui['large-next'].addEventListener('click', () => { const next = nextLargeSegment(); if (next !== null) void loadLargeSegment(next); });
+  ui['large-repair'].addEventListener('change', updateTransferEstimate);
   ui['choose-file'].addEventListener('click', () => ui['file-input'].click());
   ui['choose-image'].addEventListener('click', () => ui['image-input'].click());
   ui['file-input'].addEventListener('change', () => { if (ui['file-input'].files.length) selectFiles(Array.from(ui['file-input'].files)); });
@@ -1880,6 +2365,12 @@
     }
   });
   ui['qr-density'].addEventListener('change', async () => {
+    if (largeSourceFile) {
+      const file = largeSourceFile;
+      await encodeLargeFile(file);
+      if (largeSender) message('encode-message', 'Zmieniono gęstość dużych kodów. Zapisane części pozostają zgodne; przekaż kod braków z odbiornika.', 'success');
+      return;
+    }
     if (!sourceBytes || !series) return;
     pauseAnimation();
     const file = new File([sourceBytes], sourceName, { type: 'application/octet-stream' });
@@ -1939,7 +2430,9 @@
     stopCamera();
     resetCollector();
     clearDecoded();
-    message('decode-message', 'Odbiór wyczyszczony. Możesz zeskanować inny plik.');
+    message('decode-message', largeStore?.state?.descriptor
+      ? 'Wyczyszczono bieżący odczyt. Zapisane części dużego pliku pozostają; wybierz „Wznów zapisany transfer” albo usuń go osobnym przyciskiem.'
+      : 'Odbiór wyczyszczony. Możesz zeskanować inny plik.');
     status('Odbiór serii wyczyszczony');
   });
   // Dropping outside either target must not navigate away and expose the file.
@@ -1969,6 +2462,17 @@
     ui['transfer-mode'].value = 'series';
     selectFiles([file]);
   });
+  ui['large-sample'].addEventListener('click', () => {
+    const bytes = new Uint8Array(4 * 1024 * 1024);
+    let seed = 0x4c524734;
+    for (let index = 0; index < bytes.length; index++) {
+      seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; bytes[index] = seed & 255;
+    }
+    const file = new File([bytes], 'test-duzego-transferu-4MiB.bin', { type: 'application/octet-stream' });
+    bytes.fill(0);
+    ui['transfer-mode'].value = 'large';
+    void encodeLargeFile(file);
+  });
   ui['zip-sample'].addEventListener('click', () => {
     const configuration = '# DEMO ZIP - ten plik nie tworzy aktywnego VPN.\n[Interface]\nPrivateKey = DEMO_NIEPRAWIDLOWY_KLUCZ\nAddress = 10.0.0.2/32\n\n[Peer]\nPublicKey = DEMO_NIEPRAWIDLOWY_KLUCZ\nEndpoint = vpn.example.com:51820\nAllowedIPs = 0.0.0.0/0\n';
     const note = 'To sa nieszkodliwe pliki demonstracyjne. Archiwum powstaje lokalnie w przegladarce.\nPo odebraniu kompletnej serii QR pobierz pliki.zip i rozpakuj je na swoim urzadzeniu.\nKonfiguracja demo zawiera niewazne klucze. Nie wpisuj tutaj prawdziwych hasel do celow testowych.\n';
@@ -1986,7 +2490,7 @@
     status('Archiwum ZIP gotowe do zapisania');
   });
   ui['download-qr'].addEventListener('click', () => {
-    if (!sourceBytes || !lastDisplayFrames.length) return;
+    if ((!sourceBytes && !largeSourceFile) || !lastDisplayFrames.length) return;
     stopCalibration(false);
     pauseAnimation();
     const token = sourceEpoch;
@@ -2017,7 +2521,7 @@
         index * (side + gap) + Math.floor((side - canvas.width) / 2), Math.floor((side - canvas.height) / 2)));
     }
     output.toBlob((blob) => {
-      if (token === sourceEpoch && sourceBytes) {
+      if (token === sourceEpoch && (sourceBytes || largeSourceFile)) {
         if (!blob) message('encode-message', 'Nie udało się zapisać obrazu QR. Spróbuj ponownie.', 'error');
         else { downloadBlob(blob, filename); status('Obraz PNG gotowy do zapisania'); }
       }
@@ -2025,14 +2529,16 @@
     }, 'image/png');
   });
   ui['download-file'].addEventListener('click', () => {
-    if (!decodedBytes) return;
+    if (!decodedBytes && !decodedFile) return;
     const name = cleanName(ui['output-name'].value);
     ui['output-name'].value = name;
-    downloadBlob(new Blob([decodedBytes], { type: 'application/octet-stream' }), name);
+    downloadBlob(decodedFile || new Blob([decodedBytes], { type: 'application/octet-stream' }), name);
     status('Plik gotowy do zapisania — zachowano odczytane bajty');
   });
-  ui['preview-source'].addEventListener('toggle', () => { ui['source-preview'].textContent = ui['preview-source'].open ? preview(sourceBytes) : ''; });
-  ui['preview-decoded'].addEventListener('toggle', () => { ui['decoded-preview'].textContent = ui['preview-decoded'].open ? preview(decodedBytes) : ''; });
+  ui['preview-source'].addEventListener('toggle', () => { ui['source-preview'].textContent = ui['preview-source'].open
+    ? largeSourceFile ? 'Duży plik jest odczytywany częściami. Zawartość zostanie zachowana bajt po bajcie, razem ze strukturą gotowego archiwum.' : preview(sourceBytes) : ''; });
+  ui['preview-decoded'].addEventListener('toggle', () => { ui['decoded-preview'].textContent = ui['preview-decoded'].open
+    ? decodedFile ? 'Duży plik został zapisany lokalnie i sprawdzony. Pobranie zachowa wszystkie jego bajty; archiwum rozpakujesz po pobraniu.' : preview(decodedBytes) : ''; });
   ui['start-camera'].addEventListener('click', startCamera);
   ui['stop-camera'].addEventListener('click', () => stopCamera(true));
   ui['expand-qr'].addEventListener('click', openExpanded);
@@ -2085,6 +2591,13 @@
     if (resizeTimer !== null) window.clearTimeout(resizeTimer);
     resizeTimer = null;
     resetAll();
+    largeStorageEpoch++;
+    if (largeReceiver) largeReceiver.dispose();
+    if (largeStore) largeStore.dispose();
+    largeReceiver = null;
+    largeStore = null;
+    largeStorageBusy = false;
+    renderLargeStorage();
     pendingUrls.forEach((url) => URL.revokeObjectURL(url));
     pendingUrls.clear();
   });

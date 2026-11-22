@@ -36,23 +36,24 @@
   }
   function parse(value) {
     if (!starts(value, CAL)) return null;
-    if (![40, 424, 640].includes(value.length)) throw fail('Nieprawidłowy rozmiar próby.');
+    if (![40, 424, 640, 476, 692].includes(value.length)) throw fail('Nieprawidłowy rozmiar próby.');
     const view = checked(value);
     const version = value[8], profiles = profilesFor(version);
-    const index = value[10], lanes = value[11], ended = Boolean(value[9] & 1);
-    if ((value[9] & ~3) || index >= profiles.length || ![1, 2].includes(lanes)
+    const index = value[10], lanes = value[11], ended = Boolean(value[9] & 1), large = Boolean(value[9] & 4);
+    if ((value[9] & ~7) || index >= profiles.length || ![1, 2].includes(lanes)
       || view.getUint16(32) !== DURATION || value[34] > 1 || value[35] >= (version === 1 ? 3 : RATES.length)) throw fail('Nieprawidłowy profil próby.');
     const profile = profiles[index];
     const sequence = view.getUint16(28);
     if (view.getUint16(30) !== 0 || value[34] !== (profile.chunkBytes === 600 ? 1 : 0)
       || value[35] !== RATES.indexOf(profile.fps)
-      || value.length !== (ended ? 40 : profile.chunkBytes + 40)
+      || value.length !== (ended ? 40 : profile.chunkBytes + 40 + (large ? 52 : 0))
       || (!ended && sequence >= profile.fps * (DURATION / 1000) * lanes)
       || (ended && (sequence !== 65535 || index !== profiles.length - 1))) throw fail('Nieprawidłowa ramka próby.');
-    return { version, index, lanes, ended, sequence, ...profile, ecc: value[9] & 2 ? 'L' : 'M', id: hex(value.subarray(12, 28)), idBytes: value.subarray(12, 28) };
+    return { version, index, lanes, ended, large, sequence, ...profile, ecc: value[9] & 2 ? 'L' : 'M', id: hex(value.subarray(12, 28)), idBytes: value.subarray(12, 28) };
   }
-  function create({ lanes = 1, ecc = 'M', extended = false } = {}) {
-    if (![1, 2].includes(lanes) || !['M', 'L'].includes(ecc) || typeof extended !== 'boolean') throw fail('Nieprawidłowe ustawienia próby.');
+  function create({ lanes = 1, ecc = 'M', extended = false, large = false } = {}) {
+    if (![1, 2].includes(lanes) || !['M', 'L'].includes(ecc) || typeof extended !== 'boolean'
+      || typeof large !== 'boolean') throw fail('Nieprawidłowe ustawienia próby.');
     if (typeof root.crypto?.getRandomValues !== 'function') throw fail('Próba wymaga generatora losowego.');
     const version = extended ? 2 : 1, profiles = profilesFor(version);
     const idBytes = root.crypto.getRandomValues(new Uint8Array(16));
@@ -63,9 +64,9 @@
       const profile = profiles[index];
       if (typeof ended !== 'boolean' || (ended && index !== profiles.length - 1)) throw fail('Nieprawidłowy koniec próby.');
       if (!ended && (!Number.isInteger(sequence) || sequence < 0 || sequence >= profile.fps * DURATION / 1000 * lanes)) throw fail('Nieprawidłowy numer próby.');
-      const value = new Uint8Array(ended ? 40 : profile.chunkBytes + 40);
+      const value = new Uint8Array(ended ? 40 : profile.chunkBytes + 40 + (large ? 52 : 0));
       const view = new DataView(value.buffer);
-      value.set(CAL); value[8] = version; value[9] = (ended ? 1 : 0) | (ecc === 'L' ? 2 : 0);
+      value.set(CAL); value[8] = version; value[9] = (ended ? 1 : 0) | (ecc === 'L' ? 2 : 0) | (large ? 4 : 0);
       value[10] = index; value[11] = lanes; value.set(idBytes, 12);
       view.setUint16(28, ended ? 65535 : sequence); view.setUint16(32, DURATION);
       value[34] = profile.chunkBytes === 600 ? 1 : 0; value[35] = RATES.indexOf(profile.fps);
@@ -76,7 +77,8 @@
     function acceptFeedback(value) {
       if (disposed || !starts(value, SET) || value.length !== 40) throw fail('To nie jest wynik próby.');
       const view = checked(value);
-      if (value[8] !== version || value[9] >= profiles.length || value[10] !== lanes || value[11] !== (ecc === 'L' ? 1 : 0)
+      if (value[8] !== version || value[9] >= profiles.length || value[10] !== lanes
+        || value[11] !== ((ecc === 'L' ? 1 : 0) | (large ? 2 : 0))
         || !equal(value.subarray(12, 28), idBytes)
         || value.subarray(32, 36).some(Boolean)) throw fail('Wynik dotyczy innej próby.');
       const profile = profiles[value[9]];
@@ -85,9 +87,9 @@
         || view.getUint16(30) !== Math.round(samples * profile.chunkBytes * 1000 / DURATION)) {
         throw fail('Nieprawidłowa liczba lub szybkość odczytów.');
       }
-      return { ...profile, lanes, ecc, bytesPerSecond: view.getUint16(30), samples };
+      return { ...profile, lanes, ecc, large, bytesPerSecond: view.getUint16(30), samples };
     }
-    return { id, version, lanes, ecc, profiles, duration: DURATION, frame,
+    return { id, version, lanes, ecc, large, profiles, duration: DURATION, frame,
       endFrame: () => frame(profiles.length - 1, 0, true), acceptFeedback,
       dispose() { disposed = true; idBytes.fill(0); } };
   }
@@ -106,15 +108,16 @@
       });
       const candidates = active.ended ? results.filter(result => result.steps >= 3) : [];
       const best = candidates.sort((a, b) => b.bytesPerSecond - a.bytesPerSecond || a.fps - b.fps)[0] || null;
-      return { id: active.id, version: active.version, lanes: active.lanes, ecc: active.ecc, ended: active.ended,
+      return { id: active.id, version: active.version, lanes: active.lanes, ecc: active.ecc, large: active.large, ended: active.ended,
         progress: active.ended ? 100 : Math.min(99, Math.round(active.progress * 100)), results, best };
     }
     function accept(value, now) {
       const frame = parse(value);
       if (!frame) return null;
       if (!Number.isFinite(now) || now < 0) throw fail('Nieprawidłowy czas próby.');
-      if (active && (active.id !== frame.id || active.version !== frame.version || active.lanes !== frame.lanes || active.ecc !== frame.ecc)) return { foreign: true, ...snapshot() };
-      if (!active) active = { id: frame.id, version: frame.version, profiles: profilesFor(frame.version), idBytes: new Uint8Array(frame.idBytes), lanes: frame.lanes, ecc: frame.ecc,
+      if (active && (active.id !== frame.id || active.version !== frame.version || active.lanes !== frame.lanes
+        || active.ecc !== frame.ecc || active.large !== frame.large)) return { foreign: true, ...snapshot() };
+      if (!active) active = { id: frame.id, version: frame.version, profiles: profilesFor(frame.version), idBytes: new Uint8Array(frame.idBytes), lanes: frame.lanes, ecc: frame.ecc, large: frame.large,
         ended: false, progress: 0, records: profilesFor(frame.version).map(() => ({ seen: new Set(), steps: new Set() })) };
       if (frame.ended) active.ended = true;
       else if (!active.ended) {
@@ -131,7 +134,7 @@
       if (!state?.ended || !state.best) throw fail('Zbyt mało odczytów. Przeprowadź próbę ponownie.');
       const value = new Uint8Array(40), view = new DataView(value.buffer);
       value.set(SET); value[8] = state.version; value[9] = state.best.index; value[10] = state.lanes;
-      value[11] = state.ecc === 'L' ? 1 : 0; value.set(active.idBytes, 12);
+      value[11] = (state.ecc === 'L' ? 1 : 0) | (state.large ? 2 : 0); value.set(active.idBytes, 12);
       view.setUint16(28, state.best.samples); view.setUint16(30, Math.min(65535, Math.round(state.best.bytesPerSecond)));
       return seal(value);
     }

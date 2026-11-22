@@ -410,3 +410,14 @@ body.qr-expanded .estimate-grid { grid-template-columns: repeat(3, 1fr); }
 .compression-option label { display: flex; align-items: flex-start; gap: 9px; font-size: .875rem; font-weight: 600; color: #52684a; cursor: pointer; }
 .compression-option input { margin: 3px 0 0; accent-color: #285f53; flex: 0 0 auto; }
 .compression-option p { margin: 8px 0 0; color: #65765d; font-size: .8125rem; line-height: 1.6; }
+.large-transfer-box { margin: 0 0 20px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #f7f9f4; }
+.large-transfer-box h3 { margin: 0 0 10px; font-size: 1rem; line-height: 1.4; color: var(--ink); }
+.large-transfer-box>p { font-size: .8125rem; line-height: 1.65; }
+.large-transfer-box>label { display: block; margin: 12px 0 6px; font-size: .8125rem; font-weight: 600; }
+.large-transfer-box .large-checkbox { display: flex; align-items: flex-start; gap: 9px; margin-block: 14px; }
+.large-checkbox input { margin: 3px 0 0; accent-color: #285f53; flex: 0 0 auto; }
+.large-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.large-actions>.button { flex: 1 1 130px; min-width: 0; font-size: .8125rem; }
+.large-transfer-box .full-width+.full-width { margin-top: 8px; }
+.large-delete-question { margin-top: 12px; padding: 12px; border: 1px solid #c8b197; border-radius: 8px; background: #fffaf3; font-size: .8125rem; line-height: 1.6; }
+.large-transfer-box .message { overflow-wrap: anywhere; }
