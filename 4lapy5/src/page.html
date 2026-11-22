@@ -65,8 +65,6 @@
     </defs>
   </svg>
 
-  <p class="concept">{{conceptBar}} <a href="#o-projekcie">{{conceptMore}}</a></p>
-
   <header class="site-header wrap">
     <a class="brand" href="#start" aria-label="{{brandLabel}}">
       <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><use href="#i-paw"/></svg>
@@ -103,11 +101,13 @@
         </g>
       </svg>
       <script>window.Clinic&&Clinic.paintStatus()</script>
+      <div class="hero-foot">
       <p class="hero-lead">{{heroLead}}</p>
       <p class="preview-note" data-preview-note hidden></p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="{{phoneHref}}"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg><span>{{call}}</span><span class="btn-number">{{phoneDisplay}}</span></a>
-        <a class="btn btn-ghost" href="#dojazd"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg><span>{{seeDirections}}</span></a>
+        <a class="btn btn-ghost" href="{{routeUrl}}" target="_blank" rel="noopener noreferrer"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg><span>{{route}}</span><span class="visually-hidden"> {{newTab}}</span></a>
+      </div>
       </div>
     </section>
 

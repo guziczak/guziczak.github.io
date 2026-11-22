@@ -56,7 +56,7 @@ Godziny otwarcia są zapisane raz, w tablicy `HOURS` w `site.js`. Z niej powstaj
 
 ## Dane i prywatność
 
-- Projekt poglądowy: widoczny pasek na górze, `noindex, nofollow`, wyjaśnienie w stopce. Godziny, usługi, ocena Google i dane kontaktowe pochodzą z publicznych źródeł (październik 2026) i wymagają potwierdzenia przez przychodnię.
+- Projekt poglądowy: `noindex, nofollow` i wyjaśnienie w stopce (bez paska na górze strony). Godziny, usługi, ocena Google i dane kontaktowe pochodzą z publicznych źródeł (październik 2026) i wymagają potwierdzenia przez przychodnię.
 - Strona nie używa zdjęć ani wizualizacji generowanych przez AI. W kaflu „Kto leczy” jest znak łapy; gdy przychodnia dostarczy portret, wystarczy podmienić zawartość elementu `.avatar` w `src/page.html`.
 - Brak analityki, ciasteczek i zewnętrznych zasobów: fonty są lokalne. Jedyne wyjścia do Google to linki klikane przez użytkownika (trasa, opinie, szablon wydarzenia w Kalendarzu Google). Plik `.ics` powstaje lokalnie.
 - W `localStorage` zapisywany jest wyłącznie wybór motywu.

@@ -67,7 +67,6 @@
   --plate: #1b2a57;
   --field: #ffffff;
   --error: #b3372b;
-  --concept: #e4dcc6;
   --dock: #1f2e79;
   /* These stay the same in both themes: lettering on the enamel plate and on the dock. */
   --enamel: #fffdf5;
@@ -96,7 +95,6 @@
     --plate: light-dark(#1b2a57, #2b3c7c);
     --field: light-dark(#ffffff, #0f1326);
     --error: light-dark(#b3372b, #ff9388);
-    --concept: light-dark(#e4dcc6, #171c33);
     --dock: light-dark(#1f2e79, #2b3c7c);
   }
   :root[data-theme='light'] { color-scheme: light; }
@@ -129,9 +127,7 @@ button { cursor: pointer; }
 /* Printed captions of a form: small monospace capitals. */
 .label, .tile-label { color: var(--ink-soft); font: 500 .8125rem/1.45 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
 
-/* ---------- Concept notice and header ---------- */
-.concept { padding: 8px 16px; background: var(--concept); font-size: .8125rem; line-height: 1.45; text-align: center; }
-.concept a { font-weight: 700; white-space: nowrap; }
+/* ---------- Header ---------- */
 .site-header { display: flex; align-items: center; gap: 10px; padding-block: 12px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font: 800 1.3125rem/1.1 var(--display); font-stretch: 90%; text-decoration: none; white-space: nowrap; }
 .brand-mark { width: 38px; height: 38px; padding: 8px; border-radius: 11px; background: var(--ink); color: var(--paper); fill: currentColor; }
@@ -173,6 +169,7 @@ html:not(.js) .hero-top { min-height: 0; padding-right: 0; }
 .headline[data-compact] { font-size: clamp(2.2rem, 11vw, 3.7rem); font-size: clamp(2.2rem, 14.2cqi, 4.2rem); }
 /* The time is marked with the highlighter. (A wavy underline read like a spell-check error.) */
 .time { padding-inline: .07em; border-radius: .05em; background: linear-gradient(transparent 13%, var(--marker) 13% 87%, transparent 87%); color: var(--navy); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.hero-foot { display: grid; gap: 14px; }
 .hero-lead { max-width: 46ch; color: var(--ink-soft); font-size: 1.0625rem; }
 .preview-note { width: fit-content; padding: 4px 12px; border: 1.5px dashed var(--ink); border-radius: 8px; font: 500 .8125rem/1.5 var(--mono); }
 .hero-actions { display: grid; gap: 10px; margin-top: 4px; }
@@ -189,9 +186,12 @@ html:not(.js) .stamp { display: none; }
   .headline { font-size: clamp(4.5rem, 14.6cqi, 8rem); }
   .headline[data-compact] { font-size: clamp(3.6rem, 11.6cqi, 6.25rem); }
 }
-/* On a wide sheet the stamp goes where a form keeps its stamp box: bottom right. */
+/* On a wide sheet the stamp goes where a form keeps its stamp box: bottom right.
+   The foot of the sheet is at least as tall as the stamp and keeps clear of it,
+   so the stamp cannot reach the last line of the sentence or the buttons. */
 @container (min-width: 680px) {
   .hero-top { min-height: 0; padding-right: 0; }
+  .hero-foot { align-content: end; min-height: 204px; padding-right: 204px; }
   .stamp { top: auto; right: 26px; bottom: 22px; width: 188px; height: 188px; }
 }
 
@@ -273,14 +273,14 @@ html:not(.js) .stamp { display: none; }
 
 /* ---------- Reminder: an entry for your own calendar ---------- */
 .t-reminder { container-type: inline-size; display: grid; }
-.reminder { display: grid; gap: 24px; }
+.reminder { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 /* When the row is taller than the form, the entry and the buttons settle at the bottom. */
 .reminder-copy, #reminder-form { display: flex; flex-direction: column; }
 .reminder-copy .tile-lead { margin-bottom: 18px; }
 .preview { display: grid; gap: 12px; margin-top: auto; }
 /* The date one digit per box, as on a paper form. */
 .comb { display: flex; align-items: center; gap: 4px; font: 700 1.25rem/1 var(--mono); }
-.comb b { display: grid; place-items: center; width: 1.75rem; height: 2.375rem; border: 1.5px solid var(--ink); border-radius: 5px; background: var(--field); }
+.comb b { display: grid; place-items: center; flex: 0 1 1.75rem; min-width: 0; height: 2.375rem; border: 1.5px solid var(--ink); border-radius: 5px; background: var(--field); }
 .comb:not([data-filled]) b { color: var(--edge); font-weight: 500; }
 .comb i { padding-inline: 1px; font-style: normal; }
 /* The saved entry looks like the sticker a vet puts into the booklet. */
@@ -410,7 +410,7 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
   .t-reminder { grid-column: span 7; }
   .t-map { grid-column: span 8; grid-row: span 2; }
   .t-vet, .t-contact { grid-column: span 4; }
-  .t-hero .hero-lead { margin-top: auto; }
+  .t-hero .hero-foot { margin-top: auto; }
   .week-track { height: 84px; }
 }
 
@@ -442,7 +442,7 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
 @media print {
   :root { color-scheme: light !important; }
   body { background: #fff; }
-  .concept a, .header-tools, .site-nav, .dock, .map-figure, .hero-actions .btn-ghost, .reminder-actions, .rating-link { display: none !important; }
+  .header-tools, .site-nav, .dock, .map-figure, .hero-actions .btn-ghost, .reminder-actions, .rating-link { display: none !important; }
   .bento { display: block; }
   .tile { margin-bottom: 10px; animation: none !important; break-inside: avoid; }
   .stamp { animation: none !important; }
