@@ -4,7 +4,8 @@
  * range, round a dose or infer grams from a qualitative application instruction.
  * The caller must re-resolve after every patient or regimen edit and must check
  * valid before applying/copying a result. Missing optional renal context permits
- * arithmetic; it never establishes normal renal function.
+ * arithmetic; it never establishes normal renal function. An explicit CrCl
+ * override skips only that assessment and is reported separately from validity.
  * Final formulation arithmetic and the
  * actual administered-dose checks remain in engine.js.
  */
@@ -31,7 +32,7 @@ const fmt = value => String(clean(value)).replace('.', ',');
 
 function emptyResult() {
   return {
-    valid: false, errors: [], warnings: [], requirements: [], issues: [],
+    valid: false, errors: [], warnings: [], requirements: [], issues: [], crclIgnored: false,
     doseMode: null, dose: null, frequency: null,
     fixedDays: null, minDays: null, maxDays: null,
     doseRange: null, frequencyOptions: null,
@@ -338,18 +339,25 @@ export function resolveHumanRegimen(record, context = {}, { allowNumericOverride
   if (present(context.renalStatus) && !RENAL_STATUSES.has(context.renalStatus)) {
     issue('invalid-renal-status', 'renalStatus', 'invalid', 'Wybierz poprawny status oceny czynności nerek.');
   }
-  if (record.requireCrCl === true) result.requirements.push('crcl');
-  if (missing(context.crcl)) {
-    if (record.requireCrCl === true) issue('missing-crcl', 'crcl', 'missing', 'Uzupełnij oceniony klirens kreatyniny CrCl w ml/min.');
-  } else if (!positive(context.crcl)) {
-    issue('invalid-crcl', 'crcl', 'invalid', 'Podaj poprawny klirens kreatyniny CrCl w ml/min.');
-  } else if (present(record.minCrCl)
-      && (record.minCrClExclusive ? context.crcl <= record.minCrCl : context.crcl < record.minCrCl)) {
-    issue('crcl-out-of-scope', 'crcl', 'out-of-scope', `CrCl nie spełnia warunku schematu (${record.minCrClExclusive ? 'powyżej' : 'co najmniej'} ${fmt(record.minCrCl)} ml/min). Wymagany jest inny schemat.`);
-  }
-  if (positive(context.crcl) && present(record.maxCrCl)
-      && (record.maxCrClExclusive ? context.crcl >= record.maxCrCl : context.crcl > record.maxCrCl)) {
-    issue('crcl-out-of-scope', 'crcl', 'out-of-scope', `CrCl nie spełnia warunku schematu (${record.maxCrClExclusive ? 'poniżej' : 'nie więcej niż'} ${fmt(record.maxCrCl)} ml/min). Wymagany jest inny schemat.`);
+  const ignoreCrCl = context.ignoreCrCl === true;
+  if (ignoreCrCl) {
+    result.crclIgnored = !!(record.renalPolicy || record.requireCrCl || present(record.minCrCl)
+      || present(record.maxCrCl) || record.patientFields?.includes('crcl') || record.anticoagulantRule);
+    if (result.crclIgnored) result.warnings.push('CrCl pominięty — nie sprawdzono zakresu nerkowego schematu.');
+  } else {
+    if (record.requireCrCl === true) result.requirements.push('crcl');
+    if (missing(context.crcl)) {
+      if (record.requireCrCl === true) issue('missing-crcl', 'crcl', 'missing', 'Uzupełnij oceniony klirens kreatyniny CrCl w ml/min.');
+    } else if (!positive(context.crcl)) {
+      issue('invalid-crcl', 'crcl', 'invalid', 'Podaj poprawny klirens kreatyniny CrCl w ml/min.');
+    } else if (present(record.minCrCl)
+        && (record.minCrClExclusive ? context.crcl <= record.minCrCl : context.crcl < record.minCrCl)) {
+      issue('crcl-out-of-scope', 'crcl', 'out-of-scope', `CrCl nie spełnia warunku schematu (${record.minCrClExclusive ? 'powyżej' : 'co najmniej'} ${fmt(record.minCrCl)} ml/min). Wymagany jest inny schemat.`);
+    }
+    if (positive(context.crcl) && present(record.maxCrCl)
+        && (record.maxCrClExclusive ? context.crcl >= record.maxCrCl : context.crcl > record.maxCrCl)) {
+      issue('crcl-out-of-scope', 'crcl', 'out-of-scope', `CrCl nie spełnia warunku schematu (${record.maxCrClExclusive ? 'poniżej' : 'nie więcej niż'} ${fmt(record.maxCrCl)} ml/min). Wymagany jest inny schemat.`);
+    }
   }
   const confirmations = Array.isArray(context.sourceConfirmations) ? context.sourceConfirmations : [];
   const unconfirmed = (record.selectionRequirements || []).filter(item => !confirmations.includes(item.id));
@@ -364,13 +372,20 @@ export function resolveHumanRegimen(record, context = {}, { allowNumericOverride
   result.requirements.push(...specialist.requirements);
   // The optional estimator supplies explicit missing/invalid inputs. Do not
   // repeat a generic missing CrCl message beside those actionable issues.
-  if (Array.isArray(context.renalIssues) && context.renalIssues.length) {
+  // Creatinine can still supply an independent NVAF criterion when CrCl is
+  // ignored. Missing creatinine for CG alone is handled by the specialist only
+  // when the criterion actually requires it; failed CG arithmetic is unrelated.
+  const renalIssues = Array.isArray(context.renalIssues) ? context.renalIssues.filter(item => !ignoreCrCl
+    || record.patientFields?.includes('serumCreatinine')
+      && ['serumCreatinine', 'creatinineUnit'].includes(item?.field)
+      && !['creatinine-required', 'crcl-calculation-invalid'].includes(item?.code)) : [];
+  if (renalIssues.length) {
     const replacedIssues = result.issues.filter(item => item.code === 'missing-crcl'
-      || context.renalIssues.some(renalIssue => renalIssue?.field === item.field));
+      || renalIssues.some(renalIssue => renalIssue?.field === item.field));
     const replaced = new Set(replacedIssues.map(item => item.message));
     result.errors = result.errors.filter(message => !replaced.has(message));
     result.issues = result.issues.filter(item => !replacedIssues.includes(item));
-    for (const item of context.renalIssues) {
+    for (const item of renalIssues) {
       if (item && text(item.code) && text(item.field) && text(item.message) && ['missing', 'invalid', 'out-of-scope'].includes(item.kind))
         issue(item.code, item.field, item.kind, item.message);
       else issue('invalid-renal-context', 'crcl', 'invalid', 'Sprawdź dane użyte do oceny czynności nerek.');

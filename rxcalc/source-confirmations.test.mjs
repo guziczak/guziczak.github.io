@@ -5,7 +5,7 @@ import { CARDIO_ANTICOAGULANT_REGIMENS as sources } from './cardio-anticoagulant
 
 const byId = id => sources.find(source => source.id === `cardio-${id}`);
 const all = source => source.selectionRequirements.map(requirement => requirement.id);
-const renalFields = ['humanCrCl', 'humanSerumCreatinine', 'renalInputMode', 'renalCreatinineUnit',
+const renalFields = ['humanCrCl', 'humanSerumCreatinine', 'ignoreCrCl', 'renalInputMode', 'renalCreatinineUnit',
   'renalSex', 'renalCalculationWeight', 'renalCalculationReviewed', 'renalStatus', 'renalImpairment', 'weight'];
 
 test('reviewed NVAF indication survives renal or weight entry while renal review clears', () => {

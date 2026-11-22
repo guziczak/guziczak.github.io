@@ -314,22 +314,27 @@ export function assessAnticoagulantEligibility(record, context = {}) {
     result.errors.push('Brak poprawnego kontekstu dla schematu przeciwkrzepliwego.');
     return result;
   }
-  result.requirements.push('crcl');
-  const crcl = context.crcl;
-  if (!positive(crcl)) issue(absent(crcl) ? 'missing-crcl' : 'invalid-crcl', 'crcl', absent(crcl) ? 'missing' : 'invalid', absent(crcl) ? 'Uzupełnij oceniony klirens kreatyniny CrCl w ml/min.' : 'Podaj poprawny klirens kreatyniny CrCl w ml/min.');
-  else if (crcl < 15) issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'CrCl <15 ml/min jest poza zakresem tego schematu z ChPL.');
-  else {
-    if (['apixaban-nvaf-standard', 'apixaban-nvaf-two-criteria'].includes(rule) && crcl < 30)
-      issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Ten wariant NVAF wymaga CrCl ≥30 ml/min; dla 15–<30 ml/min wybierz odrębny wariant.');
-    if (rule === 'apixaban-nvaf-severe-renal' && crcl >= 30)
-      issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Nerkowy wariant apiksabanu 2,5 mg dotyczy wyłącznie CrCl 15–<30 ml/min.');
-    if (rule === 'rivaroxaban-nvaf-standard' && crcl < 50)
-      issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Wariant rywaroksabanu 20 mg w NVAF wymaga CrCl ≥50 ml/min.');
-    if (['rivaroxaban-nvaf-renal', 'rivaroxaban-vte-reduced'].includes(rule) && crcl >= 50)
-      issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Wybrany nerkowy wariant rywaroksabanu dotyczy wyłącznie CrCl 15–<50 ml/min.');
-    if (crcl < 30) result.warnings.push('CrCl 15–<30 ml/min: zwiększona ekspozycja i ryzyko krwawienia wymagają ostrożności według ChPL.');
-    if (rule === 'rivaroxaban-vte' && crcl < 50 && record.dose === 20)
-      result.warnings.push('Przy CrCl 15–<50 ml/min ChPL pozwala rozważyć 15 zamiast 20 mg raz/dobę tylko po porównaniu ryzyka krwawienia i nawrotu. Nie zastosowano redukcji automatycznie.');
+  // The caller presents one explicit bypass notice. Other criteria and fixed
+  // phase doses remain checked below, including the separate NVAF 2-of-3 rule.
+  result.crclIgnored = context.ignoreCrCl === true;
+  if (!result.crclIgnored) {
+    result.requirements.push('crcl');
+    const crcl = context.crcl;
+    if (!positive(crcl)) issue(absent(crcl) ? 'missing-crcl' : 'invalid-crcl', 'crcl', absent(crcl) ? 'missing' : 'invalid', absent(crcl) ? 'Uzupełnij oceniony klirens kreatyniny CrCl w ml/min.' : 'Podaj poprawny klirens kreatyniny CrCl w ml/min.');
+    else if (crcl < 15) issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'CrCl <15 ml/min jest poza zakresem tego schematu z ChPL.');
+    else {
+      if (['apixaban-nvaf-standard', 'apixaban-nvaf-two-criteria'].includes(rule) && crcl < 30)
+        issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Ten wariant NVAF wymaga CrCl ≥30 ml/min; dla 15–<30 ml/min wybierz odrębny wariant.');
+      if (rule === 'apixaban-nvaf-severe-renal' && crcl >= 30)
+        issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Nerkowy wariant apiksabanu 2,5 mg dotyczy wyłącznie CrCl 15–<30 ml/min.');
+      if (rule === 'rivaroxaban-nvaf-standard' && crcl < 50)
+        issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Wariant rywaroksabanu 20 mg w NVAF wymaga CrCl ≥50 ml/min.');
+      if (['rivaroxaban-nvaf-renal', 'rivaroxaban-vte-reduced'].includes(rule) && crcl >= 50)
+        issue('crcl-out-of-scope', 'crcl', 'out-of-scope', 'Wybrany nerkowy wariant rywaroksabanu dotyczy wyłącznie CrCl 15–<50 ml/min.');
+      if (crcl < 30) result.warnings.push('CrCl 15–<30 ml/min: zwiększona ekspozycja i ryzyko krwawienia wymagają ostrożności według ChPL.');
+      if (rule === 'rivaroxaban-vte' && crcl < 50 && record.dose === 20)
+        result.warnings.push('Przy CrCl 15–<50 ml/min ChPL pozwala rozważyć 15 zamiast 20 mg raz/dobę tylko po porównaniu ryzyka krwawienia i nawrotu. Nie zastosowano redukcji automatycznie.');
+    }
   }
 
   if (['apixaban-nvaf-standard', 'apixaban-nvaf-two-criteria'].includes(rule)) {

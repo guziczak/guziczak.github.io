@@ -221,8 +221,11 @@ const messages = value => Array.isArray(value) ? value.filter(item => typeof ite
  * Neither this result nor its neutral flag is used to authorize a prescription.
  */
 export function dailyDosePresentationModel({source=null, eligibility=null, comparisonEligibility=null, veterinary=false} = {}) {
-  const clinicalConfirmed = !source || (eligibility?.valid === true || !eligibility && comparisonEligibility?.valid === true)
+  const checksPassed = !source || (eligibility?.valid === true || !eligibility && comparisonEligibility?.valid === true)
     && comparisonEligibility?.valid !== false;
+  const crclIgnored = !!source && !veterinary
+    && (eligibility?.crclIgnored === true || comparisonEligibility?.crclIgnored === true);
+  const clinicalConfirmed = checksPassed && !crclIgnored;
   const errors = [...new Set([...messages(eligibility?.errors), ...messages(comparisonEligibility?.errors)])];
   const structured = [eligibility, comparisonEligibility].flatMap(check => Array.isArray(check?.issues) ? check.issues : [])
     .filter(issue => issue && typeof issue === 'object' && Object.hasOwn(issuePriority, issue.kind)
@@ -247,7 +250,7 @@ export function dailyDosePresentationModel({source=null, eligibility=null, compa
     sex:5,calculationWeight:6,crcl:7,renalStatus:8,days:9,mode:10,
     renalStable:80,weightReviewed:81,sourceConfirmations:100};
   const issues = [...byField.values()].sort((a,b)=>(fieldOrder[a.field]??50)-(fieldOrder[b.field]??50));
-  const state = clinicalConfirmed ? 'confirmed'
+  const state = clinicalConfirmed ? 'confirmed' : checksPassed && crclIgnored ? 'crcl-ignored'
     : issues.some(issue => issue.kind === 'out-of-scope') ? 'out-of-scope'
       : issues.some(issue => issue.kind === 'invalid') ? 'invalid' : 'missing';
   // Veterinary weight-band resolution has its own eligibility contract. Keep
@@ -255,12 +258,13 @@ export function dailyDosePresentationModel({source=null, eligibility=null, compa
   const neutral = !!source && !veterinary && !clinicalConfirmed;
   const focusField = issues.find(issue => issue.kind === state && Object.hasOwn(patientFieldLabels, issue.field))?.field
     || issues.find(issue => Object.hasOwn(patientFieldLabels, issue.field))?.field || null;
-  return {clinicalConfirmed, comparisonAllowed:clinicalConfirmed || neutral, neutral, state, issues, errors, focusField};
+  return {clinicalConfirmed, comparisonAllowed:clinicalConfirmed || neutral, neutral, state, issues, errors, focusField, crclIgnored};
 }
 
 export function clinicalStatusMarkup(presentation) {
   if (presentation.clinicalConfirmed) return '';
   const {state, issues, focusField} = presentation;
+  if (state === 'crcl-ignored') return '<div class="dose-clinical-status crcl-ignored" role="status"><p><strong>CrCl pominięty.</strong> Porównanie obejmuje dawkę i pozostałe warunki schematu.</p></div>';
   const missing = issues.filter(issue => issue.kind === 'missing');
   const missingLabels = [...new Set(missing.map(issue => Object.hasOwn(patientFieldLabels, issue.field)
     ? patientFieldLabels[issue.field] : issue.message.replace(/[.!?]+$/, '')))];

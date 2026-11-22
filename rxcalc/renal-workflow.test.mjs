@@ -17,7 +17,7 @@ const sourceById = id => HUMAN_REGIMENS.find(source => source.id === `cardio-${i
 const standard = sourceById('eliquis-nvaf-standard');
 const reduced = sourceById('eliquis-nvaf-two-criteria');
 const person = (patch = {}, source = standard) => ({
-  ...RENAL_STATE_DEFAULTS, specialty: 'cardio', patientType: 'adult',
+  ...RENAL_STATE_DEFAULTS, ignoreCrCl: false, specialty: 'cardio', patientType: 'adult',
   age: '68', humanAgeUnit: 'years', weight: '72', species: '', vetAgeUnit: 'years',
   foodChainStatus: 'unknown', renalStatus: 'unknown',
   renalInputMode: 'calculate', renalSex: 'male', renalCalculationReviewed: true,
@@ -40,6 +40,83 @@ const panelOptions = (state, source = standard) => ({
   criteria: apixabanReductionCriteria(source, clinicalContext(state, source)), required: source.requireCrCl,
 });
 const convertState = (state, unit) => ({ ...state, ...renalCreatinineUnitChange(state, unit) });
+
+test('the default ignores CrCl without substituting a value or changing source doses', () => {
+  assert.equal(RENAL_STATE_DEFAULTS.ignoreCrCl, true);
+  const state = person({ ...RENAL_STATE_DEFAULTS, humanCrCl: '20', humanSerumCreatinine: '' });
+  const before = structuredClone(state), sourceBefore = structuredClone(standard);
+  const context = clinicalContext(state), result = resolved(state);
+  assert.equal(context.ignoreCrCl, true);
+  assert.equal(context.crcl, null);
+  assert.deepEqual(context.renalIssues, []);
+  assert.equal(result.valid, true, result.errors.join(' '));
+  assert.equal(result.crclIgnored, true);
+  assert.equal(result.dose, standard.dose);
+  assert.equal(result.frequency, standard.frequency);
+  assert.deepEqual(state, before);
+  assert.deepEqual(standard, sourceBefore);
+  assert.equal(resolved({ ...state, ignoreCrCl: false }).valid, false);
+  assert.equal(state.humanCrCl, '20');
+});
+
+test('ignoring an unfinished CG does not require formula inputs when NVAF criteria already decide', () => {
+  for (const [source, age, weight] of [[standard, '68', '72'], [reduced, '80', '60']]) {
+    const state = person({ ignoreCrCl: true, age, weight, humanSerumCreatinine: '',
+      renalSex: '', renalCalculationReviewed: false, renalCalculationWeight: 'bad' }, source);
+    const context = clinicalContext(state, source), result = resolved(state, source);
+    assert.equal(context.crcl, null);
+    assert.deepEqual(context.renalIssues, []);
+    assert.equal(result.valid, true, result.errors.join(' '));
+    assert.equal(result.requirements.includes('serumCreatinine'), false);
+    assert.equal(result.requirements.includes('crcl'), false);
+    assert.equal(resolved({ ...state, ignoreCrCl: false }, source).valid, false);
+  }
+});
+
+test('ignored CrCl preserves independent apixaban laboratory criteria and unit validation', () => {
+  const state = person({ ignoreCrCl: true, age: '80', weight: '72', renalSex: '',
+    renalCalculationReviewed: false, humanSerumCreatinine: '' });
+  const missing = resolved(state);
+  assert.equal(missing.valid, false);
+  assert.ok(missing.issues.some(issue => issue.field === 'serumCreatinine' && issue.kind === 'missing'));
+  for (const [value, unit, valid] of [['1', 'mg/dl', true], ['88.4', 'umol/l', true],
+    ['1.5', 'mg/dl', false], ['132.6', 'umol/l', false], ['wrong', 'mg/dl', false], ['1', 'unknown', false]]) {
+    const current = { ...state, humanSerumCreatinine: value, renalCreatinineUnit: unit };
+    assert.equal(resolved(current).valid, valid, `${value} ${unit}`);
+  }
+});
+
+test('ignoring optional Ospamox CrCl retains the 1500 mg limit and other patient checks', () => {
+  const source = HUMAN_REGIMENS.find(item => item.id === 'dental-ospamox-suspension-ge40-q8');
+  const state = { ...person(), ignoreCrCl: true, specialty: 'dental', formId: 'ospamox-250',
+    age: '35', weight: '70', humanCrCl: '20', renalInputMode: 'manual',
+    dose: '500', frequency: '3', days: '5', sourceConfirmations: [] };
+  const result = resolved(state, source);
+  assert.equal(result.valid, true, result.errors.join(' '));
+  assert.equal(result.maxDailyMg, 1500);
+  assert.equal(result.maxSingleMg, 500);
+  assert.equal(resolved({ ...state, ignoreCrCl: false }, source).valid, false);
+  for (const patch of [{ renalStatus: 'impaired' }, { weight: '30' }, { dose: '600' }])
+    assert.equal(resolved({ ...state, ...patch }, source).valid, false, JSON.stringify(patch));
+});
+
+test('changing the CrCl checkbox invalidates cart exports and editing retains its current setting', () => {
+  for (const ignoreCrCl of [true, false]) {
+    const state = person({ ignoreCrCl });
+    const { cart, item } = saved(state);
+    const changed = { ...state, ignoreCrCl: !ignoreCrCl };
+    assert.equal(item.snapshot.ignoreCrCl, ignoreCrCl);
+    assert.equal(assessPrescriptionCart(cart, state).canCopy, true);
+    assert.equal(assessPrescriptionCart(cart, changed).canCopy, false);
+    for (const mode of ['full', 'ds']) assert.equal(prescriptionCartText(cart, changed, { mode }).ok, false);
+    const edited = preparePrescriptionEdit(item, changed);
+    assert.equal(edited.ok, true);
+    assert.equal(edited.state.ignoreCrCl, !ignoreCrCl);
+    assert.equal(edited.state.confirmed, false);
+    assert.equal(patientContextKey(edited.state), patientContextKey(changed));
+    assert.deepEqual(edited.state.sourceConfirmations, []);
+  }
+});
 
 function draft(state, source = standard) {
   const drug = DRUGS.find(drug => drug.id === state.drugId);

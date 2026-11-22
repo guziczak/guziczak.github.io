@@ -72,6 +72,24 @@ test('complete valid patient data restores the ordinary display without changing
     regimenMeterModel(complete.note.rows[0], complete.note.schemeRows[0]));
 });
 
+test('ignored CrCl keeps a neutral numerical comparison without presenting it as checked', () => {
+  const ignored = preview({ ignoreCrCl: true, crcl: null }), checked = preview();
+  assert.equal(ignored.sourceCheck.valid, true, ignored.sourceCheck.errors.join(' '));
+  assert.equal(ignored.presentation.state, 'crcl-ignored');
+  assert.equal(ignored.presentation.crclIgnored, true);
+  assert.equal(ignored.presentation.clinicalConfirmed, false);
+  assert.equal(ignored.presentation.neutral, true);
+  assert.equal(ignored.presentation.comparisonAllowed, true);
+  assert.match(ignored.markup, /CrCl pominięty/);
+  assert.match(ignored.markup, /dose-scheme-current same neutral[^>]*><b>100%/);
+  assert.doesNotMatch(ignored.markup, /data-action="complete-patient-data"|Taka sama ilość dobowa jak w schemacie/);
+  assert.deepEqual(regimenMeterModel(ignored.note.rows[0], ignored.note.schemeRows[0]),
+    regimenMeterModel(checked.note.rows[0], checked.note.schemeRows[0]));
+  const otherMissing = preview({ ignoreCrCl: true, crcl: null, weight: null });
+  assert.equal(otherMissing.presentation.state, 'missing');
+  assert.equal(otherMissing.sourceCheck.valid, false);
+});
+
 test('a missing dose never becomes zero percent or a fabricated fill despite a known source', () => {
   const value = preview({dose:null, crcl:null});
   assert.equal(value.note.dailyUnits, null);
@@ -133,7 +151,7 @@ test('structured issue kinds and fields, not message wording, determine missing-
 });
 
 test('the real unconfirmed CrCl calculation exposes its missing inputs once instead of asking for manual CrCl', () => {
-  const renal = renalRegimenContext({renalInputMode:'calculate', humanCrCl:'90',
+  const renal = renalRegimenContext({ignoreCrCl:false, renalInputMode:'calculate', humanCrCl:'90',
     humanSerumCreatinine:'88,4', renalCreatinineUnit:'umol/l', age:'70', humanAgeUnit:'years',
     weight:'75', renalSex:'', renalCalculationWeight:'', renalCalculationReviewed:false}, source);
   assert.equal(renal.crcl, null);

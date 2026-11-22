@@ -33,7 +33,7 @@ import { FENTANYL_SINGLE_DOSE_SOURCES } from './cardio-fentanyl.js';
 import { availableSingleDoseSources, resolveSingleDose, buildSingleDoseText, formatSingleDoseNumber } from './single-dose.js';
 import { singleDoseRegimenMarkup, singleDoseResultMarkup, updateSingleDoseView } from './single-dose-view.js';
 import { apixabanReductionCriteria } from './cardio-anticoagulant-regimens.js';
-import { RENAL_STATE_DEFAULTS, renalAssessmentForState, renalRegimenContext, renalCreatinineUnitChange } from './renal-state.js';
+import { RENAL_STATE_DEFAULTS, isCrClIgnored, renalAssessmentForState, renalRegimenContext, renalCreatinineUnitChange } from './renal-state.js';
 import { renalPanelMarkup, updateRenalPanel } from './renal-view.js';
 import { sourceConfirmationsAfterEdit } from './source-confirmations.js';
 
@@ -231,7 +231,7 @@ const humanContext = () => {
 };
 const renalViewOptions = () => {
   const source=getSourceRegimen(),assessment=renalAssessmentForState(state);
-  return {state,assessment,required:source?.requireCrCl===true,icon,thresholds:[source?.minCrCl,source?.maxCrCl],
+  return {state,assessment,required:!isCrClIgnored(state)&&source?.requireCrCl===true,icon,thresholds:[source?.minCrCl,source?.maxCrCl],
     criteria:apixabanReductionCriteria(source,{age:num(state.age),ageUnit:state.humanAgeUnit,
       weight:num(state.weight),serumCreatinine:assessment.serumCreatinineMgDl})};
 };
@@ -375,7 +375,7 @@ function patientPanel(f) {
   const baseNeeds = isSingleDose(f) ? { age:true, weight:false, foodChain:false }
     : patientFieldsFor({ ...state, form:f, source });
   const renalRelevant = !isVeterinary() && (source?.renalPolicy || source?.minCrCl != null || source?.maxCrCl != null || source?.requireCrCl);
-  const calculateRenal = renalRelevant && state.renalInputMode === 'calculate';
+  const calculateRenal = renalRelevant && !isCrClIgnored(state) && state.renalInputMode === 'calculate';
   const needs = {...baseNeeds,age:baseNeeds.age||calculateRenal,weight:baseNeeds.weight||calculateRenal};
   const weight = required => field('weight', required ? 'Masa ciała' : 'Masa (opcjonalnie)', state.weight, isVeterinary() ? getAnimal()?.weight || 'kg' : state.patientType === 'child' ? 'np. 24' : 'np. 70', 'kg', `data-patient-picker ${required ? 'required' : ''}`);
   const renal = renalRelevant ? renalPanelMarkup(renalViewOptions()) : '';
@@ -1234,7 +1234,7 @@ function example() {
     case 'edit-regimen':ui.regimenExpanded=true;render();selectMenus.focus('regimenId');break;
     case 'daily-dose-source':ui.manualRegimen=false;ui.regimenExpanded=true;dirty();render();selectMenus.focus('regimenId');break;
     case 'renal-mode':{
-      if(!['manual','calculate'].includes(value)||value===state.renalInputMode)break;
+      if(isCrClIgnored(state)||!['manual','calculate'].includes(value)||value===state.renalInputMode)break;
       state.renalInputMode=value;state.renalCalculationReviewed=false;
       clearSourceConfirmations('renalInputMode');dirty();render();
       $(`#${value==='calculate'?'humanSerumCreatinine':'humanCrCl'}`)?.focus({preventScroll:true});
@@ -1343,6 +1343,10 @@ $('#app').addEventListener('input',e=>{
 });
 $('#app').addEventListener('change',e=>{
   if(e.target.id==='confirmed'){state.confirmed=e.target.checked&&!!latest?.valid&&productReady()&&!state.demo;updateResult();return;}
+  if(e.target.id==='ignoreCrCl'){
+    state.ignoreCrCl=e.target.checked;clearSourceConfirmations('ignoreCrCl');dirty();render();
+    $('#ignoreCrCl')?.focus({preventScroll:true});return;
+  }
   if(e.target.id==='renalImpairment'){state.renalStatus=e.target.checked?'impaired':'unknown';state.renalCalculationReviewed=false;clearSourceConfirmations('renalStatus');dirty();updateResult();return;}
   if(e.target.id==='renalCalculationReviewed'){state.renalCalculationReviewed=e.target.checked;clearSourceConfirmations('renalCalculationReviewed');dirty();updateResult();return;}
   if(e.target.dataset.sourceRequirement){

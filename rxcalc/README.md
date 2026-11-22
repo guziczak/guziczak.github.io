@@ -4,6 +4,12 @@ Lekki kalkulator dawkowania i zapotrzebowania na preparaty z interfejsem po pols
 
 Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym pliku nie stanowi potwierdzenia publikacji.
 
+## Domyślne pomijanie CrCl — 22.11.2026
+
+Panel **Czynność nerek** ma checkbox **Ignoruj**, domyślnie zaznaczony także po rozpoczęciu nowego pacjenta. Pomija sprawdzanie liczbowego CrCl i wymagania jego obliczenia, zachowując dawkę, częstość i limity wybranego schematu. Pokazuje stan **CrCl pominięty** oraz neutralne porównanie liczbowe. Odznaczenie przywraca formularz i dotychczasowe sprawdzanie wcześniej wpisanych danych.
+
+Nadal sprawdzane są pozostałe warunki schematu, w tym zgłoszone zaburzenia czynności nerek, jawne potwierdzenia i niezależne kryterium kreatyniny w regule apiksabanu 2 z 3. Zmiana checkboxa cofa końcowe potwierdzenie oraz oznacza wcześniejsze pozycje koszyka jako wymagające przeliczenia. Szczegóły: [ocena czynności nerek](renal-function-notes.md).
+
 ## Fentanyl w kardiologii — 20.11.2026
 
 Kategoria **Analgezja szpitalna** obejmuje Fentanyl WZF 50 mikrogramów/ml, w osobnym przeliczniku pojedynczego podania IV dla dorosłych oddychających spontanicznie. Lekarz wybiera etap (początkowy albo dodatkowy) i wpisuje dawkę w mikrogramach. Wynik pokazuje ml nierozcieńczonego roztworu, liczbę ampułek 2 albo 10 ml do otwarcia i pozostałość do usunięcia. Kartony 10/50 ampułek są oddzielone od wielkości pojedynczej ampułki.
@@ -12,7 +18,7 @@ Odniesienie pochodzi z ogólnej tabeli ChPL, a nie osobnego protokołu OZW. Dawk
 
 ## Ocena nerek i czytelne porównanie dawki — 2026-11-21
 
-Panel **Czynność nerek** pozwala wybrać **Mam oceniony CrCl** albo jawnie uruchomić **Oblicz z kreatyniny**. Drugi tryb szacuje CrCl metodą Cockcrofta–Gaulta dla dorosłych, po podaniu danych i potwierdzeniu stabilności czynności nerek oraz przydatności masy do wzoru. Kreatyninę można podać w **mg/dl lub µmol/l**; jednostka jest wybierana, nie odgadywana z liczby. Porównania progów używają niezaokrąglonej wartości obliczenia. Aplikacja nie oblicza eGFR ani nie podstawia go za CrCl.
+Po odznaczeniu **Ignoruj** panel **Czynność nerek** pozwala wybrać **Mam oceniony CrCl** albo jawnie uruchomić **Oblicz z kreatyniny**. Drugi tryb szacuje CrCl metodą Cockcrofta–Gaulta dla dorosłych, po podaniu danych i potwierdzeniu stabilności czynności nerek oraz przydatności masy do wzoru. Kreatyninę można podać w **mg/dl lub µmol/l**; jednostka jest wybierana, nie odgadywana z liczby. Porównania progów używają niezaokrąglonej wartości obliczenia. Aplikacja nie oblicza eGFR ani nie podstawia go za CrCl.
 
 Masa rzeczywista pacjenta pozostaje podstawą odpowiednich kryteriów NVAF. Osobna masa wpisana przez lekarza do wzoru CG zmienia wyłącznie oszacowanie CrCl. Reguła apiksabanu **2 z 3** wymaga kreatyniny do zliczenia wtedy, gdy wynik nie wynika już z prawidłowego wieku i masy; CrCl i pozostałe warunki schematu nadal są sprawdzane oddzielnie. Przełączenie na obliczanie nie korzysta w tle ze starej, ręcznej wartości CrCl.
 

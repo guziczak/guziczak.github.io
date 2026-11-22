@@ -1,11 +1,16 @@
 import { assessRenalInput, convertCreatinine } from './renal-function.js';
 
 export const RENAL_STATE_DEFAULTS = Object.freeze({
+  ignoreCrCl: true,
   renalInputMode: 'manual', renalCreatinineUnit: 'mg/dl', renalSex: '',
   renalCalculationWeight: '', renalCalculationReviewed: false,
   renalCreatinineSource: null,
 });
 export const RENAL_STATE_FIELDS = Object.freeze(Object.keys(RENAL_STATE_DEFAULTS));
+
+export function isCrClIgnored(state = {}) {
+  return (state.ignoreCrCl ?? RENAL_STATE_DEFAULTS.ignoreCrCl) === true;
+}
 
 /** Unit-only changes retain the original laboratory input. Repeated conversion
  * of the displayed Number can otherwise move a value across a clinical cutoff.
@@ -65,9 +70,20 @@ export function renalAssessmentForState(state = {}) {
 export function renalRegimenContext(state, source) {
   const relevant = !!(source?.renalPolicy || source?.minCrCl != null || source?.maxCrCl != null || source?.requireCrCl);
   if (!relevant) return { crcl: null, serumCreatinine: null, renalIssues: [] };
+  const usesCreatinine = source?.patientFields?.includes('serumCreatinine') === true;
+  if (isCrClIgnored(state)) {
+    // Serum creatinine may independently determine an NVAF dose criterion.
+    // Validate that laboratory input without requiring the unused CG formula.
+    const creatinine = renalCreatinineInput(state);
+    const assessment = assessRenalInput({ mode: 'manual',
+      serumCreatinine: creatinine.value, creatinineUnit: creatinine.unit });
+    return { ignoreCrCl: true, crcl: null,
+      serumCreatinine: usesCreatinine ? assessment.serumCreatinineMgDl : null,
+      renalIssues: usesCreatinine ? assessment.issues.filter(item =>
+        ['serumCreatinine', 'creatinineUnit'].includes(item.field)) : [] };
+  }
   const assessment = renalAssessmentForState(state);
   const calculate = state.renalInputMode === 'calculate';
-  const usesCreatinine = source?.patientFields?.includes('serumCreatinine') === true;
   const issues = assessment.issues.filter(item => {
     if (calculate) return true;
     if (item.field === 'crcl') return item.kind !== 'missing' || source.requireCrCl === true;
