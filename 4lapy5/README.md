@@ -1,8 +1,8 @@
-# Cztery Łapy i Ty — czwarta propozycja
+# Cztery Łapy i Ty — piąta propozycja: „książeczka zdrowia”
 
-„Strona, która odpowiada”: zamiast zdjęcia w pierwszym ekranie jest zdanie na żywo — „Dziś przyjmujemy do 18:00.”, „Jutro przyjmujemy od 10:00.”, „Dziś święto. Zadzwoń przed wizytą.” — a pod nim telefon i dojazd. Reszta treści to siatka kafli. Adres publikacji po wypchnięciu na `main`: https://guziczak.github.io/4lapy4/
+Strona wygląda jak książeczka zdrowia zwierzaka, którą zna każdy opiekun: atramentowy granat na kremowym papierze, zdanie o godzinach zapisane na liniach, pieczątka „OTWARTE” albo „ZAMKNIĘTE”, rubryki z kropkami, data szczepienia w kratkach i adres jak emaliowana tabliczka z numerem domu. Adres publikacji: https://guziczak.github.io/4lapy5/
 
-To niezależna propozycja obok `/4lapy2/` i `/4lapy3/`. Ma własne pliki i własny klucz preferencji. Dane, treść usług i mapa pochodzą z `/4lapy3/`.
+To niezależna propozycja obok `/4lapy2/`, `/4lapy3/` i `/4lapy4/`. Logika, testy i sposób budowania pochodzą z `/4lapy4/`; zmieniła się warstwa wizualna i kilka drobiazgów opisanych niżej.
 
 ## Zawartość
 
@@ -10,68 +10,70 @@ To niezależna propozycja obok `/4lapy2/` i `/4lapy3/`. Ma własne pliki i włas
 - `src/content.json` — teksty PL i EN oraz wspólne dane (adresy URL, telefon, współrzędne).
 - `tools/build.cjs` — generuje `index.html` i `en/index.html`. Bez zależności.
 - `index.html`, `en/index.html` — **pliki generowane**; nie edytuj ich ręcznie.
-- `site.js` — status otwarcia, kalendarz świąt, przypomnienie o szczepieniu, przełącznik motywu. Ten sam plik działa na stronie i w testach.
+- `site.js` — status otwarcia, kalendarz świąt, pieczątka, przypomnienie o szczepieniu, etykiety słupków, przełącznik motywu. Ten sam plik działa na stronie i w testach.
 - `styles.css` — wygląd; pisany ręcznie, bez kompilacji i bez zagnieżdżeń.
 - `tools/*.test.cjs` — testy logiki i wygenerowanych stron.
 - `tools/og-card.html` — źródło obrazu podglądu linku `assets/og-card.png`.
-- `assets/` — font Manrope z licencją OFL, mapa WebP, favicon, obraz podglądu.
+- `assets/` — fonty z licencjami OFL, mapa WebP, favicon, obraz podglądu.
 
 ## Praca ze stroną
 
 ```
-node 4lapy4/tools/build.cjs                 # po każdej zmianie szablonu, treści, CSS lub JS
-node --test "4lapy4/tools/*.test.cjs"       # 21 testów, bez przeglądarki i sieci
-python -m http.server                       # z katalogu głównego repo → http://localhost:8000/4lapy4/
+node 4lapy5/tools/build.cjs                 # po każdej zmianie szablonu, treści, CSS lub JS
+node --test "4lapy5/tools/*.test.cjs"       # 23 testy, bez przeglądarki i sieci
+python -m http.server                       # z katalogu głównego repo → http://localhost:8000/4lapy5/
 ```
 
-Budowanie wpisuje do HTML skróty treści `styles.css` i `site.js` jako parametr `?v=`, więc wersji nie zmienia się ręcznie. Test „the generated pages on disk are current” nie przejdzie, jeśli ktoś zmieni źródła i zapomni o budowaniu albo poprawi wygenerowany plik ręcznie.
+Budowanie wpisuje do HTML skróty treści `styles.css` i `site.js` jako parametr `?v=`, więc wersji nie zmienia się ręcznie. **Po każdej zmianie trzeba przebudować i dopiero wtedy publikować** — test „the generated pages on disk are current” nie przejdzie, jeśli źródła i wygenerowane strony się rozjadą.
 
-Godziny otwarcia są zapisane raz, w tablicy `HOURS` w `site.js`. Z niej powstają: zdanie w hero, pasek tygodnia, lista godzin i dane strukturalne JSON-LD. Testy sprawdzają, że strona pokazuje te same godziny, których używa logika.
+Godziny otwarcia są zapisane raz, w tablicy `HOURS` w `site.js`. Z niej powstają: zdanie w pierwszym kaflu, słupki tygodnia z etykietami, lista godzin i dane strukturalne JSON-LD.
+
+## Elementy książeczki
+
+- **Zdanie na liniach.** Najważniejsza informacja („Dziś przyjmujemy do 18:00.”) jest zapisana dużym krojem na liniaturze: pod każdym wierszem biegnie jedna linia (jednostka `lh`). Godzina jest zaznaczona zakreślaczem. Wcześniejsze faliste podkreślenie wyglądało jak znacznik błędu pisowni, dlatego go nie ma.
+- **Pieczątka.** Okrągły stempel w SVG z jednym neutralnym słowem: „Otwarte”, „Zamknięte” albo „Święto” — zielony lub czerwony zależnie od stanu. Nierówne krawędzie i nierówny tusz daje filtr SVG. Na szerokim kaflu stoi w prawym dolnym rogu, tam gdzie formularze mają miejsce na pieczątkę; na telefonie w prawym górnym. **Pieczątka nigdy nie zawiera nazwiska ani niczego, co udawałoby pieczęć lekarza lub przychodni** — pilnuje tego test, a stopka mówi wprost, że to element graficzny.
+- **Rubryki.** Kafle są ponumerowane jak rubryki formularza (01 · Godziny przyjęć …). Numery są w szablonie, nie w licznikach CSS: liczniki zerują się w kaflach będących kontenerami zapytań.
+- **Słupki tygodnia.** Godziny przyjęć są zakreskowane długopisem, dzisiejszy słupek jest wypełniony, czerwona kreska pokazuje bieżącą godzinę. Najechanie na słupek pokazuje etykietę z dniem i godzinami; na ekranie dotykowym etykietę przypina stuknięcie, a zdejmuje drugie stuknięcie albo stuknięcie obok. Escape chowa etykietę. Słupki są ozdobnikiem (`aria-hidden`), a tę samą informację dla klawiatury i czytników ekranu niesie lista pod spodem.
+- **Zakreślacz.** Żółty z granatowym pismem, taki sam w obu motywach: dzisiejszy dzień, dzisiejsze godziny, godzina w zdaniu, ocena.
+- **Fajki.** Pozycje usług to drukowane kratki odhaczone odręcznie: fajka jest narysowanym pociągnięciem pióra (maska SVG), zaczyna się w kratce i wychodzi przez prawy górny róg; kolejne różnią się lekko kątem.
+- **Wpis o szczepieniu.** Wybrana data pojawia się cyfra po cyfrze w kratkach, a treść przypomnienia na „naklejce” z przerywaną ramką. Pole daty pozostaje natywne.
+- **Tabliczka adresowa.** Granatowa emaliowana tabliczka „ul. Chabrowa 2D” na mapie; między mapą a adresem biegnie perforacja.
 
 ## Status na żywo
 
 - Czas liczony jest zawsze w strefie Europe/Warsaw, niezależnie od urządzenia.
-- Strona zna polskie dni ustawowo wolne, także ruchome (Wielkanoc, Poniedziałek Wielkanocny, Zielone Świątki, Boże Ciało) i Wigilię od 2025 r. W święto wypadające w dzień roboczy nigdy nie pisze „otwarte”: pokazuje „Dziś święto. Zadzwoń przed wizytą.”, a przy wyliczaniu najbliższego otwarcia święta pomija. Faktyczne godziny świąteczne przychodni nie są znane — to świadomie ostrożne założenie.
-- Podgląd dowolnej chwili: `?czas=2026-11-23T11:30` (czas warszawski). Strona pokazuje wtedy plakietkę „Podgląd statusu dla: …”, żeby nie pomylić go ze stanem bieżącym. Przydatne do pokazania obu wariantów: otwarte (`…T11:30` w dzień roboczy), zamknięte (`2026-11-21T14:00`), święto (`2026-12-25T11:00`).
-- Bez JavaScript w hero zostaje zdanie ze stałymi godzinami; telefon, dojazd, godziny i usługi działają normalnie. Formularz przypomnienia jest wtedy ukryty i zastąpiony krótką informacją.
+- Strona zna polskie dni ustawowo wolne, także ruchome, i Wigilię od 2025 r. W święto wypadające w dzień roboczy nigdy nie pisze „otwarte”: pokazuje „Dziś święto. Zadzwoń przed wizytą.”, a przy wyliczaniu najbliższego otwarcia święta pomija. Faktyczne godziny świąteczne przychodni nie są znane — to świadomie ostrożne założenie.
+- Podgląd dowolnej chwili: `?czas=2026-11-23T11:30` (czas warszawski); strona pokazuje wtedy ramkę „Podgląd statusu dla: …”. Otwarte: `…T11:30` w dzień roboczy, zamknięte: `2026-11-21T14:00`, święto: `2026-12-25T11:00`.
+- Bez JavaScript zostaje zdanie ze stałymi godzinami, bez pieczątki; telefon, dojazd, godziny i usługi działają normalnie, a formularz przypomnienia jest zastąpiony krótką informacją.
 
-## Wygląd
+## Kroje i kolory
 
-- Jeden krój: Manrope (zmienny, 200–800). Nagłówki w 800, tekst w 450.
-- Zdanie w hero skaluje się do szerokości własnego kafla (jednostki `cqi`), nie do okna. Dłuższe zdania („Wracamy w poniedziałek…”) dostają mniejszy rozmiar; spacje nierozdzielające trzymają razem godzinę i „w poniedziałek”.
-- Kolor jako płaszczyzny: złamana biel, prawie czarny atrament i mandarynka `#ff7a45`. Kafel hero jest mandarynkowy, gdy otwarte, i granatowy, gdy zamknięte lub święto.
-- Motyw jasny/ciemny działa w samym CSS przez `light-dark()` i podąża za systemem. Ręczny wybór zapisuje się w `localStorage` pod kluczem `4lapy4-theme`. Przeglądarki bez `light-dark()` dostają motyw jasny, a przełącznik się nie pojawia.
-- Na telefonie zamiast menu jest stały dolny pasek: Zadzwoń, Trasa, Godziny.
-- Akordeon usług to natywne `<details name>`; animacja otwierania działa tam, gdzie przeglądarka obsługuje `interpolate-size`, a w pozostałych przełącza się natychmiast. Przed drukiem skrypt otwiera wszystkie grupy.
+- **Bricolage Grotesque** (800, zmienna szerokość, tu zwężony do 86%) — zdanie, tytuły, liczby, tabliczka. Pobrany jest tylko wariant nagłówkowy: 58 KB zamiast 181 KB pełnego pliku zmiennego.
+- **Manrope** — tekst ciągły.
+- **JetBrains Mono** — podpisy rubryk, daty, godziny, pieczątka.
+- Motyw jasny: papier, biurko w kolorze manili, atrament. Motyw ciemny odwraca to w „kalkę techniczną”: jasny atrament na granatowym papierze. Działa w samym CSS przez `light-dark()` i podąża za systemem; ręczny wybór zapisuje się w `localStorage` pod kluczem `4lapy5-theme`.
 - Najmniejszy tekst ma 13 px; pilnuje tego test.
 
 ## Dane i prywatność
 
 - Projekt poglądowy: widoczny pasek na górze, `noindex, nofollow`, wyjaśnienie w stopce. Godziny, usługi, ocena Google i dane kontaktowe pochodzą z publicznych źródeł (październik 2026) i wymagają potwierdzenia przez przychodnię.
 - Strona nie używa zdjęć ani wizualizacji generowanych przez AI. W kaflu „Kto leczy” jest znak łapy; gdy przychodnia dostarczy portret, wystarczy podmienić zawartość elementu `.avatar` w `src/page.html`.
-- Brak analityki, ciasteczek i zewnętrznych zasobów. Jedyne wyjścia do Google to linki klikane przez użytkownika: trasa, opinie i szablon wydarzenia w Kalendarzu Google. Plik `.ics` powstaje lokalnie.
+- Brak analityki, ciasteczek i zewnętrznych zasobów: fonty są lokalne. Jedyne wyjścia do Google to linki klikane przez użytkownika (trasa, opinie, szablon wydarzenia w Kalendarzu Google). Plik `.ics` powstaje lokalnie.
 - W `localStorage` zapisywany jest wyłącznie wybór motywu.
-
-## Co celowo pominięto względem /4lapy3/
-
-- Osadzana mapa Google po zgodzie — zastąpiona przyciskiem „Wyznacz trasę”.
-- Zapis przez Google OAuth i okno dialogowe — zostały link do Kalendarza Google i plik `.ics`.
-- Zapamiętywanie języka i przekierowania — adres decyduje o języku; link PL/EN zachowuje bieżącą sekcję.
-- Własne mechanizmy przewijania, wejścia z kotwicą i choreografia zmiany języka — zostało domyślne przenikanie stron (`@view-transition`).
 
 ## Mapa i licencje
 
 - `assets/map-wysoka-base*.webp` — te same pliki co w `/4lapy3/`, wyrenderowane z danych OpenStreetMap przez `4lapy3/tools/render_map.py`. Dane © autorzy OpenStreetMap, licencja ODbL. Strona kadruje bitmapę tak, żeby jej wypalona podziałka i podpis nie były widoczne, i pokazuje własny podpis z linkiem. Pinezka leży w środku obrazu, czyli w punkcie adresowym Chabrowa 2D.
-- Manrope: SIL Open Font License 1.1, tekst w `assets/fonts/Manrope-OFL.txt`.
+- Fonty pobrano z Google Fonts; wszystkie na licencji SIL Open Font License 1.1, teksty licencji są w `assets/fonts/`.
 
 ## Obraz podglądu linku
 
 `assets/og-card.png` (1200 × 630) powstaje z `tools/og-card.html`:
 
 ```
-msedge --headless=new --window-size=1200,630 --hide-scrollbars --screenshot=4lapy4/assets/og-card.png 4lapy4/tools/og-card.html
+msedge --headless=new --window-size=1200,630 --hide-scrollbars --screenshot=4lapy5/assets/og-card.png 4lapy5/tools/og-card.html
 ```
 
 ## Nie sprawdzono
 
-Stronę oglądano w Chrome 158 na desktopie oraz w ramkach 320, 390 i 768 px, w obu motywach i bez JavaScript. Nie sprawdzono Safari i iOS, czytników ekranu, faktycznego pobrania pliku `.ics` ani otwarcia Kalendarza Google (pokrywają je testy jednostkowe) oraz przeglądarek wbudowanych w aplikacje.
+Stronę renderowano w Edge i Chrome 158: desktop, 1024, 768, 600, 390 i 320 px, oba motywy, oba języki, trzy stany pieczątki i tryb bez JavaScript. Nie sprawdzono Safari i iOS (w szczególności filtra SVG na pieczątce, maski z fajką i jednostki `lh`), czytników ekranu, faktycznego pobrania pliku `.ics` ani otwarcia Kalendarza Google oraz przeglądarek wbudowanych w aplikacje.

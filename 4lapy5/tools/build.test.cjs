@@ -18,7 +18,8 @@ const css = disk('styles.css').replace(/\/\*[\s\S]*?\*\//g, '');
 const LANGUAGES = { pl: 'index.html', en: 'en/index.html' };
 
 // Attributes whose values are translated or language-specific; everything else is structure.
-const TEXT_ATTRIBUTES = new Set(['aria-label', 'title', 'alt', 'content', 'placeholder', 'lang', 'hreflang', 'href', 'src', 'srcset']);
+const TEXT_ATTRIBUTES = new Set(['aria-label', 'title', 'alt', 'content', 'placeholder', 'lang', 'hreflang', 'href', 'src', 'srcset',
+  'data-placeholder', 'data-tip', 'data-tip-holiday']);
 function skeleton(html) {
   const tags = [];
   const tagPattern = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s"'<>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'<>]+))?)*)\s*\/?>/g;
@@ -93,8 +94,9 @@ test('every local file a page or the stylesheet points to exists, and nothing in
       referenced.add(target);
     }
   }
-  for (const match of css.matchAll(/url\(([^)]+)\)/g)) {
+  for (const match of css.matchAll(/url\(([^)]*)\)/g)) {
     const target = match[1].replace(/['"]/g, '');
+    if (target === '' || target.startsWith('data:')) continue; // feature tests and the inline pen tick
     assert.ok(fs.existsSync(path.join(root, target)), `styles.css: ${target} does not exist`);
     referenced.add(target);
   }
@@ -124,6 +126,16 @@ test('the page shows the opening hours that the status logic uses', () => {
       .flatMap((day, index) => site.HOURS[index] ? [`${day} ${clock(site.HOURS[index][0])}-${clock(site.HOURS[index][1])}`] : []);
     assert.deepEqual(open.sort(), expected.sort());
     assert.equal((html.match(/data-week-day="/g) || []).length, 7);
+    // The hover label of every day bar repeats that day's hours.
+    const tips = Object.fromEntries([...html.matchAll(/data-week-day="(\d)" data-tip="([^"]+)" data-tip-holiday="([^"]+)"/g)]
+      .map(match => [match[1], { tip: match[2], holiday: match[3] }]));
+    assert.equal(Object.keys(tips).length, 7);
+    site.HOURS.forEach((hours, day) => {
+      const name = content[language].daysFull[(day + 6) % 7];
+      const value = hours ? `${clock(hours[0])}–${clock(hours[1])}` : content[language].closedWord;
+      assert.equal(tips[day].tip, `${name}&#10;${value}`, `${file}: label for day ${day}`);
+      assert.equal(tips[day].holiday, `${name}&#10;${content[language].holidayTip}`);
+    });
   }
 });
 
