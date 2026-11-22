@@ -1,0 +1,428 @@
+/* Cztery Łapy i Ty — piąta propozycja: „książeczka zdrowia".
+   Paper, ballpoint ink, ruled lines, a rubber stamp. Mobile first, no build step, no nesting. */
+
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 800;
+  font-stretch: 75% 100%;
+  font-display: swap;
+  src: url(assets/fonts/bricolage-grotesque-display-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 800;
+  font-stretch: 75% 100%;
+  font-display: swap;
+  src: url(assets/fonts/bricolage-grotesque-display-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url(assets/fonts/manrope-variable-normal-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url(assets/fonts/manrope-variable-normal-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url(assets/fonts/jetbrains-mono-variable-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url(assets/fonts/jetbrains-mono-variable-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ---------- Tokens ---------- */
+/* Plain values are the light theme and the fallback for browsers without light-dark(). */
+:root {
+  --desk: #efe8d6;
+  --paper: #fffdf5;
+  --ink: #1f2e79;
+  --ink-soft: #5a6594;
+  --rule: #d3daee;
+  --edge: #9aa5cf;
+  --stamp-open: #167a43;
+  --stamp-closed: #b3372b;
+  --marker: #ffe45c;
+  --plate: #1b2a57;
+  --field: #ffffff;
+  --error: #b3372b;
+  --concept: #e4dcc6;
+  --dock: #1f2e79;
+  /* These stay the same in both themes: lettering on the enamel plate and on the dock. */
+  --enamel: #fffdf5;
+  --navy: #1b2a57;
+  --focus: var(--ink);
+  --radius: 14px;
+  --gap: 12px;
+  --pad: 20px;
+  --display: 'Bricolage Grotesque', 'Manrope', system-ui, sans-serif;
+  --sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, 'SF Mono', Menlo, monospace;
+}
+@supports (color: light-dark(#000, #fff)) {
+  :root {
+    color-scheme: light dark;
+    --desk: light-dark(#efe8d6, #0d1020);
+    --paper: light-dark(#fffdf5, #151a30);
+    --ink: light-dark(#1f2e79, #d5dcff);
+    --ink-soft: light-dark(#5a6594, #9aa5d6);
+    --rule: light-dark(#d3daee, #2a3257);
+    --edge: light-dark(#9aa5cf, #4b5791);
+    --stamp-open: light-dark(#167a43, #62d394);
+    --stamp-closed: light-dark(#b3372b, #ff9388);
+    --marker: light-dark(#ffe45c, #5a5016);
+    --plate: light-dark(#1b2a57, #2b3c7c);
+    --field: light-dark(#ffffff, #0f1326);
+    --error: light-dark(#b3372b, #ff9388);
+    --concept: light-dark(#e4dcc6, #171c33);
+    --dock: light-dark(#1f2e79, #2b3c7c);
+  }
+  :root[data-theme='light'] { color-scheme: light; }
+  :root[data-theme='dark'] { color-scheme: dark; }
+}
+@media (min-width: 720px) {
+  :root { --radius: 18px; --gap: 16px; --pad: 28px; }
+}
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-padding-top: 12px; }
+body { margin: 0; background: var(--desk); color: var(--ink); font: 500 1rem/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, p, ul, ol, dl, dd, figure, address { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+address { font-style: normal; }
+a { color: inherit; }
+img, svg { display: block; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.icon { width: 1.375rem; height: 1.375rem; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.wrap { width: min(100% - 24px, 1240px); margin-inline: auto; }
+.skip-link { position: fixed; z-index: 50; top: 10px; left: 10px; padding: 12px 18px; border-radius: 10px; background: var(--ink); color: var(--paper); font-weight: 700; text-decoration: none; transform: translateY(-200%); }
+.skip-link:focus { transform: none; }
+.note { color: var(--ink-soft); font-size: .875rem; line-height: 1.55; }
+/* Printed captions of a form: small monospace capitals. */
+.label, .tile-label { color: var(--ink-soft); font: 500 .8125rem/1.45 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+
+/* ---------- Concept notice and header ---------- */
+.concept { padding: 8px 16px; background: var(--concept); font-size: .8125rem; line-height: 1.45; text-align: center; }
+.concept a { font-weight: 700; white-space: nowrap; }
+.site-header { display: flex; align-items: center; gap: 10px; padding-block: 12px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font: 800 1.3125rem/1.1 var(--display); font-stretch: 90%; text-decoration: none; white-space: nowrap; }
+.brand-mark { width: 38px; height: 38px; padding: 8px; border-radius: 11px; background: var(--ink); color: var(--paper); fill: currentColor; }
+.site-nav { display: none; }
+.header-tools { display: flex; gap: 6px; margin-left: auto; }
+.tool { display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1.5px solid var(--edge); border-radius: 11px; background: var(--paper); font: 700 .8125rem/1 var(--mono); text-decoration: none; }
+.theme-toggle .icon-sun, .theme-toggle[data-shows='dark'] .icon-moon { display: none; }
+.theme-toggle[data-shows='dark'] .icon-sun { display: block; }
+
+/* ---------- Sheets ---------- */
+.bento { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); padding-bottom: 20px; counter-reset: rubric; }
+.tile { position: relative; min-width: 0; padding: var(--pad); border: 1.5px solid var(--edge); border-radius: var(--radius); background: var(--paper); overflow: hidden; }
+/* Each sheet is a numbered rubric: 01 · Godziny przyjęć, 02 · Opinie … */
+.tile-label { margin-bottom: 12px; counter-increment: rubric; }
+.tile-label::before { content: counter(rubric, decimal-leading-zero) ' · '; }
+/* Where supported, the number is decoration only and is not read out with the heading. */
+@supports (content: 'x' / '') {
+  .tile-label::before { content: counter(rubric, decimal-leading-zero) ' · ' / ''; }
+}
+.tile-title { font: 800 clamp(1.9rem, 1.3rem + 2vw, 2.6rem)/1.02 var(--display); font-stretch: 86%; letter-spacing: -.015em; text-wrap: balance; }
+.tile-lead { margin-top: 10px; max-width: 46ch; color: var(--ink-soft); }
+.marker { padding-inline: .08em; background: linear-gradient(transparent 50%, var(--marker) 50% 92%, transparent 92%); }
+
+/* ---------- Buttons ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 54px; padding: 13px 22px; border: 1.5px solid var(--ink); border-radius: 12px; background: none; color: var(--ink); font-size: 1rem; font-weight: 700; line-height: 1.2; text-align: center; text-decoration: none; }
+.btn-primary { background: var(--ink); color: var(--paper); }
+.btn-number { padding-left: 11px; border-left: 1.5px solid; font: 700 1rem/1.2 var(--mono); }
+@media (hover: hover) {
+  .btn-primary:hover { filter: brightness(1.18); }
+  .btn-ghost:hover, .tool:hover { background: var(--rule); }
+}
+
+/* ---------- Hero: today's entry ---------- */
+.t-hero { container-type: inline-size; display: flex; flex-direction: column; gap: 14px; border: 2px solid var(--ink); --stamp: var(--stamp-open); }
+.t-hero[data-state='closed'], .t-hero[data-state='holiday'] { --stamp: var(--stamp-closed); }
+/* The top band leaves room for the stamp, so it never covers the sentence on a phone. */
+.hero-top { display: grid; align-content: start; gap: 6px; min-height: 98px; padding-right: 118px; }
+html:not(.js) .hero-top { min-height: 0; padding-right: 0; }
+.t-hero h1 { font-size: 1rem; font-weight: 700; line-height: 1.35; }
+/* The sentence scales with its own sheet (cqi) and sits on ruled lines: one rule per line of text. */
+.headline { font: 800 clamp(2.75rem, 14vw, 4.75rem)/1.06 var(--display); font-size: clamp(2.75rem, 18.4cqi, 5.25rem); font-stretch: 86%; letter-spacing: -.02em; text-wrap: balance; background-image: linear-gradient(to top, var(--rule) 2px, transparent 2px); background-size: 100% 1lh; background-position: 0 -.15em; }
+.headline[data-compact] { font-size: clamp(2.2rem, 11vw, 3.7rem); font-size: clamp(2.2rem, 14.2cqi, 4.2rem); }
+.time { text-decoration: underline wavy var(--stamp); text-decoration-thickness: .05em; text-underline-offset: .13em; text-decoration-skip-ink: none; }
+.hero-lead { max-width: 46ch; color: var(--ink-soft); font-size: 1.0625rem; }
+.preview-note { width: fit-content; padding: 4px 12px; border: 1.5px dashed var(--ink); border-radius: 8px; font: 500 .8125rem/1.5 var(--mono); }
+.hero-actions { display: grid; gap: 10px; margin-top: 4px; }
+
+/* The stamp: one neutral word, never a name. Colour follows the state. */
+.stamp { position: absolute; top: 10px; right: 10px; width: 112px; height: 112px; color: var(--stamp); opacity: .93; transform: rotate(-9deg); pointer-events: none; }
+html:not(.js) .stamp { display: none; }
+.stamp-line { fill: none; stroke: currentColor; stroke-width: 1.7; }
+.stamp-outer { stroke-width: 5; }
+.stamp-ring { fill: currentColor; font: 700 12.5px var(--mono); letter-spacing: 2.2px; text-transform: uppercase; }
+.stamp-band { fill: var(--paper); stroke: currentColor; stroke-width: 1.9; }
+.stamp-word { fill: currentColor; font: 800 23px var(--mono); letter-spacing: 2px; text-transform: uppercase; }
+@container (min-width: 560px) {
+  .hero-top { min-height: 0; padding-right: 196px; }
+  .headline { font-size: clamp(4.5rem, 14.6cqi, 8rem); }
+  .headline[data-compact] { font-size: clamp(3.6rem, 11.6cqi, 6.25rem); }
+  .stamp { top: 20px; right: 22px; width: 176px; height: 176px; }
+}
+
+/* ---------- Week strip and hours ---------- */
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.week li { display: grid; gap: 7px; justify-items: center; }
+.week-track { position: relative; width: 100%; height: 80px; border: 1.5px solid var(--edge); border-radius: 7px; }
+/* Opening hours are pen-hatched; today is filled in. */
+.week-open { position: absolute; inset-inline: 0; top: var(--from); bottom: calc(100% - var(--to)); border-block: 1.5px solid var(--ink); background: repeating-linear-gradient(135deg, var(--ink) 0 1.5px, transparent 1.5px 6px); }
+.week li[data-today] .week-open { background: var(--ink); }
+.week li[data-holiday] .week-open { border-color: var(--stamp-closed); background: repeating-linear-gradient(135deg, var(--stamp-closed) 0 1.5px, transparent 1.5px 6px); }
+.week-now { display: none; position: absolute; inset-inline: -5px; top: var(--now); height: 3px; margin-top: -1.5px; border-radius: 3px; background: var(--stamp-closed); }
+.week li[data-now] .week-now { display: block; }
+.week-name { min-width: 2em; padding: 1px 4px; border-radius: 4px; color: var(--ink-soft); font: 500 .8125rem/1.5 var(--mono); text-align: center; }
+.week li[data-today] .week-name { background: var(--marker); color: var(--ink); font-weight: 700; }
+/* Rows with dotted leaders, as in a printed form. */
+.hours-list { margin-top: 12px; }
+.hours-list div { display: flex; align-items: baseline; gap: 8px; padding-top: 9px; font-size: .9375rem; }
+.hours-list dt { display: flex; flex: 1; align-items: baseline; gap: 8px; min-width: 0; }
+.hours-list dt::after, .leader { content: ''; flex: 1; min-width: 14px; border-bottom: 2px dotted var(--edge); transform: translateY(-4px); }
+.hours-list dd { font: 500 .9375rem/1.6 var(--mono); white-space: nowrap; }
+.hours-list div[data-today] { font-weight: 800; }
+.hours-list div[data-today] dd { padding-inline: .2em; background: linear-gradient(transparent 46%, var(--marker) 46% 94%, transparent 94%); font-weight: 700; }
+.t-week .note { margin-top: 12px; }
+
+/* ---------- Reviews ---------- */
+.t-rating { container-type: inline-size; display: flex; flex-direction: column; }
+.rating-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.t-rating .tile-label { margin-bottom: 0; }
+.rating-body { display: flex; align-items: center; gap: 16px; margin-top: auto; }
+.rating-score { flex: none; font: 800 4.5rem/.95 var(--display); font-size: clamp(3.25rem, 21cqi, 4.75rem); font-stretch: 86%; }
+.rating-score small { margin-left: .14em; color: var(--ink-soft); font: 500 .3em/1 var(--mono); }
+.rating-meta { min-width: 0; font-size: .9375rem; font-weight: 700; line-height: 1.4; }
+.rating-meta span { display: block; color: var(--ink-soft); font-size: .875rem; font-weight: 500; }
+/* The fifth star is filled to 94%, which is 4.7 out of 5. */
+.stars { width: fit-content; margin-bottom: 4px; background: linear-gradient(90deg, var(--ink) 94%, var(--edge) 94%); -webkit-background-clip: text; background-clip: text; color: transparent; font-size: 1.125rem; letter-spacing: .1em; line-height: 1.2; }
+.rating-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: .9375rem; font-weight: 700; text-decoration: none; }
+.rating-link::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius); }
+.rating-link span:first-child { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+
+/* ---------- Services ---------- */
+.services { margin: 18px 0 14px; border-top: 1.5px solid var(--edge); }
+.service { border-bottom: 1.5px solid var(--edge); }
+.service summary { display: grid; grid-template-columns: 26px minmax(0, 1fr) 22px; grid-template-areas: 'icon title toggle' 'icon desc toggle'; column-gap: 14px; align-items: center; min-height: 68px; padding: 12px 2px; list-style: none; cursor: pointer; }
+.service summary::-webkit-details-marker { display: none; }
+.service summary:focus-visible { outline-offset: -2px; }
+.service-icon { grid-area: icon; width: 1.5rem; height: 1.5rem; }
+.service h3 { grid-area: title; align-self: end; font-size: 1.125rem; font-weight: 800; letter-spacing: -.015em; line-height: 1.25; }
+.service-desc { grid-area: desc; align-self: start; color: var(--ink-soft); font-size: .875rem; line-height: 1.4; }
+.service-toggle { grid-area: toggle; position: relative; width: 22px; height: 22px; }
+.service-toggle::before, .service-toggle::after { content: ''; position: absolute; left: 3px; top: 10px; width: 16px; height: 2px; border-radius: 2px; background: currentColor; transition: transform .25s ease; }
+.service-toggle::after { transform: rotate(90deg); }
+.service[open] .service-toggle::after { transform: none; }
+.service-body { padding: 2px 2px 18px 40px; }
+.service-body li { position: relative; margin-top: 7px; padding-left: 24px; line-height: 1.5; }
+/* A ticked box in front of every item. */
+.service-body li::before { content: ''; position: absolute; left: 0; top: .28em; width: 14px; height: 14px; border: 1.5px solid var(--ink); border-radius: 3px; }
+.service-body li::after { content: ''; position: absolute; left: 3px; top: .1em; width: 13px; height: 7px; border: solid var(--stamp-open); border-width: 0 0 2.5px 2.5px; transform: rotate(-48deg); }
+.text-link { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; font-weight: 700; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+
+/* ---------- Reminder: an entry for your own calendar ---------- */
+.t-reminder { container-type: inline-size; display: grid; }
+.reminder { display: grid; gap: 24px; }
+/* When the row is taller than the form, the entry and the buttons settle at the bottom. */
+.reminder-copy, #reminder-form { display: flex; flex-direction: column; }
+.reminder-copy .tile-lead { margin-bottom: 18px; }
+.preview { display: grid; gap: 12px; margin-top: auto; }
+/* The date one digit per box, as on a paper form. */
+.comb { display: flex; align-items: center; gap: 4px; font: 700 1.25rem/1 var(--mono); }
+.comb b { display: grid; place-items: center; width: 1.75rem; height: 2.375rem; border: 1.5px solid var(--ink); border-radius: 5px; background: var(--field); }
+.comb:not([data-filled]) b { color: var(--edge); font-weight: 500; }
+.comb i { padding-inline: 1px; font-style: normal; }
+/* The saved entry looks like the sticker a vet puts into the booklet. */
+.sticker { display: grid; gap: 2px; padding: 12px 14px; border: 1.5px dashed var(--ink); border-radius: 10px; font-size: .9375rem; line-height: 1.45; }
+.sticker strong { font-size: 1.0625rem; font-weight: 800; letter-spacing: -.015em; overflow-wrap: anywhere; }
+.sticker [data-state='error'] { color: var(--error); font-weight: 700; }
+.privacy { display: flex; gap: 10px; margin-top: 14px; color: var(--ink-soft); font-size: .875rem; line-height: 1.5; }
+.privacy .icon { margin-top: 1px; }
+#reminder-form { gap: 14px; }
+.reminder-actions { display: grid; gap: 10px; margin-top: auto; }
+/* Without the script the reminder cannot work, so only its explanation is shown. */
+html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display: none; }
+.fields-row { display: grid; gap: 14px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label { font-size: .9375rem; font-weight: 700; }
+.field label span { color: var(--ink-soft); font-weight: 500; }
+.field input, .field select { width: 100%; min-width: 0; height: 52px; margin: 0; padding: 0 14px; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--field); font-size: 1rem; line-height: 1.4; }
+.field input::placeholder { color: var(--ink-soft); opacity: 1; }
+/* Keep the native date picker, but stop the iOS skin from resizing the field. */
+.field input[type='date'] { -webkit-appearance: none; appearance: none; font-family: var(--mono); text-align: start; }
+.field input[type='date']::-webkit-date-and-time-value { min-height: 1.4em; text-align: inherit; }
+.select-wrap { position: relative; }
+.select-wrap select { -webkit-appearance: none; appearance: none; padding-right: 40px; }
+.select-wrap::after { content: ''; position: absolute; right: 17px; top: 50%; width: 9px; height: 9px; margin-top: -7px; border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(45deg); pointer-events: none; }
+.field [aria-invalid='true'] { border-color: var(--error); border-width: 2.5px; }
+#reminder-message { font-size: .9375rem; font-weight: 700; line-height: 1.5; }
+#reminder-message:empty { display: none; }
+#reminder-message[data-state='error'] { color: var(--error); }
+/* The form adapts to the width of its own sheet, wherever the sheet sits in the grid. */
+@container (min-width: 460px) {
+  .fields-row, .reminder-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 600px) {
+  .reminder { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 32px; }
+  .fields-row, .reminder-actions { grid-template-columns: minmax(0, 1fr); }
+}
+@container (min-width: 900px) {
+  .fields-row, .reminder-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---------- Map ---------- */
+.t-map { display: flex; flex-direction: column; padding: 0; }
+/* A wide frame crops the bitmap's own scale bar and credit; the pin stays on the centre. */
+.map-figure { position: relative; aspect-ratio: 9 / 5; overflow: hidden; background: #f5f0e9; }
+.map-image { width: 100%; height: 100%; object-fit: cover; }
+.map-pin { position: absolute; left: 50%; top: 50%; width: 38px; height: auto; overflow: visible; transform: translate(-50%, -100%); filter: drop-shadow(0 4px 5px rgb(13 16 32 / .32)); }
+.map-pin path { fill: #c8402f; stroke: #fffdf5; stroke-width: 2.5; stroke-linejoin: round; }
+.map-pin circle { fill: #fffdf5; }
+/* The address as an enamel house-number plate. */
+.plate { position: absolute; left: 12px; top: 12px; display: grid; justify-items: center; min-width: 96px; padding: 9px 14px 7px; border-radius: 11px; background: var(--plate); box-shadow: inset 0 0 0 3px var(--plate), inset 0 0 0 4.5px var(--enamel), 0 6px 16px rgb(13 16 32 / .3); color: var(--enamel); }
+.plate span { font-size: .8125rem; font-weight: 700; line-height: 1.3; }
+.plate b { font: 800 2.375rem/1 var(--display); font-stretch: 86%; }
+.map-credit { position: absolute; right: 10px; bottom: 10px; padding: 3px 10px; border-radius: 6px; background: var(--paper); font-size: .8125rem; line-height: 1.5; }
+/* A perforation between the map and the address. */
+.map-bar { display: grid; gap: 16px; padding: var(--pad); border-top: 2px dashed var(--edge); }
+.map-bar .tile-label { margin-bottom: 6px; }
+.map-bar address { font: 800 1.5rem/1.15 var(--display); font-stretch: 86%; }
+.map-bar address span { display: block; margin-top: 4px; color: var(--ink-soft); font: 500 .9375rem/1.4 var(--sans); }
+.map-bar .note { max-width: 52ch; margin-top: 8px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .map-image { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.9); }
+  :root:not([data-theme='light']) .map-figure { background: #14171c; }
+}
+:root[data-theme='dark'] .map-image { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.9); }
+:root[data-theme='dark'] .map-figure { background: #14171c; }
+
+/* ---------- Who treats, contact ---------- */
+.t-vet { display: flex; flex-direction: column; gap: 14px; }
+.t-vet .tile-label { margin-bottom: 0; }
+.vet-head { display: flex; align-items: center; gap: 14px; }
+/* Replace the paw with a real portrait when the practice provides one (see README). */
+.avatar { display: grid; place-items: center; flex: none; width: 68px; height: 68px; border: 1.5px solid var(--ink); border-radius: 50%; }
+.avatar svg { width: 34px; height: 34px; fill: currentColor; }
+.vet-name { font: 800 1.625rem/1.1 var(--display); font-stretch: 86%; }
+.vet-name span { display: block; margin-top: 5px; color: var(--ink-soft); font: 500 .9375rem/1.35 var(--sans); }
+.t-contact .tile-label { margin-bottom: 0; }
+.rubric { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; gap: 0 8px; min-height: 50px; padding-top: 16px; text-decoration: none; }
+.rubric b { font-weight: 700; overflow-wrap: anywhere; text-align: right; }
+@media (hover: hover) {
+  .rubric:hover b { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+}
+
+/* ---------- Footer and dock ---------- */
+.site-footer { padding: 4px 0 104px; color: var(--ink-soft); font-size: .875rem; line-height: 1.6; }
+.footer-grid { display: grid; gap: 12px; padding-top: 18px; border-top: 1.5px solid var(--edge); }
+.footer-grid strong { display: block; color: var(--ink); font: 800 1.25rem/1.3 var(--display); font-stretch: 90%; }
+.dock { position: fixed; z-index: 20; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 6px; padding: 6px; border-radius: 16px; background: var(--dock); color: var(--enamel); box-shadow: 0 10px 30px rgb(13 16 32 / .35); --focus: var(--enamel); }
+.dock a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; border-radius: 11px; font-size: .8125rem; font-weight: 800; line-height: 1.2; text-decoration: none; }
+/* The main action is marked with a highlighter. */
+.dock a:first-child { background: #ffe45c; color: var(--navy); }
+.dock .icon { width: 1.25rem; height: 1.25rem; }
+
+/* ---------- Wider screens ---------- */
+@media (min-width: 520px) {
+  .hero-actions { display: flex; flex-wrap: wrap; }
+}
+@media (min-width: 720px) {
+  .wrap { width: min(100% - 48px, 1240px); }
+  .site-header { padding-block: 16px; }
+  .brand { font-size: 1.5rem; }
+  .bento { grid-template-columns: repeat(6, minmax(0, 1fr)); padding-bottom: 28px; }
+  .t-hero, .t-services, .t-reminder, .t-map { grid-column: span 6; }
+  .t-week, .t-rating, .t-vet, .t-contact { grid-column: span 3; }
+  .t-hero h1 { font-size: 1.0625rem; }
+  .map-figure { aspect-ratio: 21 / 10; }
+  .plate { left: 18px; top: 18px; min-width: 112px; padding: 11px 18px 9px; }
+  .plate b { font-size: 2.875rem; }
+  .map-bar { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 24px; }
+  .site-footer { padding-bottom: 40px; }
+  .dock { display: none; }
+}
+@media (min-width: 860px) {
+  .site-nav { display: flex; gap: 2px; margin-left: auto; }
+  .site-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 10px; font-size: .9375rem; font-weight: 700; text-decoration: none; }
+  .site-nav a:hover { background: var(--paper); }
+  .header-tools { margin-left: 8px; }
+}
+@media (min-width: 900px) {
+  .footer-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 40px; }
+}
+/* The twelve-column layout needs room: below 1200px the sheets keep the simpler tablet grid. */
+@media (min-width: 1200px) {
+  .bento { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .t-hero { grid-column: span 8; grid-row: span 2; }
+  .t-week, .t-rating { grid-column: span 4; }
+  .t-services { grid-column: span 5; }
+  .t-reminder { grid-column: span 7; }
+  .t-map { grid-column: span 8; grid-row: span 2; }
+  .t-vet, .t-contact { grid-column: span 4; }
+  .t-hero .hero-lead { margin-top: auto; }
+  .week-track { height: 84px; }
+}
+
+/* ---------- Motion (only when welcome) ---------- */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes stamp-press { from { opacity: 0; transform: rotate(-9deg) scale(1.55); } 62% { opacity: 1; transform: rotate(-9deg) scale(.95); } to { opacity: .93; transform: rotate(-9deg) scale(1); } }
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  :root { interpolate-size: allow-keywords; }
+  .tile { animation: rise .6s cubic-bezier(.2, .7, .2, 1) both; }
+  .t-week { animation-delay: .07s; }
+  .t-rating { animation-delay: .14s; }
+  /* Lower sheets arrive with the scroll where the browser supports it. */
+  @supports (animation-timeline: view()) {
+    .t-services, .t-reminder, .t-map, .t-vet, .t-contact { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 40%; }
+  }
+  /* The stamp lands once, a moment after the sheet. */
+  .js .stamp { animation: stamp-press .42s cubic-bezier(.3, 1.2, .5, 1) .4s both; }
+  .btn { transition: filter .15s ease, background-color .15s ease, transform .15s ease; }
+  .btn:active { transform: scale(.98); }
+  /* Native <details> open and close smoothly; elsewhere they simply toggle. */
+  .service::details-content { block-size: 0; overflow: clip; transition: block-size .32s cubic-bezier(.2, .7, .2, 1), content-visibility .32s allow-discrete; }
+  .service[open]::details-content { block-size: auto; }
+}
+
+/* ---------- Print ---------- */
+@media print {
+  :root { color-scheme: light !important; }
+  body { background: #fff; }
+  .concept a, .header-tools, .site-nav, .dock, .map-figure, .hero-actions .btn-ghost, .reminder-actions, .rating-link { display: none !important; }
+  .bento { display: block; }
+  .tile { margin-bottom: 10px; animation: none !important; break-inside: avoid; }
+  .stamp { animation: none !important; }
+  .headline, .headline[data-compact] { font-size: 2.4rem; }
+  .site-footer { padding-bottom: 0; }
+}
