@@ -5,11 +5,13 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { webcrypto } from 'node:crypto';
 import { unzipSync } from 'fflate';
+import { createDiskBackend } from './qr-large-store-fs.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const sources = ['assets/qr-core.js', 'assets/qr-transfer.js', 'assets/qr-resilient.js', 'assets/zip-core.js',
-  'assets/qr-telemetry.js', 'assets/qr-playback.js', 'assets/qr-calibration.js', 'assets/qr-encoder.js']
+  'assets/qr-telemetry.js', 'assets/qr-playback.js', 'assets/qr-calibration.js', 'assets/qr-encoder.js',
+  'assets/qr-large-store.js', 'assets/qr-large.js']
   .map((name) => fs.readFileSync(path.join(root, name), 'utf8'));
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 
@@ -35,12 +37,14 @@ async function collectTransfer(protocol, transfer) {
   return result.bytes;
 }
 
-function harness() {
+function harness({ backend } = {}) {
   const h = { now: 1000, serial: 0, timers: new Map(), zeroTimers: new Map(), videoCallbacks: new Map(), urls: new Map(),
     encoded: [], encodings: [], rendered: [], matrixBytes: new WeakMap(), canvases: [], downloads: [], transfers: [],
     streams: [], mediaRequests: [], cameraConstraints: [], scannerOptions: [], scanCalls: [], deferMedia: false,
     disposedScanners: 0, events: {}, optical: null, encoderJobs: [], encoderResets: 0, activeEncodes: 0,
-    deferEncoding: false, scanJobs: [], activeScans: 0, maxActiveScans: 0, deferScans: false };
+    deferEncoding: false, scanJobs: [], activeScans: 0, maxActiveScans: 0, deferScans: false,
+    largeSenders: [], largeSegments: [], largeStores: [], largeStoreOpenCalls: 0, backend,
+    deferLargeOpen: false, largeOpenJobs: [] };
   class Element {
     constructor(id = '') {
       this.id = id; this.listeners = {}; this.dataset = {}; this.value = ''; this.hidden = false;
@@ -85,7 +89,8 @@ function harness() {
   }
   h.els = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map((m) => [m[1], new Element(m[1])]));
   h.els['transfer-mode'].value = 'auto'; h.els['qr-density'].value = '384';
-  for (const [id, value] of Object.entries({ 'qr-layout': 'single', 'series-ecc': 'M', 'scan-layout': 'single', 'camera-profile': 'auto', 'calibration-range': 'basic' })) h.els[id].value = value;
+  for (const [id, value] of Object.entries({ 'qr-layout': 'single', 'series-ecc': 'M', 'scan-layout': 'single', 'camera-profile': 'auto', 'calibration-range': 'basic', 'large-repair': '1' })) h.els[id].value = value;
+  h.els['large-auto'].checked = true;
   for (const rate of [1, 2, 5, 10, 15, 20]) { const radio = new Element(`rate-${rate}`); radio.value = String(rate); radio.checked = rate === 2; h.els['frame-rate'].appendChild(radio); }
   h.document = { body: new Element('body'), documentElement: { dataset: { appVersion: html.match(/data-app-version="([^"]+)"/)?.[1] || 'test' } }, activeElement: h.els['expand-qr'], hidden: false, getElementById: (id) => h.els[id], createElement: (tag) => { const element = new Element(); element.tagName = tag.toUpperCase(); if (tag === 'canvas') h.canvases.push(element); return element; }, querySelectorAll: () => [], addEventListener: (name, fn) => { (h.events[name] ??= []).push(fn); } };
   for (const id of ['close-expanded', 'expand-qr', 'animation-toggle', 'frame-slider', 'scan-feedback']) h.els['qr-result'].appendChild(h.els[id]);
@@ -105,6 +110,7 @@ function harness() {
     clearTimeout(id) { if (h.zeroTimers.has(id)) clearTimeout(h.zeroTimers.get(id)); h.zeroTimers.delete(id); h.timers.delete(id); }, addEventListener(name, fn) { (h.events[name] ??= []).push(fn); },
   };
   context.window = context; h.context = vm.createContext(context);
+  if (backend) Object.assign(context.navigator, { storage: backend.storage, locks: backend.locks });
   for (const source of sources) vm.runInContext(source, h.context);
   h.protocol = h.context.WGResilient;
   const encode = h.context.WGQR.encodeBytes;
@@ -143,6 +149,22 @@ function harness() {
     };
   } };
   h.context.WGResilient = { ...h.protocol, async createTransfer(...args) { const transfer = await h.protocol.createTransfer(...args); h.transfers.push(transfer); return transfer; } };
+  const large = h.context.WGLarge;
+  h.context.WGLarge = { ...large, async createSender(...args) {
+    const sender = await large.createSender(...args); h.largeSenders.push(sender);
+    const load = sender.loadSegment.bind(sender);
+    sender.loadSegment = async (...input) => { const segment = await load(...input); h.largeSegments.push(segment); return segment; };
+    return sender;
+  } };
+  const openLargeStore = h.context.WGLargeStore.open;
+  h.context.WGLargeStore = { ...h.context.WGLargeStore, async open(options) {
+    h.largeStoreOpenCalls++;
+    const store = await openLargeStore(options); h.largeStores.push(store);
+    if (h.deferLargeOpen) return new Promise(resolve => {
+      h.largeOpenJobs.push({ store, release: () => resolve(store) });
+    });
+    return store;
+  } };
   const createTelemetry = h.context.WGTelemetry.create;
   h.context.WGTelemetry = { ...h.context.WGTelemetry, create(options) { h.telemetry = createTelemetry(options); return h.telemetry; } };
   h.context.WGCamera = { createScanner(options) {
@@ -200,6 +222,51 @@ function harness() {
   h.setRate = (rate) => { for (const radio of h.els['frame-rate'].children) radio.checked = Number(radio.value) === rate; h.els['frame-rate'].dispatch('change'); };
   h.close = () => { h.els['clear-all'].click(); for (const job of h.encoderJobs) job.release?.(); for (const job of h.scanJobs) job.release(); for (const timer of h.zeroTimers.values()) clearTimeout(timer); h.zeroTimers.clear(); h.timers.clear(); h.videoCallbacks.clear(); };
   return h;
+}
+
+async function diskHarness(existingBackend) {
+  const directory = existingBackend ? null : await fs.promises.mkdtemp(path.join(import.meta.dirname, 'app-large-test-'));
+  const backend = existingBackend || await createDiskBackend(directory);
+  const h = harness({ backend });
+  h.cleanup = async () => {
+    for (const listener of h.events.pagehide || []) listener();
+    for (const job of h.largeOpenJobs) job.release();
+    h.close();
+    for (const store of h.largeStores) await store.dispose();
+    if (directory) await fs.promises.rm(directory, { recursive: true, force: true });
+  };
+  return h;
+}
+
+function lazyLargeFile(size, name = 'bounded-large.bin', beforeRead) {
+  const audit = { reads: [], fullReads: 0 };
+  const file = {
+    name, size, type: 'application/octet-stream',
+    async arrayBuffer() { audit.fullReads++; throw new Error('Full large-file read is forbidden'); },
+    slice(start, end) {
+      assert.ok(end - start <= 2 * 1024 * 1024);
+      return { async arrayBuffer() {
+        audit.reads.push({ start, end });
+        if (beforeRead) await beforeRead(start, end);
+        return new Uint8Array(end - start).fill((Math.floor(start / (2 * 1024 * 1024)) + 1) & 255).buffer;
+      } };
+    }
+  };
+  return { file, audit };
+}
+
+async function fileBytes(file) {
+  const parts = [];
+  for (let offset = 0; offset < file.size; offset += 2 * 1024 * 1024) {
+    parts.push(Buffer.from(await file.slice(offset, Math.min(file.size, offset + 2 * 1024 * 1024)).arrayBuffer()));
+  }
+  return new Uint8Array(Buffer.concat(parts));
+}
+
+async function enableDiskReceiver(h) {
+  h.els['decode-tab'].click(); h.els['enable-large-receiver'].click();
+  await h.wait(() => h.largeStores.length > 0 && !h.els['large-storage-details'].hidden && !h.els['large-delete'].disabled);
+  return h.largeStores.at(-1);
 }
 
 test('sender sends all source packets once, then advances repair serials; pause and rate preserve the phase', async () => {
@@ -489,10 +556,10 @@ test('v3 feedback presents targeted missing source packets before fountain repai
   } finally { h.close(); }
 });
 
-test('small files with CAL or SET prefixes use a byte-exact series and cannot be emitted as ambiguous plain QR', async () => {
+test('small files with reserved calibration or large-transfer prefixes remain byte-exact through a regular series', async () => {
   const h = harness();
   try {
-    for (const prefix of ['WGQR-CAL', 'WGQR-SET']) {
+    for (const prefix of ['WGQR-CAL', 'WGQR-SET', 'WGQR-LRG', 'WGQR-LAK']) {
       const original = new Uint8Array([...new TextEncoder().encode(`${prefix} literal file`), 0, 255, 13, 10]);
       h.els['transfer-mode'].value = 'auto'; h.choose([new File([original], 'reserved.bin')]);
       await h.wait(() => !h.els['choose-file'].disabled);
@@ -767,4 +834,212 @@ test('calibration discards a missed encoding slot and cannot repaint after the t
     assert.equal(h.els['animation-toggle'].disabled, false); assert.ok(cancelled.matrices.every(matrix => matrix.data.every(value => value === 0)));
     assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tickCalibration'));
   } finally { h.close(); }
+});
+
+test('large sender reads bounded slices, survives tab changes and calibrates the actual v4 envelope size', async () => {
+  const h = harness();
+  try {
+    const input = lazyLargeFile(11 * 1024 * 1024 + 123);
+    h.change('qr-layout', 'dual'); h.change('qr-density', '600'); h.choose([input.file]);
+    await h.wait(() => h.largeSegments.length === 1 && !h.els['choose-file'].disabled);
+    const sender = h.largeSenders[0], first = h.largeSegments[0];
+    assert.equal(h.els['transfer-mode'].value, 'large'); assert.equal(sender.descriptor.segmentCount, 6);
+    assert.equal(h.els['large-sender-controls'].hidden, false); assert.equal(h.els['compress-single'].disabled, true);
+    assert.equal(input.audit.fullReads, 0); assert.ok(input.audit.reads.every(read => read.end - read.start <= 2 * 1024 * 1024));
+    assert.equal(h.context.WGLarge.parseFrame(h.display()).manifest, true);
+    assert.equal(h.display('qr-canvas-second').length, 692);
+    h.els['decode-tab'].click(); h.els['encode-tab'].click(); h.els['animation-toggle'].click(); await h.tick();
+    assert.deepEqual(h.pair(), [first.frame(32), first.frame(64)], 'Large playback interleaves independent blocks');
+    h.els['animation-toggle'].click(); h.els['large-next'].click();
+    await h.wait(() => h.largeSegments.length === 2 && !h.els['choose-file'].disabled);
+    assert.equal(h.largeSegments.at(-1).segmentIndex, 1); assert.throws(() => first.frame(0), error => error.code === 'TRANSFER_DISPOSED');
+    h.els['start-calibration'].click(); await h.flush();
+    const parsed = h.context.WGCalibration.parse(h.display());
+    assert.equal(parsed.large, true); assert.equal(h.display().length, 476); assert.equal(parsed.chunkBytes, 384);
+    h.els['stop-calibration'].click(); assert.equal(input.audit.fullReads, 0);
+  } finally { h.close(); }
+});
+
+test('large feedback selects missing durable segments and waits for final verification before confirming completion', async () => {
+  const h = await diskHarness(); let receiver;
+  try {
+    const segmentSize = 2 * 1024 * 1024, input = lazyLargeFile(segmentSize + 900, 'feedback-large.bin');
+    h.els['transfer-mode'].value = 'large'; h.change('qr-density', '600'); h.choose([input.file]);
+    await h.wait(() => h.largeSegments.length === 1 && !h.els['choose-file'].disabled);
+    const sender = h.largeSenders[0], first = h.largeSegments[0], store = await h.context.WGLargeStore.open();
+    await store.begin(sender.descriptor);
+    await store.putSegment(0, new Uint8Array(segmentSize).fill(1), first.digest);
+    receiver = h.context.WGLarge.createCollector({ store }); await receiver.resume();
+    h.upload(receiver.createFeedback({ suggestedRate: 10 }), true);
+    await h.wait(() => h.largeSegments.length === 2 && !h.els['choose-file'].disabled);
+    const second = h.largeSegments.at(-1);
+    assert.equal(second.segmentIndex, 1); assert.equal(h.rate(), 10);
+    assert.equal(h.els['animation-toggle'].getAttribute('aria-pressed'), 'false');
+    assert.match(h.els['large-segment-status'].textContent, /pozostało 1 części/);
+    await store.putSegment(1, new Uint8Array(900).fill(2), second.digest);
+    const notVerified = receiver.createFeedback({ suggestedRate: 5 });
+    assert.deepEqual(Array.from(sender.acceptFeedback(notVerified).missingSegments), []);
+    assert.equal(sender.acceptFeedback(notVerified).complete, false);
+    h.upload(notVerified, true);
+    await h.wait(() => /Wszystkie części są zapisane/.test(h.els['feedback-message'].textContent));
+    assert.equal(h.els['animation-toggle'].disabled, true);
+    assert.match(h.els['animation-toggle'].textContent, /Oczekiwanie na sprawdzenie/);
+    const loads = h.largeSegments.length;
+    h.setRate(2); h.change('qr-layout', 'dual');
+    h.els['decode-tab'].click(); h.els['encode-tab'].click();
+    h.els['large-next'].click(); h.els['animation-toggle'].click(); await h.flush();
+    assert.equal(h.largeSegments.length, loads, 'An empty missing map must not restart segment zero');
+    assert.equal(h.els['animation-toggle'].disabled, true); assert.equal(h.els['large-next'].disabled, true);
+    assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tick'));
+    const finished = await receiver.resume(); assert.equal(finished.kind, 'complete');
+    h.upload(receiver.createFeedback({ suggestedRate: 2 }), true);
+    await h.wait(() => /potwierdził zapis i sprawdzenie/.test(h.els['feedback-message'].textContent));
+    assert.equal(h.els['animation-toggle'].textContent, 'Odbiór potwierdzony');
+    assert.equal(h.els['animation-toggle'].disabled, true); assert.equal(input.audit.fullReads, 0);
+  } finally { receiver?.dispose(); await h.cleanup(); }
+});
+
+test('late initial large-file hashing cannot repopulate a cleared source', async () => {
+  const h = harness(); let release;
+  try {
+    let entered;
+    const waiting = new Promise(resolve => { entered = resolve; });
+    const gate = new Promise(resolve => { release = resolve; });
+    const input = lazyLargeFile(12 * 1024 * 1024, 'late-source.bin', async () => { entered(); await gate; });
+    h.choose([input.file]); await waiting;
+    h.els['clear-all'].click(); const paints = h.rendered.length; release(); await h.micro();
+    await h.wait(() => !h.els['choose-file'].disabled); await h.flush();
+    assert.equal(h.largeSenders.length, 0); assert.equal(h.largeSegments.length, 0); assert.equal(h.rendered.length, paints);
+    assert.equal(h.els['qr-result'].hidden, true); assert.equal(h.els['source-name'].textContent, '');
+    assert.equal(input.audit.reads.length, 1); assert.equal(input.audit.fullReads, 0);
+  } finally { release?.(); h.close(); }
+});
+
+test('an in-flight large segment load is invalidated by tab changes and does not replace the restored part', async () => {
+  const h = harness(); let release;
+  try {
+    let hold = false, heldOnce = false, enter;
+    const entered = new Promise(resolve => { enter = resolve; });
+    const gate = new Promise(resolve => { release = resolve; });
+    const input = lazyLargeFile(2 * 1024 * 1024 + 900, 'tab-load.bin', async start => {
+      if (hold && !heldOnce && start === 2 * 1024 * 1024) { heldOnce = true; enter(); await gate; }
+    });
+    h.els['transfer-mode'].value = 'large'; h.choose([input.file]);
+    await h.wait(() => h.largeSegments.length === 1 && !h.els['choose-file'].disabled);
+    hold = true; h.els['large-next'].click(); await entered;
+    h.els['decode-tab'].click(); h.els['encode-tab'].click();
+    await h.wait(() => h.largeSegments.length === 2 && !h.els['choose-file'].disabled);
+    assert.equal(h.largeSegments.at(-1).segmentIndex, 1);
+    hold = false; release(); await h.micro();
+    assert.equal(h.context.WGLarge.parseFrame(h.display()).segmentIndex, 1);
+    h.els['animation-toggle'].click(); await h.tick();
+    assert.equal(h.context.WGLarge.parseFrame(h.display()).segmentIndex, 1);
+    h.els['animation-toggle'].click(); h.els['large-next'].click();
+    await h.wait(() => h.largeSegments.at(-1).segmentIndex === 0 && !h.els['choose-file'].disabled);
+    assert.equal(h.context.WGLarge.parseFrame(h.display()).segmentIndex, 0);
+  } finally { release?.(); h.close(); }
+});
+
+test('large receiver requires explicit storage activation and only offers a file after final disk verification', async () => {
+  const h = await diskHarness(); let sender, release;
+  try {
+    const original = Uint8Array.from({ length: 1500 }, (_, index) => index % 251);
+    sender = await h.context.WGLarge.createSender(new File([original], 'received-large.bin'), { chunkBytes: 600 });
+    const segment = await sender.loadSegment(0);
+    h.els['decode-tab'].click(); h.upload(segment.manifestFrame()); await h.wait(() => !h.els['choose-image'].disabled);
+    assert.equal(h.largeStoreOpenCalls, 0); assert.equal(h.backend.audit.writes.length, 0);
+    assert.match(h.els['decode-message'].textContent, /Włącz zapis i wznawianie/); assert.equal(h.els['download-file'].disabled, true);
+    const store = await enableDiskReceiver(h);
+    const trial = h.context.WGCalibration.create({ large: true });
+    h.upload(trial.frame(0)); trial.dispose(); await h.wait(() => !h.els['choose-image'].disabled);
+    assert.equal(h.els['calibration-panel'].hidden, false); assert.equal(h.telemetry.snapshot().transfer, null);
+    h.upload(segment.manifestFrame()); await h.wait(() => !h.els['choose-image'].disabled);
+    assert.equal(h.els['calibration-panel'].hidden, true);
+    assert.equal(h.telemetry.snapshot().imageReads, 1, 'A large-file image must start fresh telemetry after calibration');
+    h.change('scan-layout', 'dual'); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    h.now += 300; // Allow the deliberately throttled progress UI to paint this first manifest.
+    await h.fireFrame('camera-video', [segment.frame(0), segment.manifestFrame()]);
+    assert.equal(h.telemetry.snapshot().transfer.version, 4); assert.equal(h.telemetry.snapshot().usefulUnits, 0);
+    assert.equal(store.state.savedBytes, 0); assert.match(h.els['receiving-count'].textContent, /0 \/ 1/);
+    await h.fireFrame('camera-video', segment.frame(1));
+    let enter;
+    const entered = new Promise(resolve => { enter = resolve; });
+    const gate = new Promise(resolve => { release = resolve; });
+    h.backend.faults.before = async event => { if (event.op === 'close' && event.path.endsWith('received.zip')) { enter(); await gate; } };
+    const pending = h.fireFrame('camera-video', segment.frame(2)); await entered;
+    assert.equal(store.state.completed[0], true); assert.equal(store.state.complete, false);
+    assert.equal(h.els['download-file'].disabled, true); assert.equal(h.telemetry.snapshot().complete, false);
+    release(); await pending;
+    assert.equal(h.els['download-file'].disabled, false); assert.equal(h.telemetry.snapshot().usefulUnits, 1);
+    h.els['download-file'].click(); const download = h.downloads.at(-1);
+    assert.equal(download.name, 'received-large.bin'); assert.equal(download.blob instanceof Blob, false);
+    assert.deepEqual(await fileBytes(download.blob), original);
+    h.els['show-feedback'].click(); assert.equal(sender.acceptFeedback(h.display('feedback-canvas')).complete, true);
+    h.els['clear-all'].click(); assert.equal(h.els['download-file'].disabled, true); assert.equal(store.state.complete, true);
+    h.els['large-resume'].click(); await h.wait(() => !h.els['download-file'].disabled);
+    assert.equal(h.els['output-name'].value, 'received-large.bin');
+  } finally { release?.(); sender?.dispose(); await h.cleanup(); }
+});
+
+test('partial reset and pagehide preserve durable segments; resume, feedback, download and explicit deletion remain correct', async () => {
+  const h = await diskHarness(); let reopened, sender;
+  try {
+    const segmentSize = 2 * 1024 * 1024, original = new Uint8Array(segmentSize + 1201).fill(37);
+    sender = await h.context.WGLarge.createSender(new File([original], 'resume-large.bin'), { chunkBytes: 600 });
+    const first = await sender.loadSegment(0), seedStore = await h.context.WGLargeStore.open();
+    await seedStore.begin(sender.descriptor); await seedStore.putSegment(0, original.subarray(0, segmentSize), first.digest); await seedStore.dispose();
+    const store = await enableDiskReceiver(h), second = await sender.loadSegment(1);
+    assert.equal(store.state.savedBytes, segmentSize); assert.match(h.els['receiving-count'].textContent, /1 \/ 2/);
+    h.els['show-feedback'].click(); assert.deepEqual(Array.from(sender.acceptFeedback(h.display('feedback-canvas')).missingSegments), [1]);
+    h.els['resume-receiving'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    await h.fireFrame('camera-video', second.manifestFrame()); await h.fireFrame('camera-video', second.frame(0));
+    assert.equal(h.telemetry.snapshot().usefulUnits, 0); h.els['reset-receiver'].click();
+    assert.equal(store.state.savedBytes, segmentSize); assert.equal(h.els['download-file'].disabled, true);
+    // A direct scan after reset must use the durable byte count as its baseline,
+    // even when the user does not explicitly press the resume-storage button.
+    h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    await h.fireFrame('camera-video', second.manifestFrame());
+    for (let index = 0; index < second.total; index++) await h.fireFrame('camera-video', second.frame(index));
+    assert.equal(h.els['download-file'].disabled, false); assert.equal(h.telemetry.snapshot().usefulUnits, 1);
+    h.els['copy-diagnostics'].click(); await h.micro();
+    const diagnostics = JSON.parse(h.clipboardText);
+    assert.equal(diagnostics.large.restoredBytes, segmentSize); assert.equal(diagnostics.large.savedBytes, original.length);
+    assert.equal(diagnostics.large.completedSegments, 2);
+    assert.ok(diagnostics.elapsedMs > 0);
+    assert.equal(diagnostics.large.measurement, 'newly-saved-bytes-in-this-session');
+    assert.equal(diagnostics.averageBytesPerSecond, Math.round(1201 * 1000 / diagnostics.elapsedMs * 1000) / 1000,
+      'Previously saved MiB must not inflate the speed of the resumed 1201-byte transfer');
+    h.els['download-file'].click(); assert.deepEqual(await fileBytes(h.downloads.at(-1).blob), original);
+    for (const callback of h.events.pagehide) callback(); await store.dispose();
+    assert.equal(h.urls.size, 0); assert.equal(h.videoCallbacks.size, 0); assert.equal(store.state.complete, true);
+    reopened = await diskHarness(h.backend); await enableDiskReceiver(reopened);
+    await reopened.wait(() => !reopened.els['download-file'].disabled);
+    assert.equal(reopened.els['output-name'].value, 'resume-large.bin');
+    reopened.els['show-feedback'].click(); assert.equal(sender.acceptFeedback(reopened.display('feedback-canvas')).complete, true);
+    reopened.els['large-delete'].click(); assert.equal(reopened.els['large-delete-question'].hidden, false);
+    reopened.els['large-delete-cancel'].click(); assert.equal(reopened.largeStores.at(-1).state.complete, true);
+    reopened.els['large-delete'].click(); reopened.els['large-delete-confirm'].click();
+    await reopened.wait(() => reopened.largeStores.at(-1).state.descriptor === null);
+    assert.equal(reopened.els['download-file'].disabled, true); assert.equal(reopened.els['large-delete-question'].hidden, true);
+  } finally { sender?.dispose(); if (reopened) await reopened.cleanup(); await h.cleanup(); }
+});
+
+test('late storage opening after clear or receiver reset is disposed and cannot restore a completed file', async t => {
+  for (const control of ['clear-all', 'reset-receiver']) await t.test(control, async () => {
+    const h = await diskHarness(); let sender;
+    try {
+      const original = new Uint8Array(90).fill(29);
+      sender = await h.context.WGLarge.createSender(new File([original], 'late-open.bin'), { chunkBytes: 600 });
+      const segment = await sender.loadSegment(0), seedStore = await h.context.WGLargeStore.open();
+      await seedStore.begin(sender.descriptor); await seedStore.putSegment(0, original, segment.digest); await seedStore.finish(); await seedStore.dispose();
+      h.deferLargeOpen = true; h.els['decode-tab'].click(); h.els['enable-large-receiver'].click();
+      await h.wait(() => h.largeOpenJobs.length === 1);
+      h.els[control].click(); h.deferLargeOpen = false; h.largeOpenJobs[0].release(); await h.micro();
+      await h.wait(() => !h.els['enable-large-receiver'].disabled);
+      assert.equal(h.els['download-file'].disabled, true); assert.equal(h.els['large-storage-details'].hidden, true);
+      await assert.rejects(h.largeOpenJobs[0].store.file(), error => error.code === 'STORE_CANCELLED');
+      h.els['enable-large-receiver'].click(); await h.wait(() => !h.els['download-file'].disabled);
+      assert.equal(h.els['output-name'].value, 'late-open.bin');
+    } finally { sender?.dispose(); await h.cleanup(); }
+  });
 });
