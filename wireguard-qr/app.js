@@ -9,7 +9,7 @@
     'source-details', 'source-name', 'source-size', 'source-format', 'qr-empty',
     'qr-result', 'qr-canvas', 'qr-caption', 'download-qr', 'preview-source',
     'source-preview', 'capacity-note', 'image-drop', 'image-input', 'choose-image',
-    'start-camera', 'stop-camera', 'camera-box', 'camera-video', 'scan-help',
+    'start-camera', 'stop-camera', 'camera-box', 'camera-stage', 'camera-video', 'scan-help',
     'decode-message', 'decoded-empty', 'decoded-result', 'decoded-size',
     'decoded-kind', 'output-name', 'download-file', 'preview-decoded',
     'decoded-preview', 'status-bar', 'transfer-mode', 'series-sample',
@@ -24,7 +24,7 @@
     'qr-density', 'scan-metrics', 'scan-rate', 'scan-latency', 'scan-advice',
     'expand-qr', 'close-expanded', 'show-feedback', 'feedback-canvas',
     'feedback-panel', 'feedback-caption', 'close-feedback', 'resume-receiving',
-    'scan-feedback', 'feedback-scan-panel', 'feedback-video', 'stop-feedback-camera',
+    'scan-feedback', 'feedback-scan-panel', 'feedback-camera-stage', 'feedback-video', 'stop-feedback-camera',
     'feedback-message', 'feedback-image-input', 'choose-feedback-image',
     'receiving-label', 'transfer-telemetry', 'telemetry-title', 'telemetry-status',
     'telemetry-duration', 'telemetry-speed', 'telemetry-useful', 'telemetry-read',
@@ -70,10 +70,12 @@
   let decodeEpoch = 0;
   let cameraEpoch = 0;
   let cameraStream = null;
+  let cameraPreviewObserver = null;
   let cameraScanner = null;
   let cancelCameraScan = null;
   let feedbackEpoch = 0;
   let feedbackStream = null;
+  let feedbackPreviewObserver = null;
   let feedbackScanner = null;
   let cancelFeedbackScan = null;
   let feedbackImageBusy = false;
@@ -308,8 +310,12 @@
     cameraScanner = null;
     if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
     cameraStream = null;
+    cameraPreviewObserver?.disconnect();
+    cameraPreviewObserver = null;
     ui['camera-video'].pause();
     ui['camera-video'].srcObject = null;
+    ui['camera-stage'].style.width = ui['camera-stage'].style.height = '';
+    setText(ui['scan-help'], 'Umieść cały kod w kadrze i przytrzymaj telefon.');
     ui['camera-box'].hidden = true;
     ui['stop-camera'].hidden = true;
     ui['start-camera'].hidden = false;
@@ -1789,10 +1795,13 @@
     feedbackScanner = null;
     if (feedbackStream) feedbackStream.getTracks().forEach((track) => track.stop());
     feedbackStream = null;
+    feedbackPreviewObserver?.disconnect();
+    feedbackPreviewObserver = null;
     if (feedbackImageBusy) cancelImageRead();
     feedbackImageBusy = false;
     ui['feedback-video'].pause();
     ui['feedback-video'].srcObject = null;
+    ui['feedback-camera-stage'].style.width = ui['feedback-camera-stage'].style.height = '';
     ui['feedback-scan-panel'].hidden = !keepPanel;
     ui['choose-feedback-image'].disabled = false;
   }
@@ -2127,6 +2136,41 @@
     schedule();
     return cancel;
   }
+  function sizeVideoPreview(video, stage, container, stream) {
+    if (!stream || video.srcObject !== stream || container.hidden) return null;
+    const width = Number(video.videoWidth), height = Number(video.videoHeight);
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+    // The displayed frame can rotate independently of the requested constraints
+    // and of track.getSettings(). Keep video and its guide in one exact viewport.
+    const parentWidth = Number(container.clientWidth);
+    const viewportHeight = Number(window.visualViewport?.height || window.innerHeight || 800);
+    if (Number.isFinite(parentWidth) && parentWidth > 0 && Number.isFinite(viewportHeight) && viewportHeight > 0) {
+      const maxHeight = Math.min(640, Math.max(160, viewportHeight * 0.72));
+      const previewWidth = Math.min(parentWidth, maxHeight * width / height);
+      stage.style.width = previewWidth + 'px';
+      stage.style.height = previewWidth * height / width + 'px';
+    }
+    return { width, height };
+  }
+  function syncCameraPreview() {
+    const size = sizeVideoPreview(ui['camera-video'], ui['camera-stage'], ui['camera-box'], cameraStream);
+    if (!size) return;
+    let capture = {};
+    try { capture = cameraStream.getVideoTracks()[0]?.getSettings?.() || {}; } catch { /* Optional camera metadata. */ }
+    const fps = Number.isFinite(capture.frameRate) && capture.frameRate > 0
+      ? ' Kamera zgłasza ' + Math.round(capture.frameRate) + ' kl./s.' : '';
+    setText(ui['scan-help'], 'Pokaż cały układ kodów z białymi marginesami. Kody mogą być obok siebie lub jeden nad drugim.'
+      + ' Obraz kamery: ' + size.width + ' × ' + size.height + '.' + fps);
+  }
+  function syncFeedbackPreview() {
+    sizeVideoPreview(ui['feedback-video'], ui['feedback-camera-stage'], ui['feedback-scan-panel'], feedbackStream);
+  }
+  function observePreview(container, refresh) {
+    if (typeof window.ResizeObserver !== 'function') return null;
+    const observer = new window.ResizeObserver(refresh);
+    observer.observe(container);
+    return observer;
+  }
   async function requestCamera(lanes = 1) {
     const profile = ui['camera-profile'].value;
     const wide = profile === 'wide' || (profile !== 'classic' && lanes === 2);
@@ -2173,6 +2217,8 @@
       video.srcObject = stream;
       await video.play();
       if (!valid()) return;
+      feedbackPreviewObserver = observePreview(ui['feedback-scan-panel'], syncFeedbackPreview);
+      syncFeedbackPreview();
       const scanner = window.WGCamera.createScanner(scannerOptions(1));
       feedbackScanner = scanner;
       stream.getVideoTracks().forEach((track) => track.addEventListener('ended', () => { if (valid()) stopFeedbackCamera(true); }, { once: true }));
@@ -2226,10 +2272,8 @@
       await ui['camera-video'].play();
       if (token !== cameraEpoch) return;
       ui['choose-image'].disabled = false;
-      let capture = {};
-      try { capture = stream.getVideoTracks()[0]?.getSettings?.() || {}; } catch { /* Optional camera metadata. */ }
-      const captureText = capture.width && capture.height ? ` Kamera zgłasza ${capture.width} × ${capture.height}${capture.frameRate ? `, ${Math.round(capture.frameRate)} kl./s` : ''}.` : '';
-      ui['scan-help'].textContent = 'Pokaż cały układ kodów z białymi ramkami. Każdy czytelny kod jest odbierany niezależnie.' + captureText;
+      cameraPreviewObserver = observePreview(ui['camera-box'], syncCameraPreview);
+      syncCameraPreview();
       message('decode-message', 'Skanowanie… skieruj kamerę na kod QR.');
       status('Kamera włączona — skanowanie lokalne');
       stream.getVideoTracks().forEach((track) => track.addEventListener('ended', () => {
@@ -2583,9 +2627,14 @@
     }
   });
   let resizeTimer = null;
+  for (const name of ['loadedmetadata', 'resize']) {
+    ui['camera-video'].addEventListener(name, syncCameraPreview);
+    ui['feedback-video'].addEventListener(name, syncFeedbackPreview);
+  }
+  window.visualViewport?.addEventListener('resize', () => { syncCameraPreview(); syncFeedbackPreview(); });
   window.addEventListener('resize', () => {
     if (resizeTimer !== null) window.clearTimeout(resizeTimer);
-    resizeTimer = window.setTimeout(() => { resizeTimer = null; redrawCurrent(); }, 100);
+    resizeTimer = window.setTimeout(() => { resizeTimer = null; redrawCurrent(); syncCameraPreview(); syncFeedbackPreview(); }, 100);
   });
   window.addEventListener('pagehide', () => {
     if (resizeTimer !== null) window.clearTimeout(resizeTimer);

@@ -289,10 +289,11 @@ const secondTransfer = await WGTransfer.createTransfer(original.map(value => val
 const secondFrame = secondTransfer.frames[0];
 const secondQR = WGQR.encodeBytes(secondFrame);
 
-function twoSymbols({ vertical = false, swapped = false, identical = false, only = null, shift = 0 } = {}) {
-  const size = { width: 1600, height: 1000 };
+function twoSymbols({ vertical = false, swapped = false, identical = false, only = null, shift = 0,
+  width = 1600, height = 1000 } = {}) {
+  const size = { width, height };
   const positions = vertical ? [{ left: 580, top: 20 }, { left: 580, top: 545 }]
-    : [{ left: 100 + shift, top: 280 }, { left: 1040 - shift, top: 280 }];
+    : [{ left: 100 + shift, top: 280 }, { left: width - 560 - shift, top: 280 }];
   const matrices = identical ? [qr, qr] : swapped ? [secondQR, qr] : [qr, secondQR];
   const output = scene({ ...size, blank: true });
   for (let index = 0; index < 2; index++) {
@@ -364,6 +365,58 @@ test('dual scanner discovers vertically arranged codes in a landscape camera fra
   assert.ok(found, `Orientation search must find both vertically arranged symbols: ${JSON.stringify(trace)}`);
   assertBoth(found);
   scanner.dispose();
+});
+
+test('dual scanner reacquires both byte-exact symbols after a 1920x1080 frame rotates to 1080x1920', () => {
+  const { scanner } = scannerWithCanvas(WGQR.decodePixels, { lanes: 2 });
+  const video = twoSymbols({ width: 1920, height: 1080 });
+  const width = video.videoWidth;
+  const height = video.videoHeight;
+  const rotated = new Uint8ClampedArray(video.rgba.length);
+  // Rotate the captured pixels, including both QR matrices and their quiet zones.
+  // Changing only the metadata or the symbols' positions would miss this case.
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const from = (y * width + x) * 4;
+      const to = (x * height + height - 1 - y) * 4;
+      rotated[to] = video.rgba[from];
+      rotated[to + 1] = video.rgba[from + 1];
+      rotated[to + 2] = video.rgba[from + 2];
+      rotated[to + 3] = video.rgba[from + 3];
+    }
+  }
+  const assertInFrame = sample => {
+    assertBoth(sample);
+    for (const result of sample.results) {
+      for (const name of ['topLeftCorner', 'topRightCorner', 'bottomRightCorner', 'bottomLeftCorner']) {
+        const point = result.location[name];
+        assert.ok(Number.isFinite(point.x) && point.x >= 0 && point.x <= video.videoWidth,
+          `${name}.x must use the current source width.`);
+        assert.ok(Number.isFinite(point.y) && point.y >= 0 && point.y <= video.videoHeight,
+          `${name}.y must use the current source height.`);
+      }
+    }
+  };
+  try {
+    assertInFrame(scanner.scan(video));
+    const landscapeTracked = scanner.scan(video);
+    assert.equal(landscapeTracked.region, 'tracked');
+    assertInFrame(landscapeTracked);
+
+    // Keep the same video object and scanner, as happens when a camera rotates.
+    Object.assign(video, { videoWidth: height, videoHeight: width, rgba: rotated });
+    const portraitSearch = scanner.scan(video);
+    assert.equal(portraitSearch.region, 'search', 'Dimension changes must discard both old tracked ROIs.');
+    assertInFrame(portraitSearch);
+    const centers = portraitSearch.results.map(result =>
+      (result.location.topLeftCorner.y + result.location.bottomRightCorner.y) / 2);
+    assert.ok(Math.abs(centers[0] - centers[1]) > 1000,
+      'The two rotated payloads must be located above/below one another.');
+
+    const portraitTracked = scanner.scan(video);
+    assert.equal(portraitTracked.region, 'tracked');
+    assertInFrame(portraitTracked);
+  } finally { scanner.dispose(); }
 });
 
 test('dual search can reacquire a centered single dense QR that crosses both half-frame seams', () => {
