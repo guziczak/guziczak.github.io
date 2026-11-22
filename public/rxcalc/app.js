@@ -4,7 +4,8 @@ import { availableDrugs } from './catalogue-selection.js';
 import { REGIMENS } from './regimens.js';
 import { availableRegimens, resolveRegimen } from './regimen-engine.js';
 import { patientFieldsFor } from './workflow.js';
-import { applySourceComparisonPresentation, resultErrorMessages, limitOriginsFor } from './source-result.js';
+import { applySourceComparisonPresentation, resultErrorMessages } from './source-result.js';
+import { humanAgeYearsFor, humanContextFor, roundingStepFor, doseLimitsFor, calculationInputFor } from './calculation-state.js';
 import { HUMAN_REGIMENS } from './human-regimens.js';
 import { LIQUID_STARTER_REGIMENS, liquidStarterMarkup } from './liquid-starters.js';
 import { supportsLiquidChoices, supportsLiquidDoseView, defaultLiquidDoseView, liquidDoseChoices, liquidDoseChoicesMarkup } from './liquid-doses.js';
@@ -19,13 +20,14 @@ import { createViewportLayout } from './viewport-layout.js';
 import { createCatalogueMotion } from './catalogue-motion.js';
 import { ingredientDailyDose, supportsDailyDose } from './daily-dose.js';
 import { dailyDoseMarkup, dailyDoseMotionContext, renderDailyDoseNote, dailyDosePresentationModel, clinicalStatusMarkup } from './dose-safety-view.js';
-import { assessDoseRounding, hasScopedRoundingEvidence, automaticRoundingStep, applyRoundingPresentation, roundingValidationSource, resolveRoundingRegimen, createRoundingReview, roundingAuditText } from './rounding-assessment.js';
+import { assessDoseRounding, hasScopedRoundingEvidence, applyRoundingPresentation, roundingValidationSource, resolveRoundingRegimen, createRoundingReview, roundingAuditText } from './rounding-assessment.js';
 import { roundingReviewMarkup } from './rounding-review-view.js';
 import { resolveDurationGuidance, durationResultWarning, durationDayChoices } from './duration-guidance.js';
 import { durationGuidanceMarkup, renderDurationGuidance } from './duration-view.js';
 import { editableHumanSource, sourceInitialValues, sourceEditState, sourceEditMarkup } from './regimen-edit.js';
-import { effectiveRoundingStep, normalizeDecimalPlaces, normalizeRoundingMode, supportsDecimalRounding } from './decimal-rounding.js';
-import { createPrescriptionCart, savePrescriptionItem, removePrescriptionItem, assessPrescriptionCart, prescriptionCartText, preparePrescriptionEdit } from './prescription-cart.js';
+import { normalizeDecimalPlaces, normalizeRoundingMode, supportsDecimalRounding } from './decimal-rounding.js';
+import { createPrescriptionCart, savePrescriptionItem, removePrescriptionItem, assessPrescriptionCart, prescriptionCartText, preparePrescriptionEdit, completePrescriptionCartAge } from './prescription-cart.js';
+import { revalidatePrescriptionAge } from './cart-age-validation.js';
 import { decimalRoundingMarkup, prescriptionCartMarkup } from './prescription-tools-view.js';
 import { playCartFeedback, cancelCartFeedback } from './cart-feedback.js';
 import { copyText, selectCopyText } from './clipboard.js';
@@ -33,7 +35,7 @@ import { FENTANYL_SINGLE_DOSE_SOURCES } from './cardio-fentanyl.js';
 import { availableSingleDoseSources, resolveSingleDose, buildSingleDoseText, formatSingleDoseNumber } from './single-dose.js';
 import { singleDoseRegimenMarkup, singleDoseResultMarkup, updateSingleDoseView } from './single-dose-view.js';
 import { apixabanReductionCriteria } from './cardio-anticoagulant-regimens.js';
-import { RENAL_STATE_DEFAULTS, isCrClIgnored, renalAssessmentForState, renalRegimenContext, renalCreatinineUnitChange } from './renal-state.js';
+import { RENAL_STATE_DEFAULTS, isCrClIgnored, renalAssessmentForState, renalCreatinineUnitChange } from './renal-state.js';
 import { renalPanelMarkup, updateRenalPanel } from './renal-view.js';
 import { sourceConfirmationsAfterEdit } from './source-confirmations.js';
 
@@ -174,11 +176,7 @@ const isSingleDose = form => form?.calculationMode === 'single-dose';
 const getSourceRegimen = () => (isVeterinary() ? REGIMENS : isSingleDose(getForm()) ? FENTANYL_SINGLE_DOSE_SOURCES : HUMAN_SOURCE_OPTIONS).find(r => r.id === state.regimenId);
 function currentRoundingStep() {
   const form=getForm(),source=getSourceRegimen();
-  if(state.roundingMode==='auto')return automaticRoundingStep({form,source,
-    context:{...humanContext(),doseMode:state.doseMode,patientKind:isVeterinary()?'animal':'human'}})
-    ?? num(state.roundingStep);
-  return effectiveRoundingStep({ enabled:state.roundingMode==='custom', places:state.roundingPlaces,
-    form, source, baselineStep:num(state.roundingStep) });
+  return roundingStepFor(state,form,source);
 }
 const isReference = f => !!(f?.referenceOnly || f?.calculationBlocked);
 const isInstruction = f => !isVeterinary() && (f?.calculationMode === 'instruction' || getSourceRegimen()?.doseMode === 'instruction');
@@ -221,14 +219,7 @@ const deviceDivisions = (r, f) => r.valid && f.doseStepUnits > 0 ? Math.round(r.
 const divisionUnit = count => count === 1 ? 'działka' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'działki' : 'działek';
 const variantUnit = count => count === 1 ? 'wariant' : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 12 || count % 100 > 14) ? 'warianty' : 'wariantów';
 const regimenContext = () => ({ formId: getForm()?.id, species: state.species, weight: num(state.weight), age: num(state.age), ageUnit: state.vetAgeUnit, foodChainStatus: state.foodChainStatus, days: num(state.days), calculationBlocked: getForm()?.calculationBlocked === true });
-const humanContext = () => {
-  const source=getSourceRegimen();
-  return { formId:getForm()?.id, specialty:state.specialty, patientType:state.patientType,
-    age:num(state.age), ageUnit:state.humanAgeUnit, weight:num(state.weight), days:num(state.days),
-    dose:num(state.dose), frequency:num(state.frequency), renalStatus:state.renalStatus,
-    ...renalRegimenContext(state,source),
-    sourceConfirmations:state.sourceConfirmations };
-};
+const humanContext = () => humanContextFor(state,getForm(),getSourceRegimen());
 const renalViewOptions = () => {
   const source=getSourceRegimen(),assessment=renalAssessmentForState(state);
   return {state,assessment,required:!isCrClIgnored(state)&&source?.requireCrCl===true,icon,thresholds:[source?.minCrCl,source?.maxCrCl],
@@ -243,7 +234,7 @@ const getAvailableRegimens = () => state.custom || isReference(getForm()) ? [] :
   ? availableRegimens(REGIMENS, regimenContext()) : isSingleDose(getForm())
     ? availableSingleDoseSources(FENTANYL_SINGLE_DOSE_SOURCES, singleDoseContext())
     : availableHumanRegimens(HUMAN_SOURCE_OPTIONS, humanContext());
-const humanAgeYears = () => num(state.age) === null ? null : num(state.age) * ({years:1,months:1/12,days:1/365.25}[state.humanAgeUnit] || 1);
+const humanAgeYears = () => humanAgeYearsFor(state);
 const ageUnitLabel = () => ({ years: 'lat', months: 'mies.', weeks: 'tyg.', days: 'dni' })[state.vetAgeUnit] || '';
 function currentRoundingOptions() {
   const form=getForm();
@@ -732,23 +723,12 @@ function renderDrugs() {
 function shortForm(f) { return f.shortFormLabel || ({tablet:'tabletki',suspension:'zawiesina',oralPaste:'pasta doustna',oralGel:'żel doustny',oralPowder:'granulat doustny',spray:'aerozol',solution:'roztwór',gel:'żel',drops:'krople',injection:'iniekcja'})[f.form] || f.form; }
 function applicableLimit(f,{includeSource=true}={}) {
   const age=isVeterinary()?num(state.age):humanAgeYears(),weight=num(state.weight);
-  let rule=(f.conditionalLimits||[]).find(r => {
-    const tests=[['minAge','age',v=>age>=v],['minAgeExclusive','age',v=>age>v],['maxAge','age',v=>age<=v],['minWeight','weight',v=>weight>=v],['minWeightExclusive','weight',v=>weight>v],['maxWeight','weight',v=>weight<=v]];
-    return tests.every(([key,param,test]) => r[key] == null || (Number.isFinite(param==='age'?age:weight) && test(r[key])));
-  });
   const humanSource = includeSource && !isVeterinary() && getSourceRegimen() ? resolveRoundingRegimen(currentRoundingOptions()) : null;
-  const strictest = values => values.filter(v => Number.isFinite(v) && v > 0).length ? Math.min(...values.filter(v => Number.isFinite(v) && v > 0)) : null;
-  const fromSource=strictest([rule?.maxDailyMg,f.maxDailyMg,humanSource?.maxDailyMg]);
-  const manual=num(state.manualMax);
-  const daily=manual===null ? fromSource : fromSource===null ? manual : Math.min(manual,fromSource);
-  const single=strictest([rule?.maxSingleMg,f.maxSingleMg,humanSource?.maxSingleMg]);
-  return { daily, single, label:manual!==null ? 'Limit wprowadzony przez lekarza (nie wyższy od dostępnego limitu źródłowego)' : humanSource?.limitLabel || rule?.label || 'Limit z danych preparatu',
-    origins:{daily:limitOriginsFor(daily,{manual,regimen:humanSource?.maxDailyMg,product:f.maxDailyMg,conditional:rule?.maxDailyMg}),
-      single:limitOriginsFor(single,{regimen:humanSource?.maxSingleMg,product:f.maxSingleMg,conditional:rule?.maxSingleMg})} };
+  return doseLimitsFor(f,{age,weight,manualMax:state.manualMax,sourceCheck:humanSource});
 }
 function makeInput(packageOverride) {
   const f=getForm(), limit=applicableLimit(f), pack=packageOverride||f.packOptions.find(p=>p.id===state.packageId)||f.packOptions[0];
-  return { patientKind:isVeterinary()?'animal':'human',calculationBlocked:isReference(f),calculationMode:f.calculationMode,species:isVeterinary()?state.species:undefined,form:f.form,doseMode:state.doseMode,dose:num(state.dose),weight:num(state.weight),age:isVeterinary()&&num(state.age)!==null?num(state.age)*({years:1,months:1/12,weeks:7/365,days:1/365}[state.vetAgeUnit]||1):humanAgeYears(),frequency:num(state.frequency),days:num(state.days),strengthMg:f.strengthMg??null,concentrationMg:f.concentrationMg??null,concentrationMl:f.concentrationMl??null,unitLabel:f.unitLabel,packageSize:pack.quantity,roundingStep:currentRoundingStep(),allowedFractions:f.allowedFractions??null,maxDailyMg:limit.daily,maxSingleMg:limit.single,minAge:f.minAge??null,shelfLifeDays:f.shelfLifeDays??null,dropsPerMl:f.dropsPerMl??null,singleUseUnitSize:f.singleUseUnitSize??null,doseBasisIngredient:f.doseBasisIngredient,doseStepUnits:f.doseStepUnits??null,foodChainStatus:state.foodChainStatus,injectionContainerUse:f.injectionContainerUse,maxWithdrawalsPerVial:f.maxWithdrawalsPerVial,discardRemainderAfterUse:f.discardRemainderAfterUse,...(Object.hasOwn(f,'requiresFoodChainExclusion')?{requiresFoodChainExclusion:f.requiresFoodChainExclusion}:{}) };
+  return calculationInputFor(state,f,pack,{roundingStep:currentRoundingStep(),limits:limit});
 }
 function updateInstructionResult(check) {
   const f=getForm(),source=getSourceRegimen(),pack=currentPackage(f),count=num(state.instructionPacks);
@@ -1015,7 +995,11 @@ function updateCartControls() {
   const feedback=$('#cart-add-feedback');
   if(feedback)feedback.innerHTML=cartFeedback?`${esc(cartFeedback)} <button data-action="cart-next">Dodaj kolejny preparat</button> · <button data-action="cart-open">Otwórz koszyk</button>`:'';
 }
+function completeCartAge() {
+  prescriptionCart=completePrescriptionCartAge(prescriptionCart,state,{revalidate:revalidatePrescriptionAge}).cart;
+}
 function cartDialog(notice='') {
+  completeCartAge();
   const output=prescriptionCartText(prescriptionCart,state,{mode:cartMode});
   const assessment=assessPrescriptionCart(prescriptionCart,state);
   openDialog('Koszyk recepty',prescriptionCartMarkup({
@@ -1026,6 +1010,7 @@ function cartDialog(notice='') {
 }
 function addToPrescriptionCart() {
   if(!productReady()||!latest?.valid||!state.confirmed||state.demo||!latestTexts.full||!latestTexts.ds)return;
+  completeCartAge();
   const f=getForm(),pack=currentPackage(f),source=getSourceRegimen(),asNeeded=source?.asNeeded===true;
   const singleDose=isSingleDose(f);
   const summary=singleDose?[
@@ -1047,7 +1032,8 @@ function addToPrescriptionCart() {
   }:{singleUnits:latest.singleUnits,singleMg:latest.singleMg,dailyMg:latest.dailyMg,
     totalUnits:latest.totalUnits,packages:latest.packages,packageSize:pack.quantity};
   const saved=savePrescriptionItem(prescriptionCart,{
-    snapshot:{...state,roundingPolicy:latest.rounding?.state==='rule'?latest.rounding.policy:null,calculation},
+    snapshot:{...state,roundingPolicy:latest.rounding?.state==='rule'?latest.rounding.policy:null,calculation,
+      validationModel:{form:f,source:source||null}},
     label:f.label,summary,texts:{...latestTexts},
     valid:latest.valid,confirmed:state.confirmed,demo:state.demo,
   },{replaceId:editingCartId});
@@ -1071,7 +1057,7 @@ function editCartItem(id) {
   if(!item)return;
   const edit=preparePrescriptionEdit(item,state);
   if(!edit.ok){cartDialog(edit.message);return;}
-  const {roundingPolicy,calculation,...medicationState}=edit.state;
+  const {roundingPolicy,calculation,validationModel,...medicationState}=edit.state;
   Object.assign(state,medicationState,{search:'',category:'all',routeFilter:'all',
     roundingMode:normalizeRoundingMode(medicationState.roundingMode,medicationState.roundDoses?'custom':'off')});
   editingCartId=id;cartFeedback='';roundingReview=null;
@@ -1120,6 +1106,7 @@ function retryManualCopy(button) {
     isCurrent:()=>dialog.open&&field.isConnected});
 }
 function copyCart(button) {
+  completeCartAge();
   const output=prescriptionCartText(prescriptionCart,state,{mode:cartMode});
   if(!output.ok){cartDialog(output.message);return;}
   const scope=button?.closest('.prescription-cart'),dialog=$('#dialog');

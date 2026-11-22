@@ -166,6 +166,52 @@ export function preparePrescriptionEdit(item, currentState = {}) {
   } };
 }
 
+/** Complete an unknown human age only after the calculator revalidates the
+ * saved treatment and proves its reviewed output unchanged. Never refresh an
+ * existing age or another patient input merely by replacing the fingerprint.
+ */
+export function completePrescriptionCartAge(cart, currentState = {}, { revalidate } = {}) {
+  const unchanged = { cart, updatedIds: [] };
+  if (!Array.isArray(cart?.items) || !plainObject(currentState)
+      || typeof revalidate !== 'function' || currentState.demo
+      || currentState.specialty === 'veterinary') return unchanged;
+  const age = numeric(currentState.age);
+  if (typeof age !== 'number' || !Number.isFinite(age) || age < 0
+      || !['years', 'months', 'days'].includes(currentState.humanAgeUnit)) return unchanged;
+  const currentKey = patientContextKey(currentState), groupKey = patientGroupKey(currentState);
+  const updatedIds = [];
+  const items = cart.items.map(item => {
+    try {
+      if (!plainObject(item?.snapshot) || item.snapshot.demo
+          || item.snapshot.specialty === 'veterinary' || numeric(item.snapshot.age) !== null
+          || item.groupKey !== groupKey || patientGroupKey(item.snapshot) !== groupKey
+          || item.patientKey !== patientContextKey(item.snapshot)) return item;
+      const snapshot = freeze(cloneData({ ...item.snapshot,
+        age: currentState.age, humanAgeUnit: currentState.humanAgeUnit,
+      }));
+      const patientKey = patientContextKey(snapshot);
+      if (patientKey !== currentKey) return item;
+      const checked = revalidate(snapshot, { previousItem: item });
+      // An asynchronous validator cannot authorize this synchronous update.
+      if (checked instanceof Promise) {
+        checked.catch(() => {});
+        return item;
+      }
+      if (!plainObject(checked) || typeof checked.then === 'function'
+          || checked.valid !== true || checked.unchanged !== true
+          || checked.requiresReview === true) return item;
+      const updated = freeze({ ...item, snapshot,
+        patientContext: normalizePatientContext(snapshot), patientKey,
+      });
+      updatedIds.push(item.id);
+      return updated;
+    } catch {
+      return item;
+    }
+  });
+  return { cart: updatedIds.length ? freeze({ ...cart, items }) : cart, updatedIds };
+}
+
 /** Old values remain visible, but are not exported for changed patient inputs. */
 export function assessPrescriptionCart(cart, currentState = {}) {
   const key = patientContextKey(currentState);
