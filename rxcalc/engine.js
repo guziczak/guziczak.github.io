@@ -30,7 +30,7 @@ export function formatNumber(value, maxDecimals = 2) {
 export function calculate(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) input = {};
   const result = {
-    valid: false, errors: [], warnings: [], warningDetails: [], checks: [], status: 'incomplete',
+    valid: false, errors: [], doseLimitIssues: [], warnings: [], warningDetails: [], checks: [], status: 'incomplete',
     singleMg: null, dailyMg: null, theoreticalUnits: null, singleUnits: null,
     dailyUnits: null, totalUnits: null, packages: null, providedUnits: null,
     leftoverUnits: null, roundingDifferencePercent: null, maxRatio: null,
@@ -390,7 +390,10 @@ export function calculate(input = {}) {
   if (maxSingleMg !== null && result.singleMg !== null) {
     if (result.singleMg - maxSingleMg > tolerance(maxSingleMg)) {
       critical = true;
-      result.errors.push(`Dawka jednorazowa ${formatNumber(result.singleMg, 4)} mg przekracza wprowadzony limit ${formatNumber(maxSingleMg, 4)} mg.`);
+      const message = `Dawka jednorazowa ${formatNumber(result.singleMg, 4)} mg przekracza wprowadzony limit ${formatNumber(maxSingleMg, 4)} mg.`;
+      result.errors.push(message);
+      result.doseLimitIssues.push({code:'single-dose-limit', scope:'single', basis:'administered',
+        actualMg:result.singleMg, limitMg:maxSingleMg, message});
     } else result.checks.push('Dawka jednorazowa nie przekracza wprowadzonego limitu.');
   }
   if (maxDailyMg !== null && result.dailyMg !== null) {
@@ -401,7 +404,10 @@ export function calculate(input = {}) {
     } else result.maxRatio = clean(ratio);
     if (result.dailyMg - maxDailyMg > tolerance(maxDailyMg)) {
       critical = true;
-      result.errors.push(`Dawka dobowa ${formatNumber(result.dailyMg, 4)} mg przekracza wprowadzony limit ${formatNumber(maxDailyMg, 4)} mg.`);
+      const message = `Dawka dobowa ${formatNumber(result.dailyMg, 4)} mg przekracza wprowadzony limit ${formatNumber(maxDailyMg, 4)} mg.`;
+      result.errors.push(message);
+      result.doseLimitIssues.push({code:'daily-dose-limit', scope:'daily', basis:'administered',
+        actualMg:result.dailyMg, limitMg:maxDailyMg, message});
     } else result.checks.push('Dawka dobowa nie przekracza wprowadzonego limitu.');
   } else if (maxDailyMg === null) {
     const message='Nie zdefiniowano limitu dobowego dla tego scenariusza. Potwierdź schemat w ChPL.';

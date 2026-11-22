@@ -4,6 +4,12 @@ Lekki kalkulator dawkowania i zapotrzebowania na preparaty z interfejsem po pols
 
 Docelowy adres projektu: **https://guziczak.github.io/rxcalc/**. Sam adres w tym pliku nie stanowi potwierdzenia publikacji.
 
+## Komunikaty o przekroczeniu dawki — 22.11.2026
+
+Panel wyniku łączy powtarzające się przekroczenia w jeden komunikat dla dawki jednorazowej i jeden dla dobowej. Pokazuje wartość dawki, próg i jego pochodzenie: wybrany schemat, dane preparatu lub limit wprowadzony przez lekarza. Jeśli dawka wpisana i podawana po zaokrągleniu albo przekroczone progi są różne, te informacje pozostają jawne w tym samym komunikacie.
+
+Łączenie dotyczy wyłącznie prezentacji. Oba walidatory zachowują oryginalne błędy, progi i blokady wyniku; pozostałe komunikaty oraz zasady zaokrąglenia działają jak wcześniej. Wyższy ręczny próg nie zmienia opisu niższego obowiązującego limitu źródłowego.
+
 ## Domyślne pomijanie CrCl — 22.11.2026
 
 Panel **Czynność nerek** ma checkbox **Ignoruj**, domyślnie zaznaczony także po rozpoczęciu nowego pacjenta. Pomija sprawdzanie liczbowego CrCl i wymagania jego obliczenia, zachowując dawkę, częstość i limity wybranego schematu. Pokazuje stan **CrCl pominięty** oraz neutralne porównanie liczbowe. Odznaczenie przywraca formularz i dotychczasowe sprawdzanie wcześniej wpisanych danych.

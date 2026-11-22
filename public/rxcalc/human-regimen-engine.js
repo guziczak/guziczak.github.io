@@ -32,7 +32,7 @@ const fmt = value => String(clean(value)).replace('.', ',');
 
 function emptyResult() {
   return {
-    valid: false, errors: [], warnings: [], requirements: [], issues: [], crclIgnored: false,
+    valid: false, errors: [], doseLimitIssues: [], warnings: [], requirements: [], issues: [], crclIgnored: false,
     doseMode: null, dose: null, frequency: null,
     fixedDays: null, minDays: null, maxDays: null,
     doseRange: null, frequencyOptions: null,
@@ -445,8 +445,18 @@ export function resolveHumanRegimen(record, context = {}, { allowNumericOverride
       const dailyMg = singleMg * result.frequency;
       if (!positive(singleMg) || !positive(dailyMg)) result.errors.push('Dawka jest poza zakresem obliczeń.');
       else {
-        if (result.maxSingleMg !== null && above(singleMg, result.maxSingleMg)) result.errors.push('Dawka jednorazowa przekracza limit wybranego schematu.');
-        if (result.maxDailyMg !== null && above(dailyMg, result.maxDailyMg)) result.errors.push('Dawka dobowa przekracza limit wybranego schematu.');
+        if (result.maxSingleMg !== null && above(singleMg, result.maxSingleMg)) {
+          const message = 'Dawka jednorazowa przekracza limit wybranego schematu.';
+          result.errors.push(message);
+          result.doseLimitIssues.push({code:'single-dose-limit', scope:'single', basis:'requested',
+            actualMg:singleMg, limitMg:result.maxSingleMg, message});
+        }
+        if (result.maxDailyMg !== null && above(dailyMg, result.maxDailyMg)) {
+          const message = 'Dawka dobowa przekracza limit wybranego schematu.';
+          result.errors.push(message);
+          result.doseLimitIssues.push({code:'daily-dose-limit', scope:'daily', basis:'requested',
+            actualMg:dailyMg, limitMg:result.maxDailyMg, message});
+        }
       }
     }
     if (record.doseMode === 'units') {

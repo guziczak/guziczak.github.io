@@ -4,7 +4,7 @@ import { availableDrugs } from './catalogue-selection.js';
 import { REGIMENS } from './regimens.js';
 import { availableRegimens, resolveRegimen } from './regimen-engine.js';
 import { patientFieldsFor } from './workflow.js';
-import { applySourceComparisonPresentation } from './source-result.js';
+import { applySourceComparisonPresentation, resultErrorMessages, limitOriginsFor } from './source-result.js';
 import { HUMAN_REGIMENS } from './human-regimens.js';
 import { LIQUID_STARTER_REGIMENS, liquidStarterMarkup } from './liquid-starters.js';
 import { supportsLiquidChoices, supportsLiquidDoseView, defaultLiquidDoseView, liquidDoseChoices, liquidDoseChoicesMarkup } from './liquid-doses.js';
@@ -740,7 +740,11 @@ function applicableLimit(f,{includeSource=true}={}) {
   const strictest = values => values.filter(v => Number.isFinite(v) && v > 0).length ? Math.min(...values.filter(v => Number.isFinite(v) && v > 0)) : null;
   const fromSource=strictest([rule?.maxDailyMg,f.maxDailyMg,humanSource?.maxDailyMg]);
   const manual=num(state.manualMax);
-  return { daily: manual===null ? fromSource : fromSource===null ? manual : Math.min(manual,fromSource), single:strictest([rule?.maxSingleMg,f.maxSingleMg,humanSource?.maxSingleMg]), label:manual!==null ? 'Limit wprowadzony przez lekarza (nie wyższy od dostępnego limitu źródłowego)' : humanSource?.limitLabel || rule?.label || 'Limit z danych preparatu' };
+  const daily=manual===null ? fromSource : fromSource===null ? manual : Math.min(manual,fromSource);
+  const single=strictest([rule?.maxSingleMg,f.maxSingleMg,humanSource?.maxSingleMg]);
+  return { daily, single, label:manual!==null ? 'Limit wprowadzony przez lekarza (nie wyższy od dostępnego limitu źródłowego)' : humanSource?.limitLabel || rule?.label || 'Limit z danych preparatu',
+    origins:{daily:limitOriginsFor(daily,{manual,regimen:humanSource?.maxDailyMg,product:f.maxDailyMg,conditional:rule?.maxDailyMg}),
+      single:limitOriginsFor(single,{regimen:humanSource?.maxSingleMg,product:f.maxSingleMg,conditional:rule?.maxSingleMg})} };
 }
 function makeInput(packageOverride) {
   const f=getForm(), limit=applicableLimit(f), pack=packageOverride||f.packOptions.find(p=>p.id===state.packageId)||f.packOptions[0];
@@ -881,7 +885,7 @@ function updateResultContent() {
   const missingPatientMessages=new Set(missingPatientIssues.map(issue=>issue.message));
   const missingPatientStatus=missingPatientIssues.length?clinicalStatusMarkup(dailyDosePresentationModel({
     source:selectedSource,eligibility:{valid:false,issues:missingPatientIssues,errors:[...missingPatientMessages]}})):'';
-  let messages=[...r.errors.filter(t=>!missingPatientMessages.has(t)).map(t=>[t,r.status==='critical'?'critical':'neutral']),...r.warnings.map(t=>[t,'warning']),...(r.notices||[]).filter(item=>item.sourceComparison===true).map(item=>[item.message,'neutral'])];
+  let messages=[...resultErrorMessages(r,{sourceCheck,limitOrigins:limit.origins}).filter(t=>!missingPatientMessages.has(t)).map(t=>[t,r.status==='critical'?'critical':'neutral']),...r.warnings.map(t=>[t,'warning']),...(r.notices||[]).filter(item=>item.sourceComparison===true).map(item=>[item.message,'neutral'])];
   if(hasResult && f.unmodelledShelfLifeMonths && input.days>180)messages.push([`Po otwarciu preparat zachowuje trwałość przez ${f.unmodelledShelfLifeMonths} miesięcy. Wyliczenie opakowań opiera się na pojemności; przy tej długości terapii trzeba je sprawdzić z datami otwarcia i ważności.`, 'warning']);
   const pack=f.packOptions.find(p=>p.id===state.packageId)||f.packOptions[0];
   if($('#selected-package')) $('#selected-package').textContent=pack.label;
