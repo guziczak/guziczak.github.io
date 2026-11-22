@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl" data-app-version="2026.11.22-large.1">
+<html lang="pl" data-app-version="2026.11.22-camera.1">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,7 +10,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Plik ↔ QR — lokalny konwerter</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=10">
+  <link rel="stylesheet" href="./styles.css?v=11">
   <script src="./assets/qr-core.js?v=3" defer></script>
   <script src="./assets/qr-render.js?v=1" defer></script>
   <script src="./assets/qr-encoder.js?v=1" defer></script>
@@ -23,7 +23,7 @@
   <script src="./assets/qr-playback.js?v=2" defer></script>
   <script src="./assets/qr-large-store.js?v=1" defer></script>
   <script src="./assets/qr-large.js?v=1" defer></script>
-  <script src="./app.js?v=12" defer></script>
+  <script src="./app.js?v=13" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#converter">Przejdź do konwertera</a>
@@ -170,7 +170,7 @@
                 <button id="scan-feedback" class="button secondary full-width" type="button">Zeskanuj potwierdzenie</button>
                 <p class="series-hint">Na odbiorniku wybierz „Uzupełnij brakujące”. Po zeskanowaniu jego QR wyślemy dane potrzebne do dokończenia odbioru.</p>
                 <div id="feedback-scan-panel" class="feedback-scan-panel" hidden>
-                  <video id="feedback-video" playsinline muted aria-label="Kamera do odczytania potwierdzenia odbioru"></video>
+                  <div id="feedback-camera-stage" class="camera-stage"><video id="feedback-video" playsinline muted aria-label="Kamera do odczytania potwierdzenia odbioru"></video></div>
                   <div class="feedback-actions"><button id="choose-feedback-image" class="button secondary" type="button">Wczytaj obraz potwierdzenia</button><button id="stop-feedback-camera" class="button secondary" type="button">Zamknij skanowanie</button></div>
                   <input id="feedback-image-input" class="visually-hidden" type="file" accept="image/*" tabindex="-1" aria-label="Wybierz obraz potwierdzenia odbioru">
                 </div>
@@ -220,13 +220,13 @@
               <label for="camera-profile">Kadr kamery</label>
               <div class="select-wrap"><select id="camera-profile" aria-describedby="camera-settings-help"><option value="auto" selected>Automatycznie</option><option value="wide">Szeroki · 16:9</option><option value="classic">Klasyczny · 4:3</option></select></div>
             </div>
-            <p id="camera-settings-help">Wybierz układ widoczny na drugim ekranie. Dla dwóch kodów trzymaj telefon poziomo.</p>
+            <p id="camera-settings-help">Wybierz układ widoczny na drugim ekranie i zmieść wszystkie kody z białymi marginesami. Telefon możesz trzymać pionowo lub poziomo.</p>
           </div>
           <button id="start-camera" class="button secondary camera-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg>Uruchom kamerę</button>
           <div id="camera-box" class="camera-box" hidden>
             <div id="camera-stage" class="camera-stage">
               <video id="camera-video" playsinline muted aria-label="Podgląd kamery do skanowania kodu QR"></video>
-              <div id="scan-guides" class="scan-guides" data-layout="single" aria-hidden="true"><span></span><span></span></div>
+              <div id="scan-guides" class="scan-guides" data-layout="single" aria-hidden="true"></div>
             </div>
             <p id="scan-help">Umieść cały kod w kadrze i przytrzymaj telefon.</p>
           </div>

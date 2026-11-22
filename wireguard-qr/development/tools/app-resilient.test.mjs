@@ -37,20 +37,21 @@ async function collectTransfer(protocol, transfer) {
   return result.bytes;
 }
 
-function harness({ backend } = {}) {
+function harness({ backend, withResizeObserver = true, withVisualViewport = true } = {}) {
   const h = { now: 1000, serial: 0, timers: new Map(), zeroTimers: new Map(), videoCallbacks: new Map(), urls: new Map(),
     encoded: [], encodings: [], rendered: [], matrixBytes: new WeakMap(), canvases: [], downloads: [], transfers: [],
     streams: [], mediaRequests: [], cameraConstraints: [], scannerOptions: [], scanCalls: [], deferMedia: false,
     disposedScanners: 0, events: {}, optical: null, encoderJobs: [], encoderResets: 0, activeEncodes: 0,
     deferEncoding: false, scanJobs: [], activeScans: 0, maxActiveScans: 0, deferScans: false,
     largeSenders: [], largeSegments: [], largeStores: [], largeStoreOpenCalls: 0, backend,
-    deferLargeOpen: false, largeOpenJobs: [] };
+    deferLargeOpen: false, largeOpenJobs: [], resizeObservers: [] };
   class Element {
     constructor(id = '') {
       this.id = id; this.listeners = {}; this.dataset = {}; this.value = ''; this.hidden = false;
       this.disabled = false; this.open = false; this.checked = false; this.textContent = ''; this.files = [];
       this.children = []; this.parentElement = null; this.attributes = {}; this.isConnected = true; this.tabIndex = 0;
       this.width = this.height = 1; this.readyState = 2; this.videoWidth = this.videoHeight = 300;
+      this.clientWidth = 640; this.clientHeight = 360;
       this.currentTime = 0; this.payload = null; this.classes = new Set(); this.style = {}; this.draws = [];
       this.classList = { add: (x) => this.classes.add(x), remove: (x) => this.classes.delete(x), contains: (x) => this.classes.has(x), toggle: (x, on) => on ? this.classes.add(x) : this.classes.delete(x) };
     }
@@ -69,6 +70,11 @@ function harness({ backend } = {}) {
     contains(node) { return node === this || this.children.some((child) => child.contains(node)); }
     closest(selector) { for (let node = this; node; node = node.parentElement) if (selector === '[hidden]' && node.hidden) return node; return null; }
     getClientRects() { return this.closest('[hidden]') ? [] : [{}]; }
+    getBoundingClientRect() {
+      const width = Number.parseFloat(this.style.width) || this.clientWidth;
+      const height = Number.parseFloat(this.style.height) || this.clientHeight;
+      return { x: 0, y: 0, left: 0, top: 0, right: width, bottom: height, width, height };
+    }
     querySelector(selector) { return selector === 'input:checked' ? this.children.find((child) => child.checked) : null; }
     querySelectorAll(selector) { return selector === 'input[type="radio"]' ? this.children : this.children.flatMap((child) => [child, ...child.children]); }
     pause() {}
@@ -92,8 +98,22 @@ function harness({ backend } = {}) {
   for (const [id, value] of Object.entries({ 'qr-layout': 'single', 'series-ecc': 'M', 'scan-layout': 'single', 'camera-profile': 'auto', 'calibration-range': 'basic', 'large-repair': '1' })) h.els[id].value = value;
   h.els['large-auto'].checked = true;
   for (const rate of [1, 2, 5, 10, 15, 20]) { const radio = new Element(`rate-${rate}`); radio.value = String(rate); radio.checked = rate === 2; h.els['frame-rate'].appendChild(radio); }
-  h.document = { body: new Element('body'), documentElement: { dataset: { appVersion: html.match(/data-app-version="([^"]+)"/)?.[1] || 'test' } }, activeElement: h.els['expand-qr'], hidden: false, getElementById: (id) => h.els[id], createElement: (tag) => { const element = new Element(); element.tagName = tag.toUpperCase(); if (tag === 'canvas') h.canvases.push(element); return element; }, querySelectorAll: () => [], addEventListener: (name, fn) => { (h.events[name] ??= []).push(fn); } };
+  h.document = { body: new Element('body'), documentElement: { clientWidth: 1280, clientHeight: 800, dataset: { appVersion: html.match(/data-app-version="([^"]+)"/)?.[1] || 'test' } }, activeElement: h.els['expand-qr'], hidden: false, getElementById: (id) => h.els[id], createElement: (tag) => { const element = new Element(); element.tagName = tag.toUpperCase(); if (tag === 'canvas') h.canvases.push(element); return element; }, querySelectorAll: () => [], addEventListener: (name, fn) => { (h.events[name] ??= []).push(fn); } };
   for (const id of ['close-expanded', 'expand-qr', 'animation-toggle', 'frame-slider', 'scan-feedback']) h.els['qr-result'].appendChild(h.els[id]);
+  for (const [container, stage, video] of [
+    ['camera-box', 'camera-stage', 'camera-video'], ['feedback-scan-panel', 'feedback-camera-stage', 'feedback-video']
+  ]) {
+    h.els[container].appendChild(h.els[stage]);
+    h.els[stage].appendChild(h.els[video]);
+  }
+  h.visualViewport = new Element('visual-viewport');
+  h.visualViewport.width = 1280; h.visualViewport.height = 800;
+  class FakeResizeObserver {
+    constructor(callback) { this.callback = callback; this.targets = new Set(); this.disconnected = false; h.resizeObservers.push(this); }
+    observe(target) { this.targets.add(target); this.disconnected = false; }
+    unobserve(target) { this.targets.delete(target); }
+    disconnect() { this.targets.clear(); this.disconnected = true; }
+  }
   class FakeImage {
     set src(value) { if (value) { this.payload = h.urls.get(value)?.payload; this.naturalWidth = Array.isArray(this.payload) ? 600 : 300; this.naturalHeight = 300; queueMicrotask(() => this.onload?.()); } }
   }
@@ -105,10 +125,12 @@ function harness({ backend } = {}) {
     Uint8Array, Uint8ClampedArray, ArrayBuffer, DataView, TextEncoder, TextDecoder, File, Blob, Image: FakeImage, crypto: webcrypto,
     document: h.document, navigator: { clipboard: { async writeText(text) { h.clipboardText = text; } }, mediaDevices: { getUserMedia(constraints) { h.cameraConstraints.push(constraints); if (h.deferMedia) return new Promise((resolve) => h.mediaRequests.push(resolve)); return Promise.resolve(h.makeStream()); } } },
     URL: { createObjectURL(blob) { const id = `blob:${++h.serial}`; h.urls.set(id, blob); return id; }, revokeObjectURL: (id) => h.urls.delete(id) },
-    performance: { now: () => h.now }, isSecureContext: true,
+    performance: { now: () => h.now }, isSecureContext: true, innerWidth: 1280, innerHeight: 800,
     setTimeout(fn, delay = 0) { const id = ++h.serial; if (delay === 0) h.zeroTimers.set(id, setTimeout(() => { h.zeroTimers.delete(id); fn(); }, 0)); else h.timers.set(id, { fn, delay }); return id; },
     clearTimeout(id) { if (h.zeroTimers.has(id)) clearTimeout(h.zeroTimers.get(id)); h.zeroTimers.delete(id); h.timers.delete(id); }, addEventListener(name, fn) { (h.events[name] ??= []).push(fn); },
   };
+  if (withVisualViewport) context.visualViewport = h.visualViewport;
+  if (withResizeObserver) context.ResizeObserver = FakeResizeObserver;
   context.window = context; h.context = vm.createContext(context);
   if (backend) Object.assign(context.navigator, { storage: backend.storage, locks: backend.locks });
   for (const source of sources) vm.runInContext(source, h.context);
@@ -199,6 +221,12 @@ function harness({ backend } = {}) {
   h.display = (id = 'qr-canvas') => h.els[id].payload && Uint8Array.from(h.els[id].payload);
   h.pair = () => [h.display(), ...(h.els['qr-paper-second'].hidden ? [] : [h.display('qr-canvas-second')])];
   h.change = (id, value) => { h.els[id].value = value; h.els[id].dispatch('change'); };
+  h.dispatchWindow = (name, event = {}) => { for (const listener of h.events[name] || []) listener(event); };
+  h.notifyResize = target => {
+    for (const observer of h.resizeObservers) {
+      if (observer.targets.has(target)) observer.callback([{ target, contentRect: target.getBoundingClientRect() }], observer);
+    }
+  };
   h.choose = (files) => { h.els['file-input'].files = files; h.els['file-input'].dispatch('change'); };
   h.upload = (payload, feedback = false) => {
     const input = h.els[feedback ? 'feedback-image-input' : 'image-input'];
@@ -614,6 +642,112 @@ test('camera profiles restart safely and automatic aspect follows one or two sca
     h.change('camera-profile', 'wide'); await h.wait(() => h.streams.length === 4 && h.videoCallbacks.size === 1);
     assert.equal(h.cameraConstraints.at(-1).video.aspectRatio.ideal, 16 / 9); assert.equal(h.scannerOptions.at(-1).lanes, 1);
     assert.equal(h.streams.filter(stream => !stream.track.stopped).length, 1);
+  } finally { h.close(); }
+});
+
+function assertPreviewSize(stage, width, height) {
+  assert.match(stage.style.width, /px$/); assert.match(stage.style.height, /px$/);
+  assert.ok(Math.abs(Number.parseFloat(stage.style.width) - width) < 0.01, `Expected preview width ${width}, got ${stage.style.width}`);
+  assert.ok(Math.abs(Number.parseFloat(stage.style.height) - height) < 0.01, `Expected preview height ${height}, got ${stage.style.height}`);
+}
+
+async function finishWindowResize(h, previousTimers) {
+  const pending = [...h.timers.entries()].filter(([id]) => !previousTimers.has(id));
+  assert.equal(pending.length, 1, 'Window resize must leave one debounced callback');
+  const [id, timer] = pending[0]; assert.equal(timer.delay, 100);
+  h.timers.delete(id); h.now += timer.delay; await timer.fn(); await h.micro();
+}
+
+test('camera preview geometry follows portrait video metadata instead of landscape track settings', async () => {
+  const h = harness();
+  try {
+    const video = h.els['camera-video'], stage = h.els['camera-stage'];
+    h.els['camera-box'].clientWidth = 360; video.videoWidth = video.videoHeight = 0;
+    h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    assert.deepEqual([h.streams[0].track.getSettings().width, h.streams[0].track.getSettings().height], [1920, 1080]);
+    assert.equal(stage.style.width, ''); assert.equal(stage.style.height, '', 'Unknown intrinsic dimensions must not produce invalid geometry');
+    video.videoWidth = 1080; video.videoHeight = 1920; video.dispatch('loadedmetadata');
+    assertPreviewSize(stage, 324, 576);
+    assert.match(h.els['scan-help'].textContent, /Obraz kamery: 1080 × 1920/);
+    assert.match(h.els['scan-help'].textContent, /30 kl\.\/s/);
+    assert.doesNotMatch(h.els['scan-help'].textContent, /1920 × 1080/);
+    video.videoWidth = 0; video.dispatch('resize'); assertPreviewSize(stage, 324, 576);
+    video.videoWidth = 1080;
+    h.visualViewport.height = 2000; h.visualViewport.dispatch('resize'); assertPreviewSize(stage, 360, 640);
+    h.visualViewport.height = 100; h.visualViewport.dispatch('resize'); assertPreviewSize(stage, 90, 160);
+    assert.equal(h.cameraConstraints.length, 1); assert.equal(h.streams.length, 1);
+  } finally { h.close(); }
+});
+
+test('camera preview resizing preserves partial reception and ignores late events after stop', async () => {
+  const h = harness();
+  try {
+    const original = Uint8Array.from({ length: 1536 }, (_, index) => index % 251);
+    const transfer = await h.protocol.createTransfer(original, 'rotating-preview.bin', { chunkBytes: 384, compact: true });
+    const video = h.els['camera-video'], stage = h.els['camera-stage'], container = h.els['camera-box'];
+    container.clientWidth = 360; video.videoWidth = 1080; video.videoHeight = 1920;
+    h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    await h.fireFrame('camera-video', transfer.manifestFrame()); await h.fireFrame('camera-video', transfer.frame(0));
+    assert.equal(h.telemetry.snapshot().usefulUnits, 1); assertPreviewSize(stage, 324, 576);
+    const stream = h.streams[0], observer = h.resizeObservers.find(value => value.targets.has(container));
+    assert.ok(observer, 'The preview must observe its available container width');
+    video.videoWidth = 1920; video.videoHeight = 1080; video.dispatch('resize');
+    assertPreviewSize(stage, 360, 202.5); assert.match(h.els['scan-help'].textContent, /Obraz kamery: 1920 × 1080/);
+
+    container.clientWidth = 640; h.visualViewport.height = 500;
+    const previousTimers = new Set(h.timers.keys()); h.dispatchWindow('resize'); h.dispatchWindow('resize');
+    assertPreviewSize(stage, 360, 202.5); await finishWindowResize(h, previousTimers); assertPreviewSize(stage, 640, 360);
+    h.visualViewport.height = 300; h.visualViewport.dispatch('resize'); assertPreviewSize(stage, 384, 216);
+    container.clientWidth = 320; h.notifyResize(container); assertPreviewSize(stage, 320, 180);
+    assert.equal(h.telemetry.snapshot().usefulUnits, 1);
+    assert.equal(h.cameraConstraints.length, 1); assert.equal(h.streams.length, 1); assert.equal(stream.track.stopped, false);
+    await h.fireFrame('camera-video', transfer.frame(0)); assert.equal(h.telemetry.snapshot().usefulUnits, 1, 'A resize must not reset the collector or recount a duplicate');
+
+    h.els['stop-camera'].click();
+    assert.equal(observer.disconnected, true); assert.equal(stream.track.stopped, true);
+    assert.equal(stage.style.width, ''); assert.equal(stage.style.height, '');
+    const caption = h.els['scan-help'].textContent;
+    video.videoWidth = 1080; video.videoHeight = 1920;
+    video.dispatch('loadedmetadata'); video.dispatch('resize'); h.visualViewport.dispatch('resize');
+    // A callback already queued by the browser may run after disconnect().
+    observer.callback([{ target: container, contentRect: container.getBoundingClientRect() }], observer);
+    const lateTimers = new Set(h.timers.keys()); h.dispatchWindow('resize'); await finishWindowResize(h, lateTimers);
+    assert.equal(stage.style.width, ''); assert.equal(stage.style.height, ''); assert.equal(h.els['scan-help'].textContent, caption);
+    assert.equal(h.telemetry.snapshot().usefulUnits, 1); assert.equal(h.cameraConstraints.length, 1);
+
+    // Continuing from images proves the original source symbol survived both
+    // orientation changes and stopping the camera; do not send symbol zero again.
+    h.upload([transfer.frame(1), transfer.frame(2)]); await h.wait(() => !h.els['choose-image'].disabled);
+    h.upload(transfer.frame(3)); await h.wait(() => !h.els['download-file'].disabled);
+    h.els['download-file'].click(); assert.deepEqual(new Uint8Array(await h.downloads.at(-1).blob.arrayBuffer()), original);
+    transfer.dispose();
+  } finally { h.close(); }
+});
+
+test('feedback preview geometry uses its own wrapper without optional viewport APIs and clears on ACK', async () => {
+  const h = harness({ withResizeObserver: false, withVisualViewport: false });
+  try {
+    h.els['series-sample'].click(); await h.wait(() => !h.els['choose-file'].disabled);
+    const transfer = h.transfers.at(-1), receiver = h.protocol.createCollector();
+    await receiver.accept(transfer.manifestFrame()); await receiver.accept(transfer.frame(0));
+    const video = h.els['feedback-video'], stage = h.els['feedback-camera-stage'];
+    h.els['feedback-scan-panel'].clientWidth = 270; video.videoWidth = 1080; video.videoHeight = 1920;
+    h.els['scan-feedback'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    assertPreviewSize(stage, 270, 480); assert.equal(h.resizeObservers.length, 0);
+    assert.equal(h.els['camera-stage'].style.width, '');
+    h.context.innerHeight = 400;
+    const previousTimers = new Set(h.timers.keys()); h.dispatchWindow('resize');
+    assertPreviewSize(stage, 270, 480); await finishWindowResize(h, previousTimers); assertPreviewSize(stage, 162, 288);
+    video.videoWidth = 1920; video.videoHeight = 1080; video.dispatch('resize');
+    assertPreviewSize(stage, 270, 151.875);
+    await h.fireFrame('feedback-video', receiver.createFeedback({ suggestedRate: 5 }));
+    assert.equal(h.rate(), 5); assert.equal(h.streams[0].track.stopped, true);
+    assert.equal(stage.style.width, ''); assert.equal(stage.style.height, '');
+    assert.equal(h.els['feedback-scan-panel'].hidden, true); assert.equal(h.videoCallbacks.size, 0);
+    video.dispatch('loadedmetadata'); video.dispatch('resize');
+    const lateTimers = new Set(h.timers.keys()); h.dispatchWindow('resize'); await finishWindowResize(h, lateTimers);
+    assert.equal(stage.style.width, ''); assert.equal(stage.style.height, ''); assert.equal(h.cameraConstraints.length, 1);
+    receiver.dispose();
   } finally { h.close(); }
 });
 
