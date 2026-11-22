@@ -493,6 +493,27 @@
     render();
   }
 
+  // The week strip shows a day's hours on hover (CSS). Touch has no hover, so a tap pins
+  // the label and a second tap, or a tap elsewhere, removes it. Escape hides hover labels.
+  function initWeekTips() {
+    const strip = document.querySelector('.week');
+    if (!strip) return;
+    const days = Array.from(strip.querySelectorAll('[data-week-day]'));
+    const unpin = () => days.forEach(day => day.removeAttribute('data-open'));
+    document.addEventListener('pointerdown', event => {
+      const day = event.target.closest ? event.target.closest('[data-week-day]') : null;
+      const wasPinned = Boolean(day && day.hasAttribute('data-open'));
+      unpin();
+      if (day && !wasPinned && event.pointerType !== 'mouse') day.setAttribute('data-open', '');
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape') return;
+      unpin();
+      strip.setAttribute('data-tips-off', '');
+    });
+    strip.addEventListener('pointerleave', () => strip.removeAttribute('data-tips-off'));
+  }
+
   // Printing shows every service: exclusive <details name> groups are released for the print.
   function initPrint() {
     let saved = null;
@@ -523,6 +544,7 @@
     initTheme();
     paintStatus();
     initReminder();
+    initWeekTips();
     initPrint();
     initLanguageLink();
     window.setInterval(paintStatus, 30000);

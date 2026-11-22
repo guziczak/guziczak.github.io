@@ -1,6 +1,6 @@
 'use strict';
 
-// Run with: node --test "4lapy4/tools/*.test.cjs"
+// Run with: node --test "4lapy5/tools/*.test.cjs"
 // Guards the generated pages: they must be current, structurally identical in both
 // languages, internally consistent, and in step with the opening hours in site.js.
 const test = require('node:test');
@@ -39,7 +39,7 @@ function skeleton(html) {
 
 test('the generated pages on disk are current', () => {
   for (const [file, html] of Object.entries(pages)) {
-    assert.equal(disk(file), html, `${file} is stale: run "node 4lapy4/tools/build.cjs"`);
+    assert.equal(disk(file), html, `${file} is stale: run "node 4lapy5/tools/build.cjs"`);
     assert.doesNotMatch(html, /\{\{|\}\}/, `${file} has an unresolved placeholder`);
   }
 });
@@ -124,6 +124,23 @@ test('the page shows the opening hours that the status logic uses', () => {
       .flatMap((day, index) => site.HOURS[index] ? [`${day} ${clock(site.HOURS[index][0])}-${clock(site.HOURS[index][1])}`] : []);
     assert.deepEqual(open.sort(), expected.sort());
     assert.equal((html.match(/data-week-day="/g) || []).length, 7);
+  }
+});
+
+test('the stamp is a neutral graphic and the date boxes match the placeholder', () => {
+  for (const [language, file] of Object.entries(LANGUAGES)) {
+    const html = pages[file];
+    const stamp = /<svg class="stamp"[\s\S]*?<\/svg>/.exec(html);
+    assert.ok(stamp, `${file}: one stamp`);
+    assert.equal((html.match(/<svg class="stamp"/g) || []).length, 1);
+    // The stamp names the practice and the village only; never a person.
+    assert.equal(stamp[0].includes(content.shared.vetName), false);
+    assert.equal(stamp[0].includes(content.shared.vetName.split(' ').pop()), false);
+    assert.match(stamp[0], /aria-hidden="true"/);
+    const boxes = [...html.matchAll(/<b data-placeholder="(.)">/g)].map(match => match[1]).join('');
+    assert.equal(boxes, content[language].combPlaceholder);
+    assert.equal(boxes.length, 8);
+    assert.equal((html.match(/aria-hidden="true">0\d · <\/span>/g) || []).length, 7, `${file}: seven numbered rubrics`);
   }
 });
 

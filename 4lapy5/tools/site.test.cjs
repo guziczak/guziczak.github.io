@@ -1,11 +1,11 @@
 'use strict';
 
-// Run with: node --test "4lapy4/tools/*.test.cjs"
+// Run with: node --test "4lapy5/tools/*.test.cjs"
 // No browser or network is used. These checks exercise the exported production code.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  HOURS, AXIS, parseDate, atWarsaw, atWarsawNine, easterSunday, isHoliday, clinicStatus, previewInstant,
+  HOURS, AXIS, parseDate, atWarsaw, atWarsawNine, easterSunday, isHoliday, clinicStatus, todayLabel, previewInstant,
   buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename
 } = require('../site.js');
 
@@ -94,6 +94,16 @@ test('a holiday never claims to be open and the next opening skips holidays', ()
   assert.equal(headline('2026-04-05', '12:00', 'pl'), 'Wracamy we wtorek o 10:00.');
   // A holiday on a Sunday changes nothing.
   assert.equal(headline('2026-05-03', '12:00', 'pl'), 'Jutro przyjmujemy od 10:00.');
+});
+
+test('the stamp carries one neutral word per state and the entry is dated in Warsaw', () => {
+  const moments = [['2026-11-23', '11:30'], ['2026-11-21', '14:00'], ['2026-12-25', '11:00']];
+  assert.deepEqual(moments.map(([date, time]) => clinicStatus(warsaw(date, time), 'pl').stamp), ['Otwarte', 'Zamknięte', 'Święto']);
+  assert.deepEqual(moments.map(([date, time]) => clinicStatus(warsaw(date, time), 'en').stamp), ['Open', 'Closed', 'Holiday']);
+  assert.match(todayLabel(warsaw('2026-11-23', '11:30'), 'pl'), /^Dziś · poniedziałek.*23\.11$/);
+  assert.match(todayLabel(warsaw('2026-11-23', '11:30'), 'en'), /^Today · Monday.*23\/11$/);
+  // Half past midnight in Warsaw on the 23rd is still the 22nd in UTC.
+  assert.match(todayLabel(new Date('2026-11-22T23:30:00Z'), 'pl'), /poniedziałek.*23\.11/);
 });
 
 test('the status preview parameter is a Warsaw wall-clock time', () => {

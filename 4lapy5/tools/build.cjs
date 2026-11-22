@@ -34,10 +34,15 @@ function hourGroups() {
 function weekStrip(copy) {
   const [start, end] = site.AXIS;
   const percent = minutes => `${(((minutes - start) / (end - start)) * 100).toFixed(2)}%`;
+  // Each day carries the text of its hover label: the day and its hours on two lines,
+  // and a variant for a day that turns out to be a public holiday.
+  const label = (dayName, text) => escapeHtml(`${dayName}\n${text}`).replace(/\n/g, '&#10;');
   return MONDAY_FIRST.map((day, index) => {
     const hours = site.HOURS[day];
     const bar = hours ? `<span class="week-open" style="--from:${percent(hours[0])};--to:${percent(hours[1])}"></span>` : '';
-    return `<li data-week-day="${day}"><span class="week-track">${bar}<span class="week-now"></span></span><span class="week-name">${escapeHtml(copy.weekdays[index])}</span></li>`;
+    const tip = label(copy.daysFull[index], hours ? `${time(hours[0])}–${time(hours[1])}` : copy.closedWord);
+    const holidayTip = label(copy.daysFull[index], copy.holidayTip);
+    return `<li data-week-day="${day}" data-tip="${tip}" data-tip-holiday="${holidayTip}"><span class="week-track">${bar}<span class="week-now"></span></span><span class="week-name">${escapeHtml(copy.weekdays[index])}</span></li>`;
   }).join('\n          ');
 }
 

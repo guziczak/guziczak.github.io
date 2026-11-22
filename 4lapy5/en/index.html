@@ -26,8 +26,8 @@
   <link rel="preload" href="../assets/fonts/bricolage-grotesque-display-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../assets/fonts/bricolage-grotesque-display-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="../assets/fonts/manrope-variable-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <script src="../site.js?v=4b0af2f065"></script>
-  <link rel="stylesheet" href="../styles.css?v=49ca4f594a">
+  <script src="../site.js?v=1c29de60a6"></script>
+  <link rel="stylesheet" href="../styles.css?v=dabed01f11">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"VeterinaryCare","name":"Przychodnia Weterynaryjna Cztery Łapy i Ty","url":"https://guziczak.github.io/4lapy5/en/","telephone":"+48717867884","address":{"@type":"PostalAddress","streetAddress":"ul. Chabrowa 2D","postalCode":"52-200","addressLocality":"Wysoka","addressCountry":"PL"},"geo":{"@type":"GeoCoordinates","latitude":51.0480638,"longitude":16.9997411},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"10:00","closes":"18:00"},{"@type":"OpeningHoursSpecification","dayOfWeek":["Saturday"],"opens":"10:00","closes":"12:00"}]}</script>
 </head>
 <body>
@@ -59,7 +59,7 @@
         <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="grain"/>
         <feDisplacementMap in="SourceGraphic" in2="grain" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="rough"/>
         <feTurbulence type="fractalNoise" baseFrequency="0.03 0.05" numOctaves="2" seed="3" result="blotch"/>
-        <feColorMatrix in="blotch" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.5 1.6" result="density"/>
+        <feColorMatrix in="blotch" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.1 1.45" result="density"/>
         <feComposite in="rough" in2="density" operator="in"/>
       </filter>
     </defs>
@@ -112,15 +112,15 @@
     </section>
 
     <section class="tile t-week" id="godziny" aria-labelledby="hours-title">
-      <h2 class="tile-label" id="hours-title">Opening hours</h2>
+      <h2 class="tile-label" id="hours-title"><span aria-hidden="true">01 · </span>Opening hours</h2>
       <ol class="week" aria-hidden="true">
-          <li data-week-day="1"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:83.33%"></span><span class="week-now"></span></span><span class="week-name">Mo</span></li>
-          <li data-week-day="2"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:83.33%"></span><span class="week-now"></span></span><span class="week-name">Tu</span></li>
-          <li data-week-day="3"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:83.33%"></span><span class="week-now"></span></span><span class="week-name">We</span></li>
-          <li data-week-day="4"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:83.33%"></span><span class="week-now"></span></span><span class="week-name">Th</span></li>
-          <li data-week-day="5"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:83.33%"></span><span class="week-now"></span></span><span class="week-name">Fr</span></li>
-          <li data-week-day="6"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:33.33%"></span><span class="week-now"></span></span><span class="week-name">Sa</span></li>
-          <li data-week-day="0"><span class="week-track"><span class="week-now"></span></span><span class="week-name">Su</span></li>
+          <li data-week-day="1" data-tip="Monday&#10;10:00–18:00" data-tip-holiday="Monday&#10;holiday — please call"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:83.33%"></span><span class="week-now"></span></span><span class="week-name">Mo</span></li>
+          <li data-week-day="2" data-tip="Tuesday&#10;10:00–18:00" data-tip-holiday="Tuesday&#10;holiday — please call"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:83.33%"></span><span class="week-now"></span></span><span class="week-name">Tu</span></li>
+          <li data-week-day="3" data-tip="Wednesday&#10;10:00–18:00" data-tip-holiday="Wednesday&#10;holiday — please call"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:83.33%"></span><span class="week-now"></span></span><span class="week-name">We</span></li>
+          <li data-week-day="4" data-tip="Thursday&#10;10:00–18:00" data-tip-holiday="Thursday&#10;holiday — please call"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:83.33%"></span><span class="week-now"></span></span><span class="week-name">Th</span></li>
+          <li data-week-day="5" data-tip="Friday&#10;10:00–18:00" data-tip-holiday="Friday&#10;holiday — please call"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:83.33%"></span><span class="week-now"></span></span><span class="week-name">Fr</span></li>
+          <li data-week-day="6" data-tip="Saturday&#10;10:00–12:00" data-tip-holiday="Saturday&#10;holiday — please call"><span class="week-track"><span class="week-open" style="--from:16.67%;--to:33.33%"></span><span class="week-now"></span></span><span class="week-name">Sa</span></li>
+          <li data-week-day="0" data-tip="Sunday&#10;closed" data-tip-holiday="Sunday&#10;holiday — please call"><span class="week-track"><span class="week-now"></span></span><span class="week-name">Su</span></li>
       </ol>
       <dl class="hours-list">
           <div data-hours-days="1 2 3 4 5"><dt>Monday–Friday</dt><dd>10:00–18:00</dd></div>
@@ -132,7 +132,7 @@
 
     <section class="tile t-rating" id="opinie" aria-labelledby="rating-title">
       <div class="rating-head">
-        <h2 class="tile-label" id="rating-title">Reviews</h2>
+        <h2 class="tile-label" id="rating-title"><span aria-hidden="true">02 · </span>Reviews</h2>
         <a class="rating-link" href="https://www.google.com/maps/search/?api=1&amp;query=Przychodnia+Weterynaryjna+Cztery+%C5%81apy+i+Ty+Wysoka" target="_blank" rel="noopener noreferrer"><span>Read the reviews</span><span class="visually-hidden"> (opens in a new tab)</span><svg class="icon" aria-hidden="true"><use href="#i-out"/></svg></a>
       </div>
       <div class="rating-body">
@@ -145,7 +145,7 @@
     </section>
 
     <section class="tile t-services" id="uslugi" aria-labelledby="services-title">
-      <h2 class="tile-label" id="services-title">Services</h2>
+      <h2 class="tile-label" id="services-title"><span aria-hidden="true">03 · </span>Services</h2>
       <p class="tile-title">For dogs and cats.</p>
       <p class="tile-lead">Please call to ask about prices, other procedures and available appointments.</p>
       <div class="services">
@@ -172,7 +172,7 @@
     <section class="tile t-reminder" id="przypomnienie" aria-labelledby="reminder-title">
       <div class="reminder">
         <div class="reminder-copy">
-          <h2 class="tile-label" id="reminder-title">Vaccination reminder</h2>
+          <h2 class="tile-label" id="reminder-title"><span aria-hidden="true">04 · </span>Vaccination reminder</h2>
           <p class="tile-title">Copy the date from the health record.</p>
           <p class="tile-lead">Choose how far in advance to be reminded and save a reminder to your own calendar to call the practice and book an appointment.</p>
           <div class="preview">
@@ -219,7 +219,7 @@
       </figure>
       <div class="map-bar">
         <div class="map-copy">
-          <h2 class="tile-label" id="map-title">Directions</h2>
+          <h2 class="tile-label" id="map-title"><span aria-hidden="true">05 · </span>Directions</h2>
           <address>ul. Chabrowa 2D, 52-200 Wysoka<span>Kobierzyce municipality, Poland</span></address>
           <p class="note">Some online directories still show the previous address: Chabrowa 95BC. There is no barrier gate on the access road.</p>
         </div>
@@ -228,7 +228,7 @@
     </section>
 
     <section class="tile t-vet" aria-labelledby="vet-title">
-      <h2 class="tile-label" id="vet-title">Your vet</h2>
+      <h2 class="tile-label" id="vet-title"><span aria-hidden="true">06 · </span>Your vet</h2>
       <div class="vet-head">
         <span class="avatar" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#i-paw"/></svg></span>
         <p class="vet-name">Agnieszka Janeczek<span>veterinarian, runs the practice</span></p>
@@ -237,7 +237,7 @@
     </section>
 
     <section class="tile t-contact" id="kontakt" aria-labelledby="contact-title">
-      <h2 class="tile-label" id="contact-title">Contact</h2>
+      <h2 class="tile-label" id="contact-title"><span aria-hidden="true">07 · </span>Contact</h2>
       <ul class="rubrics">
         <li><a class="rubric" href="tel:+48717867884"><span class="label">Phone</span><span class="leader" aria-hidden="true"></span><b>+48 71 786 78 84</b></a></li>
         <li><a class="rubric" href="mailto:agajaneczek@gmail.com"><span class="label">Email</span><span class="leader" aria-hidden="true"></span><b>agajaneczek@gmail.com</b></a></li>

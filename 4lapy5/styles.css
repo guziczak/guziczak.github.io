@@ -73,6 +73,8 @@
   --enamel: #fffdf5;
   --navy: #1b2a57;
   --focus: var(--ink);
+  /* A pen tick with a heavy turn and a tapering upstroke. Used as a mask, so it takes any ink. */
+  --tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3.2 12.6C4.3 11.6 5.4 11.9 6.2 12.9L9.6 17.2C12.4 11.2 16.8 5.6 21.8 2.2C22.3 1.9 22.9 2.5 22.5 3C17.6 7.6 13.4 13.9 10.9 20.3C10.5 21.3 9.2 21.4 8.6 20.5L3.3 14.2C2.8 13.6 2.8 13 3.2 12.6Z'/%3E%3C/svg%3E");
   --radius: 14px;
   --gap: 12px;
   --pad: 20px;
@@ -91,7 +93,6 @@
     --edge: light-dark(#9aa5cf, #4b5791);
     --stamp-open: light-dark(#167a43, #62d394);
     --stamp-closed: light-dark(#b3372b, #ff9388);
-    --marker: light-dark(#ffe45c, #5a5016);
     --plate: light-dark(#1b2a57, #2b3c7c);
     --field: light-dark(#ffffff, #0f1326);
     --error: light-dark(#b3372b, #ff9388);
@@ -141,18 +142,15 @@ button { cursor: pointer; }
 .theme-toggle[data-shows='dark'] .icon-sun { display: block; }
 
 /* ---------- Sheets ---------- */
-.bento { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); padding-bottom: 20px; counter-reset: rubric; }
+.bento { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); padding-bottom: 20px; }
 .tile { position: relative; min-width: 0; padding: var(--pad); border: 1.5px solid var(--edge); border-radius: var(--radius); background: var(--paper); overflow: hidden; }
-/* Each sheet is a numbered rubric: 01 · Godziny przyjęć, 02 · Opinie … */
-.tile-label { margin-bottom: 12px; counter-increment: rubric; }
-.tile-label::before { content: counter(rubric, decimal-leading-zero) ' · '; }
-/* Where supported, the number is decoration only and is not read out with the heading. */
-@supports (content: 'x' / '') {
-  .tile-label::before { content: counter(rubric, decimal-leading-zero) ' · ' / ''; }
-}
+/* Each sheet is a numbered rubric (01 · Godziny przyjęć …). The numbers are in the markup:
+   CSS counters would restart inside the sheets that are container-query containers. */
+.tile-label { margin-bottom: 12px; }
 .tile-title { font: 800 clamp(1.9rem, 1.3rem + 2vw, 2.6rem)/1.02 var(--display); font-stretch: 86%; letter-spacing: -.015em; text-wrap: balance; }
 .tile-lead { margin-top: 10px; max-width: 46ch; color: var(--ink-soft); }
-.marker { padding-inline: .08em; background: linear-gradient(transparent 50%, var(--marker) 50% 92%, transparent 92%); }
+/* Highlighter: the same yellow and the same dark lettering in both themes. */
+.marker { padding-inline: .1em; border-radius: .08em; background: var(--marker); color: var(--navy); }
 
 /* ---------- Buttons ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 54px; padding: 13px 22px; border: 1.5px solid var(--ink); border-radius: 12px; background: none; color: var(--ink); font-size: 1rem; font-weight: 700; line-height: 1.2; text-align: center; text-decoration: none; }
@@ -173,7 +171,8 @@ html:not(.js) .hero-top { min-height: 0; padding-right: 0; }
 /* The sentence scales with its own sheet (cqi) and sits on ruled lines: one rule per line of text. */
 .headline { font: 800 clamp(2.75rem, 14vw, 4.75rem)/1.06 var(--display); font-size: clamp(2.75rem, 18.4cqi, 5.25rem); font-stretch: 86%; letter-spacing: -.02em; text-wrap: balance; background-image: linear-gradient(to top, var(--rule) 2px, transparent 2px); background-size: 100% 1lh; background-position: 0 -.15em; }
 .headline[data-compact] { font-size: clamp(2.2rem, 11vw, 3.7rem); font-size: clamp(2.2rem, 14.2cqi, 4.2rem); }
-.time { text-decoration: underline wavy var(--stamp); text-decoration-thickness: .05em; text-underline-offset: .13em; text-decoration-skip-ink: none; }
+/* The time is marked with the highlighter. (A wavy underline read like a spell-check error.) */
+.time { padding-inline: .07em; border-radius: .05em; background: linear-gradient(transparent 13%, var(--marker) 13% 87%, transparent 87%); color: var(--navy); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .hero-lead { max-width: 46ch; color: var(--ink-soft); font-size: 1.0625rem; }
 .preview-note { width: fit-content; padding: 4px 12px; border: 1.5px dashed var(--ink); border-radius: 8px; font: 500 .8125rem/1.5 var(--mono); }
 .hero-actions { display: grid; gap: 10px; margin-top: 4px; }
@@ -187,15 +186,31 @@ html:not(.js) .stamp { display: none; }
 .stamp-band { fill: var(--paper); stroke: currentColor; stroke-width: 1.9; }
 .stamp-word { fill: currentColor; font: 800 23px var(--mono); letter-spacing: 2px; text-transform: uppercase; }
 @container (min-width: 560px) {
-  .hero-top { min-height: 0; padding-right: 196px; }
   .headline { font-size: clamp(4.5rem, 14.6cqi, 8rem); }
   .headline[data-compact] { font-size: clamp(3.6rem, 11.6cqi, 6.25rem); }
-  .stamp { top: 20px; right: 22px; width: 176px; height: 176px; }
+}
+/* On a wide sheet the stamp goes where a form keeps its stamp box: bottom right. */
+@container (min-width: 680px) {
+  .hero-top { min-height: 0; padding-right: 0; }
+  .stamp { top: auto; right: 26px; bottom: 22px; width: 188px; height: 188px; }
 }
 
 /* ---------- Week strip and hours ---------- */
+.t-week { overflow: visible; }
 .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
-.week li { display: grid; gap: 7px; justify-items: center; }
+.week li { position: relative; display: grid; gap: 7px; justify-items: center; }
+/* Pointing at a day (or tapping it) shows its hours on a small enamel label. The list below
+   carries the same information for keyboards and screen readers. The transparent border
+   bridges the gap, so the pointer can travel from the bar onto the label. */
+.week li::after { content: attr(data-tip); position: absolute; z-index: 3; left: 50%; bottom: 100%; padding: 7px 11px; border-bottom: 9px solid transparent; border-radius: 8px 8px 17px 17px; background: var(--plate) padding-box; color: var(--enamel); font: 500 .8125rem/1.45 var(--mono); text-align: center; white-space: pre; opacity: 0; visibility: hidden; transform: translate(-50%, 4px); }
+.week li::before { content: ''; position: absolute; z-index: 4; left: 50%; bottom: calc(100% + 4px); width: 11px; height: 11px; background: var(--plate); opacity: 0; visibility: hidden; transform: translateX(-50%) rotate(45deg); pointer-events: none; }
+.week li[data-holiday]::after { content: attr(data-tip-holiday); }
+.week li:first-child::after { left: 0; transform: translate(0, 4px); }
+.week li:last-child::after { left: auto; right: 0; transform: translate(0, 4px); }
+.week:not([data-tips-off]) li:hover::after, .week li[data-open]::after { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.week:not([data-tips-off]) li:first-child:hover::after, .week:not([data-tips-off]) li:last-child:hover::after,
+.week li:first-child[data-open]::after, .week li:last-child[data-open]::after { transform: none; }
+.week:not([data-tips-off]) li:hover::before, .week li[data-open]::before { opacity: 1; visibility: visible; }
 .week-track { position: relative; width: 100%; height: 80px; border: 1.5px solid var(--edge); border-radius: 7px; }
 /* Opening hours are pen-hatched; today is filled in. */
 .week-open { position: absolute; inset-inline: 0; top: var(--from); bottom: calc(100% - var(--to)); border-block: 1.5px solid var(--ink); background: repeating-linear-gradient(135deg, var(--ink) 0 1.5px, transparent 1.5px 6px); }
@@ -204,7 +219,7 @@ html:not(.js) .stamp { display: none; }
 .week-now { display: none; position: absolute; inset-inline: -5px; top: var(--now); height: 3px; margin-top: -1.5px; border-radius: 3px; background: var(--stamp-closed); }
 .week li[data-now] .week-now { display: block; }
 .week-name { min-width: 2em; padding: 1px 4px; border-radius: 4px; color: var(--ink-soft); font: 500 .8125rem/1.5 var(--mono); text-align: center; }
-.week li[data-today] .week-name { background: var(--marker); color: var(--ink); font-weight: 700; }
+.week li[data-today] .week-name { background: var(--marker); color: var(--navy); font-weight: 700; }
 /* Rows with dotted leaders, as in a printed form. */
 .hours-list { margin-top: 12px; }
 .hours-list div { display: flex; align-items: baseline; gap: 8px; padding-top: 9px; font-size: .9375rem; }
@@ -212,7 +227,7 @@ html:not(.js) .stamp { display: none; }
 .hours-list dt::after, .leader { content: ''; flex: 1; min-width: 14px; border-bottom: 2px dotted var(--edge); transform: translateY(-4px); }
 .hours-list dd { font: 500 .9375rem/1.6 var(--mono); white-space: nowrap; }
 .hours-list div[data-today] { font-weight: 800; }
-.hours-list div[data-today] dd { padding-inline: .2em; background: linear-gradient(transparent 46%, var(--marker) 46% 94%, transparent 94%); font-weight: 700; }
+.hours-list div[data-today] dd { padding-inline: .3em; border-radius: 3px; background: var(--marker); color: var(--navy); font-weight: 700; }
 .t-week .note { margin-top: 12px; }
 
 /* ---------- Reviews ---------- */
@@ -245,9 +260,15 @@ html:not(.js) .stamp { display: none; }
 .service[open] .service-toggle::after { transform: none; }
 .service-body { padding: 2px 2px 18px 40px; }
 .service-body li { position: relative; margin-top: 7px; padding-left: 24px; line-height: 1.5; }
-/* A ticked box in front of every item. */
-.service-body li::before { content: ''; position: absolute; left: 0; top: .28em; width: 14px; height: 14px; border: 1.5px solid var(--ink); border-radius: 3px; }
-.service-body li::after { content: ''; position: absolute; left: 3px; top: .1em; width: 13px; height: 7px; border: solid var(--stamp-open); border-width: 0 0 2.5px 2.5px; transform: rotate(-48deg); }
+/* A printed box, ticked by hand: the pen stroke starts inside the box, turns at the bottom
+   and leaves through the top-right corner. The stroke is a drawn shape, not rotated borders. */
+.service-body li::before { content: ''; position: absolute; left: 0; top: .3em; width: 14px; height: 14px; border: 1.5px solid var(--ink); border-radius: 3px; }
+@supports (mask-image: url('')) or (-webkit-mask-image: url('')) {
+  .service-body li::after { content: ''; position: absolute; left: -2px; top: calc(.3em - 5.5px); width: 20px; height: 20px; background: var(--stamp-open); -webkit-mask: var(--tick) center / contain no-repeat; mask: var(--tick) center / contain no-repeat; }
+  /* No two ticks are quite alike. */
+  .service-body li:nth-child(2n)::after { transform: rotate(-6deg) translate(.5px, .5px); }
+  .service-body li:nth-child(3n)::after { transform: rotate(4deg) scale(.92); }
+}
 .text-link { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; font-weight: 700; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
 
 /* ---------- Reminder: an entry for your own calendar ---------- */
@@ -406,6 +427,8 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
   @supports (animation-timeline: view()) {
     .t-services, .t-reminder, .t-map, .t-vet, .t-contact { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 40%; }
   }
+  .week li::after { transition: opacity .14s ease, transform .14s ease; }
+  .week li::before { transition: opacity .14s ease; }
   /* The stamp lands once, a moment after the sheet. */
   .js .stamp { animation: stamp-press .42s cubic-bezier(.3, 1.2, .5, 1) .4s both; }
   .btn { transition: filter .15s ease, background-color .15s ease, transform .15s ease; }
