@@ -35,6 +35,7 @@
       previewReminderInvalid: 'Termin przypomnienia już minął.',
       googleSuccess: 'W Kalendarzu Google zapisz przygotowane wydarzenie. Termin wizyty ustal telefonicznie.',
       icsSuccess: 'Otwórz pobrany plik i zatwierdź wydarzenie w swoim kalendarzu. Termin wizyty ustal telefonicznie.',
+      calendarOpen: 'Dodaj przypomnienie',
       calendarTime: '09:00 · czas polski',
       calendarGoogleNote: 'Google otworzy okno, w którym zatwierdzisz zapis.',
       calendarLoading: 'Przygotowuję zapis do Kalendarza Google…',
@@ -78,6 +79,7 @@
       previewReminderInvalid: 'The reminder time has passed.',
       googleSuccess: 'Save the prepared event in Google Calendar. Arrange the appointment by phone.',
       icsSuccess: 'Open the downloaded file and add the event to your calendar. Arrange the appointment by phone.',
+      calendarOpen: 'Add a reminder',
       calendarTime: '09:00 · Poland time',
       calendarGoogleNote: 'Google will open a window where you confirm the event.',
       calendarLoading: 'Preparing Google Calendar…',
@@ -863,7 +865,34 @@
   const calendarApi = window.ClinicCalendarApi && window.ClinicCalendarApi.createClient({
     googleClientId: window.CLINIC_CALENDAR_CONFIG && window.CLINIC_CALENDAR_CONFIG.googleClientId
   });
+  // A dialog is useful only when it can complete the Google save itself.
+  // Otherwise keep both exports directly in the form, without an extra step.
+  const useCalendarDialog = Boolean(calendarReady && calendarApi && calendarApi.configured);
+  if (useCalendarDialog) {
+    const submit = form.querySelector('[data-calendar-submit]');
+    submit.querySelector('[data-calendar-submit-label]').textContent = copy.calendarOpen;
+    submit.setAttribute('aria-haspopup', 'dialog');
+    submit.setAttribute('aria-controls', 'calendar-dialog');
+    form.querySelector('[data-calendar-direct-ics]').hidden = true;
+    form.querySelector('[data-calendar-choice-note]').hidden = false;
+  }
   let calendarSession = null;
+
+  function downloadCalendar(reminder, container) {
+    const blobUrl = URL.createObjectURL(new Blob([calendarFile(reminder)], { type: 'text/calendar;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = calendarFilename(reminder);
+    link.hidden = true;
+    try {
+      // Downloads from a modal must stay inside it; the rest of the page is inert.
+      container.appendChild(link);
+      link.click();
+    } finally {
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+    }
+  }
 
   function isCalendarSession(session) {
     return calendarSession === session && calendarDialog.open && !session.controller.signal.aborted;
@@ -1060,15 +1089,7 @@
       const reminder = freshCalendarReminder(session);
       if (!reminder) return;
       try {
-        const blobUrl = URL.createObjectURL(new Blob([calendarFile(reminder)], { type: 'text/calendar;charset=utf-8' }));
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = calendarFilename(reminder);
-        link.hidden = true;
-        calendarDialog.appendChild(link);
-        link.click();
-        link.remove();
-        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+        downloadCalendar(reminder, calendarDialog);
         // Import still needs confirmation in the chosen calendar application.
         setCalendarStatus(copy.icsSuccess);
       } catch (_) { setCalendarStatus(copy.calendarDownloadError, 'error'); }
@@ -1086,7 +1107,26 @@
       field.focus();
       return;
     }
-    openCalendar(reminder, event.submitter || document.activeElement);
+    if (event.submitter && event.submitter.value === 'ics') {
+      try {
+        downloadCalendar(reminder, document.body);
+        setMessage(copy.icsSuccess, false);
+      } catch (_) { setMessage(copy.calendarDownloadError, true); }
+    } else if (useCalendarDialog) {
+      openCalendar(reminder, event.submitter || document.activeElement);
+    } else {
+      // Keep this in the original submit gesture so a new tab is not blocked.
+      const link = document.createElement('a');
+      link.href = googleUrl(reminder);
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.hidden = true;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // The external editor still requires the user's Save action.
+      setMessage(copy.googleSuccess, false);
+    }
   });
   renderReminder();
 }());

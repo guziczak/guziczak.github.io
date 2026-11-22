@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="styles.css?v=20261121modal7">
   <script src="calendar-config.js?v=20261121modal7" defer></script>
   <script src="calendar-api.js?v=20261121modal7" defer></script>
-  <script src="site.js?v=20261121modal7" defer></script>
+  <script src="site.js?v=20261122direct8" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#tresc">Przejdź do treści</a>
@@ -184,8 +184,11 @@
             </div>
             <p class="field-help" id="reminder-help">Przepisz datę kolejnego szczepienia z książeczki zdrowia.</p>
             <p id="reminder-message" role="status" aria-live="polite"></p>
-            <div class="calendar-actions"><button class="button button-dark" type="submit" aria-haspopup="dialog" aria-controls="calendar-dialog"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>Dodaj przypomnienie</button></div>
-            <p class="calendar-choice-note">Google, iPhone lub Outlook</p>
+            <div class="calendar-actions">
+              <button class="button button-dark" type="submit" value="google" data-calendar-submit><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg><span data-calendar-submit-label>Dodaj do Kalendarza Google</span></button>
+              <button class="button button-outline" type="submit" value="ics" data-calendar-direct-ics>iPhone / Outlook (.ics)</button>
+            </div>
+            <p class="calendar-choice-note" data-calendar-choice-note hidden>Google, iPhone lub Outlook</p>
           </form>
         </div>
       </div>

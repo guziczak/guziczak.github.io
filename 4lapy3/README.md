@@ -60,9 +60,9 @@ Wywieszka obok głównego przycisku kontaktu pokazuje najpierw bieżący status,
 
 ## Okno zapisu przypomnienia
 
-Po poprawnym wypełnieniu formularza przycisk „Dodaj przypomnienie” otwiera natywny `dialog` z tytułem wydarzenia, datą przypomnienia, godziną i datą szczepienia. Okno ma wersję PL/EN, korzysta z wybranego motywu, przewija się wewnątrz małego ekranu i respektuje ograniczenie ruchu. Zamknięcie, Escape oraz powrót do edycji zachowują dane. Formularz występuje tylko raz; modal pokazuje jego zweryfikowane podsumowanie.
+Po skonfigurowaniu bezpośredniego zapisu Google przycisk „Dodaj przypomnienie” otwiera natywny `dialog` z tytułem wydarzenia, datą przypomnienia, godziną i datą szczepienia. Okno ma wersję PL/EN, korzysta z wybranego motywu, przewija się wewnątrz małego ekranu i respektuje ograniczenie ruchu. Zamknięcie, Escape oraz powrót do edycji zachowują dane. Formularz występuje tylko raz; modal pokazuje jego zweryfikowane podsumowanie.
 
-Domyślna konfiguracja ma pusty `googleClientId`. W tym stanie działa „Kontynuuj w Google” z informacją o otwarciu zewnętrznego okna oraz pobranie ICS. Kliknięcie linku lub pobranie pliku nie jest traktowane jako potwierdzony zapis wydarzenia. Bez klienta OAuth nie da się ominąć zewnętrznego edytora Google.
+Domyślna konfiguracja ma pusty `googleClientId`. W tym stanie formularz pokazuje dwa bezpośrednie przyciski: „Dodaj do Kalendarza Google” oraz „iPhone / Outlook (.ics)”. Nie otwiera modala, który jedynie dodawałby krok przed zewnętrznym edytorem Google. Ten sam wariant działa przy braku adaptera API lub obsługi natywnego `dialog`. Obie akcje ponownie sprawdzają daty; pobranie ICS nie wymaga sesji modala. Kliknięcie linku lub pobranie pliku nie jest traktowane jako potwierdzony zapis wydarzenia. Bez klienta OAuth nie da się ominąć zewnętrznego edytora Google.
 
 ### Uruchomienie bezpośredniego zapisu do Google
 
