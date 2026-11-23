@@ -8,11 +8,11 @@
 
     function reset() { sessionKey = null; densities.clear(); }
 
-    function density(chunkBytes, state) {
+    function density(chunkBytes, state, headerOnly = false) {
       // CAL uses the same byte-mode QR encoding as a data packet. Header/CRC
       // consume 40 bytes; large transfers reserve another 52 bytes. The core
       // encoder determines the actual QR version, including the chosen ECC.
-      const payloadBytes = chunkBytes + 40 + (state.large ? 52 : 0);
+      const payloadBytes = headerOnly ? 40 : chunkBytes + 40 + (state.large ? 52 : 0);
       const key = `${payloadBytes}/${state.ecc}`;
       if (!densities.has(key)) {
         if (typeof encodeBytes !== 'function') throw new Error('Brak kodera do wyznaczenia rozmiaru QR.');
@@ -20,14 +20,14 @@
         let qr;
         try {
           qr = encodeBytes(payload, { errorCorrectionLevel: state.ecc });
-          densities.set(key, { chunkBytes, payloadBytes, modules: qr.size, qrVersion: qr.version });
+          densities.set(key, { payloadBytes, modules: qr.size, qrVersion: qr.version });
         } finally {
           payload.fill(0);
           qr?.data?.fill(0);
         }
       }
       // Never expose a cache entry: consumers may retain or modify a model.
-      return { ...densities.get(key) };
+      return { chunkBytes: headerOnly ? 0 : chunkBytes, ...densities.get(key) };
     }
 
     function compute(state, { fromImages = false } = {}) {
@@ -35,7 +35,7 @@
       const results = state.results;
       const plan = results.map(result => `${result.grid.columns}x${result.grid.rows}/${result.chunkBytes}/${result.fps}`).join(',');
       const key = [state.id, state.version, state.ecc, Number(state.large), Number(state.extended),
-        Number(state.compareLayouts), plan].join('|');
+        Number(state.compareLayouts), Number(state.allLayouts), plan].join('|');
       if (sessionKey !== key) { reset(); sessionKey = key; }
 
       const setup = Boolean(state.setup && !state.ended);
@@ -85,12 +85,19 @@
         group.frequencies.sort((a, b) => a - b);
         for (const layout of group.layouts) layout.cells.sort((a, b) => a.fps - b.fps);
       }
+      // Version 4 starts with small, header-only setup symbols, so a receiver
+      // can learn a 15-QR plan before attempting the denser measurement frames.
+      // Tables retain their measurement density; the current display describes
+      // the actual setup QR. This adds one cached 40-byte size for this session.
+      if (current && setup && state.version === 4) current = { ...current,
+        plannedChunkBytes: current.chunkBytes, plannedModules: current.modules,
+        ...density(0, state, true), headerOnly: true };
       // A phase-only cache misses reads arriving within the same profile. The
       // revision also tracks every fixed one-second window, without a clock.
       const revision = [key, Number(fromImages), phase, state.currentIndex, state.latestMeasurementIndex,
         state.progress, ...results.map(result => [result.received, ...result.perSecond.map(window => window.received)].join('/'))].join('|');
       return { key, revision, phase, setup, ended: Boolean(state.ended), fromImages: Boolean(fromImages),
-        rateVerified: !fromImages, current, counts, groups, totalProfiles: state.totalProfiles,
+        allLayouts: Boolean(state.allLayouts), rateVerified: !fromImages, current, counts, groups, totalProfiles: state.totalProfiles,
         measuredProfiles: state.measuredProfiles, progress: state.progress };
     }
 

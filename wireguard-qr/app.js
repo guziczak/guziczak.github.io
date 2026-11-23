@@ -2,6 +2,11 @@
   'use strict';
 
   const $ = (id) => document.getElementById(id);
+  const MAX_QR_COLUMNS = 5;
+  const MAX_QR_ROWS = 3;
+  const MAX_QR_CODES = MAX_QR_COLUMNS * MAX_QR_ROWS;
+  const MAX_PREPARED_DISPLAYS = 3;
+  const MATRIX_CACHE_LIMIT = MAX_QR_CODES * (MAX_PREPARED_DISPLAYS + 1);
   const ui = {};
   [
     'encode-tab', 'decode-tab', 'encode-panel', 'decode-panel', 'clear-all',
@@ -49,8 +54,8 @@
     'calibration-current-rate', 'calibration-current-density', 'calibration-current-detail',
     'calibration-count-passed', 'calibration-count-failed', 'calibration-count-pending', 'calibration-count-running',
     'calibration-map', 'calibration-map-help',
-    ...Array.from({ length: 7 }, (_, index) => `qr-canvas-${index + 3}`),
-    ...Array.from({ length: 7 }, (_, index) => `qr-paper-${index + 3}`)
+    ...Array.from({ length: MAX_QR_CODES - 2 }, (_, index) => `qr-canvas-${index + 3}`),
+    ...Array.from({ length: MAX_QR_CODES - 2 }, (_, index) => `qr-paper-${index + 3}`)
   ].forEach((id) => { ui[id] = $(id); });
 
   const MAX_BYTES = 2953;
@@ -128,6 +133,7 @@
   let calibrationView = null;
   let calibrationMapKey = '';
   const calibrationMapCells = new Map();
+  let pendingCalibrationPaint = null;
   let calibrationWasExpanded = false;
   let expandAfterCalibration = false;
   let receiverEpoch = 0;
@@ -295,7 +301,7 @@
     ui['qr-empty'].hidden = false;
     ui['qr-result'].hidden = true;
     clearQR(ui['qr-canvas']);
-    for (let index = 1; index < 9; index++) { clearQR(qrCanvas(index)); qrPaper(index).hidden = true; }
+    for (let index = 1; index < MAX_QR_CODES; index++) { clearQR(qrCanvas(index)); qrPaper(index).hidden = true; }
     ui['qr-pair'].dataset.layout = 'single';
     ui['dual-layout-hint'].hidden = true;
     ui['sender-metrics'].hidden = true;
@@ -347,6 +353,7 @@
     pendingImageCancel = null;
   }
   function stopCamera(showMessage = false) {
+    pendingCalibrationPaint = null;
     cameraEpoch += 1;
     if (cancelCameraScan) cancelCameraScan();
     cancelCameraScan = null;
@@ -423,10 +430,10 @@
     if (mode === 'encode' && largeSender && !series && !largeLoading) void loadLargeSegment(largeSegmentIndex);
     if (focus) ui[`${mode}-tab`].focus();
   }
-  function gridValue(value) { const number = Number(value); return Number.isInteger(number) && number >= 1 && number <= 3 ? number : 1; }
+  function gridValue(value, max) { const number = Number(value); return Number.isInteger(number) && number >= 1 && number <= max ? number : 1; }
   function selectedGrid(receiving = false) {
     const prefix = receiving ? 'scan' : 'qr';
-    const columns = gridValue(ui[prefix + '-columns'].value), rows = gridValue(ui[prefix + '-rows'].value);
+    const columns = gridValue(ui[prefix + '-columns'].value, MAX_QR_COLUMNS), rows = gridValue(ui[prefix + '-rows'].value, MAX_QR_ROWS);
     return { columns, rows, lanes: columns * rows };
   }
   function setGridControls(grid, receiving = false) {
@@ -449,7 +456,7 @@
     ui['qr-pair'].style.gridTemplateColumns = `repeat(${grid.columns}, minmax(0, 1fr))`;
     ui['qr-pair'].style.setProperty('--qr-columns', String(grid.columns));
     ui['qr-pair'].style.setProperty('--qr-rows', String(grid.rows));
-    for (let index = 1; index < 9; index++) qrPaper(index).hidden = index >= count || index >= lastDisplayFrames.length;
+    for (let index = 1; index < MAX_QR_CODES; index++) qrPaper(index).hidden = index >= count || index >= lastDisplayFrames.length;
     ui['dual-layout-hint'].hidden = count === 1;
     setText(ui['qr-grid-count'], `${selectedGrid().columns} × ${selectedGrid().rows} — ${selectedGrid().lanes} QR jednocześnie`);
     setText(ui['scan-grid-count'], `${selectedGrid(true).columns} × ${selectedGrid(true).rows} — ${selectedGrid(true).lanes} QR jednocześnie`);
@@ -486,10 +493,23 @@
   }
   function cacheMatrix(key, matrix) {
     matrixCache.set(key, matrix);
-    if (matrixCache.size > 32) {
-      const oldest = matrixCache.keys().next().value;
-      matrixCache.get(oldest).data.fill(0);
-      matrixCache.delete(oldest);
+    if (matrixCache.size > MATRIX_CACHE_LIMIT) {
+      // The current screen and every prefetched screen still own their matrices.
+      // Cache eviction must never turn a queued QR or a later redraw into white.
+      const inUse = new Set([matrix]);
+      const protect = frames => frames?.forEach(frame => inUse.add(frame.matrix));
+      protect(lastDisplayFrames);
+      preparedDisplays.forEach(display => protect(display.frames));
+      protect(calibrationSavedView?.frames);
+      for (const [oldKey, oldMatrix] of matrixCache) {
+        if (inUse.has(oldMatrix)) continue;
+        oldMatrix.data.fill(0);
+        matrixCache.delete(oldKey);
+        if (matrixCache.size <= MATRIX_CACHE_LIMIT) break;
+      }
+      // Keep the cache bounded even if all older entries have an owner. The
+      // caller retains this matrix; dropping a cache reference must not erase it.
+      if (matrixCache.size > MATRIX_CACHE_LIMIT) matrixCache.delete(key);
     }
     return matrix;
   }
@@ -578,7 +598,7 @@
     }
   }
   function prepareAhead() {
-    if (!animationPlaying || preparedDisplays.length >= 3 || preparationTimer !== null || preparationPending) return;
+    if (!animationPlaying || preparedDisplays.length >= MAX_PREPARED_DISPLAYS || preparationTimer !== null || preparationPending) return;
     const token = sourceEpoch, epoch = preparationEpoch, planner = playback;
     const current = () => animationPlaying && token === sourceEpoch && epoch === preparationEpoch && planner === playback;
     preparationTimer = window.setTimeout(async () => {
@@ -1599,14 +1619,14 @@
     message('decode-message', text, 'error');
     if (mode === 'decode') status('Nie przyjęto nieprawidłowego fragmentu');
   }
-  function receiveBytes(bytes, isCurrent, source = 'camera') {
+  function receiveBytes(bytes, isCurrent, source = 'camera', deferCalibrationPaint = false) {
     const epoch = receiverEpoch;
     const payload = Uint8Array.from(bytes);
     const operation = receiverChain.then(async () => {
       if (epoch !== receiverEpoch || !isCurrent()) return { done: false, stale: true };
       if (receiverSnapshot && receiverSnapshot.complete) return { done: true, delta: 0 };
       try {
-        if (window.WGCalibration.isFrame(payload)) return receiveCalibration(payload, source);
+        if (window.WGCalibration.isFrame(payload)) return receiveCalibration(payload, source, deferCalibrationPaint);
         if (window.WGCalibration.isFeedback(payload)) {
           message('decode-message', 'To wynik próby. Pokaż go kamerze nadajnika po wybraniu „Zeskanuj potwierdzenie”.', 'warning');
           return { done: false, blocked: true };
@@ -1705,9 +1725,16 @@
     }
   }
   function updateCalibrationDuration() {
-    const layouts = ui['calibration-layout-scope'].value === 'compare' ? 4 : 1;
-    const profiles = (ui['calibration-range'].value === 'fast' ? 10 : 6) * layouts;
-    setText(ui['calibration-duration'], `${profiles} profili · około ${profiles * 5} s pomiaru z przerwami na zmianę ustawień. Najpierw spokojnie ustaw telefon — ten etap nie ma limitu czasu.`);
+    const all = ui['calibration-layout-scope'].value === 'all';
+    const compare = ui['calibration-layout-scope'].value === 'compare';
+    const extended = ui['calibration-range'].value === 'fast';
+    const grid = selectedGrid();
+    const layouts = all ? window.WGCalibration.allGrids.length : compare ? 4 : 1;
+    const profiles = (extended ? 10 : 6) * layouts;
+    const plan = all ? `Wszystkie ${layouts} siatek: 1–5 kolumn × 1–3 wiersze, w tym 3 × 2, 4 × 2 i 5 × 3. Pomiar od najmniejszej do największej`
+      : compare ? 'Układy: 1 × 1 → 2 × 1 → 1 × 2 → 2 × 2' : `Tylko układ ${grid.columns} × ${grid.rows} QR`;
+    const rates = extended ? '2, 5, 10, 15, 20' : '2, 5, 10';
+    setText(ui['calibration-duration'], `${plan}. Gęstości: 384/600 B na QR. Tempo: ${rates} Hz. Liczba profili: ${profiles} · około ${profiles * 5} s pomiaru z przerwami na zmianę ustawień. ${all ? 'Najpierw zmieść w kadrze 15 rzadkich kodów ustawienia.' : compare ? 'Najpierw ustaw kadr na czterech nieruchomych kodach.' : 'Najpierw spokojnie ustaw telefon.'} Ten etap nie ma limitu czasu.`);
   }
   function discardCalibrationFrames() {
     for (const frame of lastDisplayFrames) if (frame.kind === 'calibration') frame.matrix.data.fill(0);
@@ -1731,7 +1758,7 @@
       ui['series-controls'].hidden = saved.controlsHidden;
       ui['download-qr'].disabled = saved.downloadDisabled;
       calibrationSavedView = null;
-      if (!lastDisplayFrames.length) for (let index = 0; index < 9; index++) clearQR(qrCanvas(index));
+      if (!lastDisplayFrames.length) for (let index = 0; index < MAX_QR_CODES; index++) clearQR(qrCanvas(index));
       if (saved.resultHidden && document.body.classList.contains('qr-expanded')) closeExpanded();
       redrawCurrent();
     }
@@ -1766,7 +1793,7 @@
       const profile = calibration.profiles.at(-1);
       presentCalibration(Array.from({ length: profile.lanes || calibration.lanes }, () => matrix), profile.grid || selectedGrid());
       ui['frame-position'].textContent = 'Kalibracja zakończona';
-      ui['qr-caption'].textContent = 'Zostaw ten kod widoczny, aż odbiornik pokaże wyniki.';
+      ui['qr-caption'].textContent = 'Kod zakończenia próby. Zostaw go widoczny, aż odbiornik pokaże wyniki.';
       ui['calibration-step'].textContent = '3. Przekaż wynik QR';
       ui['calibration-status'].textContent = 'Na odbiorniku sprawdź luki i wybierz „Pokaż wynik nadajnikowi”. Tutaj wybierz „Zeskanuj potwierdzenie”. Jeśli żaden profil nie jest kompletny, popraw kadr i powtórz próbę.';
     } else {
@@ -1787,13 +1814,14 @@
     stopFeedbackCamera();
     if (calibration) calibration.dispose();
     calibration = window.WGCalibration.create({ grid: selectedGrid(), compareLayouts: ui['calibration-layout-scope'].value === 'compare',
+      allLayouts: ui['calibration-layout-scope'].value === 'all',
       // A standalone trial includes the larger packet overhead because the future file size is unknown.
       ecc: selectedEcc(), extended: ui['calibration-range'].value === 'fast', large: Boolean(largeSender) || (!sourceBytes && !largeSourceFile) });
     calibrationSavedView = { frames: lastDisplayFrames, position: ui['frame-position'].textContent, caption: ui['qr-caption'].textContent,
       emptyHidden: ui['qr-empty'].hidden, resultHidden: ui['qr-result'].hidden, controlsHidden: ui['series-controls'].hidden,
       downloadDisabled: ui['download-qr'].disabled };
     lastDisplayFrames = [];
-    for (let index = 0; index < 9; index++) clearQR(qrCanvas(index));
+    for (let index = 0; index < MAX_QR_CODES; index++) clearQR(qrCanvas(index));
     ui['qr-empty'].hidden = true;
     ui['qr-result'].hidden = false;
     ui['download-qr'].disabled = true;
@@ -1815,7 +1843,9 @@
       const grid = trial.profiles[trial.alignmentIndex].grid;
       presentCalibration(matrices, grid);
       ui['frame-position'].textContent = `Ustawienie kadru · ${grid.columns} × ${grid.rows} QR`;
-      ui['qr-caption'].textContent = 'Sztuczne dane. Uruchom kamerę odbiornika i zmieść wszystkie kody z białymi marginesami.';
+      ui['qr-caption'].textContent = trial.version >= 4
+        ? 'Kody ustawienia kadru. Zmieść cały układ z białymi marginesami; właściwa próba sprawdzi gęstsze kody.'
+        : 'Sztuczne dane. Uruchom kamerę odbiornika i zmieść wszystkie kody z białymi marginesami.';
       ui['calibration-status'].textContent = 'Odbiornik pokaże, ile kodów widzi. Gdy odczyt jest stabilny, wybierz „Rozpocznij pomiar”. Utrzymaj tę samą odległość i rozmiar widoku przez całą próbę.';
       ui['begin-calibration'].hidden = false;
       ui['begin-calibration'].disabled = false;
@@ -1975,6 +2005,7 @@
     receiverActivity = activity;
   }
   function resetCalibrationReadout() {
+    pendingCalibrationPaint = null;
     calibrationObserver?.reset();
     calibrationView?.reset();
     calibrationFromImages = false;
@@ -2081,13 +2112,15 @@
     setText(ui['calibration-view-status'], fromImages ? `Odczyt z obrazów — bez pomiaru szybkości kamery. ${phaseText}` : phaseText);
     const counts = current && model.phase !== 'setup' && model.phase !== 'settling'
       ? `${current.received}/${current.expected} paczek · ${current.coverage.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}% · ${model.ended ? 'braki' : 'jeszcze do odebrania'}: ${current.missing}. ` : '';
-    setText(ui['calibration-current-detail'], current
-      ? `${counts}${current.chunkBytes} B danych w kodzie. ${model.phase === 'setup' || model.phase === 'settling' ? 'Nieruchome kody służą do ustawienia kadru i nie liczą się do wyniku.'
+    setText(ui['calibration-current-detail'], current?.headerOnly
+      ? `Rzadkie kody ustawienia kadru zawierają ${current.payloadBytes} B opisu próby. Pomiar tego profilu użyje ${current.plannedModules} × ${current.plannedModules} modułów i ${current.plannedChunkBytes} B danych na kod. Pomiar jeszcze się nie rozpoczął.`
+      : current ? `${counts}${current.chunkBytes} B danych w kodzie. ${model.phase === 'setup' || model.phase === 'settling' ? 'Nieruchome kody służą do ustawienia kadru i nie liczą się do wyniku.'
         : model.ended ? 'Powyżej widać ostatnią mierzoną kombinację.' : 'Zielony wynik wymaga kompletu paczek z całych 4 sekund próby.'}` : '');
     setText(ui['calibration-map-help'], fromImages
       ? 'Odczyt z obrazów sprawdza tylko kompletność paczek. Zielony „Komplet” nie potwierdza odbioru z podaną częstotliwością. Wykonaj nową próbę kamerą, aby dobrać szybkość.'
-      : `X to liczba kodów poziomo, Y — pionowo. Hz oznacza zmianę całego układu na sekundę. Moduł to mały kwadrat wewnątrz QR; jego rozmiar w pikselach zależy od ekranu. ${state.compareLayouts
-        ? 'Próba porównuje 1 × 1, 2 × 1, 1 × 2 i 2 × 2.' : 'Próba obejmuje układ wybrany na nadajniku. Aby porównać układy, w polu „Porównywane układy” wybierz „Porównaj 1×1, 2×1, 1×2, 2×2”.'}`);
+      : `X to liczba kodów poziomo, Y — pionowo. Hz oznacza zmianę całego układu na sekundę. Moduł to mały kwadrat wewnątrz QR; jego rozmiar w pikselach zależy od ekranu. ${state.allLayouts
+        ? 'Próba obejmuje wszystkie 15 siatek: 1–5 kolumn × 1–3 wiersze, do 15 QR naraz.' : state.compareLayouts
+        ? 'Szybkie porównanie obejmuje 1 × 1, 2 × 1, 1 × 2 i 2 × 2.' : 'Próba obejmuje tylko układ wybrany na nadajniku. Aby zbadać pozostałe siatki, w polu „Porównywane układy” wybierz „Wszystkie układy: 1–5 kolumn × 1–3 wiersze”.'}`);
     return model;
   }
   function renderCalibrationResults(state, fromImages) {
@@ -2129,7 +2162,7 @@
       : `Profile z odczytem: ${state.measuredProfiles}/${state.totalProfiles}. Okna 1–4 odpowiadają sekundom nadawania. Braki obejmują całą drogę: przygotowanie, wyświetlenie i odczyt. Duplikaty nie zwiększają wyniku.`;
   }
   let calibrationFromImages = false;
-  function receiveCalibration(bytes, source = 'camera') {
+  function receiveCalibration(bytes, source = 'camera', deferPaint = false) {
     if (receiverSnapshot && !receiverSnapshot.complete && (receiverSnapshot.received > 0 || receiverSnapshot.version === 4)) {
       message('decode-message', 'Trwa odbiór pliku. Aby wykonać próbę, najpierw wybierz „Reset odbioru”.', 'warning');
       return { done: false, blocked: true };
@@ -2155,12 +2188,21 @@
     selectReceiverActivity('calibration', newSession);
     if (source === 'image') calibrationFromImages = true;
     const grid = state.grid || { columns: state.lanes, rows: 1 };
-    setGridControls(grid, true);
-    cameraScanner?.setGrid?.(grid.columns, grid.rows);
-    syncLayout();
+    const selected = selectedGrid(true);
+    if (selected.columns !== grid.columns || selected.rows !== grid.rows) {
+      setGridControls(grid, true);
+      cameraScanner?.setGrid?.(grid.columns, grid.rows);
+      syncLayout();
+    }
     if (parsed.alignment && Boolean(parsed.setup) === Boolean(state.setup)
       && parsed.index === state.currentIndex && state.phase === 'alignment') recordAlignment(parsed);
     else if (state.phase !== 'alignment') resetAlignment();
+    if (deferPaint) pendingCalibrationPaint = state;
+    else paintCalibrationReadout(state);
+    return { done: false, calibration: true };
+  }
+  function paintCalibrationReadout(state) {
+    const grid = state.grid || { columns: state.lanes, rows: 1 };
     ui['calibration-panel'].hidden = false;
     ui['calibration-progress'].value = state.progress;
     const activeProfile = state.results[state.currentIndex];
@@ -2175,7 +2217,6 @@
     renderCalibrationResults(state, calibrationFromImages);
     message('decode-message', state.ended ? best && !calibrationFromImages ? 'Możesz przekazać wynik nadajnikowi kodem QR.' : 'Sprawdź wyniki i powtórz próbę po poprawieniu ustawienia urządzeń.'
       : 'Kalibracja używa sztucznych danych; plik nie jest jeszcze przesyłany.', state.ended && !best ? 'warning' : 'success');
-    return { done: false, calibration: true };
   }
   function showCalibrationFeedback() {
     if (!calibrationObserver.state?.best || !calibrationObserver.state.ended || calibrationFromImages) return;
@@ -2645,7 +2686,7 @@
     }
   }
   function scannerOptions(lanes = 1, grid = null) {
-    return { decode: window.WGQR.decodePixels, lanes, ...(grid ? { columns: grid.columns, rows: grid.rows } : {}), workerUrl: './assets/qr-decoder-worker.js?v=3' };
+    return { decode: window.WGQR.decodePixels, lanes, ...(grid ? { columns: grid.columns, rows: grid.rows } : {}), workerUrl: './assets/qr-decoder-worker.js?v=4' };
   }
   async function scanCamera(scanner, video) {
     return typeof scanner.scanAsync === 'function' ? scanner.scanAsync(video) : scanner.scan(video);
@@ -2768,7 +2809,7 @@
         const pending = [];
         for (const result of results) {
           if (!active() || epoch !== receiverEpoch) break;
-          const outcome = await receiveBytes(result.bytes, active);
+          const outcome = await receiveBytes(result.bytes, active, 'camera', true);
           delta += outcome.delta || 0;
           if (outcome.pending) pending.push(result);
           if (outcome.done) { done = true; break; }
@@ -2780,6 +2821,11 @@
           if (outcome.done) { done = true; break; }
         }
         if (epoch === receiverEpoch && (active() || (done && mode === 'decode'))) {
+          // A camera frame can contain fifteen CAL packets. Count every one,
+          // then paint the 150-cell dashboard once for that frame.
+          const calibrationState = pendingCalibrationPaint;
+          pendingCalibrationPaint = null;
+          if (calibrationState) paintCalibrationReadout(calibrationState);
           if (!hasCalibration) recordScan(sample, delta, done);
           renderTelemetry(done);
         }
@@ -2828,7 +2874,7 @@
     ui['choose-file'].disabled = ui['choose-image'].disabled = ui['sample-file'].disabled = ui['series-sample'].disabled = ui['speed-sample'].disabled = ui['large-sample'].disabled = ui['zip-sample'].disabled = ui['start-camera'].disabled = true;
     return;
   }
-  matrixEncoder = window.WGEncoder.create({ encode: window.WGQR.encodeBytes, workerUrl: './assets/qr-encoder-worker.js?v=2' });
+  matrixEncoder = window.WGEncoder.create({ encode: window.WGQR.encodeBytes, workerUrl: './assets/qr-encoder-worker.js?v=3' });
   collector = window.WGResilient.createCollector();
   calibrationObserver = window.WGCalibration.createObserver();
   calibrationView = window.WGCalibrationView.create({ encodeBytes: window.WGQR.encodeBytes });

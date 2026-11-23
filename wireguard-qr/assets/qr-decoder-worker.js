@@ -5,7 +5,7 @@ importScripts('qr-core.js?v=3');
 self.onmessage = event => {
   const request = event.data;
   if (!request || !Number.isSafeInteger(request.id) || !Array.isArray(request.frames)
-    || request.frames.length < 1 || request.frames.length > 9) return;
+    || request.frames.length < 1 || request.frames.length > 15) return;
   try {
     const answers = [];
     for (const [index, frame] of request.frames.entries()) {
