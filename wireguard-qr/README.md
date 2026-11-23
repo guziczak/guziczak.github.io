@@ -144,7 +144,7 @@ Dekodowanie może działać w lokalnym workerze, który korzysta z tego samego j
 
 Pośrednie obrazy mogą więc zostać pominięte, co kalibracja wykaże jako braki paczek. Przy transferze pliku kody naprawcze i powtórzenia mogą uzupełnić brakujące informacje; odebrane wcześniej użyteczne porcje pozostają zachowane. To odrębne od pamięci obrazu: mała seria gromadzi dane pliku, a duża składa aktywny segment i zapisuje ukończone części lokalnie. Przy trwałym przeciążeniu zmniejsz tempo, liczbę kodów lub gęstość. Większy bufor zdjęć nie zwiększyłby wydajności dekodera i powodowałby narastające opóźnienie.
 
-**Nadawca również używa lokalnego workera**, który przygotowuje matryce kolejnych kodów poza głównym wątkiem. Przygotowanie jest asynchroniczne i ograniczone do jednej paczki najwyżej dwudziestu kodów naraz; bufor odtwarzania mieści najwyżej trzy gotowe widoki z wyprzedzeniem. Pauza lub zmiana źródła unieważnia nieukończone przygotowanie. Przy braku workera lub jego błędzie dostępne jest kodowanie w głównym wątku. Wyświetlanie odbywa się w rytmie ekranu; renderer dobiera całkowitą liczbę pikseli na moduł i zachowuje czteromodułowy biały margines. Te zmiany zmniejszają pracę wykonywaną przy przełączaniu obrazów, ale nie przesądzają o szybkości fizycznego odczytu kamerą.
+**Nadawca również używa lokalnego workera**, który przygotowuje matryce kolejnych kodów poza głównym wątkiem. Przygotowanie jest asynchroniczne i ograniczone do jednej paczki najwyżej dwudziestu kodów naraz; bufor odtwarzania mieści najwyżej trzy gotowe widoki z wyprzedzeniem. Pauza lub zmiana źródła unieważnia nieukończone przygotowanie. Przy braku workera lub jego błędzie dostępne jest kodowanie w głównym wątku. Wyświetlanie odbywa się w rytmie ekranu. Renderer zachowuje jednakowe moduły z całkowitą liczbą pikseli w bitmapie oraz czteromodułowy biały margines. Podgląd dopasowuje całą bitmapę do dostępnego pola; nie zaokrągla jego szerokości w dół o cały moduł na każdej pozycji siatki. Kafelki nie dodają drugiego, dekoracyjnego odstępu. Przeglądarka dopasowuje bitmapę do fizycznych pikseli ekranu, więc poprawność jej odczytu optycznego trzeba sprawdzić kalibracją. Eksport PNG zachowuje całkowity rozmiar modułów bez skalowania. Te zmiany zmniejszają pracę wykonywaną przy przełączaniu obrazów, ale nie przesądzają o szybkości fizycznego odczytu kamerą.
 
 ## Statystyki odbioru i diagnostyka
 
@@ -205,7 +205,7 @@ Obrazy: do 20 MB i 50 megapikseli, z dodatkowym limitem dłuższego boku 20 000 
 
 - `index.html`, `styles.css`, `app.js` — interfejs i obsługa plików/kamery.
 - `assets/qr-core.js` — gotowy, samodzielny bundle kodera i dekodera.
-- `assets/qr-render.js` — rysowanie z całkowitą liczbą pikseli na moduł i ponownym wykorzystaniem bufora obrazu.
+- `assets/qr-render.js` — bitmapa z całkowitą liczbą pikseli na moduł, podgląd wypełniający pole i ponowne wykorzystanie bufora obrazu.
 - `assets/qr-encoder.js`, `assets/qr-encoder-worker.js` — asynchroniczne przygotowanie najwyżej dwudziestu matryc QR w lokalnym workerze, anulowanie i awaryjny powrót do głównego wątku.
 - `assets/qr-transfer.js` — zgodność z poprzednim protokołem v1.
 - `assets/qr-resilient.js` — kompaktowy protokół v3, odczyt v1/v2, równania naprawcze, manifesty, składanie pliku, zwrotne potwierdzenia i sprawdzanie integralności.
