@@ -170,13 +170,25 @@ test('manifests are required metadata rather than redundant data packets, includ
 
 test('invalid multi-symbol counters cannot inflate reads or leak nonnumeric diagnostic input', () => {
   const { telemetry: t } = harness();
-  for (const value of [-1, 3, 1000000, NaN, Infinity, 'PRIVATE_BYTES', { bytes: 'PRIVATE_BYTES' }]) {
+  for (const value of [-1, 10, 1000000, NaN, Infinity, 'PRIVATE_BYTES', { bytes: 'PRIVATE_BYTES' }]) {
     t.recordScan({ ...scan(20, false), symbols: value, attempts: value });
   }
   assert.equal(t.snapshot().cameraAttempts, 7);
   assert.equal(t.snapshot().decodeAttempts, 7);
   assert.equal(t.snapshot().opticalReads, 0);
   assert.doesNotMatch(t.report(), /PRIVATE_BYTES|NaN|Infinity/);
+});
+
+test('a 3 by 3 captured grid records all nine optical reads without multiplying capture latency', () => {
+  const { telemetry: t } = harness();
+  t.recordScan({ ...scan(90), symbols: 9, attempts: 9 });
+  t.recordScan({ ...scan(60), symbols: 6, attempts: 9 });
+  const state = t.snapshot();
+  assert.equal(state.cameraAttempts, 2);
+  assert.equal(state.decodeAttempts, 18);
+  assert.equal(state.opticalReads, 15);
+  assert.equal(state.latencySamples, 2);
+  assert.equal(state.latencyAvgMs, 75);
 });
 
 test('latency p95 uses a bounded upper-bucket estimate, independently of transfer acceptance', () => {

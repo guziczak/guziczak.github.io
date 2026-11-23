@@ -26,11 +26,11 @@ function edit(bytes, change, repair = true) {
   return value;
 }
 function observeProfile(sender, observer, index, sequenceFilter = () => true, repeats = 1) {
-  const { fps } = sender.profiles[index];
-  for (let sequence = 0; sequence < fps * 4 * sender.lanes; sequence++) {
+  const { fps, lanes = sender.lanes } = sender.profiles[index];
+  for (let sequence = 0; sequence < fps * 4 * lanes; sequence++) {
     if (!sequenceFilter(sequence)) continue;
     for (let copy = 0; copy < repeats; copy++) {
-      observer.accept(sender.frame(index, sequence), index * 4000 + Math.floor(sequence / sender.lanes) * 1000 / fps + copy);
+      observer.accept(sender.frame(index, sequence), index * 4000 + Math.floor(sequence / lanes) * 1000 / fps + copy);
     }
   }
 }
@@ -347,4 +347,272 @@ test('large flags require matching frame length and cannot switch the active cal
   for (const change of [value => { value[11] &= ~2; }, value => { value[11] |= 4; }]) {
     assert.throws(() => large.acceptFeedback(edit(largeFeedback, change)), { code: 'CALIBRATION_INVALID' });
   }
+});
+
+test('v3 current-grid plans cover every 1..3 by 1..3 grid without changing legacy callers', () => {
+  for (const columns of [1, 2, 3]) for (const rows of [1, 2, 3]) for (const extended of [false, true]) {
+    const input = { columns, rows };
+    const sender = api.create({ grid: input, extended });
+    input.columns = 99;
+    assert.equal(sender.version, 3); assert.equal(sender.compareLayouts, false); assert.equal(sender.extended, extended);
+    assert.equal(sender.profiles.length, extended ? 10 : 6);
+    assert.equal(sender.duration * sender.profiles.length, extended ? 40000 : 24000);
+    assert.equal(sender.alignmentIndex, 0); assert.equal(sender.alignmentLanes, columns * rows);
+    assert.ok(Object.isFrozen(sender.profiles));
+    for (let index = 0; index < sender.profiles.length; index++) {
+      const profile = sender.profiles[index];
+      assert.ok(Object.isFrozen(profile)); assert.ok(Object.isFrozen(profile.grid));
+      assert.deepEqual([profile.grid.columns, profile.grid.rows, profile.lanes], [columns, rows, columns * rows]);
+      const last = profile.fps * 4 * profile.lanes - 1;
+      const frame = sender.frame(index, last), parsed = api.parse(frame);
+      assert.equal(frame[11], (columns << 4) | rows);
+      assert.equal(frame[9], extended ? 16 : 0);
+      assert.equal(parsed.version, 3); assert.equal(parsed.compareLayouts, false); assert.equal(parsed.extended, extended);
+      assert.equal(parsed.alignment, false); assert.equal(parsed.lanes, columns * rows);
+      assert.equal(parsed.slot, profile.lanes - 1); assert.equal(parsed.step, profile.fps * 4 - 1); assert.equal(parsed.window, 3);
+      assert.throws(() => sender.frame(index, last + 1), { code: 'CALIBRATION_INVALID' });
+    }
+    assert.equal(api.parse(sender.endFrame()).window, null);
+  }
+  assert.equal(api.create({ compareLayouts: false }).version, 1);
+  assert.equal(api.create({ extended: true, compareLayouts: false }).version, 2);
+  for (const grid of [null, {}, { columns: 0, rows: 1 }, { columns: 4, rows: 1 },
+    { columns: 1, rows: 4 }, { columns: 1.5, rows: 2 }, { columns: 2, rows: '2' }]) {
+    assert.throws(() => api.create({ grid }), { code: 'CALIBRATION_INVALID' });
+  }
+  assert.throws(() => api.create({ compareLayouts: 1 }), { code: 'CALIBRATION_INVALID' });
+  assert.throws(() => api.create().alignmentFrame(), { code: 'CALIBRATION_INVALID' });
+});
+
+test('v3 comparison groups profiles by four explicit grids and prepares the largest grid first', () => {
+  for (const extended of [false, true]) {
+    const sender = api.create({ grid: { columns: 3, rows: 3 }, compareLayouts: true, extended });
+    const base = extended ? api.fastProfiles : api.profiles;
+    const grids = [[1, 1], [2, 1], [1, 2], [2, 2]];
+    assert.equal(sender.version, 3); assert.equal(sender.profiles.length, base.length * 4);
+    assert.equal(sender.duration * sender.profiles.length, extended ? 160000 : 96000);
+    assert.equal(sender.alignmentIndex, base.length * 3); assert.equal(sender.alignmentLanes, 4);
+    for (let index = 0; index < sender.profiles.length; index++) {
+      const profile = sender.profiles[index], expected = base[index % base.length];
+      const [columns, rows] = grids[Math.floor(index / base.length)];
+      assert.deepEqual([profile.grid.columns, profile.grid.rows, profile.lanes, profile.chunkBytes, profile.fps],
+        [columns, rows, columns * rows, expected.chunkBytes, expected.fps]);
+      const parsed = api.parse(sender.frame(index, profile.fps * 4 * profile.lanes - 1));
+      assert.equal(parsed.compareLayouts, true); assert.equal(parsed.extended, extended);
+      assert.equal(parsed.index, index); assert.equal(parsed.lanes, columns * rows);
+    }
+    const alignment = api.parse(sender.alignmentFrame());
+    assert.equal(alignment.index, sender.alignmentIndex);
+    assert.deepEqual([alignment.grid.columns, alignment.grid.rows, alignment.chunkBytes, alignment.fps], [2, 2, 384, 2]);
+    assert.equal(api.parse(sender.endFrame()).index, sender.profiles.length - 1);
+  }
+});
+
+test('alignment supplies independent full-sized slots for every profile without counting samples or rewinding progress', () => {
+  const sender = api.create({ compareLayouts: true, large: true, ecc: 'L' }), observer = api.createObserver();
+  for (let index = 0; index < sender.profiles.length; index++) {
+    const profile = sender.profiles[index], payloads = new Set();
+    for (let lane = 0; lane < profile.lanes; lane++) {
+      const frame = sender.alignmentFrame(lane, index), parsed = api.parse(frame);
+      assert.equal(frame.length, profile.chunkBytes + 92);
+      assert.equal(parsed.alignment, true); assert.equal(parsed.ended, false);
+      assert.equal(parsed.index, index); assert.equal(parsed.sequence, lane); assert.equal(parsed.slot, lane);
+      assert.equal(parsed.step, null); assert.equal(parsed.window, null);
+      assert.equal(parsed.ecc, 'L'); assert.equal(parsed.large, true);
+      payloads.add(Buffer.from(frame).toString('hex'));
+    }
+    assert.equal(payloads.size, profile.lanes);
+    assert.throws(() => sender.alignmentFrame(profile.lanes, index), { code: 'CALIBRATION_INVALID' });
+  }
+  for (let repeat = 0; repeat < 5; repeat++) for (let lane = 0; lane < sender.alignmentLanes; lane++) {
+    observer.accept(sender.alignmentFrame(lane), repeat * 100000 + lane);
+  }
+  assert.equal(observer.state.phase, 'alignment'); assert.equal(observer.state.currentIndex, 18);
+  assert.equal(observer.state.progress, 0); assert.equal(observer.state.measuredProfiles, 0);
+  assert.equal(observer.state.totalProfiles, 24); assert.ok(observer.state.results.every(result => result.samples === 0));
+  assert.equal(observer.state.best, null); assert.equal(observer.state.fastest, null);
+  assert.throws(() => observer.createFeedback(), { code: 'CALIBRATION_INVALID' });
+
+  observer.accept(sender.frame(0, 0), 600000);
+  assert.equal(observer.state.phase, 'measuring'); assert.equal(observer.state.currentIndex, 0); assert.equal(observer.state.lanes, 1);
+  const progress = observer.state.progress;
+  observer.accept(sender.alignmentFrame(0, 0), 600001);
+  assert.equal(observer.state.phase, 'measuring', 'A delayed preparation frame cannot rewind this measurement.');
+  observer.accept(sender.alignmentFrame(0, 1), 600002);
+  assert.equal(observer.state.phase, 'alignment'); assert.equal(observer.state.currentIndex, 1);
+  assert.equal(observer.state.progress, progress); assert.equal(observer.state.results[0].samples, 1);
+  observer.accept(sender.frame(0, 1), 600003);
+  assert.equal(observer.state.phase, 'alignment'); assert.equal(observer.state.currentIndex, 1);
+  assert.equal(observer.state.results[0].samples, 2, 'A late measurement still belongs to its original profile.');
+  observer.accept(sender.frame(1, 0), 600004);
+  assert.equal(observer.state.phase, 'measuring'); assert.equal(observer.state.currentIndex, 1);
+  assert.equal(observer.state.measuredProfiles, 2);
+  observer.accept(sender.endFrame(), 700000);
+  assert.equal(observer.state.phase, 'finished'); assert.equal(observer.state.progress, 100);
+  observer.accept(sender.alignmentFrame(), 700001);
+  assert.equal(observer.state.phase, 'finished'); assert.equal(observer.state.results[0].samples, 2);
+  observer.reset(); assert.equal(observer.state, null);
+  observer.accept(sender.alignmentFrame(), 800000);
+  assert.equal(observer.state.phase, 'alignment'); assert.ok(observer.state.results.every(result => result.samples === 0));
+  sender.dispose();
+  assert.throws(() => sender.alignmentFrame(), { code: 'CALIBRATION_INVALID' });
+});
+
+test('v3 reports exact unique coverage in four sender windows despite duplicates and delayed out-of-order reads', () => {
+  const sender = api.create({ grid: { columns: 3, rows: 2 } }), observer = api.createObserver();
+  // 5 displays/s, six independent slots: 30 expected symbols per second.
+  for (let sequence = 119; sequence >= 0; sequence--) {
+    if (sequence === 30 || (sequence >= 60 && sequence < 75)) continue;
+    for (let repeat = 0; repeat < 3; repeat++) observer.accept(sender.frame(1, sequence), 900000 + repeat);
+  }
+  observer.accept(sender.endFrame(), 900100);
+  const result = observer.state.results[1];
+  assert.deepEqual([result.expected, result.received, result.samples, result.missing], [120, 104, 104, 16]);
+  assert.equal(result.coverage, 104 * 100 / 120); assert.equal(result.bytesPerSecond, 9984);
+  assert.deepEqual(Array.from(result.perSecond, window => [window.expected, window.received, window.missing]),
+    [[30, 30, 0], [30, 29, 1], [30, 15, 15], [30, 30, 0]]);
+  assert.deepEqual(Array.from(result.perSecond, window => window.bytesPerSecond), [11520, 11136, 5760, 11520]);
+  assert.equal(result.minBytesPerSecond, 5760); assert.equal(result.maxBytesPerSecond, 11520);
+  assert.equal(result.stable, false); assert.equal(observer.state.best, null);
+  assert.equal(observer.state.fastest.index, 1);
+  assert.throws(() => observer.createFeedback(), { code: 'CALIBRATION_INVALID' });
+  result.perSecond[0].received = 9999;
+  assert.equal(observer.state.results[1].perSecond[0].received, 30, 'Snapshots cannot alter counted symbols.');
+});
+
+test('v3 setup previews cannot masquerade as a later settling period after measurement starts', () => {
+  const sender = api.create({ compareLayouts: true }), observer = api.createObserver();
+  const setup = sender.alignmentFrame(0, sender.alignmentIndex, true);
+  const parsed = api.parse(setup);
+  assert.equal(parsed.setup, true); assert.equal(parsed.alignment, true); assert.equal(parsed.index, 18);
+  assert.equal(setup[9], 32 | 8 | 64);
+  observer.accept(setup, 0);
+  assert.equal(observer.state.currentIndex, 18); assert.equal(observer.state.phase, 'alignment');
+  observer.accept(sender.frame(0), 5000);
+  const progress = observer.state.progress;
+  observer.accept(setup, 5001);
+  assert.equal(observer.state.currentIndex, 0); assert.equal(observer.state.phase, 'measuring');
+  assert.equal(observer.state.lanes, 1); assert.equal(observer.state.progress, progress);
+  assert.equal(observer.state.results[0].samples, 1); assert.equal(observer.state.results[18].samples, 0);
+
+  const settle = sender.alignmentFrame(0, 18);
+  assert.equal(api.parse(settle).setup, false);
+  observer.accept(settle, 90000);
+  assert.equal(observer.state.currentIndex, 18); assert.equal(observer.state.phase, 'alignment');
+  assert.equal(observer.state.lanes, 4); assert.equal(observer.state.progress, progress);
+  observer.accept(sender.frame(18), 91000);
+  assert.equal(observer.state.currentIndex, 18); assert.equal(observer.state.phase, 'measuring');
+  assert.equal(observer.state.results[18].samples, 1);
+  assert.throws(() => sender.alignmentFrame(0, 0, 1), { code: 'CALIBRATION_INVALID' });
+  assert.throws(() => api.parse(edit(setup, value => { value[9] &= ~8; })), { code: 'CALIBRATION_INVALID' });
+  assert.throws(() => api.parse(edit(setup, value => { value[8] = 2; value[11] = 2; })), { code: 'CALIBRATION_INVALID' });
+});
+
+test('v3 recommends a complete profile while a faster profile with gaps remains informational', () => {
+  const sender = api.create({ compareLayouts: true }), observer = api.createObserver();
+  observeProfile(sender, observer, 0); // Complete 1x1 / 384 B / 2 Hz: 768 B/s.
+  observeProfile(sender, observer, 23, sequence => sequence < 159); // One missing 2x2 / 600 B / 10 Hz symbol.
+  assert.equal(observer.state.best, null);
+  observer.accept(sender.endFrame(), 96000);
+  const state = observer.state;
+  assert.equal(state.lanes, 4); assert.equal(state.phase, 'finished');
+  assert.equal(state.best.index, 0); assert.equal(state.best.stable, true); assert.equal(state.best.coverage, 100);
+  assert.equal(state.fastest.index, 23); assert.equal(state.fastest.missing, 1); assert.equal(state.fastest.stable, false);
+  const feedback = observer.createFeedback();
+  assert.equal(feedback[10], 0x11, 'SET describes the winning grid, not the grid of the final marker.');
+  const selected = sender.acceptFeedback(feedback);
+  assert.deepEqual([selected.grid.columns, selected.grid.rows, selected.lanes, selected.samples, selected.steps, selected.bytesPerSecond],
+    [1, 1, 1, 8, 8, 768]);
+  assert.equal(selected.compareLayouts, true);
+});
+
+test('all four compared grids belong to one v3 session, including equal-area horizontal and vertical pairs', () => {
+  const sender = api.create({ compareLayouts: true }), observer = api.createObserver();
+  for (const index of [0, 6, 12, 18]) {
+    const profile = sender.profiles[index];
+    const aligned = observer.accept(sender.alignmentFrame(0, index), index * 5000);
+    assert.equal(aligned.foreign, undefined); assert.equal(aligned.phase, 'alignment');
+    assert.deepEqual([aligned.grid.columns, aligned.grid.rows], [profile.grid.columns, profile.grid.rows]);
+    observeProfile(sender, observer, index);
+    assert.equal(observer.state.currentIndex, index); assert.equal(observer.state.lanes, profile.lanes);
+  }
+  observer.accept(sender.endFrame(), 120000);
+  assert.equal(observer.state.measuredProfiles, 4); assert.equal(observer.state.totalProfiles, 24);
+  assert.equal(observer.state.best.index, 18); assert.equal(observer.state.best.bytesPerSecond, 3072);
+  for (const index of [0, 6, 12, 18]) {
+    assert.equal(observer.state.results[index].coverage, 100);
+    assert.ok(observer.state.results[index].perSecond.every(window => window.coverage === 100));
+  }
+});
+
+test('v3 SET represents 108000 B/s and verifies full coverage, session, plan, selected grid, ECC and envelope', () => {
+  const sender = api.create({ grid: { columns: 3, rows: 3 }, extended: true, ecc: 'L', large: true });
+  const observer = api.createObserver();
+  observeProfile(sender, observer, 9);
+  observer.accept(sender.endFrame(), 50000);
+  const feedback = observer.createFeedback(), view = new DataView(feedback.buffer);
+  assert.equal(feedback.length, 40); assert.equal(feedback[8], 3); assert.equal(feedback[10], 0x33);
+  assert.equal(feedback[11], 1 | 2 | 8); assert.equal(view.getUint16(28), 720);
+  assert.equal(view.getUint32(30), 108000); assert.equal(view.getUint16(34), 80);
+  const selected = sender.acceptFeedback(feedback);
+  assert.deepEqual([selected.lanes, selected.samples, selected.steps, selected.bytesPerSecond], [9, 720, 80, 108000]);
+  assert.ok(observer.state.best.perSecond.every(window => window.received === 180 && window.coverage === 100));
+  for (const change of [
+    value => { value[8] = 2; }, value => { value[8] = 4; }, value => { value[9] = 10; },
+    value => { value[9] = 7; }, value => { value[10] = 0x32; },
+    value => { value[11] ^= 1; }, value => { value[11] ^= 2; }, value => { value[11] ^= 4; },
+    value => { value[11] ^= 8; }, value => { value[11] |= 16; }, value => { value[12] ^= 1; },
+    (_, changed) => changed.setUint16(28, 721), (_, changed) => changed.setUint16(34, 79),
+    (_, changed) => changed.setUint32(30, 108001),
+    (_, changed) => { changed.setUint16(28, 719); changed.setUint32(30, 107850); }
+  ]) assert.throws(() => sender.acceptFeedback(edit(feedback, change)), { code: 'CALIBRATION_INVALID' });
+  assert.throws(() => sender.acceptFeedback(edit(feedback, value => { value[28] ^= 1; }, false)), { code: 'CALIBRATION_INVALID' });
+  assert.throws(() => sender.acceptFeedback(feedback.subarray(0, -1)), { code: 'CALIBRATION_INVALID' });
+
+  const rectangular = api.create({ grid: { columns: 3, rows: 2 } }), otherObserver = api.createObserver();
+  observeProfile(rectangular, otherObserver, 0); otherObserver.accept(rectangular.endFrame(), 30000);
+  const rectangularFeedback = otherObserver.createFeedback();
+  assert.throws(() => rectangular.acceptFeedback(edit(rectangularFeedback, value => { value[10] = 0x23; })),
+    { code: 'CALIBRATION_INVALID' }, 'Equal area does not make a transposed grid the same profile.');
+});
+
+test('v3 malformed grids, profile encodings and alignment flags fail before observer state changes', () => {
+  const sender = api.create({ grid: { columns: 3, rows: 2 } }), observer = api.createObserver();
+  const frame = sender.frame(0);
+  for (const change of [
+    value => { value[8] = 4; }, value => { value[9] |= 64; }, value => { value[9] |= 128; }, value => { value[10] = 6; },
+    value => { value[11] = 0; }, value => { value[11] = 0x41; }, value => { value[11] = 0x14; },
+    value => { value[34] = 1; }, value => { value[35] = 1; },
+    (_, view) => view.setUint16(28, 48), (_, view) => view.setUint16(30, 1),
+    (_, view) => view.setUint16(32, 3999), value => { value[9] |= 1 | 8; },
+    (value, view) => { value[9] |= 8; view.setUint16(28, 6); }
+  ]) {
+    assert.throws(() => observer.accept(edit(frame, change), 0), { code: 'CALIBRATION_INVALID' });
+    assert.equal(observer.state, null);
+  }
+  assert.throws(() => observer.accept(edit(sender.endFrame(), value => { value[10] = 0; value[34] = 0; value[35] = 0; }), 30000),
+    { code: 'CALIBRATION_INVALID' });
+  const compared = api.create({ compareLayouts: true });
+  assert.throws(() => observer.accept(edit(compared.frame(6), value => { value[11] = 0x12; }), 30000),
+    { code: 'CALIBRATION_INVALID' });
+  assert.equal(observer.state, null);
+});
+
+test('v3 foreign session options cannot change an active trial or reuse its recommendation', () => {
+  const sender = api.create({ grid: { columns: 1, rows: 1 } }), observer = api.createObserver();
+  observer.accept(sender.alignmentFrame(), 0);
+  for (const change of [
+    value => { value[12] ^= 1; }, value => { value[11] = 0x21; },
+    value => { value[9] ^= 2; }, value => { value[9] |= 16; }, value => { value[9] |= 32; }
+  ]) {
+    const result = observer.accept(edit(sender.alignmentFrame(), change), 1);
+    assert.equal(result.foreign, true); assert.equal(result.phase, 'alignment');
+    assert.equal(result.id, sender.id); assert.equal(result.progress, 0);
+    assert.ok(result.results.every(profile => profile.samples === 0));
+  }
+  assert.equal(observer.accept(edit(sender.endFrame(), value => { value[9] |= 4; }), 24000).foreign, true);
+  observeProfile(sender, observer, 0); observer.accept(sender.endFrame(), 30000);
+  const foreign = api.create({ grid: { columns: 1, rows: 1 } });
+  assert.throws(() => foreign.acceptFeedback(observer.createFeedback()), { code: 'CALIBRATION_INVALID' });
+  assert.equal(observer.state.best.coverage, 100);
 });

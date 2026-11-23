@@ -1,4 +1,4 @@
-/* WGCamera — local QR tracking, independent dual symbols, bounded worker decoding. */
+/* WGCamera — local QR tracking, independent grid symbols, bounded worker decoding. */
 (function (root) {
   'use strict';
 
@@ -8,9 +8,24 @@
   const WORKER_TIMEOUT = 3000;
   const CORNERS = ['topLeftCorner', 'topRightCorner', 'bottomRightCorner', 'bottomLeftCorner'];
 
-  function createScanner({ decode, lanes = 1, workerUrl = null } = {}) {
+  function validGrid(columns, rows) {
+    return Number.isInteger(columns) && columns >= 1 && columns <= 3
+      && Number.isInteger(rows) && rows >= 1 && rows <= 3;
+  }
+
+  function createScanner({ decode, lanes, columns, rows, workerUrl = null } = {}) {
     if (typeof decode !== 'function') throw new TypeError('WGCamera requires a decode function.');
-    if (lanes !== 1 && lanes !== 2) throw new TypeError('WGCamera supports one or two QR symbols.');
+    let explicitGrid = columns !== undefined || rows !== undefined;
+    if (explicitGrid) {
+      if (!validGrid(columns, rows) || (lanes !== undefined && lanes !== columns * rows)) {
+        throw new TypeError('WGCamera requires a grid from 1×1 to 3×3.');
+      }
+      lanes = columns * rows;
+    } else {
+      if (lanes === undefined) lanes = 1;
+      if (lanes !== 1 && lanes !== 2) throw new TypeError('WGCamera requires one/two legacy lanes or an explicit grid.');
+      columns = lanes; rows = 1;
+    }
     const ownerDocument = root.document;
     const now = () => root.performance.now();
     const makeSurface = () => {
@@ -27,6 +42,7 @@
     let disposed = false;
     let sourceWidth = 0;
     let sourceHeight = 0;
+    let searchRound = 0;
     let generation = 0;
     let activeScan = null;
     let worker = null;
@@ -40,11 +56,11 @@
     }
     function ensureSurfaces() {
       while (surfaces.length < lanes) surfaces.push(makeSurface());
-      if (lanes === 2 && !snapshot) snapshot = makeSurface();
+      if (lanes > 1 && !snapshot) snapshot = makeSurface();
     }
     ensureSurfaces();
 
-    function clearTracking() { states = Array.from({ length: lanes }, state); }
+    function clearTracking() { states = Array.from({ length: lanes }, state); searchRound = 0; }
     function mapLocation(location, region, width, height) {
       if (!location || typeof location !== 'object') return location;
       const mapped = {};
@@ -81,7 +97,39 @@
       return { x, y, width: Math.min(width, Math.ceil(tracked.right + margin)) - x,
         height: Math.min(height, Math.ceil(tracked.bottom + margin)) - y };
     }
+    function gridRegion(index, width, height, detail) {
+      const tracked = states.filter(lane => lane.tracked);
+      // If the sender returned to one large code, all untracked lanes can share
+      // one detailed full-frame probe instead of decoding nine identical images.
+      if (detail && !tracked.length && (states[index].forceDetail || searchRound % 8 === 7)) {
+        return { x: 0, y: 0, width, height };
+      }
+      // Try both axes without changing the video stream. Clean and overlapping
+      // crops cover each orientation, including a monitor or phone turned 90°.
+      const transpose = columns !== rows && Math.floor(searchRound / 2) % 2 === 1;
+      const cols = transpose ? rows : columns, lines = transpose ? columns : rows;
+      const occupied = new Set(tracked.map(lane => {
+        const x = (lane.tracked.left + lane.tracked.right) / 2;
+        const y = (lane.tracked.top + lane.tracked.bottom) / 2;
+        return Math.min(lines - 1, Math.floor(y * lines / height)) * cols
+          + Math.min(cols - 1, Math.floor(x * cols / width));
+      }));
+      const cells = Array.from({ length: lanes }, (_, cell) => cell).filter(cell => !occupied.has(cell));
+      const rank = states.slice(0, index).filter(lane => !lane.tracked).length;
+      // Existing tracks can share a search cell in the wrong orientation. Cycle
+      // remaining cells so those tracks cannot permanently hide a missing code.
+      const offset = Math.floor(searchRound / (columns === rows ? 2 : 4));
+      const cell = cells.length ? cells[(rank + offset) % cells.length] : index;
+      const col = cell % cols, row = Math.floor(cell / cols);
+      const overlapX = searchRound % 2 === 0 ? Math.ceil(width / cols * 0.14) : 0;
+      const overlapY = searchRound % 2 === 0 ? Math.ceil(height / lines * 0.14) : 0;
+      const x = Math.max(0, Math.floor(col * width / cols) - overlapX);
+      const y = Math.max(0, Math.floor(row * height / lines) - overlapY);
+      return { x, y, width: Math.min(width, Math.ceil((col + 1) * width / cols) + overlapX) - x,
+        height: Math.min(height, Math.ceil((row + 1) * height / lines) + overlapY) - y };
+    }
     function searchRegion(index, width, height, detail) {
+      if (lanes > 2) return gridRegion(index, width, height, detail);
       const other = lanes === 2 ? states[1 - index].tracked : null;
       const lane = states[index];
       // Once one symbol is tracked, a detailed search of the opposite half is
@@ -92,7 +140,7 @@
         return { x: 0, y: 0, width, height };
       }
       // Try both orientations. A rotated phone must not permanently hide one lane.
-      const horizontal = (width >= height) !== (Math.floor(lane.searches / 2) % 2 === 1);
+      const horizontal = (explicitGrid ? columns >= rows : width >= height) !== (Math.floor(lane.searches / 2) % 2 === 1);
       const span = horizontal ? width : height;
       const center = other ? horizontal ? (other.left + other.right) / 2 : (other.top + other.bottom) / 2 : null;
       const farSide = center === null ? index === 1 : center < span / 2;
@@ -152,11 +200,12 @@
         if (lane.misses > 0 && (tracked || detail || lane.misses % 3 === 2)) inversionAttempts = 'attemptBoth';
         return { index, tracked, region, width: pixelWidth, height: pixelHeight, inversionAttempts, sourceIndex: index };
       });
+      if (frames.some(frame => !frame.tracked)) searchRound++;
       let image = video;
       let captureX = 0, captureY = 0;
-      if (lanes === 2) {
+      if (lanes > 1) {
         // Freeze ONE source frame, at 1:1 resolution, covering the union of the
-        // two planned crops. Stable tracks do not need a full-frame extra copy.
+        // planned crops. Stable tracks do not need a full-frame extra copy.
         captureX = Math.min(...frames.map(frame => frame.region.x));
         captureY = Math.min(...frames.map(frame => frame.region.y));
         const captureWidth = Math.max(...frames.map(frame => frame.region.x + frame.region.width)) - captureX;
@@ -316,8 +365,15 @@
     }
     function setLanes(value) {
       if (value !== 1 && value !== 2) throw new TypeError('WGCamera supports one or two QR symbols.');
-      if (disposed || value === lanes) return;
-      lanes = value; reset(); ensureSurfaces();
+      if (disposed || (!explicitGrid && value === lanes)) return;
+      lanes = value; columns = value; rows = 1; explicitGrid = false;
+      reset(); ensureSurfaces();
+    }
+    function setGrid(nextColumns, nextRows) {
+      if (!validGrid(nextColumns, nextRows)) throw new TypeError('WGCamera requires a grid from 1×1 to 3×3.');
+      if (disposed || (explicitGrid && columns === nextColumns && rows === nextRows)) return;
+      columns = nextColumns; rows = nextRows; lanes = columns * rows; explicitGrid = true;
+      reset(); ensureSurfaces();
     }
     function dispose() {
       if (disposed) return;
@@ -327,7 +383,7 @@
         if (surface.canvas.height !== 1) surface.canvas.height = 1;
       }
     }
-    return { scan, scanAsync, reset, dispose, setLanes };
+    return { scan, scanAsync, reset, dispose, setLanes, setGrid };
   }
 
   root.WGCamera = Object.freeze({ createScanner });
