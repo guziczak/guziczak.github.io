@@ -42,6 +42,7 @@
     'large-resume', 'large-delete', 'large-delete-confirm', 'large-delete-cancel', 'large-delete-question', 'large-repair', 'estimate-title',
     'qr-columns', 'qr-rows', 'qr-grid-count', 'scan-columns', 'scan-rows', 'scan-grid-count',
     'begin-calibration', 'calibration-step', 'calibration-layout-scope', 'calibration-duration',
+    'calibration-home', 'calibration-setup', 'calibration-display-slot', 'sender-feedback',
     'calibration-alignment', 'alignment-status', 'alignment-detail', 'calibration-results', 'calibration-coverage',
     ...Array.from({ length: 7 }, (_, index) => `qr-canvas-${index + 3}`),
     ...Array.from({ length: 7 }, (_, index) => `qr-paper-${index + 3}`)
@@ -72,6 +73,7 @@
   let largeResumeBytes = 0;
   let decodedFile = null;
   let sourceEpoch = 0;
+  let encodingBusy = false;
   let decodeEpoch = 0;
   let cameraEpoch = 0;
   let cameraStream = null;
@@ -116,6 +118,7 @@
   let alignmentState = null;
   let calibrationRenderedKey = '';
   let calibrationWasExpanded = false;
+  let expandAfterCalibration = false;
   let receiverEpoch = 0;
   let receiverChain = Promise.resolve();
   let collector = null;
@@ -180,9 +183,11 @@
     ui['decoded-preview'].textContent = '';
   }
   function openExpanded() {
-    if ((!sourceBytes && !largeSourceFile) || ui['qr-result'].hidden) return;
+    if (ui['qr-result'].hidden) return;
     if (calibrationPhase === 'measuring') stopCalibration(false);
+    if (ui['qr-result'].hidden) return;
     expandedReturnFocus = document.activeElement;
+    ui['calibration-display-slot'].appendChild(ui['calibration-setup']);
     document.body.classList.add('qr-expanded');
     ui['qr-result'].setAttribute('role', 'dialog');
     ui['qr-result'].setAttribute('aria-modal', 'true');
@@ -191,14 +196,20 @@
     ui['close-expanded'].focus();
     redrawCurrent();
   }
+  function restoreCalibratedDisplay() {
+    if (!expandAfterCalibration || !series || ui['qr-result'].hidden) return;
+    expandAfterCalibration = false;
+    openExpanded();
+  }
   function closeExpanded(restoreFocus = true) {
     const wasExpanded = document.body.classList.contains('qr-expanded');
-    if (wasExpanded && calibrationActive) stopCalibration(false);
     document.body.classList.remove('qr-expanded');
+    if (wasExpanded && calibrationActive) stopCalibration(false);
     ui['qr-result'].removeAttribute('role');
     ui['qr-result'].removeAttribute('aria-modal');
     ui['qr-result'].removeAttribute('aria-label');
     ui['close-expanded'].hidden = true;
+    ui['calibration-home'].appendChild(ui['calibration-setup']);
     if (wasExpanded && restoreFocus) {
       const target = expandedReturnFocus && expandedReturnFocus.isConnected ? expandedReturnFocus : ui['expand-qr'];
       target.focus();
@@ -207,6 +218,7 @@
     redrawCurrent();
   }
   function encodeBusy(busy) {
+    encodingBusy = busy;
     ui['choose-file'].disabled = busy;
     ui['sample-file'].disabled = busy;
     ui['series-sample'].disabled = busy;
@@ -221,7 +233,8 @@
     ui['compress-single'].disabled = busy || Boolean(largeSourceFile);
     ui['calibration-range'].disabled = busy;
     ui['calibration-layout-scope'].disabled = busy;
-    ui['start-calibration'].disabled = busy || !series;
+    ui['start-calibration'].disabled = busy || calibrationActive;
+    ui['scan-feedback'].disabled = busy || !canReceiveFeedback();
     ui['download-source-zip'].disabled = busy || !sourceBytes || !window.WGZip.isZip(sourceBytes);
     ui['transfer-mode'].disabled = busy;
     ui['file-drop'].setAttribute('aria-busy', String(busy));
@@ -277,7 +290,7 @@
     ui['sender-metrics'].hidden = true;
     ui['calibration-status'].textContent = '';
     ui['calibration-step'].textContent = '1. Ustaw telefon → 2. Zmierz odbiór → 3. Przekaż wynik QR';
-    ui['start-calibration'].disabled = true;
+    ui['start-calibration'].disabled = encodingBusy;
     ui['qr-caption'].textContent = '';
     ui['capacity-note'].textContent = DEFAULT_CAPACITY;
     ui['download-qr'].disabled = true;
@@ -295,7 +308,7 @@
     ui['zip-entries'].replaceChildren();
     ui['zip-entries'].hidden = true;
     ui['download-source-zip'].disabled = true;
-    ui['animation-toggle'].disabled = false;
+    ui['animation-toggle'].disabled = true;
     ui['scan-feedback'].disabled = true;
     ui['feedback-message'].textContent = '';
     ui['feedback-image-input'].value = '';
@@ -353,6 +366,7 @@
     }
   }
   function resetAll() {
+    expandAfterCalibration = false;
     sourceEpoch += 1;
     decodeEpoch += 1;
     cancelImageRead();
@@ -755,6 +769,7 @@
       redrawCurrent();
       message('encode-message', 'Część jest gotowa. Odbiornik zapisuje ukończone części; po przerwie pokaż nadajnikowi kod braków.', 'success');
       status('Duży plik — część ' + (index + 1) + ' / ' + sender.descriptor.segmentCount);
+      restoreCalibratedDisplay();
     } catch (error) {
       if (token === sourceEpoch && generation === largeSegmentEpoch) {
         message('encode-message', error.code === 'FILE_CHANGED'
@@ -1231,6 +1246,7 @@
         : useSeries ? 'Seria jest gotowa i wstrzymana. Włącz kamerę na drugim urządzeniu, a potem odtwórz serię.' : 'Gotowe. Zeskanuj kod na drugim urządzeniu lub pobierz PNG.';
       message('encode-message', readyMessage, 'success');
       status(useSeries ? 'Seria QR gotowa — odtwarzanie wstrzymane' : 'Kod QR utworzony lokalnie');
+      restoreCalibratedDisplay();
     } catch {
       if (bytes && bytes !== sourceBytes) bytes.fill(0);
       if (transfer && transfer !== series) transfer.dispose();
@@ -1698,21 +1714,30 @@
     discardCalibrationFrames();
     calibrationDisplayGrid = null;
     if (calibrationSavedView) {
-      lastDisplayFrames = calibrationSavedView.frames;
-      ui['frame-position'].textContent = calibrationSavedView.position;
-      ui['qr-caption'].textContent = calibrationSavedView.caption;
+      const saved = calibrationSavedView;
+      lastDisplayFrames = saved.frames;
+      ui['frame-position'].textContent = saved.position;
+      ui['qr-caption'].textContent = saved.caption;
+      ui['qr-empty'].hidden = saved.emptyHidden;
+      ui['qr-result'].hidden = saved.resultHidden;
+      ui['series-controls'].hidden = saved.controlsHidden;
+      ui['download-qr'].disabled = saved.downloadDisabled;
       calibrationSavedView = null;
+      if (!lastDisplayFrames.length) for (let index = 0; index < 9; index++) clearQR(qrCanvas(index));
+      if (saved.resultHidden && document.body.classList.contains('qr-expanded')) closeExpanded();
       redrawCurrent();
     }
   }
+  function canReceiveFeedback() { return Boolean(calibration || (series && series.version >= 2)); }
   function lockCalibration(locked) {
     document.body.classList.toggle('qr-calibrating', locked);
     for (const id of ['calibration-range', 'calibration-layout-scope', 'qr-density', 'qr-layout', 'qr-columns', 'qr-rows', 'series-ecc',
       'previous-frame', 'next-frame', 'frame-slider', 'frame-rate', 'large-segment', 'large-previous', 'large-next']) ui[id].disabled = locked;
-    ui['start-calibration'].disabled = locked || !series;
+    ui['start-calibration'].disabled = locked || encodingBusy;
     ui['start-calibration'].hidden = locked;
-    ui['animation-toggle'].disabled = locked || transmissionPhase === 'confirmed';
+    ui['animation-toggle'].disabled = locked || !series || transmissionPhase === 'confirmed';
     ui['stop-calibration'].hidden = !locked;
+    ui['scan-feedback'].disabled = encodingBusy || !canReceiveFeedback();
     lockLargeWaiting();
   }
   function stopCalibration(showEnd = false) {
@@ -1726,7 +1751,7 @@
     if (wasActive) matrixEncoder?.reset();
     ui['begin-calibration'].hidden = true;
     lockCalibration(false);
-    if (showEnd && calibration && series) {
+    if (showEnd && calibration) {
       const bytes = calibration.endFrame();
       let matrix;
       try { matrix = window.WGQR.encodeBytes(bytes); } finally { bytes.fill(0); }
@@ -1739,22 +1764,31 @@
     } else {
       restoreCalibrationView();
       if (wasActive) {
-        ui['calibration-step'].textContent = 'Kalibracja przerwana — plik pozostaje w pauzie';
+        ui['calibration-step'].textContent = sourceBytes || largeSourceFile
+          ? 'Kalibracja przerwana — plik pozostaje w pauzie' : 'Kalibracja przerwana — możesz zacząć ponownie';
         ui['calibration-status'].textContent = 'Próba zatrzymana. Przed kolejną próbą wybierz „Zresetuj próbę” na odbiorniku.';
       }
     }
   }
   async function startCalibration() {
-    if (!series || (!sourceBytes && !largeSourceFile) || largeLoading || document.hidden) return;
+    if (encodingBusy || largeLoading || mode !== 'encode' || document.hidden) return;
     stopCalibration(false);
+    expandAfterCalibration = false;
+    calibrationWasExpanded = false;
     pauseAnimation();
     stopFeedbackCamera();
     if (calibration) calibration.dispose();
     calibration = window.WGCalibration.create({ grid: selectedGrid(), compareLayouts: ui['calibration-layout-scope'].value === 'compare',
-      ecc: selectedEcc(), extended: ui['calibration-range'].value === 'fast', large: Boolean(largeSender) });
-    calibrationSavedView = { frames: lastDisplayFrames, position: ui['frame-position'].textContent, caption: ui['qr-caption'].textContent };
+      // A standalone trial includes the larger packet overhead because the future file size is unknown.
+      ecc: selectedEcc(), extended: ui['calibration-range'].value === 'fast', large: Boolean(largeSender) || (!sourceBytes && !largeSourceFile) });
+    calibrationSavedView = { frames: lastDisplayFrames, position: ui['frame-position'].textContent, caption: ui['qr-caption'].textContent,
+      emptyHidden: ui['qr-empty'].hidden, resultHidden: ui['qr-result'].hidden, controlsHidden: ui['series-controls'].hidden,
+      downloadDisabled: ui['download-qr'].disabled };
     lastDisplayFrames = [];
     for (let index = 0; index < 9; index++) clearQR(qrCanvas(index));
+    ui['qr-empty'].hidden = true;
+    ui['qr-result'].hidden = false;
+    ui['download-qr'].disabled = true;
     calibrationPhase = 'alignment';
     calibrationActive = true;
     openExpanded();
@@ -2014,13 +2048,13 @@
     finally { if (bytes) bytes.fill(0); }
   }
   async function applyCalibrationFeedback(bytes, isCurrent) {
-    if (!calibration || !isCurrent() || (!sourceBytes && !largeSourceFile)) return false;
+    if (!calibration || !isCurrent()) return false;
     const result = calibration.acceptFeedback(bytes);
     if (!isCurrent()) return false;
     stopCalibration(false);
     pauseAnimation();
     stopFeedbackCamera();
-    const file = largeSourceFile || new File([sourceBytes], sourceName, { type: 'application/octet-stream' });
+    const file = largeSourceFile || (sourceBytes ? new File([sourceBytes], sourceName, { type: 'application/octet-stream' }) : null);
     const zipMetadata = sourceZipMetadata;
     const originalFile = sourceOriginalFile;
     const restoreExpanded = calibrationWasExpanded;
@@ -2028,6 +2062,20 @@
     setGridControls(result.grid || { columns: result.lanes, rows: 1 });
     ui['series-ecc'].value = result.ecc;
     applyRecommendedRate(result.fps);
+    if (!file) {
+      expandAfterCalibration = restoreExpanded;
+      calibration.dispose();
+      calibration = null;
+      lockCalibration(false);
+      ui['calibration-step'].textContent = 'Kalibracja gotowa — wybierz plik';
+      ui['calibration-status'].textContent = 'Zastosowano profil bez luk w próbie: '
+        + selectedGrid().columns + ' × ' + selectedGrid().rows + ' QR, ' + result.chunkBytes + ' B, ' + result.fps
+        + ' zmian/s. Wybierz plik; te ustawienia zostaną użyte do serii.';
+      message('feedback-message', 'Ustawienia dobrane. Teraz wybierz plik do wysłania. Na odbiorniku możesz wrócić do skanowania.', 'success');
+      status('Kalibracja gotowa — można wybrać plik');
+      ui['choose-file'].focus();
+      return true;
+    }
     const expectedEpoch = sourceEpoch + 1;
     await encodeFile(file, { zipMetadata, originalFile });
     if (sourceEpoch === expectedEpoch && series) {
@@ -2063,10 +2111,12 @@
   }
   async function receiveFeedback(bytes, isCurrent) {
     const transfer = series;
+    const trial = calibration;
     const epoch = sourceEpoch;
-    if (!transfer || !isCurrent()) return false;
+    if (!isCurrent()) return false;
     try {
       if (window.WGCalibration.isFeedback(bytes)) return await applyCalibrationFeedback(bytes, isCurrent);
+      if (!transfer) return false;
       if (largeSender) {
         const sender = largeSender;
         const result = sender.acceptFeedback(bytes);
@@ -2093,7 +2143,7 @@
         return true;
       }
       const result = await transfer.acceptFeedback(bytes);
-      if (!isCurrent() || series !== transfer || epoch !== sourceEpoch) return false;
+      if (!isCurrent() || series !== transfer || calibration !== trial || epoch !== sourceEpoch) return false;
       pauseAnimation();
       stopFeedbackCamera();
       applyRecommendedRate(result.suggestedRate);
@@ -2121,16 +2171,16 @@
       ui['scan-feedback'].focus();
       return true;
     } catch (error) {
-      if (!isCurrent() || series !== transfer || epoch !== sourceEpoch) return false;
+      if (!isCurrent() || series !== transfer || calibration !== trial || epoch !== sourceEpoch) return false;
       const text = error.code === 'FEEDBACK_SESSION_MISMATCH'
         ? 'Ten kod zwrotny dotyczy innego lub wcześniejszego transferu. Bieżący plik pozostaje bez zmian.'
-        : 'Nieprawidłowy kod zwrotny. Pokaż cały kod wygenerowany przez odbiornik tej serii.';
+        : 'Nieprawidłowy kod zwrotny. Pokaż cały kod wygenerowany przez odbiornik tej próby lub serii.';
       message('feedback-message', text, 'error');
       return false;
     }
   }
   async function readFeedbackImage(file) {
-    if (!file || !series) return;
+    if (!file || !canReceiveFeedback()) return;
     stopCalibration(false);
     pauseAnimation();
     stopCamera();
@@ -2138,7 +2188,9 @@
     cancelImageRead();
     const token = feedbackEpoch;
     const sourceToken = sourceEpoch;
-    const isCurrent = () => token === feedbackEpoch && sourceToken === sourceEpoch && mode === 'encode' && Boolean(series);
+    const transfer = series, trial = calibration;
+    const isCurrent = () => token === feedbackEpoch && sourceToken === sourceEpoch && mode === 'encode'
+      && series === transfer && calibration === trial && canReceiveFeedback();
     feedbackImageBusy = true;
     ui['choose-feedback-image'].disabled = true;
     message('feedback-message', 'Odczytuję kod zwrotny z obrazu…');
@@ -2452,7 +2504,7 @@
     return typeof scanner.scanAsync === 'function' ? scanner.scanAsync(video) : scanner.scan(video);
   }
   async function startFeedbackCamera() {
-    if (!series || series.version < 2) return;
+    if (!canReceiveFeedback()) return;
     stopCalibration(false);
     pauseAnimation();
     closeExpanded(false);
@@ -2462,7 +2514,9 @@
     const token = feedbackEpoch;
     const sourceToken = sourceEpoch;
     const target = series;
-    const valid = () => token === feedbackEpoch && sourceToken === sourceEpoch && series === target && mode === 'encode';
+    const trial = calibration;
+    const valid = () => token === feedbackEpoch && sourceToken === sourceEpoch && series === target
+      && calibration === trial && canReceiveFeedback() && mode === 'encode';
     message('feedback-message', 'Zezwól na kamerę i pokaż kod zwrotny z urządzenia odbierającego. Możesz też wczytać jego obraz.');
     if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       message('feedback-message', 'Kamera wymaga HTTPS i obsługiwanej przeglądarki. Wczytaj obraz kodu zwrotnego.', 'error');
@@ -2879,7 +2933,7 @@
   ui['scan-feedback'].addEventListener('click', startFeedbackCamera);
   ui['stop-feedback-camera'].addEventListener('click', () => {
     stopFeedbackCamera();
-    message('feedback-message', 'Skanowanie potwierdzenia zatrzymane. Bieżący plik pozostaje w pauzie.');
+    message('feedback-message', 'Skanowanie kodu zwrotnego zatrzymane.');
     ui['scan-feedback'].focus();
   });
   ui['choose-feedback-image'].addEventListener('click', () => ui['feedback-image-input'].click());
