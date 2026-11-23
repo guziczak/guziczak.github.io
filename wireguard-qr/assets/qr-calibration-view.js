@@ -35,7 +35,7 @@
       const results = state.results;
       const plan = results.map(result => `${result.grid.columns}x${result.grid.rows}/${result.chunkBytes}/${result.fps}`).join(',');
       const key = [state.id, state.version, state.ecc, Number(state.large), Number(state.extended),
-        Number(state.compareLayouts), Number(state.allLayouts), plan].join('|');
+        Number(state.compareLayouts), Number(state.allLayouts), Number(state.landscapeOnly), plan].join('|');
       if (sessionKey !== key) { reset(); sessionKey = key; }
 
       const setup = Boolean(state.setup && !state.ended);
@@ -85,11 +85,11 @@
         group.frequencies.sort((a, b) => a - b);
         for (const layout of group.layouts) layout.cells.sort((a, b) => a.fps - b.fps);
       }
-      // Version 4 starts with small, header-only setup symbols, so a receiver
+      // Versions 4 and 5 start with small, header-only setup symbols, so a receiver
       // can learn a 15-QR plan before attempting the denser measurement frames.
       // Tables retain their measurement density; the current display describes
       // the actual setup QR. This adds one cached 40-byte size for this session.
-      if (current && setup && state.version === 4) current = { ...current,
+      if (current && setup && state.version >= 4) current = { ...current,
         plannedChunkBytes: current.chunkBytes, plannedModules: current.modules,
         ...density(0, state, true), headerOnly: true };
       // A phase-only cache misses reads arriving within the same profile. The
@@ -97,7 +97,8 @@
       const revision = [key, Number(fromImages), phase, state.currentIndex, state.latestMeasurementIndex,
         state.progress, ...results.map(result => [result.received, ...result.perSecond.map(window => window.received)].join('/'))].join('|');
       return { key, revision, phase, setup, ended: Boolean(state.ended), fromImages: Boolean(fromImages),
-        allLayouts: Boolean(state.allLayouts), rateVerified: !fromImages, current, counts, groups, totalProfiles: state.totalProfiles,
+        allLayouts: Boolean(state.allLayouts), landscapeOnly: Boolean(state.landscapeOnly),
+        rateVerified: !fromImages, current, counts, groups, totalProfiles: state.totalProfiles,
         measuredProfiles: state.measuredProfiles, progress: state.progress };
     }
 

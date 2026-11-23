@@ -66,6 +66,7 @@
   let mode = 'encode';
   let receiverView = 'file';
   let receiverViewPainted = false;
+  let receiverViewChosen = false;
   let receiverActivity = null;
   let sourceBytes = null;
   let decodedBytes = null;
@@ -250,7 +251,7 @@
     ui['compress-single'].disabled = busy || Boolean(largeSourceFile);
     ui['calibration-range'].disabled = busy;
     ui['calibration-layout-scope'].disabled = busy;
-    ui['start-calibration'].disabled = busy || calibrationActive;
+    ui['start-calibration'].disabled = busy || calibrationActive || !calibrationGridAllowed();
     ui['scan-feedback'].disabled = busy || !canReceiveFeedback();
     ui['download-source-zip'].disabled = busy || !sourceBytes || !window.WGZip.isZip(sourceBytes);
     ui['transfer-mode'].disabled = busy;
@@ -307,7 +308,7 @@
     ui['sender-metrics'].hidden = true;
     ui['calibration-status'].textContent = '';
     ui['calibration-step'].textContent = '1. Ustaw telefon → 2. Zmierz odbiór → 3. Przekaż wynik QR';
-    ui['start-calibration'].disabled = encodingBusy;
+    ui['start-calibration'].disabled = encodingBusy || !calibrationGridAllowed();
     ui['qr-caption'].textContent = '';
     ui['capacity-note'].textContent = DEFAULT_CAPACITY;
     ui['download-qr'].disabled = true;
@@ -992,12 +993,14 @@
     ui['decoded-kind'].textContent = 'Duży plik · sprawdzone części';
     ui['output-name'].value = cleanName(state.name, 'plik.bin');
     ui['download-file'].disabled = false;
-    message('decode-message', 'Odebrano i zapisano wszystkie części. Sprawdzono ich skróty i kolejność. Cały plik jest gotowy do pobrania.', 'success');
-    status('Duży plik odtworzony i sprawdzony');
+    if (receiverView === 'file') {
+      message('decode-message', 'Odebrano i zapisano wszystkie części. Sprawdzono ich skróty i kolejność. Cały plik jest gotowy do pobrania.', 'success');
+      status('Duży plik odtworzony i sprawdzony');
+    }
     renderLargeStorage();
     return true;
   }
-  async function receiveLargeBytes(payload, epoch, source) {
+  async function receiveLargeBytes(payload, epoch, source, scanTelemetry) {
     if (window.WGLarge.isFeedback(payload)) {
       telemetry.recordRejected('feedback', { source });
       message('decode-message', 'To potwierdzenie dużego transferu. Pokaż je nadajnikowi po wybraniu „Zeskanuj potwierdzenie”.', 'warning');
@@ -1012,11 +1015,6 @@
       message('decode-message', 'Trwa odbiór innego pliku. Dokończ go albo użyj „Reset odbioru”.', 'warning');
       return { done: false, blocked: true };
     }
-    if (calibrationObserver.state) {
-      resetCalibrationReadout();
-      resetMetrics(); resetTelemetry();
-      if (cameraStream) startCameraTelemetry(cameraStream);
-    }
     // The serial receive queue has settled earlier writes, including a part
     // committed just after Reset. Never count those durable bytes as new speed.
     if (!telemetry.snapshot().transfer) largeResumeBytes = largeStore.state?.savedBytes || 0;
@@ -1026,6 +1024,7 @@
     try {
       const result = await active.accept(payload);
       if (epoch !== receiverEpoch || active !== largeReceiver) return { done: false, stale: true };
+      if (receiverView === 'calibration' && ['pending', 'foreign'].includes(result.kind)) return ignoredFileDuringCalibration();
       if (result.kind === 'pending') {
         message('decode-message', 'Widzę duży transfer. Czekam na powtarzany opis jego części.', 'success');
         return { done: false, pending: true };
@@ -1036,6 +1035,7 @@
         return { done: false, foreign: true };
       }
       const state = active.state || result;
+      prepareAcceptedFile(scanTelemetry);
       const sameSegment = before?.currentSegment === state.currentSegment;
       const delta = Math.max(0, (state.received || 0) - (sameSegment ? before?.received || 0 : 0));
       receiverSnapshot = { ...state, kind: result.kind, file: undefined };
@@ -1047,12 +1047,15 @@
       }, savedDelta, source);
       showReceiving(receiverSnapshot, Boolean(result.segmentComplete || state.complete));
       if (state.complete && result.file) {
-        stopCamera();
-        return { done: acceptLargeDecoded(result.file, state), delta };
+        const showFile = receiverView === 'file';
+        if (showFile) stopCamera();
+        const accepted = acceptLargeDecoded(result.file, state);
+        return { done: showFile && accepted, delta };
       }
       return { done: false, progress: true, delta };
     } catch (error) {
       if (epoch !== receiverEpoch || active !== largeReceiver || /RESET|CANCELLED|DISPOSED/.test(error.code || '')) return { done: false, stale: true };
+      if (receiverView === 'calibration') return ignoredFileDuringCalibration();
       receiverSnapshot = active.state;
       showReceiving(receiverSnapshot, true);
       telemetry.recordRejected('invalid', { source });
@@ -1314,8 +1317,10 @@
     ui['download-file'].disabled = false;
     const kind = fileKind(decodedBytes);
     ui['output-name'].value = filename ? cleanName(filename) : kind === 'Archiwum ZIP' ? 'pliki.zip' : kind === 'Konfiguracja WireGuard' ? 'wireguard.conf' : kind === 'Plik binarny' ? 'odczytany-plik.bin' : 'odczytany-plik.txt';
-    message('decode-message', verified ? 'Odebrano wszystkie fragmenty i sprawdzono sumę SHA-256. Plik jest gotowy do pobrania.' : 'Kod odczytany. Nazwij plik i pobierz jego zawartość.', 'success');
-    if (mode === 'decode') status(verified ? 'Plik odtworzony i sprawdzony' : 'QR odczytany lokalnie');
+    if (receiverView === 'file') {
+      message('decode-message', verified ? 'Odebrano wszystkie fragmenty i sprawdzono sumę SHA-256. Plik jest gotowy do pobrania.' : 'Kod odczytany. Nazwij plik i pobierz jego zawartość.', 'success');
+      if (mode === 'decode') status(verified ? 'Plik odtworzony i sprawdzony' : 'QR odczytany lokalnie');
+    }
     return true;
   }
   function renderReceiving(state) {
@@ -1349,7 +1354,7 @@
       ui['receiving-help'].textContent = 'Zapisane części pozostają na tym urządzeniu. Po przerwie wybierz „Wznów zapisany transfer”. Kod zwrotny wskazuje brakujące części.';
       ui['show-feedback'].hidden = false;
       ui['show-feedback'].textContent = state.complete ? 'Pokaż potwierdzenie' : 'Uzupełnij brakujące';
-      if (!state.complete && mode === 'decode') status('Duży plik: zapisano ' + state.completedSegments + ' / ' + state.segmentCount + ' części');
+      if (!state.complete && mode === 'decode' && receiverView === 'file') status('Duży plik: zapisano ' + state.completedSegments + ' / ' + state.segmentCount + ' części');
       renderLargeStorage();
       return;
     }
@@ -1374,7 +1379,7 @@
       : resilient ? 'Nowe pakiety naprawcze uzupełniają brakujące dane. Kod zwrotny pozwoli nadajnikowi skupić się na niepełnych blokach.'
         : 'To starsza seria v1. Powtórzenia są pomijane; potrzebne są wszystkie oryginalne fragmenty.';
     ui['show-feedback'].hidden = !resilient;
-    if (!complete) {
+    if (!complete && receiverView === 'file') {
       message('decode-message', `Odebrano ${received} z ${state.total} fragmentów danych.`, 'success');
       if (mode === 'decode') status(`Odbieranie serii: ${received} / ${state.total}`);
     }
@@ -1422,7 +1427,7 @@
       // margin below both measured decoder capacity and actual scan cadence.
       const observedRate = metrics.attempts * 1000 / Math.max(1000, now - metrics.started);
       let safeRate = Math.min(0.75 * 1000 / (metrics.latency + 5), observedRate * 0.85);
-      // One camera sample may decode up to nine symbols; the suggested rate is display changes/s.
+      // One camera sample may decode up to fifteen symbols; the suggested rate is display changes/s.
       const successRatio = metrics.successes / metrics.attempts;
       if (successRatio < 0.5) safeRate = Math.min(safeRate, 2);
       if (successRatio < 0.2) safeRate = 1;
@@ -1591,6 +1596,9 @@
     resetMetrics();
   }
   function prepareReceiver() {
+    // Restarting the calibration camera must not discard its measurements
+    // because an earlier file is still available in the other receiver view.
+    if (receiverView === 'calibration') return;
     if ((receiverSnapshot && receiverSnapshot.complete) || decodedBytes || decodedFile || telemetry?.snapshot().complete) resetCollector();
     clearDecoded();
     showReceiving(receiverSnapshot, true);
@@ -1619,35 +1627,55 @@
     message('decode-message', text, 'error');
     if (mode === 'decode') status('Nie przyjęto nieprawidłowego fragmentu');
   }
-  function receiveBytes(bytes, isCurrent, source = 'camera', deferCalibrationPaint = false) {
+  function ignoredFileDuringCalibration() {
+    if (!calibrationObserver.state) message('decode-message', 'Tryb kalibracji: czekam na próbne kody nadajnika. Aby odebrać plik, wybierz „Odbiór pliku”.');
+    return { done: false, blocked: true, calibration: true };
+  }
+  function prepareAcceptedFile(scanTelemetry) {
+    // A decoded candidate must never erase a trial. Only an accepted file in
+    // the explicitly selected file view may replace calibration measurements.
+    if (receiverView !== 'file' || !calibrationObserver.state) return;
+    resetCalibrationReadout();
+    resetMetrics(); resetTelemetry();
+    if (cameraStream) startCameraTelemetry(cameraStream);
+    // Keep the first file scan when its validated packet replaces a trial.
+    // Record it before a single/last packet can freeze completed statistics.
+    if (scanTelemetry) telemetry.recordScan(scanTelemetry);
+  }
+  function receiveBytes(bytes, isCurrent, source = 'camera', deferCalibrationPaint = false, scanTelemetry = null) {
     const epoch = receiverEpoch;
     const payload = Uint8Array.from(bytes);
     const operation = receiverChain.then(async () => {
       if (epoch !== receiverEpoch || !isCurrent()) return { done: false, stale: true };
-      if (receiverSnapshot && receiverSnapshot.complete) return { done: true, delta: 0 };
       try {
-        if (window.WGCalibration.isFrame(payload)) return receiveCalibration(payload, source, deferCalibrationPaint);
+        if (!payload.length) return { done: false, blocked: true };
+        if (window.WGCalibration.isFrame(payload)) {
+          if (receiverViewChosen && receiverView === 'file') return { done: false, blocked: true, calibration: true };
+          return receiveCalibration(payload, source, deferCalibrationPaint);
+        }
+        if (receiverView === 'calibration') return ignoredFileDuringCalibration();
+        if (receiverSnapshot && receiverSnapshot.complete) {
+          stopCamera();
+          return { done: true, delta: 0 };
+        }
         if (window.WGCalibration.isFeedback(payload)) {
           message('decode-message', 'To wynik próby. Pokaż go kamerze nadajnika po wybraniu „Zeskanuj potwierdzenie”.', 'warning');
           return { done: false, blocked: true };
         }
-        if (window.WGLarge.isReserved(payload)) return await receiveLargeBytes(payload, epoch, source);
+        if (window.WGLarge.isReserved(payload)) return await receiveLargeBytes(payload, epoch, source, scanTelemetry);
         if (receiverSnapshot?.version === 4 && !receiverSnapshot.complete) {
           message('decode-message', 'Trwa odbiór dużego pliku. Aby odebrać zwykły QR lub inną serię, najpierw użyj „Reset odbioru”.', 'warning');
           return { done: false, blocked: true };
-        }
-        if (calibrationObserver.state) {
-          resetCalibrationReadout();
-          resetMetrics(); resetTelemetry();
-          if (cameraStream) startCameraTelemetry(cameraStream);
         }
         const previous = receiverSnapshot;
         const result = await collector.accept(payload);
         // Switching tabs or stopping the camera retains an already accepted transfer.
         // Clearing/resetting the receiver, however, invalidates even a pending digest.
         if (epoch !== receiverEpoch) return { done: false, stale: true };
-        if (result.kind !== 'foreign') selectReceiverActivity('file');
+        if (receiverView === 'calibration' && ['plain', 'pending', 'foreign'].includes(result.kind)) return ignoredFileDuringCalibration();
         if (result.kind === 'pending') {
+          prepareAcceptedFile(scanTelemetry);
+          selectReceiverActivity('file');
           message('decode-message', 'Widzę dane. Czekam na powtarzany opis pliku; pozostaw kamerę skierowaną na kody.', 'success');
           return { done: false, pending: true };
         }
@@ -1659,6 +1687,8 @@
             message('decode-message', 'Trwa odbiór serii. Aby otworzyć pojedynczy QR, najpierw wybierz „Reset odbioru”.', 'warning');
             return { done: false, blocked: true };
           }
+          prepareAcceptedFile(scanTelemetry);
+          selectReceiverActivity('file');
           recordPacketTelemetry({
             version: 0, size: result.bytes.length, total: 1, chunkBytes: result.bytes.length,
             blockCount: 1, received: 1, blocksComplete: 1, complete: true
@@ -1674,19 +1704,26 @@
           return { done: false, foreign: true };
         }
         if (result.kind === 'complete') {
+          prepareAcceptedFile(scanTelemetry);
+          selectReceiverActivity('file');
           receiverSnapshot = { ...result, bytes: undefined, complete: true };
           const delta = Math.max(0, result.total - (previous?.received || 0));
           recordPacketTelemetry(receiverSnapshot, delta, source);
-          stopCamera();
+          const showFile = receiverView === 'file';
+          if (showFile) stopCamera();
           showReceiving(receiverSnapshot, true);
-          return { done: acceptDecoded(result, result.name, true), delta };
+          const accepted = acceptDecoded(result, result.name, true);
+          return { done: showFile && accepted, delta };
         }
+        prepareAcceptedFile(scanTelemetry);
+        selectReceiverActivity('file');
         const delta = Math.max(0, result.received - (previous?.received || 0));
         receiverSnapshot = result;
         recordPacketTelemetry(result, delta, source);
         if (delta > 0 || !previous) showReceiving(result);
         return { done: false, progress: true, delta };
       } catch (error) {
+        if (receiverView === 'calibration' && !window.WGCalibration.isFrame(payload)) return ignoredFileDuringCalibration();
         if (epoch === receiverEpoch && error.code !== 'TRANSFER_RESET') {
           telemetry.recordRejected(error.code === 'FEEDBACK_FRAME' ? 'feedback' : 'invalid', { source });
           renderTelemetry();
@@ -1724,17 +1761,26 @@
       if (bytes) bytes.fill(0);
     }
   }
+  function calibrationGridAllowed() {
+    if (ui['calibration-layout-scope'].value !== 'current') return true;
+    const grid = selectedGrid();
+    return grid.lanes === 1 || grid.columns > grid.rows;
+  }
   function updateCalibrationDuration() {
     const all = ui['calibration-layout-scope'].value === 'all';
     const compare = ui['calibration-layout-scope'].value === 'compare';
     const extended = ui['calibration-range'].value === 'fast';
     const grid = selectedGrid();
-    const layouts = all ? window.WGCalibration.allGrids.length : compare ? 4 : 1;
+    const layouts = all ? window.WGCalibration.landscapeGrids.length : compare ? window.WGCalibration.landscapeComparedGrids.length : 1;
     const profiles = (extended ? 10 : 6) * layouts;
-    const plan = all ? `Wszystkie ${layouts} siatek: 1–5 kolumn × 1–3 wiersze, w tym 3 × 2, 4 × 2 i 5 × 3. Pomiar od najmniejszej do największej`
-      : compare ? 'Układy: 1 × 1 → 2 × 1 → 1 × 2 → 2 × 2' : `Tylko układ ${grid.columns} × ${grid.rows} QR`;
+    const plan = all ? `Jeden QR i ${layouts - 1} układów poziomych, w tym 3 × 2, 4 × 2 i 5 × 3. Pomiar od najmniejszego do największego`
+      : compare ? 'Układy: 1 × 1 → 2 × 1 → 3 × 1 → 3 × 2' : `Tylko układ ${grid.columns} × ${grid.rows} QR`;
     const rates = extended ? '2, 5, 10, 15, 20' : '2, 5, 10';
-    setText(ui['calibration-duration'], `${plan}. Gęstości: 384/600 B na QR. Tempo: ${rates} Hz. Liczba profili: ${profiles} · około ${profiles * 5} s pomiaru z przerwami na zmianę ustawień. ${all ? 'Najpierw zmieść w kadrze 15 rzadkich kodów ustawienia.' : compare ? 'Najpierw ustaw kadr na czterech nieruchomych kodach.' : 'Najpierw spokojnie ustaw telefon.'} Ten etap nie ma limitu czasu.`);
+    const allowed = calibrationGridAllowed();
+    ui['start-calibration'].disabled = encodingBusy || calibrationActive || !allowed;
+    setText(ui['calibration-duration'], allowed
+      ? `${plan}. Gęstości: 384/600 B na QR. Tempo: ${rates} Hz. Liczba profili: ${profiles} · około ${profiles * 5} s pomiaru z przerwami na zmianę ustawień. ${all ? 'Najpierw zmieść w kadrze 15 rzadkich kodów ustawienia.' : compare ? 'Najpierw ustaw kadr na sześciu nieruchomych kodach w układzie 3 × 2.' : 'Najpierw spokojnie ustaw telefon.'} Ten etap nie ma limitu czasu.`
+      : `Wybrano ${grid.columns} × ${grid.rows}. Kalibracja wielu kodów wymaga układu poziomego: ustaw więcej kolumn niż wierszy w polu „Układ serii”, np. 3 × 2. Możesz też wybrać porównanie układów poziomych.`);
   }
   function discardCalibrationFrames() {
     for (const frame of lastDisplayFrames) if (frame.kind === 'calibration') frame.matrix.data.fill(0);
@@ -1768,7 +1814,7 @@
     document.body.classList.toggle('qr-calibrating', locked);
     for (const id of ['calibration-range', 'calibration-layout-scope', 'qr-density', 'qr-layout', 'qr-columns', 'qr-rows', 'series-ecc',
       'previous-frame', 'next-frame', 'frame-slider', 'frame-rate', 'large-segment', 'large-previous', 'large-next']) ui[id].disabled = locked;
-    ui['start-calibration'].disabled = locked || encodingBusy;
+    ui['start-calibration'].disabled = locked || encodingBusy || !calibrationGridAllowed();
     ui['start-calibration'].hidden = locked;
     ui['animation-toggle'].disabled = locked || !series || transmissionPhase === 'confirmed';
     ui['stop-calibration'].hidden = !locked;
@@ -1806,7 +1852,7 @@
     }
   }
   async function startCalibration() {
-    if (encodingBusy || largeLoading || mode !== 'encode' || document.hidden) return;
+    if (encodingBusy || largeLoading || mode !== 'encode' || document.hidden || !calibrationGridAllowed()) return;
     stopCalibration(false);
     expandAfterCalibration = false;
     calibrationWasExpanded = false;
@@ -1814,7 +1860,7 @@
     stopFeedbackCamera();
     if (calibration) calibration.dispose();
     calibration = window.WGCalibration.create({ grid: selectedGrid(), compareLayouts: ui['calibration-layout-scope'].value === 'compare',
-      allLayouts: ui['calibration-layout-scope'].value === 'all',
+      allLayouts: ui['calibration-layout-scope'].value === 'all', landscapeOnly: true,
       // A standalone trial includes the larger packet overhead because the future file size is unknown.
       ecc: selectedEcc(), extended: ui['calibration-range'].value === 'fast', large: Boolean(largeSender) || (!sourceBytes && !largeSourceFile) });
     calibrationSavedView = { frames: lastDisplayFrames, position: ui['frame-position'].textContent, caption: ui['qr-caption'].textContent,
@@ -1985,8 +2031,9 @@
     slot.last = now; slot.hits++;
     paintAlignment();
   }
-  function selectReceiverView(nextView) {
+  function selectReceiverView(nextView, chosen = false) {
     const requested = nextView === 'calibration' ? 'calibration' : 'file';
+    if (chosen) receiverViewChosen = true;
     if (receiverViewPainted && receiverView === requested) return;
     receiverView = requested;
     receiverViewPainted = true;
@@ -1999,9 +2046,9 @@
     ui['receiver-calibration-dashboard'].hidden = !calibrationVisible;
   }
   function selectReceiverActivity(activity, newSession = false) {
-    // Open a newly received session once. Later frames must not undo a view
-    // explicitly chosen by the person watching the camera.
-    if (newSession || receiverActivity !== activity) selectReceiverView(activity);
+    // Automatic discovery is available until the user chooses a mode. A QR
+    // cannot undo that choice, including a different session or file type.
+    if (!receiverViewChosen && (newSession || receiverActivity !== activity)) selectReceiverView(activity);
     receiverActivity = activity;
   }
   function resetCalibrationReadout() {
@@ -2118,9 +2165,12 @@
         : model.ended ? 'Powyżej widać ostatnią mierzoną kombinację.' : 'Zielony wynik wymaga kompletu paczek z całych 4 sekund próby.'}` : '');
     setText(ui['calibration-map-help'], fromImages
       ? 'Odczyt z obrazów sprawdza tylko kompletność paczek. Zielony „Komplet” nie potwierdza odbioru z podaną częstotliwością. Wykonaj nową próbę kamerą, aby dobrać szybkość.'
-      : `X to liczba kodów poziomo, Y — pionowo. Hz oznacza zmianę całego układu na sekundę. Moduł to mały kwadrat wewnątrz QR; jego rozmiar w pikselach zależy od ekranu. ${state.allLayouts
-        ? 'Próba obejmuje wszystkie 15 siatek: 1–5 kolumn × 1–3 wiersze, do 15 QR naraz.' : state.compareLayouts
-        ? 'Szybkie porównanie obejmuje 1 × 1, 2 × 1, 1 × 2 i 2 × 2.' : 'Próba obejmuje tylko układ wybrany na nadajniku. Aby zbadać pozostałe siatki, w polu „Porównywane układy” wybierz „Wszystkie układy: 1–5 kolumn × 1–3 wiersze”.'}`);
+      : `X to liczba kodów poziomo, Y — pionowo. Hz oznacza zmianę całego układu na sekundę. Moduł to mały kwadrat wewnątrz QR; jego rozmiar w pikselach zależy od ekranu. ${state.landscapeOnly
+        ? state.allLayouts ? 'Próba obejmuje jeden QR oraz 9 układów poziomych do 5 × 3. Dla wielu kodów liczba kolumn jest większa od liczby wierszy.'
+          : state.compareLayouts ? 'Szybkie porównanie obejmuje 1 × 1, 2 × 1, 3 × 1 i 3 × 2.' : 'Próba obejmuje wybrany układ poziomy albo jeden QR.'
+        : state.allLayouts ? 'To poprzedni plan obejmujący wszystkie 15 siatek. Nowa kalibracja nadajnika sprawdza wyłącznie jeden QR i układy poziome.'
+          : state.compareLayouts ? 'To poprzedni plan porównujący 1 × 1, 2 × 1, 1 × 2 i 2 × 2. Nowa kalibracja nadajnika sprawdza układy poziome.'
+            : 'Próba obejmuje tylko układ wybrany na nadajniku.'}`);
     return model;
   }
   function renderCalibrationResults(state, fromImages) {
@@ -2230,7 +2280,7 @@
       ui['feedback-panel'].hidden = false;
       drawQR(window.WGQR.encodeBytes(bytes), ui['feedback-canvas']);
       ui['resume-receiving'].hidden = false;
-      ui['feedback-caption'].textContent = 'Na nadajniku wybierz „Zeskanuj potwierdzenie”. Po zastosowaniu ustawień wróć do skanowania i odtwórz serię.';
+      ui['feedback-caption'].textContent = 'Na nadajniku wybierz „Zeskanuj potwierdzenie”. Po zastosowaniu ustawień wybierz tutaj „Odbiór pliku”, wróć do skanowania i odtwórz serię.';
       ui['close-feedback'].focus();
     } catch (error) { message('decode-message', error.message, 'warning'); }
     finally { if (bytes) bytes.fill(0); }
@@ -2259,7 +2309,7 @@
       ui['calibration-status'].textContent = 'Zastosowano profil bez luk w próbie: '
         + selectedGrid().columns + ' × ' + selectedGrid().rows + ' QR, ' + result.chunkBytes + ' B, ' + result.fps
         + ' zmian/s. Wybierz plik; te ustawienia zostaną użyte do serii.';
-      message('feedback-message', 'Ustawienia dobrane. Teraz wybierz plik do wysłania. Na odbiorniku możesz wrócić do skanowania.', 'success');
+      message('feedback-message', 'Ustawienia dobrane. Teraz wybierz plik do wysłania. Na odbiorniku wybierz „Odbiór pliku” i wróć do skanowania.', 'success');
       status('Kalibracja gotowa — można wybrać plik');
       ui['choose-file'].focus();
       return true;
@@ -2269,7 +2319,7 @@
     if (sourceEpoch === expectedEpoch && series) {
       if (restoreExpanded) openExpanded();
       ui['calibration-status'].textContent = `Zastosowano profil bez luk w próbie: ${selectedGrid().columns} × ${selectedGrid().rows} QR, ${result.chunkBytes} B, ${result.fps} zmian/s. Seria czeka na uruchomienie.`;
-      message('feedback-message', 'Ustawienia dobrane. Na odbiorniku wróć do skanowania, a tutaj odtwórz serię. Jeśli wcześniej odbierano już plik, zresetuj jego odbiór.', 'success');
+      message('feedback-message', 'Ustawienia dobrane. Na odbiorniku wybierz „Odbiór pliku” i wróć do skanowania, a tutaj odtwórz serię. Jeśli wcześniej odbierano już plik, zresetuj jego odbiór.', 'success');
       if (largeSender) message('feedback-message', 'Ustawienia dobrane dla dużych kodów. Zapisane części pozostają zgodne. Przekaż kod braków z odbiornika, aby kontynuować od potrzebnej części.', 'success');
     }
     return true;
@@ -2660,7 +2710,7 @@
     try { capture = cameraStream.getVideoTracks()[0]?.getSettings?.() || {}; } catch { /* Optional camera metadata. */ }
     const fps = Number.isFinite(capture.frameRate) && capture.frameRate > 0
       ? ' Kamera zgłasza ' + Math.round(capture.frameRate) + ' kl./s.' : '';
-    setText(ui['scan-help'], 'Pokaż cały układ kodów z białymi marginesami. Kody mogą być obok siebie lub jeden nad drugim.'
+    setText(ui['scan-help'], 'Pokaż cały układ kodów z białymi marginesami. Obrót telefonu nie zmienia układu wybranego na nadajniku.'
       + ' Obraz kamery: ' + size.width + ' × ' + size.height + '.' + fps);
   }
   function syncFeedbackPreview() {
@@ -2794,39 +2844,41 @@
         const epoch = receiverEpoch;
         const sample = await scanCamera(scanner, video);
         if (!active() || epoch !== receiverEpoch || sample.busy || sample.attempts === 0) return false;
-        const results = sample.results || (sample.result ? [sample.result] : []);
-        const dataResults = results.filter(result => !window.WGCalibration.isReserved(result.bytes));
-        const hasCalibration = results.some(result => window.WGCalibration.isReserved(result.bytes));
-        if (dataResults.length && calibrationObserver.state) {
-          resetCalibrationReadout();
-          resetMetrics(); resetTelemetry(); startCameraTelemetry(stream);
-        }
-        if (!hasCalibration || dataResults.length) {
-          telemetry.recordScan({ decodeMs: sample.decodeMs, region: sample.region, pixels: sample.pixels,
-            result: dataResults.length > 0, symbols: dataResults.length, attempts: sample.attempts });
-        }
+        const decoded = sample.results || (sample.result ? [sample.result] : []);
+        // Discover a trial before considering other symbols from the same
+        // camera image. An unrelated QR must not end automatic calibration.
+        const calibrationResults = decoded.filter(result => window.WGCalibration.isFrame(result.bytes));
+        const results = [...calibrationResults, ...decoded.filter(result => !window.WGCalibration.isFrame(result.bytes))];
+        const calibrationOnly = receiverView === 'calibration' || (!receiverViewChosen && calibrationResults.length > 0);
+        const dataResults = calibrationOnly ? [] : results.filter(result => result.bytes.length && !window.WGCalibration.isReserved(result.bytes));
+        const hasCalibration = calibrationOnly || results.some(result => window.WGCalibration.isReserved(result.bytes));
+        const scanTelemetry = !hasCalibration || dataResults.length ? {
+          decodeMs: sample.decodeMs, region: sample.region, pixels: sample.pixels,
+          result: dataResults.length > 0, symbols: dataResults.length, attempts: sample.attempts
+        } : null;
+        if (scanTelemetry) telemetry.recordScan(scanTelemetry);
         let delta = 0, done = false;
         const pending = [];
         for (const result of results) {
           if (!active() || epoch !== receiverEpoch) break;
-          const outcome = await receiveBytes(result.bytes, active, 'camera', true);
+          const outcome = await receiveBytes(result.bytes, active, 'camera', true, scanTelemetry);
           delta += outcome.delta || 0;
           if (outcome.pending) pending.push(result);
           if (outcome.done) { done = true; break; }
         }
         if (!done && receiverSnapshot) for (const result of pending) {
           if (!active() || epoch !== receiverEpoch) break;
-          const outcome = await receiveBytes(result.bytes, active);
+          const outcome = await receiveBytes(result.bytes, active, 'camera', false, scanTelemetry);
           delta += outcome.delta || 0;
           if (outcome.done) { done = true; break; }
         }
         if (epoch === receiverEpoch && (active() || (done && mode === 'decode'))) {
           // A camera frame can contain fifteen CAL packets. Count every one,
-          // then paint the 150-cell dashboard once for that frame.
+          // then paint the dashboard once for that frame.
           const calibrationState = pendingCalibrationPaint;
           pendingCalibrationPaint = null;
           if (calibrationState) paintCalibrationReadout(calibrationState);
-          if (!hasCalibration) recordScan(sample, delta, done);
+          if (!hasCalibration && receiverView === 'file') recordScan(sample, delta, done);
           renderTelemetry(done);
         }
         return done;
@@ -2881,8 +2933,8 @@
   telemetry = window.WGTelemetry.create({ now: () => window.performance.now(), appVersion: document.documentElement?.dataset.appVersion || 'nieznana' });
   ui['encode-tab'].addEventListener('click', () => selectMode('encode'));
   ui['decode-tab'].addEventListener('click', () => selectMode('decode'));
-  ui['receiver-view-file'].addEventListener('click', () => selectReceiverView('file'));
-  ui['receiver-view-calibration'].addEventListener('click', () => selectReceiverView('calibration'));
+  ui['receiver-view-file'].addEventListener('click', () => selectReceiverView('file', true));
+  ui['receiver-view-calibration'].addEventListener('click', () => selectReceiverView('calibration', true));
   for (const id of ['encode-tab', 'decode-tab']) {
     ui[id].addEventListener('keydown', (event) => {
       if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
@@ -2941,6 +2993,7 @@
   function changeSenderLayout() {
     stopCalibration(false);
     pauseAnimation();
+    syncLayout();
     if (series) showFrame(frameIndex, true);
     updateTransferEstimate();
     redrawCurrent();

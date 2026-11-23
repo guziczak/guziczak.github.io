@@ -366,3 +366,52 @@ test('v4 END closes the full plan, including every unreadable dense grid, withou
   assert.equal(images.rateVerified, false);
   assert.ok(allCells(images).every(cell => cell.bytesPerSecond === null));
 });
+
+test('v5 maps contain only landscape layouts and the 1×1 baseline, including all unreadable profiles after END', () => {
+  for (const options of [
+    { allLayouts: true, extended: false },
+    { allLayouts: true, extended: true },
+    { compareLayouts: true, extended: true }
+  ]) {
+    const sender = calibration.create({ ...options, landscapeOnly: true, large: true });
+    const observer = calibration.createObserver();
+    let encodes = 0;
+    const view = presentation.create({ encodeBytes(...args) { encodes++; return WGQR.encodeBytes(...args); } });
+    const setup = sender.alignmentFrame(0, sender.alignmentIndex, true);
+    observer.accept(setup, 0);
+    let model = view.compute(observer.state);
+    const grids = options.allLayouts ? calibration.landscapeGrids : calibration.landscapeComparedGrids;
+    const count = grids.length * (options.extended ? 10 : 6);
+    assert.equal(model.landscapeOnly, true);
+    assert.equal(model.totalProfiles, count);
+    assert.equal(allCells(model).length, count);
+    assert.deepEqual(plain(model.counts), { pending: count, running: 0, passed: 0, failed: 0 });
+    assert.equal(model.current.headerOnly, true);
+    assert.equal(model.current.payloadBytes, 40);
+    assert.equal(model.current.chunkBytes, 0);
+    assert.equal(model.current.lanes, options.allLayouts ? 15 : 6);
+    const actual = WGQR.encodeBytes(setup, { errorCorrectionLevel: 'M' });
+    assert.equal(model.current.modules, actual.size);
+    actual.data.fill(0); setup.fill(0);
+    for (const group of model.groups) {
+      assert.deepEqual(plain(group.layouts.map(layout => layout.grid)), plain(grids));
+      assert.ok(group.layouts.every(layout => layout.lanes === 1 || layout.grid.columns > layout.grid.rows));
+      assert.ok(group.layouts.every(layout => !['1x2', '1x3', '2x2', '2x3', '3x3'].includes(layout.key)));
+    }
+    observeProfile(sender, observer, 0);
+    model = view.compute(observer.state);
+    assert.equal(model.current.state, 'running');
+    assert.equal(model.current.headerOnly, undefined);
+    observer.accept(sender.endFrame(), 600000);
+    model = view.compute(observer.state);
+    assert.deepEqual(plain(model.counts), { pending: 0, running: 0, passed: 1, failed: count - 1 });
+    assert.ok(allCells(model).filter(cell => cell.lanes > 1).every(cell => cell.closed
+      && cell.state === 'failed' && cell.received === 0 && cell.missing === cell.expected));
+    assert.equal(encodes, 3, 'Landscape filtering does not add any QR dimension encodes.');
+    const images = view.compute(observer.state, { fromImages: true });
+    assert.equal(images.landscapeOnly, true); assert.equal(images.rateVerified, false);
+    assert.ok(allCells(images).every(cell => cell.bytesPerSecond === null));
+    const selected = sender.acceptFeedback(observer.createFeedback());
+    assert.deepEqual([selected.grid.columns, selected.grid.rows, selected.landscapeOnly], [1, 1, true]);
+  }
+});

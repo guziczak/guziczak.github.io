@@ -170,7 +170,7 @@ test('manifests are required metadata rather than redundant data packets, includ
 
 test('invalid multi-symbol counters cannot inflate reads or leak nonnumeric diagnostic input', () => {
   const { telemetry: t } = harness();
-  for (const value of [-1, 10, 1000000, NaN, Infinity, 'PRIVATE_BYTES', { bytes: 'PRIVATE_BYTES' }]) {
+  for (const value of [-1, 16, 1000000, NaN, Infinity, 'PRIVATE_BYTES', { bytes: 'PRIVATE_BYTES' }]) {
     t.recordScan({ ...scan(20, false), symbols: value, attempts: value });
   }
   assert.equal(t.snapshot().cameraAttempts, 7);
@@ -189,6 +189,25 @@ test('a 3 by 3 captured grid records all nine optical reads without multiplying 
   assert.equal(state.opticalReads, 15);
   assert.equal(state.latencySamples, 2);
   assert.equal(state.latencyAvgMs, 75);
+});
+
+test('a 5 by 3 captured grid counts up to fifteen symbols and attempts while sixteen remains invalid', () => {
+  const { telemetry: t } = harness();
+  t.recordScan({ ...scan(90), symbols: 15, attempts: 15 });
+  t.recordScan({ ...scan(60), symbols: 10, attempts: 15 });
+  const state = t.snapshot();
+  assert.equal(state.cameraAttempts, 2);
+  assert.equal(state.decodeAttempts, 30);
+  assert.equal(state.opticalReads, 25);
+  assert.equal(state.qrReads, 25);
+  assert.equal(state.latencySamples, 2);
+  assert.equal(state.latencyAvgMs, 75);
+  t.recordScan({ ...scan(20, false), symbols: 16, attempts: 16 });
+  const invalid = t.snapshot();
+  assert.equal(invalid.cameraAttempts, 3);
+  assert.equal(invalid.decodeAttempts, 31, 'Invalid attempt counts retain the single-scan fallback.');
+  assert.equal(invalid.opticalReads, 25, 'An out-of-range symbol count must not invent optical reads.');
+  assert.equal(invalid.acceptedPackets, 0);
 });
 
 test('latency p95 uses a bounded upper-bucket estimate, independently of transfer acceptance', () => {
