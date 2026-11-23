@@ -367,7 +367,7 @@ test('v4 END closes the full plan, including every unreadable dense grid, withou
   assert.ok(allCells(images).every(cell => cell.bytesPerSecond === null));
 });
 
-test('v5 maps contain only landscape layouts and the 1×1 baseline, including all unreadable profiles after END', () => {
+test('v6 maps include 5×4 and only landscape layouts, including all unreadable profiles after END', () => {
   for (const options of [
     { allLayouts: true, extended: false },
     { allLayouts: true, extended: true },
@@ -389,7 +389,11 @@ test('v5 maps contain only landscape layouts and the 1×1 baseline, including al
     assert.equal(model.current.headerOnly, true);
     assert.equal(model.current.payloadBytes, 40);
     assert.equal(model.current.chunkBytes, 0);
-    assert.equal(model.current.lanes, options.allLayouts ? 15 : 6);
+    assert.equal(model.current.lanes, options.allLayouts ? 20 : 6);
+    if (options.allLayouts) {
+      assert.equal(count, options.extended ? 110 : 66);
+      assert.deepEqual(plain(model.current.grid), { columns: 5, rows: 4 });
+    }
     const actual = WGQR.encodeBytes(setup, { errorCorrectionLevel: 'M' });
     assert.equal(model.current.modules, actual.size);
     actual.data.fill(0); setup.fill(0);
@@ -413,5 +417,28 @@ test('v5 maps contain only landscape layouts and the 1×1 baseline, including al
     assert.ok(allCells(images).every(cell => cell.bytesPerSecond === null));
     const selected = sender.acceptFeedback(observer.createFeedback());
     assert.deepEqual([selected.grid.columns, selected.grid.rows, selected.landscapeOnly], [1, 1, true]);
+  }
+});
+
+test('recorded v5 plans still render ten layouts and never acquire the new 5×4 row', async () => {
+  const references = JSON.parse(await readFile(new URL('./qr-calibration-v5-fixtures.json', import.meta.url), 'utf8'));
+  for (const reference of references.cases.filter(item => item.options.allLayouts)) {
+    const observer = calibration.createObserver(), view = presentation.create();
+    observer.accept(new Uint8Array(Buffer.from(reference.setup, 'base64')), 0);
+    let model = view.compute(observer.state);
+    assert.equal(model.landscapeOnly, true);
+    assert.equal(model.totalProfiles, reference.options.extended ? 100 : 60);
+    assert.equal(model.current.lanes, 15);
+    assert.deepEqual(plain(model.current.grid), { columns: 5, rows: 3 });
+    assert.equal(model.current.headerOnly, true);
+    assert.equal(model.counts.pending, reference.profileCount);
+    for (const group of model.groups) {
+      assert.equal(group.layouts.length, 10);
+      assert.equal(group.layouts.at(-1).key, '5x3');
+      assert.ok(group.layouts.every(layout => layout.grid.rows <= 3));
+    }
+    observer.accept(new Uint8Array(Buffer.from(reference.end, 'base64')), 600000);
+    model = view.compute(observer.state);
+    assert.deepEqual(plain(model.counts), { pending: 0, running: 0, passed: 0, failed: reference.profileCount });
   }
 });

@@ -3,7 +3,7 @@
 
   const $ = (id) => document.getElementById(id);
   const MAX_QR_COLUMNS = 5;
-  const MAX_QR_ROWS = 3;
+  const MAX_QR_ROWS = 4;
   const MAX_QR_CODES = MAX_QR_COLUMNS * MAX_QR_ROWS;
   const MAX_PREPARED_DISPLAYS = 3;
   const MATRIX_CACHE_LIMIT = MAX_QR_CODES * (MAX_PREPARED_DISPLAYS + 1);
@@ -1427,7 +1427,7 @@
       // margin below both measured decoder capacity and actual scan cadence.
       const observedRate = metrics.attempts * 1000 / Math.max(1000, now - metrics.started);
       let safeRate = Math.min(0.75 * 1000 / (metrics.latency + 5), observedRate * 0.85);
-      // One camera sample may decode up to fifteen symbols; the suggested rate is display changes/s.
+      // One camera sample may decode up to twenty symbols; the suggested rate is display changes/s.
       const successRatio = metrics.successes / metrics.attempts;
       if (successRatio < 0.5) safeRate = Math.min(safeRate, 2);
       if (successRatio < 0.2) safeRate = 1;
@@ -1773,13 +1773,13 @@
     const grid = selectedGrid();
     const layouts = all ? window.WGCalibration.landscapeGrids.length : compare ? window.WGCalibration.landscapeComparedGrids.length : 1;
     const profiles = (extended ? 10 : 6) * layouts;
-    const plan = all ? `Jeden QR i ${layouts - 1} układów poziomych, w tym 3 × 2, 4 × 2 i 5 × 3. Pomiar od najmniejszego do największego`
+    const plan = all ? `Jeden QR i ${layouts - 1} układów poziomych, w tym 3 × 2, 4 × 2, 5 × 3 i 5 × 4. Pomiar od najmniejszego do największego`
       : compare ? 'Układy: 1 × 1 → 2 × 1 → 3 × 1 → 3 × 2' : `Tylko układ ${grid.columns} × ${grid.rows} QR`;
     const rates = extended ? '2, 5, 10, 15, 20' : '2, 5, 10';
     const allowed = calibrationGridAllowed();
     ui['start-calibration'].disabled = encodingBusy || calibrationActive || !allowed;
     setText(ui['calibration-duration'], allowed
-      ? `${plan}. Gęstości: 384/600 B na QR. Tempo: ${rates} Hz. Liczba profili: ${profiles} · około ${profiles * 5} s pomiaru z przerwami na zmianę ustawień. ${all ? 'Najpierw zmieść w kadrze 15 rzadkich kodów ustawienia.' : compare ? 'Najpierw ustaw kadr na sześciu nieruchomych kodach w układzie 3 × 2.' : 'Najpierw spokojnie ustaw telefon.'} Ten etap nie ma limitu czasu.`
+      ? `${plan}. Gęstości: 384/600 B na QR. Tempo: ${rates} Hz. Liczba profili: ${profiles} · około ${profiles * 5} s pomiaru z przerwami na zmianę ustawień. ${all ? 'Najpierw zmieść w kadrze 20 rzadkich kodów ustawienia.' : compare ? 'Najpierw ustaw kadr na sześciu nieruchomych kodach w układzie 3 × 2.' : 'Najpierw spokojnie ustaw telefon.'} Ten etap nie ma limitu czasu.`
       : `Wybrano ${grid.columns} × ${grid.rows}. Kalibracja wielu kodów wymaga układu poziomego: ustaw więcej kolumn niż wierszy w polu „Układ serii”, np. 3 × 2. Możesz też wybrać porównanie układów poziomych.`);
   }
   function discardCalibrationFrames() {
@@ -2166,7 +2166,9 @@
     setText(ui['calibration-map-help'], fromImages
       ? 'Odczyt z obrazów sprawdza tylko kompletność paczek. Zielony „Komplet” nie potwierdza odbioru z podaną częstotliwością. Wykonaj nową próbę kamerą, aby dobrać szybkość.'
       : `X to liczba kodów poziomo, Y — pionowo. Hz oznacza zmianę całego układu na sekundę. Moduł to mały kwadrat wewnątrz QR; jego rozmiar w pikselach zależy od ekranu. ${state.landscapeOnly
-        ? state.allLayouts ? 'Próba obejmuje jeden QR oraz 9 układów poziomych do 5 × 3. Dla wielu kodów liczba kolumn jest większa od liczby wierszy.'
+        ? state.allLayouts ? state.version >= 6
+          ? 'Próba obejmuje jeden QR oraz 10 układów poziomych do 5 × 4. Dla wielu kodów liczba kolumn jest większa od liczby wierszy.'
+          : 'Próba obejmuje jeden QR oraz 9 układów poziomych do 5 × 3. Dla wielu kodów liczba kolumn jest większa od liczby wierszy.'
           : state.compareLayouts ? 'Szybkie porównanie obejmuje 1 × 1, 2 × 1, 3 × 1 i 3 × 2.' : 'Próba obejmuje wybrany układ poziomy albo jeden QR.'
         : state.allLayouts ? 'To poprzedni plan obejmujący wszystkie 15 siatek. Nowa kalibracja nadajnika sprawdza wyłącznie jeden QR i układy poziome.'
           : state.compareLayouts ? 'To poprzedni plan porównujący 1 × 1, 2 × 1, 1 × 2 i 2 × 2. Nowa kalibracja nadajnika sprawdza układy poziome.'
@@ -2736,7 +2738,7 @@
     }
   }
   function scannerOptions(lanes = 1, grid = null) {
-    return { decode: window.WGQR.decodePixels, lanes, ...(grid ? { columns: grid.columns, rows: grid.rows } : {}), workerUrl: './assets/qr-decoder-worker.js?v=4' };
+    return { decode: window.WGQR.decodePixels, lanes, ...(grid ? { columns: grid.columns, rows: grid.rows } : {}), workerUrl: './assets/qr-decoder-worker.js?v=5' };
   }
   async function scanCamera(scanner, video) {
     return typeof scanner.scanAsync === 'function' ? scanner.scanAsync(video) : scanner.scan(video);
@@ -2873,7 +2875,7 @@
           if (outcome.done) { done = true; break; }
         }
         if (epoch === receiverEpoch && (active() || (done && mode === 'decode'))) {
-          // A camera frame can contain fifteen CAL packets. Count every one,
+          // A camera frame can contain twenty CAL packets. Count every one,
           // then paint the dashboard once for that frame.
           const calibrationState = pendingCalibrationPaint;
           pendingCalibrationPaint = null;
@@ -2926,7 +2928,7 @@
     ui['choose-file'].disabled = ui['choose-image'].disabled = ui['sample-file'].disabled = ui['series-sample'].disabled = ui['speed-sample'].disabled = ui['large-sample'].disabled = ui['zip-sample'].disabled = ui['start-camera'].disabled = true;
     return;
   }
-  matrixEncoder = window.WGEncoder.create({ encode: window.WGQR.encodeBytes, workerUrl: './assets/qr-encoder-worker.js?v=3' });
+  matrixEncoder = window.WGEncoder.create({ encode: window.WGQR.encodeBytes, workerUrl: './assets/qr-encoder-worker.js?v=4' });
   collector = window.WGResilient.createCollector();
   calibrationObserver = window.WGCalibration.createObserver();
   calibrationView = window.WGCalibrationView.create({ encodeBytes: window.WGQR.encodeBytes });

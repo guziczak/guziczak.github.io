@@ -168,6 +168,28 @@ test('a QR moving out of its tracked region triggers a full detail search and re
   scanner.dispose();
 });
 
+test('an empty decoder answer is a miss and never becomes a tracked optical read', () => {
+  let emptyAnswer = true;
+  const { scanner } = scannerWithCanvas((...args) => {
+    if (emptyAnswer) {
+      emptyAnswer = false;
+      return { bytes: new Uint8Array(), version: 1, location: {
+        topLeftCorner: { x: 100, y: 100 }, topRightCorner: { x: 200, y: 100 },
+        bottomRightCorner: { x: 200, y: 200 }, bottomLeftCorner: { x: 100, y: 200 }
+      } };
+    }
+    return WGQR.decodePixels(...args);
+  });
+  const video = scene();
+  const empty = scanner.scan(video);
+  assert.equal(empty.result, null);
+  assert.deepEqual(empty.results, []);
+  const next = scanner.scan(video);
+  assert.equal(next.region, 'search', 'An empty result must not narrow the next frame to a false track.');
+  assertResult((next.result ? next : acquire(scanner, video)).result);
+  scanner.dispose();
+});
+
 test('blank frames clear a lost ROI, and reacquisition also survives source dimensions changing', () => {
   const { scanner } = scannerWithCanvas();
   assertResult(acquire(scanner, scene()).result);
@@ -370,24 +392,26 @@ function acquireGrid(scanner, video, count, attempts = 10) {
 }
 
 test('grid arguments are bounded and reject inconsistent or partial geometry', () => {
-  for (const options of [{ columns: 0, rows: 2 }, { columns: 6, rows: 2 }, { columns: 2, rows: 4 },
+  for (const options of [{ columns: 0, rows: 2 }, { columns: 6, rows: 2 }, { columns: 2, rows: 5 },
     { columns: 1.5, rows: 1 }, { columns: 2 }, { rows: 2 }, { columns: '2', rows: 2 },
-    { columns: 3, rows: 5 }, { columns: 5, rows: 3, lanes: 9 }, { lanes: 9 }, { lanes: 15 }]) {
+    { columns: 4, rows: 5 }, { columns: 5, rows: 4, lanes: 21 }, { columns: 5, rows: 3, lanes: 20 },
+    { columns: 5, rows: 3, lanes: 9 }, { lanes: 9 }, { lanes: 15 }, { lanes: 20 }]) {
     assert.throws(() => scannerWithCanvas(() => null, options), TypeError);
   }
-  const { scanner } = scannerWithCanvas(() => null, { columns: 5, rows: 3, lanes: 15 });
+  const { scanner } = scannerWithCanvas(() => null, { columns: 5, rows: 4, lanes: 20 });
   try {
-    for (const [columns, rows] of [[0, 1], [6, 1], [3, 4], [3, 5], [NaN, 2], [2.5, 1], ['2', 2]]) {
+    for (const [columns, rows] of [[0, 1], [6, 1], [3, 5], [5, 5], [NaN, 2], [2.5, 1], [2, 3.5], ['2', 2]]) {
       assert.throws(() => scanner.setGrid(columns, rows), TypeError);
     }
     assert.throws(() => scanner.setLanes(9), TypeError, 'Legacy lane counts must not guess an ambiguous grid shape.');
     assert.throws(() => scanner.setLanes(15), TypeError);
-    scanner.setLanes(2); scanner.setGrid(1, 3); scanner.setGrid(3, 3); scanner.setGrid(4, 2); scanner.setGrid(5, 3);
+    assert.throws(() => scanner.setLanes(20), TypeError);
+    scanner.setLanes(2); scanner.setGrid(1, 4); scanner.setGrid(3, 3); scanner.setGrid(4, 2); scanner.setGrid(5, 3); scanner.setGrid(5, 4);
   } finally { scanner.dispose(); }
 });
 
-test('2×2, 3×3, 4×2 and 5×3 grids decode distinct full-size binary packets from one frozen frame', () => {
-  for (const [columns, rows, packetBytes] of [[2, 2, 424], [3, 3, 692], [4, 2, 692], [5, 3, 692]]) {
+test('2×2, 3×3, 4×2, 5×3 and 5×4 grids decode distinct full-size binary packets from one frozen frame', () => {
+  for (const [columns, rows, packetBytes] of [[2, 2, 424], [3, 3, 692], [4, 2, 692], [5, 3, 692], [5, 4, 692]]) {
     const { video, payloads, centers } = gridSymbols({ columns, rows, packetBytes });
     const { scanner, canvases } = scannerWithCanvas(WGQR.decodePixels, { columns, rows });
     try {
@@ -417,8 +441,8 @@ test('2×2, 3×3, 4×2 and 5×3 grids decode distinct full-size binary packets f
   }
 });
 
-test('explicit 2×1, 3×2, 4×2 and 5×3 grids are reacquired after the actual pixels rotate by 90 degrees', () => {
-  for (const [columns, rows] of [[2, 1], [3, 2], [4, 2], [5, 3]]) {
+test('explicit 2×1, 3×2, 4×2, 5×3 and 5×4 grids are reacquired after the actual pixels rotate by 90 degrees', () => {
+  for (const [columns, rows] of [[2, 1], [3, 2], [4, 2], [5, 3], [5, 4]]) {
     const { video, payloads, centers } = gridSymbols({ columns, rows });
     const { scanner } = scannerWithCanvas(WGQR.decodePixels, { columns, rows });
     try {
@@ -636,7 +660,7 @@ class LocalDecoderWorker {
     this.thread.on('error', error => this.onerror?.({ error, preventDefault() {} }));
   }
   postMessage(message, transfer) {
-    assert.ok(Array.isArray(transfer) && transfer.length >= 1 && transfer.length <= 15);
+    assert.ok(Array.isArray(transfer) && transfer.length >= 1 && transfer.length <= 20);
     const expected = [...new Set(message.frames.map(frame => frame.data.buffer))];
     assert.deepEqual(transfer, expected, 'Every unique RGBA buffer must be transferred, not cloned.');
     this.thread.postMessage(message, transfer);
@@ -661,34 +685,34 @@ test('local worker decodes both real QR images and returns byte-exact binary pay
   } finally { scanner.dispose(); globalThis.Worker = previous; }
 });
 
-test('one bounded local-worker batch decodes fifteen real grid payloads without main-thread fallback', async () => {
+test('one bounded local-worker batch decodes twenty real grid payloads without main-thread fallback', async () => {
   const previous = globalThis.Worker;
   const batches = [];
   globalThis.Worker = class extends LocalDecoderWorker {
     postMessage(message, transfer) { batches.push(message.frames.length); super.postMessage(message, transfer); }
   };
-  const { video, payloads } = gridSymbols({ columns: 5, rows: 3, packetBytes: 692 });
+  const { video, payloads } = gridSymbols({ columns: 5, rows: 4, packetBytes: 692 });
   let fallbackCalls = 0;
   const { scanner, canvases } = scannerWithCanvas((...args) => { fallbackCalls++; return WGQR.decodePixels(...args); },
-    { columns: 5, rows: 3, workerUrl: './assets/qr-decoder-worker.js' });
+    { columns: 5, rows: 4, workerUrl: './assets/qr-decoder-worker.js' });
   try {
     let complete;
     for (let attempt = 0; attempt < 4; attempt++) {
       const sample = await scanner.scanAsync(video);
       assert.equal(sample.decoder, 'worker');
-      if (sample.results.length === 15) { complete = sample; break; }
+      if (sample.results.length === 20) { complete = sample; break; }
     }
-    assert.ok(complete, 'The real worker must be able to decode the complete synthetic fifteen-cell scene.');
+    assert.ok(complete, 'The real worker must be able to decode the complete synthetic twenty-cell scene.');
     assertGrid(complete, payloads);
     assert.equal(fallbackCalls, 0);
-    assert.ok(batches.every(count => count === 15));
-    assert.equal(canvases[15].draws.length, batches.length, 'Each batch must freeze exactly one camera frame.');
-    assert.equal(canvases.slice(0, 15).reduce((sum, canvas) => sum + canvas.readbacks, 0), batches.length * 15,
-      'Successful transfer must neither clone nor re-read the fifteen detached RGBA buffers.');
+    assert.ok(batches.every(count => count === 20));
+    assert.equal(canvases[20].draws.length, batches.length, 'Each batch must freeze exactly one camera frame.');
+    assert.equal(canvases.slice(0, 20).reduce((sum, canvas) => sum + canvas.readbacks, 0), batches.length * 20,
+      'Successful transfer must neither clone nor re-read the twenty detached RGBA buffers.');
   } finally { scanner.dispose(); globalThis.Worker = previous; }
 });
 
-test('local worker rejects sixteen entries and reuses a shared fifteen-slot reacquisition crop', async () => {
+test('local worker rejects twenty-one entries and reuses a shared twenty-slot reacquisition crop', async () => {
   const worker = new LocalDecoderWorker('./assets/qr-decoder-worker.js');
   const video = scene({ width: 640, height: 640, left: 100, top: 100 });
   const crop = { data: video.rgba, width: 640, height: 640, inversionAttempts: 'dontInvert' };
@@ -697,12 +721,12 @@ test('local worker rejects sixteen entries and reuses a shared fifteen-slot reac
       worker.onmessage = event => resolve(event.data);
       worker.onerror = event => reject(event.error);
       const oversized = { ...crop, data: new Uint8ClampedArray(crop.data) };
-      worker.postMessage({ id: 41, frames: Array.from({ length: 16 }, () => ({ ...oversized })) }, [oversized.data.buffer]);
-      worker.postMessage({ id: 42, frames: Array.from({ length: 15 }, () => ({ ...crop })) }, [crop.data.buffer]);
+      worker.postMessage({ id: 41, frames: Array.from({ length: 21 }, () => ({ ...oversized })) }, [oversized.data.buffer]);
+      worker.postMessage({ id: 42, frames: Array.from({ length: 20 }, () => ({ ...crop })) }, [crop.data.buffer]);
     });
     const message = await reply;
     assert.equal(message.id, 42);
-    assert.equal(message.answers.length, 15);
+    assert.equal(message.answers.length, 20);
     assertResult(message.answers[0].decoded);
     assert.ok(message.answers.every(answer => answer === message.answers[0]),
       'The worker must share one decode answer and transferred byte buffer for identical pixels.');
@@ -764,7 +788,7 @@ test('worker scans are bounded; reset/dispose cancel pending replies without dec
   } finally { scanner.dispose(); globalThis.Worker = previous; }
 });
 
-test('grid changes cancel old batches, preserve identical-grid work, and ignore stale fifteen-lane replies', async () => {
+test('grid changes cancel old batches, preserve identical-grid work, and ignore stale twenty-lane replies', async () => {
   const previous = globalThis.Worker;
   const workers = [];
   globalThis.Worker = class {
@@ -774,22 +798,22 @@ test('grid changes cancel old batches, preserve identical-grid work, and ignore 
   };
   let fallbackCalls = 0;
   const { scanner, canvases } = scannerWithCanvas(() => { fallbackCalls++; return null; },
-    { columns: 5, rows: 3, workerUrl: './assets/qr-decoder-worker.js' });
+    { columns: 5, rows: 4, workerUrl: './assets/qr-decoder-worker.js' });
   const video = scene({ width: 960, height: 960, blank: true });
   try {
     const old = scanner.scanAsync(video);
-    assert.equal(workers[0].messages[0].frames.length, 15);
-    assert.equal(canvases[15].draws.length, 1);
-    scanner.setGrid(5, 3);
+    assert.equal(workers[0].messages[0].frames.length, 20);
+    assert.equal(canvases[20].draws.length, 1);
+    scanner.setGrid(5, 4);
     assert.equal(workers[0].terminated, undefined, 'An unchanged grid must not discard a useful pending batch.');
     assert.equal((await scanner.scanAsync(video)).busy, true);
-    scanner.setGrid(4, 2);
+    scanner.setGrid(5, 3);
     assert.equal((await old).results.length, 0);
     assert.equal(workers[0].terminated, true);
     const next = scanner.scanAsync(video);
-    assert.equal(workers[1].messages[0].frames.length, 8);
+    assert.equal(workers[1].messages[0].frames.length, 15);
     workers[0].onmessage({ data: { id: workers[0].messages[0].id,
-      answers: Array.from({ length: 15 }, () => ({ decoded: { bytes: frame } })) } });
+      answers: Array.from({ length: 20 }, () => ({ decoded: { bytes: frame } })) } });
     workers[0].onerror({ preventDefault() {} });
     assert.equal(workers[1].terminated, undefined, 'A stale error must not terminate the replacement grid decoder.');
     assert.equal((await scanner.scanAsync(video)).busy, true);

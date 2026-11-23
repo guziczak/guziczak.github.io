@@ -344,7 +344,7 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
     throw new Error('Timed out draining asynchronous preparation');
   };
   h.display = (id = 'qr-canvas') => h.els[id].payload && Uint8Array.from(h.els[id].payload);
-  h.grid = () => [h.display(), ...Array.from({ length: 14 }, (_, index) => index + 1)
+  h.grid = () => [h.display(), ...Array.from({ length: 19 }, (_, index) => index + 1)
     .filter(index => !h.els[index === 1 ? 'qr-paper-second' : `qr-paper-${index + 1}`].hidden)
     .map(index => h.display(index === 1 ? 'qr-canvas-second' : `qr-canvas-${index + 1}`))];
   h.pair = h.grid;
@@ -429,7 +429,7 @@ async function openCalibration(h) {
   h.els['start-calibration'].click(); await h.flush();
   await h.wait(() => !h.els['begin-calibration'].hidden);
   const parsed = h.context.WGCalibration.parse(h.display());
-  assert.ok([3, 4, 5].includes(parsed.version)); assert.equal(parsed.alignment, true);
+  assert.ok([3, 4, 5, 6].includes(parsed.version)); assert.equal(parsed.alignment, true);
   assert.equal(h.els['animation-toggle'].disabled, true);
   assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tickCalibration'),
     'Alignment must remain still until the sender explicitly starts measurement');
@@ -919,6 +919,71 @@ test('a 5 by 3 file grid exports and receives all fifteen slots, resumes without
   } finally { sender.close(); receiver.close(); }
 });
 
+test('a 5 by 4 file grid exports twenty symbols and receives every source packet after a delayed prefetch and resume', async () => {
+  const sender = harness(), receiver = harness();
+  try {
+    const original = Uint8Array.from({ length: 384 * 40 - 7 }, (_, index) => (index * 41 + Math.floor(index / 263)) % 256);
+    sender.change('qr-columns', '5'); sender.change('qr-rows', '4');
+    sender.choose([new File([original], 'grid-twenty.bin')]); await sender.wait(() => !sender.els['choose-file'].disabled);
+    const transfer = sender.transfers.at(-1), initial = sender.grid();
+    assert.equal(transfer.total, 40); assert.equal(initial.length, 20);
+    // The two fountain blocks are interleaved; the short second block supplies
+    // its eight source packets before the remainder of the first block.
+    const interleaved = [0, 32, 1, 33, 2, 34, 3, 35, 4, 36, 5, 37, 6, 38, 7, 39];
+    assert.deepEqual(initial, [transfer.manifestFrame(), ...interleaved.map(index => transfer.frame(index)),
+      transfer.manifestFrame(), transfer.frame(8), transfer.frame(9)]);
+    assert.equal(sender.els['qr-paper-20'].hidden, false);
+    assert.equal(sender.els['qr-pair'].style.getPropertyValue('--qr-rows'), '4');
+    sender.els['download-qr'].click(); const png = sender.downloads.at(-1).blob.png;
+    assert.equal(png.draws.length, 20); assert.deepEqual(png.draws.map(draw => draw.payload), initial);
+    assert.equal(new Set(png.draws.map(draw => draw.args.join(','))).size, 20);
+    for (const draw of png.draws) {
+      assert.equal(draw.width, draw.height); assert.equal(draw.width % (draw.image.matrix.size + 8), 0);
+      assert.equal(draw.args.length, 2); assert.ok(draw.args.every(Number.isInteger));
+    }
+    const centers = png.draws.map(draw => [draw.args[0] + draw.width / 2, draw.args[1] + draw.height / 2]);
+    for (let index = 0; index < centers.length; index++) {
+      // Integer placement of odd/even canvas sizes can differ by half a pixel.
+      assert.ok(Math.abs(centers[index][0] - centers[index % 5][0]) <= 0.5);
+      assert.ok(Math.abs(centers[index][1] - centers[Math.floor(index / 5) * 5][1]) <= 0.5);
+    }
+    for (let column = 1; column < 5; column++) assert.ok(centers[column][0] > centers[column - 1][0]);
+    for (let row = 1; row < 4; row++) assert.ok(centers[row * 5][1] > centers[(row - 1) * 5][1]);
+
+    receiver.els['decode-tab'].click(); receiver.change('scan-columns', '5'); receiver.change('scan-rows', '4');
+    receiver.upload(png.draws.map(draw => draw.payload), false, { columns: 5, rows: 4 });
+    await receiver.wait(() => !receiver.els['choose-image'].disabled);
+    assert.equal(receiver.telemetry.snapshot().imageReads, 19, 'Import deduplicates the two identical manifests in the same PNG.');
+    assert.equal(receiver.telemetry.snapshot().usefulUnits, 18);
+    receiver.els['start-camera'].click(); await receiver.wait(() => receiver.videoCallbacks.size === 1);
+    assert.equal(receiver.scannerOptions.at(-1).lanes, 20);
+    assert.deepEqual([receiver.scannerOptions.at(-1).columns, receiver.scannerOptions.at(-1).rows], [5, 4]);
+
+    sender.deferEncoding = true; sender.els['animation-toggle'].click();
+    await sender.wait(() => sender.encoderJobs.at(-1)?.ready && sender.encoderJobs.at(-1)?.release);
+    const pending = sender.encoderJobs.at(-1), jobCount = sender.encoderJobs.length;
+    assert.equal(pending.inputs.length, 19, 'One symbol reuses the manifest; nineteen source packets need new matrices.');
+    await sender.tick('tick', { flush: false }); await sender.tick('tick', { flush: false });
+    assert.deepEqual(sender.grid(), initial); assert.equal(sender.encoderJobs.length, jobCount);
+    sender.els['animation-toggle'].click(); sender.deferEncoding = false; pending.release(); await sender.flush();
+    assert.ok(pending.matrices.every(matrix => matrix.data.every(value => value === 0)));
+    sender.els['animation-toggle'].click(); await sender.tick();
+    assert.deepEqual(sender.grid(), [...Array.from({ length: 14 }, (_, index) => transfer.frame(index + 10)),
+      transfer.manifestFrame(), ...Array.from({ length: 5 }, (_, index) => transfer.frame(index + 24))]);
+    await receiver.fireFrame('camera-video', sender.grid());
+    assert.equal(receiver.telemetry.snapshot().opticalReads, 20);
+    assert.equal(receiver.telemetry.snapshot().decodeAttempts, 20);
+    assert.equal(receiver.telemetry.snapshot().usefulUnits, 37);
+    await sender.tick(); await receiver.fireFrame('camera-video', sender.grid());
+    assert.equal(receiver.els['download-file'].disabled, false);
+    assert.equal(receiver.telemetry.snapshot().usefulUnits, 40);
+    receiver.els['download-file'].click();
+    assert.deepEqual(new Uint8Array(await receiver.downloads.at(-1).blob.arrayBuffer()), original);
+    sender.els['clear-all'].click();
+    for (let index = 2; index <= 20; index++) assert.equal(sender.els[index === 2 ? 'qr-paper-second' : `qr-paper-${index}`].hidden, true);
+  } finally { sender.close(); receiver.close(); }
+});
+
 test('camera profiles restart safely and automatic aspect follows one or two scan lanes', async () => {
   const h = harness();
   try {
@@ -1346,7 +1411,7 @@ test('completed receiver map separates passed and failed profiles and reset keep
   } finally { trial?.dispose(); h.close(); }
 });
 
-test('standalone calibration defaults to ten landscape layouts before upload, paints only synthetic codes and restores the empty view on stop', async () => {
+test('standalone calibration defaults to eleven landscape layouts and advertises both 66 and 110 profile plans before upload', async () => {
   for (const id of ['start-calibration', 'scan-feedback']) {
     const ancestors = htmlAncestorIds(id);
     assert.ok(ancestors.includes('calibration-home'));
@@ -1363,26 +1428,26 @@ test('standalone calibration defaults to ten landscape layouts before upload, pa
     assert.equal(h.els['calibration-layout-scope'].value, 'all');
     h.change('series-ecc', 'L');
     const packets = await openCalibration(h);
-    assert.equal(packets.length, 15);
+    assert.equal(packets.length, 20);
     for (let lane = 0; lane < packets.length; lane++) {
       const parsed = h.context.WGCalibration.parse(packets[lane]);
-      assert.equal(parsed.version, 5); assert.equal(parsed.landscapeOnly, true);
+      assert.equal(parsed.version, 6); assert.equal(parsed.landscapeOnly, true);
       assert.equal(parsed.setup, true); assert.equal(parsed.alignment, true); assert.equal(parsed.slot, lane);
       assert.equal(parsed.allLayouts, true); assert.equal(parsed.compareLayouts, false);
       assert.equal(parsed.large, true, 'Unknown future files are calibrated with the larger packet envelope.');
-      assert.deepEqual([parsed.grid.columns, parsed.grid.rows, parsed.ecc], [5, 3, 'L']);
+      assert.deepEqual([parsed.grid.columns, parsed.grid.rows, parsed.ecc], [5, 4, 'L']);
       assert.equal(packets[lane].length, 40, 'The initial setup announces the full plan without a dense measurement payload.');
       observer.accept(packets[lane], h.now);
     }
-    assert.equal(observer.state.totalProfiles, 60);
+    assert.equal(observer.state.totalProfiles, 66);
     const layouts = new Set(Array.from(observer.state.results, profile => `${profile.grid.columns}x${profile.grid.rows}`));
-    assert.equal(layouts.size, 10);
-    for (let columns = 1; columns <= 5; columns++) for (let rows = 1; rows <= 3; rows++) {
+    assert.equal(layouts.size, 11);
+    for (let columns = 1; columns <= 5; columns++) for (let rows = 1; rows <= 4; rows++) {
       assert.equal(layouts.has(`${columns}x${rows}`), (columns === 1 && rows === 1) || columns > rows,
         `The default plan has the wrong inclusion rule for ${columns}×${rows}.`);
     }
-    assert.match(h.els['calibration-duration'].textContent, /\b60\b/);
-    assert.match(h.els['calibration-duration'].textContent, /300 s/);
+    assert.match(h.els['calibration-duration'].textContent, /\b66\b/);
+    assert.match(h.els['calibration-duration'].textContent, /330 s/);
     assert.equal(h.transfers.length, 0); assert.equal(h.largeSenders.length, 0);
     assert.ok(h.encodings.every(item => h.context.WGCalibration.isFrame(item.bytes)));
     assert.equal(h.els['source-details'].hidden, true); assert.equal(h.els['series-controls'].hidden, true);
@@ -1406,6 +1471,16 @@ test('standalone calibration defaults to ten landscape layouts before upload, pa
     assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tickCalibration'));
     assert.equal(h.telemetry.snapshot().transfer, null); assert.equal(h.downloads.length, 0);
 
+    observer.reset(); h.change('calibration-range', 'fast');
+    assert.match(h.els['calibration-duration'].textContent, /\b110\b/);
+    assert.match(h.els['calibration-duration'].textContent, /550 s/);
+    const fastSetup = await openCalibration(h);
+    assert.equal(fastSetup.length, 20);
+    for (const bytes of fastSetup) observer.accept(bytes, h.now);
+    assert.equal(observer.state.version, 6); assert.equal(observer.state.totalProfiles, 110);
+    assert.ok(observer.state.results.some(profile => profile.grid.columns === 5 && profile.grid.rows === 4 && profile.fps === 20));
+    h.els['stop-calibration'].click(); await h.flush();
+
     h.choose([new File([new Uint8Array(6001).fill(27)], 'after-cancel.bin')]);
     await h.wait(() => h.transfers.length === 1 && !h.els['choose-file'].disabled);
     assert.equal(h.document.body.classList.contains('qr-expanded'), false,
@@ -1419,7 +1494,7 @@ test('current calibration refuses portrait and square multi-code grids without c
     h.change('calibration-layout-scope', 'current');
     h.choose([new File([new Uint8Array(3500).fill(61)], 'unchanged-layout.bin')]); await h.wait(() => !h.els['choose-file'].disabled);
     const transfer = h.transfers.at(-1);
-    for (const [columns, rows] of [[1, 2], [2, 2]]) {
+    for (const [columns, rows] of [[1, 2], [2, 2], [1, 4], [4, 4]]) {
       h.change('qr-columns', String(columns)); h.change('qr-rows', String(rows)); await h.flush();
       const visible = h.grid();
       assert.equal(h.els['start-calibration'].disabled, true);
@@ -1435,7 +1510,7 @@ test('current calibration refuses portrait and square multi-code grids without c
     assert.equal(packets.length, 6);
     for (const bytes of packets) {
       const parsed = h.context.WGCalibration.parse(bytes);
-      assert.equal(parsed.version, 5); assert.equal(parsed.landscapeOnly, true);
+      assert.equal(parsed.version, 6); assert.equal(parsed.landscapeOnly, true);
       assert.deepEqual([parsed.grid.columns, parsed.grid.rows], [3, 2]);
     }
   } finally { h.close(); }
@@ -1694,50 +1769,50 @@ test('calibration compares four landscape layouts without restarting the camera 
   } finally { sender.close(); receiver.close(); }
 });
 
-test('landscape calibration closes sixty profiles with missing data and applies a measured 5 by 3 result', async () => {
+test('landscape calibration closes sixty-six profiles with missing data and applies a measured 5 by 4 result', async () => {
   const sender = harness(), receiver = harness(); const plan = sender.context.WGCalibration.createObserver();
   try {
     const original = Uint8Array.from({ length: 1900 }, (_, index) => (index * 31 + 19) % 256);
     sender.els['transfer-mode'].value = 'series'; sender.setRate(10);
-    sender.choose([new File([original], 'calibration-fifteen.bin')]); await sender.wait(() => !sender.els['choose-file'].disabled);
+    sender.choose([new File([original], 'calibration-twenty.bin')]); await sender.wait(() => !sender.els['choose-file'].disabled);
     const old = sender.transfers.at(-1), setup = await openCalibration(sender);
-    assert.equal(setup.length, 15);
+    assert.equal(setup.length, 20);
     for (const bytes of setup) plan.accept(bytes, sender.now);
-    assert.equal(plan.state.allLayouts, true); assert.equal(plan.state.landscapeOnly, true); assert.equal(plan.state.totalProfiles, 60);
-    const target = plan.state.results.find(profile => profile.grid.columns === 5 && profile.grid.rows === 3
+    assert.equal(plan.state.allLayouts, true); assert.equal(plan.state.landscapeOnly, true); assert.equal(plan.state.totalProfiles, 66);
+    const target = plan.state.results.find(profile => profile.grid.columns === 5 && profile.grid.rows === 4
       && profile.chunkBytes === 600 && profile.fps === 2);
     assert.ok(target);
     receiver.els['decode-tab'].click(); receiver.els['start-camera'].click(); await receiver.wait(() => receiver.videoCallbacks.size === 1);
     const stream = receiver.streams[0]; await receiver.fireFrame('camera-video', setup);
-    assert.equal(calibrationCells(receiver).length, 60);
+    assert.equal(calibrationCells(receiver).length, 66);
     assert.ok(calibrationCells(receiver).every(cell => cell.dataset.state === 'pending'));
-    assert.deepEqual([receiver.els['scan-columns'].value, receiver.els['scan-rows'].value], ['5', '3']);
+    assert.deepEqual([receiver.els['scan-columns'].value, receiver.els['scan-rows'].value], ['5', '4']);
     assert.match(receiver.els['calibration-current-density'].textContent, /29\s*×\s*29/);
     const started = sender.now; sender.els['begin-calibration'].click(); await sender.flush();
     await receiver.fireFrame('camera-video', sender.grid());
     // Skip unobserved profiles deliberately: the finished map must retain their
-    // ten landscape layouts and mark their missing data instead of inventing success.
+    // eleven landscape layouts and mark their missing data instead of inventing success.
     await calibrationAt(sender, started + target.index * 5000);
     await receiver.fireFrame('camera-video', sender.grid());
     for (let step = 0; step < target.fps * 4; step++) {
       await calibrationAt(sender, started + target.index * 5000 + 1000 + step * 1000 / target.fps);
       const parsed = sender.context.WGCalibration.parse(sender.display());
-      assert.equal(parsed.version, 5); assert.equal(parsed.landscapeOnly, true);
+      assert.equal(parsed.version, 6); assert.equal(parsed.landscapeOnly, true);
       assert.equal(parsed.allLayouts, true); assert.equal(parsed.alignment, false);
-      assert.equal(sender.grid().length, 15); assert.equal(sender.display().length, 640);
+      assert.equal(sender.grid().length, 20); assert.equal(sender.display().length, 640);
       const computations = receiver.calibrationViewComputes;
       await receiver.fireFrame('camera-video', sender.grid(), { advanceMs: 1000 / target.fps });
-      assert.equal(receiver.calibrationViewComputes - computations, 1, 'One camera batch must repaint the map once after accepting all fifteen symbols.');
-      assert.match(renderedText(calibrationCell(receiver, target.index)), new RegExp(`${(step + 1) * 15}\\s*\\/\\s*120`));
+      assert.equal(receiver.calibrationViewComputes - computations, 1, 'One camera batch must repaint the map once after accepting all twenty symbols.');
+      assert.match(renderedText(calibrationCell(receiver, target.index)), new RegExp(`${(step + 1) * 20}\\s*\\/\\s*160`));
     }
-    await calibrationAt(sender, started + 60 * 5000);
+    await calibrationAt(sender, started + 66 * 5000);
     assert.equal(sender.context.WGCalibration.parse(sender.display()).ended, true);
     await receiver.fireFrame('camera-video', sender.grid());
     const cells = calibrationCells(receiver);
-    assert.equal(cells.length, 60);
-    assert.equal(new Set(cells.map(cell => `${cell.dataset.columns}x${cell.dataset.rows}`)).size, 10);
+    assert.equal(cells.length, 66);
+    assert.equal(new Set(cells.map(cell => `${cell.dataset.columns}x${cell.dataset.rows}`)).size, 11);
     assert.equal(calibrationCell(receiver, target.index).dataset.state, 'passed');
-    assertCalibrationCounts(receiver, { passed: 1, failed: 59, pending: 0, running: 0 });
+    assertCalibrationCounts(receiver, { passed: 1, failed: 65, pending: 0, running: 0 });
     assert.equal(receiver.cameraConstraints.length, 1); assert.equal(stream.track.stopped, false);
     assert.equal(receiver.telemetry.snapshot().transfer, null); assert.equal(receiver.els['download-file'].disabled, true);
     receiver.els['show-calibration-feedback'].click(); const feedback = receiver.display('feedback-canvas');
@@ -1746,8 +1821,8 @@ test('landscape calibration closes sixty profiles with missing data and applies 
     await sender.fireFrame('feedback-video', feedback);
     await sender.wait(() => sender.transfers.length === 2 && !sender.els['choose-file'].disabled);
     const transfer = sender.transfers.at(-1);
-    assert.deepEqual([sender.els['qr-columns'].value, sender.els['qr-rows'].value, transfer.chunkBytes, sender.rate()], ['5', '3', 600, 2]);
-    assert.equal(sender.grid().length, 15); assert.equal(sender.els['qr-paper-15'].hidden, false);
+    assert.deepEqual([sender.els['qr-columns'].value, sender.els['qr-rows'].value, transfer.chunkBytes, sender.rate()], ['5', '4', 600, 2]);
+    assert.equal(sender.grid().length, 20); assert.equal(sender.els['qr-paper-20'].hidden, false);
     assert.equal(sender.els['animation-toggle'].getAttribute('aria-pressed'), 'false');
     assert.deepEqual(await collectTransfer(sender.protocol, transfer), original);
     assert.throws(() => old.frame(0), error => error.code === 'TRANSFER_DISPOSED');
@@ -1830,27 +1905,36 @@ test('late asynchronous encoding holds the visible pair and cannot skip packets 
   } finally { h.close(); }
 });
 
-test('camera keeps the newest frame during a slow decode and starts it without waiting for another callback', async () => {
-  const h = harness();
-  try {
-    const original = Uint8Array.from({ length: 1152 }, (_, index) => index % 251);
-    const transfer = await h.protocol.createTransfer(original, 'latest-frame.bin', { chunkBytes: 384 });
-    h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
-    h.deferScans = true;
-    const first = h.fireFrame('camera-video', transfer.frame(0)); await h.wait(() => h.scanJobs.length === 1);
-    assert.equal(h.videoCallbacks.size, 1, 'The next video callback is armed while the decoder is busy');
-    await h.fireFrame('camera-video', transfer.frame(1));
-    await h.fireFrame('camera-video', transfer.frame(2));
-    assert.equal(h.scanCalls.length, 1); assert.equal(h.activeScans, 1);
-    h.deferScans = false; h.scanJobs[0].release(); await first;
-    await h.wait(() => h.scanCalls.length === 2 && h.telemetry.snapshot().usefulUnits === 2);
-    assert.deepEqual(h.scanCalls.map(call => call.payloads[0]), [transfer.frame(0), transfer.frame(2)]);
-    assert.equal(h.maxActiveScans, 1); assert.equal(h.els['download-file'].disabled, true);
-    await h.fireFrame('camera-video', transfer.frame(1));
-    assert.equal(h.els['download-file'].disabled, false); assert.equal(h.telemetry.snapshot().cameraAttempts, 3);
-    assert.equal(h.videoCallbacks.size, 0);
-    h.els['download-file'].click(); assert.deepEqual(new Uint8Array(await h.downloads.at(-1).blob.arrayBuffer()), original);
-  } finally { h.close(); }
+test('camera keeps only the newest of 120 callbacks while decoding or accepting a packet is blocked', async t => {
+  for (const blockedStage of ['decode', 'collector']) await t.test(blockedStage, async () => {
+    const h = harness();
+    try {
+      const original = Uint8Array.from({ length: 384 * 121 }, (_, index) => (index * 17 + Math.floor(index / 251)) % 256);
+      const transfer = await h.protocol.createTransfer(original, 'latest-frame.bin', { chunkBytes: 384 });
+      h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+      h.deferScans = blockedStage === 'decode'; h.deferCollectorAccept = blockedStage === 'collector';
+      const first = h.fireFrame('camera-video', transfer.frame(0));
+      await h.wait(() => blockedStage === 'decode' ? h.scanJobs.length === 1 : h.collectorJobs.length === 1);
+      for (let index = 1; index <= 120; index++) await h.fireFrame('camera-video', transfer.frame(index));
+      assert.equal(h.videoCallbacks.size, 1, 'Camera notifications stay armed while the current scan or packet is unfinished.');
+      assert.equal(h.scanCalls.length, 1, 'Waiting callbacks must not capture or queue 120 older images.');
+      assert.equal(h.activeScans, blockedStage === 'decode' ? 1 : 0);
+      assert.equal(h.collectorJobs.length, blockedStage === 'collector' ? 1 : 0);
+      h.deferScans = h.deferCollectorAccept = false;
+      (blockedStage === 'decode' ? h.scanJobs[0] : h.collectorJobs[0]).release(); await first;
+      await h.wait(() => h.scanCalls.length === 2 && h.telemetry.snapshot().usefulUnits === 2);
+      await h.micro();
+      assert.deepEqual(h.scanCalls.map(call => call.payloads[0]), [transfer.frame(0), transfer.frame(120)],
+        'The next scan must sample the current image, not drain old pictures or old payloads.');
+      assert.equal(h.maxActiveScans, 1); assert.equal(h.els['download-file'].disabled, true);
+      for (let index = 1; index < 120; index++) await h.fireFrame('camera-video', transfer.frame(index));
+      assert.equal(h.els['download-file'].disabled, false);
+      assert.equal(h.telemetry.snapshot().cameraAttempts, 121);
+      assert.equal(h.telemetry.snapshot().usefulUnits, 121);
+      assert.equal(h.videoCallbacks.size, 0);
+      h.els['download-file'].click(); assert.deepEqual(new Uint8Array(await h.downloads.at(-1).blob.arrayBuffer()), original);
+    } finally { h.close(); }
+  });
 });
 
 test('stopping the camera discards both the pending latest frame and a late worker result', async () => {
@@ -1926,7 +2010,7 @@ test('extended calibration displays ten profiles and applies the measured 20 Hz 
       profileCount: 10,
       steps: (profile, index) => index === 9 ? Array.from({ length: 80 }, (_, step) => step) : [],
       onPackets(packets, parsed) {
-        assert.equal(parsed.version, 5); assert.equal(parsed.landscapeOnly, true);
+        assert.equal(parsed.version, 6); assert.equal(parsed.landscapeOnly, true);
         for (const bytes of packets) observer.accept(bytes, h.now);
       }
     });
@@ -2013,7 +2097,7 @@ test('closing the QR view, changing tabs and hiding the page cancel both pending
       const h = harness();
       try {
         h.change('calibration-layout-scope', 'current');
-        h.change('qr-columns', '5'); h.change('qr-rows', '3'); h.els['series-sample'].click();
+        h.change('qr-columns', '5'); h.change('qr-rows', '4'); h.els['series-sample'].click();
         await h.wait(() => !h.els['choose-file'].disabled); const initial = h.grid();
         if (phase === 'alignment-pending') {
           h.deferEncoding = true; h.els['start-calibration'].click();
@@ -2037,7 +2121,7 @@ test('closing the QR view, changing tabs and hiding the page cancel both pending
         assert.deepEqual(h.grid(), initial);
         const trialJobs = h.encoderJobs.filter(job => h.context.WGCalibration.isFrame(job.inputs[0]));
         assert.ok(trialJobs.length > 0);
-        assert.ok(trialJobs.every(job => job.inputs.length === 15 && job.matrices.length === 15));
+        assert.ok(trialJobs.every(job => job.inputs.length === 20 && job.matrices.length === 20));
         assert.ok(trialJobs.every(job => job.matrices.every(matrix => matrix.data.every(value => value === 0))));
         assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tickCalibration'));
       } finally { h.close(); }
@@ -2080,7 +2164,7 @@ test('large sender reads bounded slices, survives tab changes and calibrates the
     assert.equal(h.largeSegments.at(-1).segmentIndex, 1); assert.throws(() => first.frame(0), error => error.code === 'TRANSFER_DISPOSED');
     h.els['start-calibration'].click(); await h.flush();
     const setup = h.context.WGCalibration.parse(h.display());
-    assert.equal(setup.version, 5); assert.equal(setup.setup, true); assert.equal(setup.large, true);
+    assert.equal(setup.version, 6); assert.equal(setup.setup, true); assert.equal(setup.large, true);
     assert.equal(h.display().length, 40);
     h.els['begin-calibration'].click(); await h.flush();
     const parsed = h.context.WGCalibration.parse(h.display());
@@ -2168,6 +2252,56 @@ test('an in-flight large segment load is invalidated by tab changes and does not
     await h.wait(() => h.largeSegments.at(-1).segmentIndex === 0 && !h.els['choose-file'].disabled);
     assert.equal(h.context.WGLarge.parseFrame(h.display()).segmentIndex, 0);
   } finally { release?.(); h.close(); }
+});
+
+test('120 camera callbacks during a segment commit keep only the newest image and preserve durable file bytes', async () => {
+  const h = await diskHarness(); let sender, release, pendingWrite;
+  try {
+    const segmentSize = 2 * 1024 * 1024;
+    const original = Uint8Array.from({ length: segmentSize + 1201 }, (_, index) => (index * 23 + Math.floor(index / 257)) % 256);
+    sender = await h.context.WGLarge.createSender(new File([original], 'slow-commit.bin'), { chunkBytes: 600 });
+    const first = await sender.loadSegment(0), lastPacket = first.frame(first.total - 1);
+    const store = await enableDiskReceiver(h);
+    h.change('scan-columns', '5'); h.change('scan-rows', '4');
+    h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    await h.fireFrame('camera-video', first.manifestFrame());
+    for (let index = 0; index < first.total - 1; index += 20) {
+      const count = Math.min(20, first.total - 1 - index);
+      await h.fireFrame('camera-video', Array.from({ length: count }, (_, offset) => first.frame(index + offset)));
+    }
+    assert.equal(store.state.savedBytes, 0);
+    const second = await sender.loadSegment(1);
+    const latest = [second.manifestFrame(), second.frame(0)];
+    let enter, held = false;
+    const entered = new Promise(resolve => { enter = resolve; });
+    const gate = new Promise(resolve => { release = resolve; });
+    h.backend.faults.before = async event => {
+      if (!held && event.op === 'close' && event.path.endsWith('segment-000.bin')) {
+        held = true; enter(); await gate;
+      }
+    };
+    const packetsBefore = h.telemetry.snapshot().acceptedPackets;
+    pendingWrite = h.fireFrame('camera-video', lastPacket); await entered;
+    const captures = h.scanCalls.length;
+    for (let index = 0; index < 120; index++) {
+      await h.fireFrame('camera-video', index === 119 ? latest : second.frame(index % second.total), { advanceMs: 16 });
+    }
+    assert.equal(h.scanCalls.length, captures, 'A slow disk commit must not accumulate camera captures.');
+    assert.equal(h.videoCallbacks.size, 1); assert.equal(h.activeScans, 0); assert.equal(h.maxActiveScans, 1);
+    assert.deepEqual(Array.from(store.state.completed), [false, false]);
+    assert.equal(store.state.savedBytes, 0); assert.equal(h.els['download-file'].disabled, true);
+    release(); await pendingWrite;
+    await h.wait(() => h.scanCalls.length === captures + 1 && h.telemetry.snapshot().acceptedPackets === packetsBefore + 3);
+    await h.micro();
+    assert.deepEqual(h.scanCalls.at(-1).payloads, latest, 'After storage settles, the decoder must see the newest camera image.');
+    assert.equal(h.scanCalls.length, captures + 1);
+    assert.deepEqual(Array.from(store.state.completed), [true, false]);
+    assert.equal(store.state.savedBytes, segmentSize); assert.equal(h.els['download-file'].disabled, true);
+    for (let index = 1; index < second.total; index++) await h.fireFrame('camera-video', second.frame(index));
+    assert.equal(h.els['download-file'].disabled, false); assert.equal(store.state.complete, true);
+    assert.equal(h.maxActiveScans, 1); assert.equal(h.videoCallbacks.size, 0);
+    h.els['download-file'].click(); assert.deepEqual(await fileBytes(h.downloads.at(-1).blob), original);
+  } finally { release?.(); await pendingWrite?.catch(() => {}); sender?.dispose(); await h.cleanup(); }
 });
 
 test('large receiver requires explicit storage activation and only offers a file after final disk verification', async () => {
@@ -2275,15 +2409,15 @@ test('late storage opening after clear or receiver reset is disposed and cannot 
   });
 });
 
-test('fifteen current QR matrices survive three prefetched screens and cache eviction stays bounded', async () => {
+test('twenty current QR matrices survive three prefetched screens and cache eviction stays bounded', async () => {
   const h = harness();
   try {
     const original = Uint8Array.from({ length: 384 * 180 }, (_, index) => (index * 37 + Math.floor(index / 239)) % 256);
-    h.change('qr-columns', '5'); h.change('qr-rows', '3');
-    h.choose([new File([original], 'matrix-cache-fifteen.bin')]);
+    h.change('qr-columns', '5'); h.change('qr-rows', '4');
+    h.choose([new File([original], 'matrix-cache-twenty.bin')]);
     await h.wait(() => !h.els['choose-file'].disabled);
-    const initial = h.rendered.slice(-15).map(frame => frame.matrix);
-    assert.equal(h.grid().length, 15);
+    const initial = h.rendered.slice(-20).map(frame => frame.matrix);
+    assert.equal(h.grid().length, 20);
 
     // Payload labels in the renderer mock survive even when a matrix is erased.
     // Compare the actual modules with independently regenerated QR matrices.
@@ -2300,13 +2434,13 @@ test('fifteen current QR matrices survive three prefetched screens and cache evi
     h.els['animation-toggle'].click(); await h.flush();
     assert.equal(h.encoderJobs.length, 3, 'Preparation must stop at three complete future screens.');
     assert.equal(h.maxActiveEncodes, 1);
-    assert.ok(initial.length + h.encoderJobs.reduce((sum, job) => sum + job.matrices.length, 0) > 32,
+    assert.ok(initial.length + h.encoderJobs.reduce((sum, job) => sum + job.matrices.length, 0) > 60,
       'This fixture must exceed the previous cache limit before presenting another screen.');
     verify([...initial, ...h.encoderJobs.flatMap(job => job.matrices)]);
     const initialPackets = h.grid();
     h.els['download-qr'].click();
     const png = h.downloads.at(-1).blob.png;
-    assert.equal(png.draws.length, 15);
+    assert.equal(png.draws.length, 20);
     assert.deepEqual(png.draws.map(draw => draw.payload), initialPackets);
     verify(png.draws.map(draw => draw.image.matrix));
     h.els['animation-toggle'].click(); await h.flush(); // Export pauses playback; cached screens can be reused.
@@ -2316,12 +2450,12 @@ test('fifteen current QR matrices survive three prefetched screens and cache evi
     for (let step = 0; step < 8; step++) {
       await h.tick(); await h.flush();
       assert.equal(h.encoderJobs.length, step + 4);
-      verify([...h.rendered.filter(frame => frame.canvas.id.startsWith('qr-canvas')).slice(-15).map(frame => frame.matrix),
+      verify([...h.rendered.filter(frame => frame.canvas.id.startsWith('qr-canvas')).slice(-20).map(frame => frame.matrix),
         ...h.encoderJobs.slice(-3).flatMap(job => job.matrices)]);
     }
     const cached = [...new Set([...initial, ...h.encoderJobs.flatMap(job => job.matrices)])];
     assert.ok(cached.length > 100, 'The fixture must exercise eviction repeatedly.');
-    assert.ok(cached.filter(matrix => matrix.data.some(value => value !== 0)).length <= 15 * 4,
+    assert.ok(cached.filter(matrix => matrix.data.some(value => value !== 0)).length <= 20 * 4,
       'Retained matrices must fit the current screen and three-screen cache budget.');
     assert.ok(cached.some(matrix => matrix.data.every(value => value === 0)), 'Unused evicted matrices must be erased.');
     assert.equal(h.maxActiveEncodes, 1);
