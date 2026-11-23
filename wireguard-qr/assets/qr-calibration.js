@@ -15,16 +15,25 @@
   const COMPARED_GRIDS = Object.freeze([GRIDS[0x11], GRIDS[0x21], GRIDS[0x12], GRIDS[0x22]]);
   const ALL_GRIDS = Object.freeze(Object.values(GRIDS).sort((a, b) =>
     a.columns * a.rows - b.columns * b.rows || a.columns - b.columns || a.rows - b.rows));
+  const isLandscape = grid => grid.columns > grid.rows || (grid.columns === 1 && grid.rows === 1);
+  const LANDSCAPE_GRIDS = Object.freeze(ALL_GRIDS.filter(isLandscape));
+  const LANDSCAPE_COMPARED_GRIDS = Object.freeze([GRIDS[0x11], GRIDS[0x21], GRIDS[0x31], GRIDS[0x32]]);
   const withGrids = (profiles, grids) => Object.freeze(grids.flatMap(grid => profiles.map(profile =>
     Object.freeze({ ...profile, grid, lanes: grid.columns * grid.rows }))));
   const GRID_PROFILES = Object.freeze(Object.fromEntries(Object.entries(GRIDS).map(([key, grid]) =>
     [key, Object.freeze([withGrids(PROFILES, [grid]), withGrids(FAST_PROFILES, [grid])])])));
   const COMPARED_PROFILES = Object.freeze([withGrids(PROFILES, COMPARED_GRIDS), withGrids(FAST_PROFILES, COMPARED_GRIDS)]);
   const ALL_PROFILES = Object.freeze([withGrids(PROFILES, ALL_GRIDS), withGrids(FAST_PROFILES, ALL_GRIDS)]);
+  const LANDSCAPE_PROFILES = Object.freeze([withGrids(PROFILES, LANDSCAPE_GRIDS), withGrids(FAST_PROFILES, LANDSCAPE_GRIDS)]);
+  const LANDSCAPE_COMPARED_PROFILES = Object.freeze([
+    withGrids(PROFILES, LANDSCAPE_COMPARED_GRIDS), withGrids(FAST_PROFILES, LANDSCAPE_COMPARED_GRIDS)]);
   const packGrid = grid => (grid.columns << 4) | grid.rows;
-  const profilesFor = (version, extended = false, grid = GRIDS[0x11], compareLayouts = false, allLayouts = false) =>
-    version < 3 ? version === 1 ? PROFILES : FAST_PROFILES
-      : (allLayouts ? ALL_PROFILES : compareLayouts ? COMPARED_PROFILES : GRID_PROFILES[packGrid(grid)])[Number(extended)];
+  function profilesFor(version, extended = false, grid = GRIDS[0x11], compareLayouts = false, allLayouts = false) {
+    if (version < 3) return version === 1 ? PROFILES : FAST_PROFILES;
+    const all = version === 5 ? LANDSCAPE_PROFILES : ALL_PROFILES;
+    const compared = version === 5 ? LANDSCAPE_COMPARED_PROFILES : COMPARED_PROFILES;
+    return (allLayouts ? all : compareLayouts ? compared : GRID_PROFILES[packGrid(grid)])[Number(extended)];
+  }
   const equal = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
   const bytes = value => ArrayBuffer.isView(value) && Object.prototype.toString.call(value) === '[object Uint8Array]';
   const starts = (value, magic) => bytes(value) && value.length >= 8 && equal(value.subarray(0, 8), magic);
@@ -51,7 +60,7 @@
     if (!bytes(value) || value.length < 40) throw fail('Niepełny kod próby.');
     const view = new DataView(value.buffer, value.byteOffset, value.byteLength);
     if (view.getUint32(value.length - 4) !== checksum(value.subarray(0, -4))) throw fail('Uszkodzony kod próby.');
-    if (![1, 2, 3, 4].includes(value[8])) throw fail('Nieobsługiwana wersja próby.');
+    if (![1, 2, 3, 4, 5].includes(value[8])) throw fail('Nieobsługiwana wersja próby.');
     return view;
   }
   function parse(value) {
@@ -60,13 +69,15 @@
     const view = checked(value);
     const version = value[8], flags = value[9];
     const compareLayouts = version >= 3 && Boolean(flags & 32);
-    const allLayouts = version === 4 && Boolean(flags & 128);
+    const allLayouts = version >= 4 && Boolean(flags & 128);
+    const landscapeOnly = version === 5;
     const extended = version === 2 || (version >= 3 && Boolean(flags & 16));
     const alignment = version >= 3 && Boolean(flags & 8);
     const setup = version >= 3 && Boolean(flags & 64);
     const grid = version >= 3 ? GRIDS[value[11]] : GRIDS[(value[11] << 4) | 1];
-    if ((flags & ~(version === 4 ? 255 : version === 3 ? 127 : 7)) || !grid || (setup && !alignment)
+    if ((flags & ~(version >= 4 ? 255 : version === 3 ? 127 : 7)) || !grid || (setup && !alignment)
       || (version < 4 && grid.columns > 3) || (allLayouts && compareLayouts)
+      || (landscapeOnly && !isLandscape(grid))
       || (version < 3 && ![1, 2].includes(value[11]))) {
       throw fail('Nieprawidłowa siatka próby.');
     }
@@ -79,21 +90,24 @@
     if ((version >= 3 && packGrid(profile.grid) !== packGrid(grid))
       || view.getUint16(30) !== 0 || value[34] !== (profile.chunkBytes === 600 ? 1 : 0)
       || value[35] !== RATES.indexOf(profile.fps)
-      || value.length !== (ended || (version === 4 && setup) ? 40 : profile.chunkBytes + 40 + (large ? 52 : 0))
+      || value.length !== (ended || (version >= 4 && setup) ? 40 : profile.chunkBytes + 40 + (large ? 52 : 0))
       || (!ended && sequence >= (alignment ? lanes : profile.fps * (DURATION / 1000) * lanes))
       || (ended && (sequence !== 65535 || index !== profiles.length - 1))) throw fail('Nieprawidłowa ramka próby.');
-    return { version, index, lanes, grid, compareLayouts, allLayouts, extended, alignment, setup, ended, large, sequence, ...profile,
+    return { version, index, lanes, grid, compareLayouts, allLayouts, landscapeOnly, extended, alignment, setup, ended, large, sequence, ...profile,
       slot: ended ? null : sequence % lanes, step: ended || alignment ? null : Math.floor(sequence / lanes),
       window: ended || alignment ? null : Math.floor(sequence / (profile.fps * lanes)),
       ecc: flags & 2 ? 'L' : 'M', id: hex(value.subarray(12, 28)), idBytes: value.subarray(12, 28) };
   }
-  function create({ lanes = 1, ecc = 'M', extended = false, large = false, grid, compareLayouts = false, allLayouts = false } = {}) {
+  function create({ lanes = 1, ecc = 'M', extended = false, large = false, grid,
+    compareLayouts = false, allLayouts = false, landscapeOnly = false } = {}) {
     if (![1, 2].includes(lanes) || !['M', 'L'].includes(ecc) || typeof extended !== 'boolean'
       || typeof large !== 'boolean' || typeof compareLayouts !== 'boolean' || typeof allLayouts !== 'boolean'
+      || typeof landscapeOnly !== 'boolean'
       || (allLayouts && compareLayouts)) throw fail('Nieprawidłowe ustawienia próby.');
     if (typeof root.crypto?.getRandomValues !== 'function') throw fail('Próba wymaga generatora losowego.');
     const requestedGrid = grid === undefined ? GRIDS[0x11] : gridOf(grid);
-    const version = allLayouts || (!compareLayouts && requestedGrid.columns > 3) ? 4
+    if (landscapeOnly && !allLayouts && !compareLayouts && !isLandscape(requestedGrid)) throw fail('Próba wymaga siatki poziomej albo 1×1.');
+    const version = landscapeOnly ? 5 : allLayouts || (!compareLayouts && requestedGrid.columns > 3) ? 4
       : grid !== undefined || compareLayouts ? 3 : extended ? 2 : 1;
     const profiles = profilesFor(version, extended, requestedGrid, compareLayouts, allLayouts);
     const alignmentLanes = version >= 3 ? Math.max(...profiles.map(profile => profile.lanes)) : lanes;
@@ -108,7 +122,7 @@
       if (typeof ended !== 'boolean' || (ended && index !== profiles.length - 1)) throw fail('Nieprawidłowy koniec próby.');
       if (!ended && (!Number.isInteger(sequence) || sequence < 0
         || sequence >= (alignment ? profileLanes : profile.fps * DURATION / 1000 * profileLanes))) throw fail('Nieprawidłowy numer próby.');
-      const value = new Uint8Array(ended || (version === 4 && setup) ? 40 : profile.chunkBytes + 40 + (large ? 52 : 0));
+      const value = new Uint8Array(ended || (version >= 4 && setup) ? 40 : profile.chunkBytes + 40 + (large ? 52 : 0));
       const view = new DataView(value.buffer);
       value.set(CAL); value[8] = version;
       value[9] = (ended ? 1 : 0) | (ecc === 'L' ? 2 : 0) | (large ? 4 : 0)
@@ -146,10 +160,10 @@
         || (version >= 3 && (samples !== expected || steps !== profile.fps * DURATION / 1000))) {
         throw fail('Nieprawidłowa liczba lub szybkość odczytów.');
       }
-      return { ...profile, lanes: profileLanes, ecc, large, bytesPerSecond, samples, allLayouts,
+      return { ...profile, lanes: profileLanes, ecc, large, bytesPerSecond, samples, allLayouts, landscapeOnly,
         ...(version >= 3 ? { steps, compareLayouts, extended } : {}) };
     }
-    return { id, version, lanes: version >= 3 ? alignmentLanes : lanes, ecc, large, extended, compareLayouts, allLayouts,
+    return { id, version, lanes: version >= 3 ? alignmentLanes : lanes, ecc, large, extended, compareLayouts, allLayouts, landscapeOnly,
       profiles, duration: DURATION, alignmentLanes, alignmentIndex, frame, alignmentFrame,
       endFrame: () => makeFrame(profiles.length - 1, 0, true), acceptFeedback,
       dispose() { disposed = true; idBytes.fill(0); } };
@@ -187,7 +201,7 @@
       return { id: active.id, version: active.version, lanes: active.lanes, grid: active.grid,
         currentIndex: active.currentIndex, phase: active.phase, setup: active.setup,
         latestMeasurementIndex: active.latestMeasurementIndex, compareLayouts: active.compareLayouts,
-        allLayouts: active.allLayouts, extended: active.extended,
+        allLayouts: active.allLayouts, landscapeOnly: active.landscapeOnly, extended: active.extended,
         measuredProfiles: active.records.filter(record => record.seen.size > 0).length, totalProfiles: active.profiles.length,
         ecc: active.ecc, large: active.large, ended: active.ended,
         progress: active.ended ? 100 : Math.min(99, Math.round(active.progress * 100)), results, best, fastest };
@@ -204,7 +218,7 @@
         const profiles = profilesFor(frame.version, frame.extended, frame.grid, frame.compareLayouts, frame.allLayouts);
         active = { id: frame.id, version: frame.version, profiles, idBytes: new Uint8Array(frame.idBytes),
           lanes: frame.lanes, grid: frame.grid, planGrid: frame.grid, compareLayouts: frame.compareLayouts,
-          allLayouts: frame.allLayouts, extended: frame.extended,
+          allLayouts: frame.allLayouts, landscapeOnly: frame.landscapeOnly, extended: frame.extended,
           currentIndex: frame.index, latestMeasurementIndex: -1, setup: frame.setup, phase: frame.alignment ? 'alignment' : 'measuring',
           ecc: frame.ecc, large: frame.large, ended: false, progress: 0,
           records: profiles.map(() => ({ seen: new Set(), steps: new Set(), perSecond: [0, 0, 0, 0] })) };
@@ -258,7 +272,7 @@
     return { accept, reset, dispose: reset, createFeedback, get state() { return snapshot(); } };
   }
   root.WGCalibration = Object.freeze({ create, createObserver, parse, profiles: PROFILES, fastProfiles: FAST_PROFILES,
-    allGrids: ALL_GRIDS, limits: LIMITS,
+    allGrids: ALL_GRIDS, landscapeGrids: LANDSCAPE_GRIDS, landscapeComparedGrids: LANDSCAPE_COMPARED_GRIDS, limits: LIMITS,
     isFrame: value => starts(value, CAL), isFeedback: value => starts(value, SET),
     isReserved: value => starts(value, CAL) || starts(value, SET) });
 })(typeof window !== 'undefined' ? window : globalThis);
