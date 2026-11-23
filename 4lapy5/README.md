@@ -20,7 +20,7 @@ To niezależna propozycja obok `/4lapy2/`, `/4lapy3/` i `/4lapy4/`. Logika, test
 
 ```
 node 4lapy5/tools/build.cjs                 # po każdej zmianie szablonu, treści, CSS lub JS
-node --test "4lapy5/tools/*.test.cjs"       # 27 testów, bez przeglądarki i sieci
+node --test "4lapy5/tools/*.test.cjs"       # 29 testów, bez przeglądarki i sieci
 python -m http.server                       # z katalogu głównego repo → http://localhost:8000/4lapy5/
 ```
 
@@ -39,6 +39,7 @@ Godziny otwarcia są zapisane raz, w tablicy `HOURS` w `site.js`. Z niej powstaj
 - **Wpis o szczepieniu.** Wybrana data pojawia się cyfra po cyfrze w kratkach, a treść przypomnienia na „naklejce” z przerywaną ramką.
 - **Pole daty i kalendarz.** Systemowego okienka z datami nie da się ostylować, więc pole jest zwykłym polem tekstowym z klawiaturą numeryczną: datę wpisuje się jak w książeczce (`15032027`, `15.03.2027`, `1.3.2027` — kropki wstawiają się same). Przycisk obok otwiera własny kalendarz w formie kartki: niedziele i polskie święta są na czerwono, dzisiejszy dzień zakreślony długopisem, wybrany zaznaczony zakreślaczem, minione dni nieaktywne. Strzałki przechodzą po dniach i tygodniach, Home i End na krańce tygodnia, PageUp i PageDown zmieniają miesiąc (z Shift — rok), Escape zamyka. Data, której nie ma w kalendarzu (31.02), dostaje własny komunikat.
 - **Tabliczka adresowa.** Granatowa emaliowana tabliczka „ul. Chabrowa 2D” na mapie; między mapą a adresem biegnie perforacja.
+- **Mapa Google po zgodzie.** Pod mapą jest drukowana kratka „Pokaż mapę Google” z informacją, co się stanie. Dopiero jej odhaczenie (odręczną fajką, jak przy usługach) tworzy ramkę z mapą Google w miejscu mapy poglądowej; odznaczenie ją usuwa. Zgoda nie jest zapamiętywana: po odświeżeniu strona znów pokazuje mapę poglądową. Mapa Google jest wyższa od poglądowej, bo Google nakłada na nią własną kartę z adresem. Bez JavaScript kratki nie ma.
 - **Nagłówek i dolny pasek.** Na telefonie nagłówek przewija się razem ze stroną, a trzy główne akcje (Zadzwoń, Trasa, Godziny) są w stałym pasku na dole — dwa stałe paski zabierałyby około jednej piątej małego ekranu. Od 720 px dolnego paska nie ma, więc nagłówek jest przyklejony do góry i ma numer telefonu; od 960 px także odnośniki do sekcji. Sekcje otwierane odnośnikiem zatrzymują się pod nagłówkiem (`scroll-padding-top`).
 
 ## Status na żywo
@@ -60,12 +61,13 @@ Godziny otwarcia są zapisane raz, w tablicy `HOURS` w `site.js`. Z niej powstaj
 
 - Projekt poglądowy: `noindex, nofollow` i wyjaśnienie w stopce (bez paska na górze strony). Godziny, usługi, ocena Google i dane kontaktowe pochodzą z publicznych źródeł (październik 2026) i wymagają potwierdzenia przez przychodnię.
 - Strona nie używa zdjęć ani wizualizacji generowanych przez AI. W kaflu „Kto leczy” jest znak łapy; gdy przychodnia dostarczy portret, wystarczy podmienić zawartość elementu `.avatar` w `src/page.html`.
-- Brak analityki, ciasteczek i zewnętrznych zasobów: fonty są lokalne. Jedyne wyjścia do Google to linki klikane przez użytkownika (trasa, opinie, szablon wydarzenia w Kalendarzu Google). Plik `.ics` powstaje lokalnie.
+- Brak analityki i własnych ciasteczek; fonty są lokalne. Strona sama z siebie nie łączy się z żadnym zewnętrznym serwerem. Do Google prowadzą tylko rzeczy wybrane przez użytkownika: linki (trasa, opinie, szablon wydarzenia w Kalendarzu Google) oraz mapa Google, która wczytuje się dopiero po odhaczeniu zgody — wtedy Google poznaje adres IP i może zapisać własne pliki cookie. Ramka mapy ma `referrerpolicy="no-referrer"`. Plik `.ics` powstaje lokalnie.
 - W `localStorage` zapisywany jest wyłącznie wybór motywu.
 
 ## Mapa i licencje
 
 - `assets/map-wysoka-base*.webp` — te same pliki co w `/4lapy3/`, wyrenderowane z danych OpenStreetMap przez `4lapy3/tools/render_map.py`. Dane © autorzy OpenStreetMap, licencja ODbL. Strona kadruje bitmapę tak, żeby jej wypalona podziałka i podpis nie były widoczne, i pokazuje własny podpis z linkiem. Pinezka leży w środku obrazu, czyli w punkcie adresowym Chabrowa 2D.
+- Mapa Google to ramka z adresem `https://www.google.com/maps?q=…&output=embed`, bez klucza API; adres jest w `src/content.json` (`mapEmbedUrl`), a język dopisuje skrypt. Ten sam wzorzec mają `/4lapy1/`, `/4lapy2/` i `/4lapy3/`.
 - Fonty pobrano z Google Fonts; wszystkie na licencji SIL Open Font License 1.1, teksty licencji są w `assets/fonts/`.
 
 ## Obraz podglądu linku
@@ -78,4 +80,4 @@ msedge --headless=new --window-size=1200,630 --hide-scrollbars --screenshot=4lap
 
 ## Nie sprawdzono
 
-Stronę renderowano w Edge i Chrome 158: desktop, 1024, 768, 600, 390 i 320 px, oba motywy, oba języki, trzy stany pieczątki i tryb bez JavaScript. Nie sprawdzono Safari i iOS (w szczególności filtra SVG na pieczątce, maski z fajką, jednostki `lh` oraz wpisywania daty na klawiaturze telefonu), czytników ekranu, faktycznego pobrania pliku `.ics` ani otwarcia Kalendarza Google oraz przeglądarek wbudowanych w aplikacje.
+Stronę renderowano w Edge i Chrome 158: desktop, 1024, 768, 600, 390 i 320 px, oba motywy, oba języki, trzy stany pieczątki i tryb bez JavaScript. Nie sprawdzono Safari i iOS (w szczególności filtra SVG na pieczątce, maski z fajką, jednostki `lh` oraz wpisywania daty na klawiaturze telefonu), czytników ekranu, faktycznego pobrania pliku `.ics` ani otwarcia Kalendarza Google oraz przeglądarek wbudowanych w aplikacje. Mapę Google sprawdzono w Edge i Chrome (wczytuje się po zgodzie w obu językach); nie sprawdzono jej na iPhonie ani w przeglądarkach blokujących treści Google, takich jak Brave, gdzie ramka może pozostać pusta.

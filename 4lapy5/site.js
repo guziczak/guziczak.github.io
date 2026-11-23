@@ -35,6 +35,8 @@
       dateRequired: 'Wybierz datę szczepienia z książeczki zdrowia.',
       dateInvalid: 'Takiej daty nie ma w kalendarzu. Sprawdź dzień i miesiąc.',
       calendarToday: 'dziś', calendarHoliday: 'święto',
+      mapLoading: 'Wczytuję mapę Google…', mapFrame: 'Mapa Google: ul. Chabrowa 2D, Wysoka',
+      mapOn: 'Mapa Google jest włączona. Odznacz, żeby wrócić do mapy poglądowej.',
       datePast: 'Ta data już minęła. Wpisz datę kolejnego szczepienia.',
       leadRequired: 'Wybierz termin przypomnienia z listy.',
       reminderPast: 'Wybrany termin przypomnienia już minął. Wybierz krótsze wyprzedzenie.',
@@ -70,6 +72,8 @@
       dateRequired: 'Choose the vaccination date from your pet’s health record.',
       dateInvalid: 'There is no such date. Check the day and the month.',
       calendarToday: 'today', calendarHoliday: 'public holiday',
+      mapLoading: 'Loading the Google map…', mapFrame: 'Google map: ul. Chabrowa 2D, Wysoka',
+      mapOn: 'The Google map is on. Untick the box to return to the static map.',
       datePast: 'That date has passed. Enter the date of the next vaccination.',
       leadRequired: 'Choose a reminder time from the list.',
       reminderPast: 'The selected reminder time has passed. Choose a shorter lead time.',
@@ -352,10 +356,15 @@
     return `${copy.filenamePrefix}${safeName ? `-${safeName}` : ''}.ics`;
   }
 
+  // The address of the Google map frame: the one written in the page, in the page's language.
+  function mapEmbedSrc(base, language) {
+    return `${base}&hl=${language === 'en' ? 'en' : 'pl'}`;
+  }
+
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { HOURS, AXIS, parseDate, atWarsaw, atWarsawNine, easterSunday, isHoliday, clinicStatus,
       todayLabel, previewInstant, maskDate, typedDate, monthGrid, buildReminder, reminderPreview,
-      googleUrl, calendarFile, calendarFilename };
+      googleUrl, calendarFile, calendarFilename, mapEmbedSrc };
   }
   if (typeof document === 'undefined') return;
 
@@ -679,6 +688,37 @@
     strip.addEventListener('pointerleave', () => strip.removeAttribute('data-tips-off'));
   }
 
+  // The map tile shows a local picture. Ticking the box is the consent: only then does a Google
+  // frame exist, and unticking removes it. Nothing is stored, so a reload starts with the
+  // picture again.
+  function initMap() {
+    const consent = document.querySelector('[data-map-consent]');
+    const figure = document.querySelector('[data-map-figure]');
+    const holder = document.querySelector('[data-map-embed]');
+    const note = document.querySelector('[data-map-note]');
+    if (!consent || !figure || !holder || !note) return;
+    const idleNote = note.textContent;
+    consent.checked = false; // a tick restored by the browser must not load anything
+
+    consent.addEventListener('change', () => {
+      holder.replaceChildren();
+      holder.hidden = !consent.checked;
+      figure.toggleAttribute('data-google', consent.checked);
+      if (!consent.checked) { note.textContent = idleNote; return; }
+      const frame = document.createElement('iframe');
+      frame.src = mapEmbedSrc(consent.dataset.mapSrc, language);
+      frame.title = copy.mapFrame;
+      frame.referrerPolicy = 'no-referrer';
+      frame.setAttribute('allowfullscreen', '');
+      frame.addEventListener('load', () => { if (frame.isConnected) note.textContent = copy.mapOn; }, { once: true });
+      note.textContent = copy.mapLoading;
+      holder.append(frame);
+      // The interactive map is taller than the picture; keep it in view.
+      const calm = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      figure.scrollIntoView({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' });
+    });
+  }
+
   // Printing shows every service: exclusive <details name> groups are released for the print.
   function initPrint() {
     let saved = null;
@@ -710,6 +750,7 @@
     paintStatus();
     initReminder();
     initWeekTips();
+    initMap();
     initPrint();
     initLanguageLink();
     window.setInterval(paintStatus, 30000);

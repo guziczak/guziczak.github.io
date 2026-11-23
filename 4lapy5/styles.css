@@ -375,6 +375,26 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
 .map-bar address { font: 800 1.5rem/1.15 var(--display); font-stretch: 86%; }
 .map-bar address span { display: block; margin-top: 4px; color: var(--ink-soft); font: 500 .9375rem/1.4 var(--sans); }
 .map-bar .note { max-width: 52ch; margin-top: 8px; }
+/* The Google map takes the place of the picture only after the visitor ticks the consent box.
+   It is taller than the picture: Google lays its own address card over the map. */
+.map-embed { position: absolute; inset: 0; z-index: 2; background: var(--paper); }
+.map-embed iframe { display: block; width: 100%; height: 100%; border: 0; }
+.map-figure[data-google] { aspect-ratio: 1 / 1; max-height: 76vh; max-height: 76svh; }
+.map-figure[data-google] > :not(.map-embed) { visibility: hidden; }
+.map-consent { display: grid; gap: 2px 20px; padding-bottom: 14px; border-bottom: 2px dotted var(--edge); }
+.map-consent .note { max-width: 60ch; margin-top: 0; }
+/* A printed box, ticked by hand like the ones in the list of services. */
+.consent { position: relative; display: inline-flex; align-items: center; gap: 12px; justify-self: start; min-height: 44px; font-weight: 700; cursor: pointer; }
+.consent input { position: absolute; left: 0; top: 50%; width: 22px; height: 22px; margin: -11px 0 0; opacity: 0; cursor: pointer; }
+.consent-box { position: relative; flex: none; width: 22px; height: 22px; border: 1.5px solid var(--ink); border-radius: 4px; background: var(--paper); }
+.consent input:checked + .consent-box { background: var(--ink); }
+.consent input:focus-visible + .consent-box { outline: 3px solid var(--focus); outline-offset: 3px; }
+@supports (mask-image: url('')) or (-webkit-mask-image: url('')) {
+  .consent input:checked + .consent-box { background: var(--paper); }
+  .consent-box::after { content: ''; position: absolute; left: -3px; top: -9px; width: 31px; height: 31px; background: var(--stamp-open); -webkit-mask: var(--tick) center / contain no-repeat; mask: var(--tick) center / contain no-repeat; clip-path: inset(0 100% 0 0); }
+  .consent input:checked + .consent-box::after { clip-path: inset(0); }
+}
+html:not(.js) .map-consent { display: none; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .map-image { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.9); }
   :root:not([data-theme='light']) .map-figure { background: #14171c; }
@@ -428,6 +448,8 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
   .plate { left: 18px; top: 18px; min-width: 112px; padding: 11px 18px 9px; }
   .plate b { font-size: 2.875rem; }
   .map-bar { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 24px; }
+  .map-figure[data-google] { aspect-ratio: 16 / 9; }
+  .map-consent { grid-column: 1 / -1; grid-template-columns: auto minmax(0, 1fr); align-items: center; padding-bottom: 18px; }
   .site-footer { padding-bottom: 40px; }
   .dock { display: none; }
 }
@@ -478,6 +500,7 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
   .calendar:not([hidden]) { animation: rise .18s ease both; }
   .week li::after { transition: opacity .14s ease, transform .14s ease; }
   .week li::before { transition: opacity .14s ease; }
+  .consent-box::after { transition: clip-path .22s ease-out; }
   /* The stamp lands once, a moment after the sheet. */
   .js .stamp { animation: stamp-press .42s cubic-bezier(.3, 1.2, .5, 1) .4s both; }
   .btn { transition: filter .15s ease, background-color .15s ease, transform .15s ease; }
@@ -491,7 +514,7 @@ html:not(.js) #reminder-form > :not(noscript), html:not(.js) .preview { display:
 @media print {
   :root { color-scheme: light !important; }
   body { background: #fff; }
-  .header-tools, .site-nav, .dock, .map-figure, .hero-actions .btn-ghost, .reminder-actions, .rating-link { display: none !important; }
+  .header-tools, .site-nav, .dock, .map-figure, .map-consent, .hero-actions .btn-ghost, .reminder-actions, .rating-link { display: none !important; }
   .bento { display: block; }
   .site-header { position: static; border: 0; animation: none !important; }
   .tile { margin-bottom: 10px; animation: none !important; break-inside: avoid; }

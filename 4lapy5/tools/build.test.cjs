@@ -179,6 +179,21 @@ test('the date field can be typed and has its own calendar sheet', () => {
   }
 });
 
+test('the Google map waits for consent: the pages ship a local picture and an unticked box', () => {
+  assert.match(content.shared.mapEmbedUrl, /^https:\/\/www\.google\.com\/maps\?q=[^&]+&z=\d+&output=embed$/);
+  for (const [file, html] of Object.entries(pages)) {
+    assert.doesNotMatch(html, /<iframe\b/i, `${file}: no frame exists before consent`);
+    const box = /<input[^>]*data-map-consent[^>]*>/.exec(html)[0];
+    assert.ok(box.includes('type="checkbox"') && !/\schecked\b/.test(box), `${file}: the consent box starts unticked`);
+    assert.ok(box.includes(`data-map-src="${content.shared.mapEmbedUrl.replace(/&/g, '&amp;')}"`), `${file}: the box carries the frame address`);
+    assert.match(html, /<div class="map-embed" data-map-embed hidden><\/div>/, `${file}: the frame holder is empty and hidden`);
+    assert.match(html, /<p class="note" id="map-consent-note"[^>]*>[^<]*Google[^<]*IP[^<]*<\/p>/, `${file}: the note names Google and the IP address`);
+    // Apart from that attribute, Google Maps appears only in links the visitor chooses to follow.
+    const rest = html.replace(box, '').replace(/<a\b[^>]*>/g, '').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, '');
+    assert.doesNotMatch(rest, /google\.[a-z.]+\/maps/, `${file}: nothing else points at Google Maps`);
+  }
+});
+
 test('the static reminder preview matches what the script renders first', () => {
   const now = new Date('2026-01-01T00:00:00Z');
   for (const language of Object.keys(LANGUAGES)) {

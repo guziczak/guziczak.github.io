@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const {
   HOURS, AXIS, parseDate, atWarsaw, atWarsawNine, easterSunday, isHoliday, clinicStatus, todayLabel, previewInstant,
   maskDate, typedDate, monthGrid,
-  buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename
+  buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename, mapEmbedSrc
 } = require('../site.js');
 
 const NBSP = ' ';
@@ -308,4 +308,11 @@ test('download filenames are localized and sanitized', () => {
   assert.equal(calendarFilename(create('en')), 'vaccination-reminder-latek.ics');
   assert.equal(calendarFilename({ language: 'en', name: '  Łąka / Figa; 🐈  ' }), 'vaccination-reminder-laka-figa.ics');
   assert.equal(calendarFilename({ language: 'en', name: '' }), 'vaccination-reminder.ics');
+});
+
+test('the Google map frame is requested in the language of the page', () => {
+  const base = 'https://www.google.com/maps?q=ul.+Chabrowa+2D%2C+52-200+Wysoka&z=16&output=embed';
+  assert.equal(mapEmbedSrc(base, 'pl'), `${base}&hl=pl`);
+  assert.equal(mapEmbedSrc(base, 'en'), `${base}&hl=en`);
+  assert.equal(mapEmbedSrc(base, 'de'), `${base}&hl=pl`);
 });

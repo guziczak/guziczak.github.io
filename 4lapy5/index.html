@@ -26,8 +26,8 @@
   <link rel="preload" href="assets/fonts/bricolage-grotesque-display-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/bricolage-grotesque-display-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/manrope-variable-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <script src="site.js?v=c41fca0bcd"></script>
-  <link rel="stylesheet" href="styles.css?v=47cc4b07c0">
+  <script src="site.js?v=b620341a7c"></script>
+  <link rel="stylesheet" href="styles.css?v=52097177de">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"VeterinaryCare","name":"Przychodnia Weterynaryjna Cztery Łapy i Ty","url":"https://guziczak.github.io/4lapy5/","telephone":"+48717867884","address":{"@type":"PostalAddress","streetAddress":"ul. Chabrowa 2D","postalCode":"52-200","addressLocality":"Wysoka","addressCountry":"PL"},"geo":{"@type":"GeoCoordinates","latitude":51.0480638,"longitude":16.9997411},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"10:00","closes":"18:00"},{"@type":"OpeningHoursSpecification","dayOfWeek":["Saturday"],"opens":"10:00","closes":"12:00"}]}</script>
 </head>
 <body>
@@ -228,7 +228,8 @@
     </section>
 
     <section class="tile t-map" id="dojazd" aria-labelledby="map-title">
-      <figure class="map-figure">
+      <figure class="map-figure" data-map-figure>
+        <div class="map-embed" data-map-embed hidden></div>
         <picture>
           <source media="(max-width: 719px)" srcset="assets/map-wysoka-base-mobile.webp" width="1200" height="900">
           <img class="map-image" src="assets/map-wysoka-base.webp" width="1800" height="1200" loading="lazy" decoding="async" alt="Mapa okolicy ulic Chabrowej i Radosnej w Wysokiej z zaznaczonym adresem Chabrowa 2D.">
@@ -238,6 +239,10 @@
         <figcaption class="map-credit">Dane mapy: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a></figcaption>
       </figure>
       <div class="map-bar">
+        <div class="map-consent">
+          <label class="consent"><input type="checkbox" id="map-consent" autocomplete="off" data-map-consent data-map-src="https://www.google.com/maps?q=ul.+Chabrowa+2D%2C+52-200+Wysoka&amp;z=16&amp;output=embed" aria-describedby="map-consent-note"><span class="consent-box" aria-hidden="true"></span><span>Pokaż mapę Google</span></label>
+          <p class="note" id="map-consent-note" data-map-note aria-live="polite">Po zaznaczeniu mapę wczyta Google: pozna Twój adres IP i może zapisać pliki cookie.</p>
+        </div>
         <div class="map-copy">
           <h2 class="tile-label" id="map-title"><span aria-hidden="true">05 · </span>Dojazd</h2>
           <address>ul. Chabrowa 2D, 52-200 Wysoka<span>gmina Kobierzyce</span></address>
@@ -269,7 +274,7 @@
   <footer class="site-footer wrap">
     <div class="footer-grid">
       <p><strong>Cztery Łapy i Ty</strong>Przychodnia weterynaryjna · ul. Chabrowa 2D, 52-200 Wysoka</p>
-      <p id="o-projekcie">Projekt poglądowy. Godziny, usługi i dane kontaktowe pochodzą z publicznych źródeł (październik 2026) i wymagają potwierdzenia przez przychodnię. Strona nie pokazuje zdjęć ani wizualizacji przychodni, a pieczątka na górze jest elementem graficznym, nie pieczęcią przychodni. Mapa powstała z danych OpenStreetMap.</p>
+      <p id="o-projekcie">Projekt poglądowy. Godziny, usługi i dane kontaktowe pochodzą z publicznych źródeł (październik 2026) i wymagają potwierdzenia przez przychodnię. Strona nie pokazuje zdjęć ani wizualizacji przychodni, a pieczątka na górze jest elementem graficznym, nie pieczęcią przychodni. Mapa poglądowa powstała z danych OpenStreetMap; mapa Google wczytuje się dopiero po zaznaczeniu zgody.</p>
     </div>
   </footer>
 

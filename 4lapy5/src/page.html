@@ -205,7 +205,8 @@
     </section>
 
     <section class="tile t-map" id="dojazd" aria-labelledby="map-title">
-      <figure class="map-figure">
+      <figure class="map-figure" data-map-figure>
+        <div class="map-embed" data-map-embed hidden></div>
         <picture>
           <source media="(max-width: 719px)" srcset="{{root}}assets/map-wysoka-base-mobile.webp" width="1200" height="900">
           <img class="map-image" src="{{root}}assets/map-wysoka-base.webp" width="1800" height="1200" loading="lazy" decoding="async" alt="{{mapAlt}}">
@@ -215,6 +216,10 @@
         <figcaption class="map-credit">{{mapData}} <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a></figcaption>
       </figure>
       <div class="map-bar">
+        <div class="map-consent">
+          <label class="consent"><input type="checkbox" id="map-consent" autocomplete="off" data-map-consent data-map-src="{{mapEmbedUrl}}" aria-describedby="map-consent-note"><span class="consent-box" aria-hidden="true"></span><span>{{mapConsentLabel}}</span></label>
+          <p class="note" id="map-consent-note" data-map-note aria-live="polite">{{mapConsentNote}}</p>
+        </div>
         <div class="map-copy">
           <h2 class="tile-label" id="map-title"><span aria-hidden="true">05 · </span>{{mapTitle}}</h2>
           <address>{{addressLine}}<span>{{addressRegion}}</span></address>
