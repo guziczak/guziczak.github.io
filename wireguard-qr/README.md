@@ -56,7 +56,7 @@ Każde pole siatki zawiera zwykły, kwadratowy QR z osobnym pakietem jednej seri
 
 Więcej pól nie gwarantuje szybszego odbioru. Na tym samym ekranie każdy kod staje się mniejszy, a dekoder ma więcej pracy. Przykładowo 2 kody po 384 B przy 5 zmianach/s dają nominalnie 3 840 B/s porcji danych — tyle samo co jeden kod po 384 B przy 10 zmianach/s. Dłuższa obecność kodu na ekranie może pomagać, ale utrata czytelności może zniwelować korzyść. Siatki 3 × 2, 2 × 3 i 3 × 3 wymagają szczególnie starannego pomiaru. Manifesty, pominięte odczyty i zależne równania zmniejszają skuteczną szybkość. Ostatecznie porównuj czas odbioru tego samego pliku do końcowej weryfikacji.
 
-Kalibracja generuje numerowane dane testowe o rozmiarze odpowiadającym właściwym pakietom. **Nie wymaga wyboru ani tworzenia pliku.** Jest dostępna od razu w osobnej sekcji na początku karty nadajnika. Jeżeli plik jest już wybrany, pozostaje zachowany w pauzie; próbne kody nie zawierają jego bajtów. Najpierw ustawiasz kadr na nieruchomych kodach, a dopiero osobnym przyciskiem uruchamiasz pomiar.
+Kalibracja generuje numerowane dane testowe o rozmiarze odpowiadającym właściwym pakietom. **Nie wymaga wyboru ani tworzenia pliku.** Jest dostępna od razu w osobnej sekcji na początku karty nadajnika. Przycisk **Kalibracja** uruchamia próbę tylko po stronie nadawcy. Na odbiorniku wystarczy **Odczytaj QR → Uruchom kamerę**; rozpoznanie próbnych kodów automatycznie otwiera pomiary i wynik. Jeżeli plik jest już wybrany, pozostaje zachowany w pauzie; próbne kody nie zawierają jego bajtów. Najpierw ustawiasz kadr na nieruchomych kodach, a dopiero osobnym przyciskiem uruchamiasz pomiar.
 
 ### Zakres i czas próby
 
@@ -74,7 +74,7 @@ Domyślny zakres jest podstawowy. Jeden profil obejmuje 1 sekundę na zmianę us
 ### Przebieg kalibracji
 
 1. Otwórz nadajnik i wybierz kolumny, wiersze, korekcję M/L, zakres oraz porównywane układy. **Plik możesz wybrać dopiero po kalibracji.** Jeśli jest już wybrany, nie trzeba go usuwać ani zastępować przykładem.
-2. Wybierz **1. Ustaw telefon**. Nadajnik pokaże nieruchome sztuczne kody. Przy porównywaniu czterech układów etap ustawienia używa 2 × 2, aby wszystkie pola zmieściły się w kadrze.
+2. Na nadajniku wybierz **Kalibracja**. Nadajnik pokaże nieruchome sztuczne kody. Przy porównywaniu czterech układów etap ustawienia używa 2 × 2, aby wszystkie pola zmieściły się w kadrze.
 3. Na odbiorniku ustaw siatkę odpowiadającą widocznym kodom i uruchom kamerę. Jeżeli wcześniej odbierano fragmenty pliku, najpierw wybierz **Reset odbioru**. Wskaźnik pokazuje liczbę kodów odczytywanych obecnie; po utracie obrazu wygasa. Komunikat o stabilnym odczycie wynika z powtarzanych rozpoznań. Nie jest pomiarem ostrości aparatu i nie przewiduje jeszcze szybkości animacji.
 4. Gdy wszystkie pola są czytelne, na nadajniku wybierz **2. Rozpocznij pomiar**. Zachowaj tę samą odległość, rozmiar widoku i oświetlenie przez całą próbę. Ruchome kody pozostają syntetyczne. Przy zmianie profilu odbiornik dopasowuje siatkę skanera bez ponownego uruchamiania kamery.
 5. Po zakończeniu zostaw na nadajniku kod końca próby, aż odbiornik pokaże raport. Jeśli jest dostępny profil bez luk, wybierz **Pokaż wynik nadajnikowi**, a na nadajniku **Zeskanuj potwierdzenie**. Wynik przechodzi wyłącznie przez QR; nie potrzeba serwera, Wi-Fi ani kanału sieciowego między urządzeniami. Nadajnik przyjmuje tylko wynik swojej bieżącej próby.
