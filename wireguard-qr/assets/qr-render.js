@@ -22,8 +22,10 @@
     return Math.max(0, width - inset);
   }
 
-  // The backing bitmap and displayed size use whole physical pixels per module.
-  // A hidden/unattached canvas keeps responsive CSS until its next visible draw.
+  // Keep the bitmap on a uniform integer module grid, but let the preview fill
+  // its field. Snapping the displayed size down to that grid can halve a dense
+  // QR on a low-DPI screen. Render at least the display resolution, then fit it.
+  // PNG exports can opt into the original integer-sized output explicitly.
   function drawQR(qr, canvas, options = {}) {
     if (!qr || !Number.isInteger(qr.size) || qr.size < 21 || qr.size > 177 ||
         !qr.data || qr.data.length < qr.size * qr.size || !canvas) {
@@ -34,13 +36,16 @@
     const cssWidth = positive(options.cssWidth, availableWidth(canvas));
     const measured = cssWidth > 0;
     const target = Math.min(MAX_SIDE, measured ? cssWidth * pixelRatio : positive(options.maxSide, 960));
-    const scale = Math.max(1, Math.floor(target / modules));
+    const integerScale = options.integerScale === true || !measured;
+    const scale = Math.max(1, Math.min(Math.floor(MAX_SIDE / modules),
+      integerScale ? Math.floor(target / modules) : Math.ceil(target / modules)));
     const size = modules * scale;
+    const cssSide = measured ? (integerScale ? size / pixelRatio : cssWidth) : null;
 
     if (canvas.width !== size) canvas.width = size;
     if (canvas.height !== size) canvas.height = size;
     if (canvas.style) {
-      canvas.style.width = measured ? `${size / pixelRatio}px` : '100%';
+      canvas.style.width = measured ? `${cssSide}px` : '100%';
       canvas.style.height = 'auto';
     }
 
@@ -67,7 +72,7 @@
       for (let dy = 1; dy < scale; dy += 1) pixels.copyWithin(row + dy * size, row, row + size);
     }
     context.putImageData(image, 0, 0);
-    return { size, scale, cssSide: measured ? size / pixelRatio : null, modules, measured, pixelRatio };
+    return { size, scale, cssSide, modules, measured, pixelRatio };
   }
 
   function clear(canvas) {

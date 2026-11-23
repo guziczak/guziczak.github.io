@@ -3135,7 +3135,7 @@
     // Render exports at a useful module pitch even on a narrow phone display.
     const canvases = frames.map(frame => {
       const canvas = document.createElement('canvas');
-      window.WGRender.drawQR(frame.matrix, canvas, { cssWidth: 960, pixelRatio: 1 });
+      window.WGRender.drawQR(frame.matrix, canvas, { cssWidth: 960, pixelRatio: 1, integerScale: true });
       return canvas;
     });
     let output = canvases[0];
