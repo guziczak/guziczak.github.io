@@ -96,7 +96,7 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
     disposedScanners: 0, events: {}, optical: null, encoderJobs: [], encoderResets: 0, activeEncodes: 0, maxActiveEncodes: 0,
     deferEncoding: false, scanJobs: [], activeScans: 0, maxActiveScans: 0, deferScans: false,
     largeSenders: [], largeSegments: [], largeStores: [], largeStoreOpenCalls: 0, backend,
-    deferLargeOpen: false, largeOpenJobs: [], resizeObservers: [], scannerGridChanges: [] };
+    deferLargeOpen: false, largeOpenJobs: [], resizeObservers: [], scannerGridChanges: [], calibrationViewComputes: 0 };
   class Element {
     constructor(id = '') {
       this.id = id; this.listeners = {}; this.dataset = {}; this.value = ''; this.hidden = false;
@@ -159,10 +159,15 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
     cancelVideoFrameCallback(id) { h.videoCallbacks.delete(id); }
   }
   h.els = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map((m) => [m[1], new Element(m[1])]));
-  h.els['transfer-mode'].value = 'auto'; h.els['qr-density'].value = '384';
-  for (const [id, value] of Object.entries({ 'qr-layout': 'single', 'qr-columns': '1', 'qr-rows': '1',
-    'series-ecc': 'M', 'scan-layout': 'single', 'scan-columns': '1', 'scan-rows': '1',
-    'camera-profile': 'auto', 'calibration-range': 'basic', 'calibration-layout-scope': 'current', 'large-repair': '1' })) h.els[id].value = value;
+  // Match the browser's initial selection instead of maintaining separate defaults
+  // that can hide a changed product setting from integration tests.
+  for (const select of html.matchAll(/<select\b([^>]*)>([\s\S]*?)<\/select>/gi)) {
+    const id = select[1].match(/\bid="([^"]+)"/)?.[1];
+    if (!id || !h.els[id]) continue;
+    const options = [...select[2].matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/gi)];
+    const selected = options.find(option => /(?:^|\s)selected(?:\s|=|$)/i.test(option[1])) || options[0];
+    if (selected) h.els[id].value = selected[1].match(/\bvalue="([^"]*)"/)?.[1] ?? selected[2].trim();
+  }
   h.els['large-auto'].checked = true;
   for (const rate of [1, 2, 5, 10, 15, 20]) { const radio = new Element(`rate-${rate}`); radio.value = String(rate); radio.checked = rate === 2; h.els['frame-rate'].appendChild(radio); }
   h.document = { body: new Element('body'), documentElement: { clientWidth: 1280, clientHeight: 800, dataset: { appVersion: html.match(/data-app-version="([^"]+)"/)?.[1] || 'test' } }, activeElement: h.els['expand-qr'], hidden: false, getElementById: (id) => h.els[id], createElement: (tag) => { const element = new Element(); element.tagName = tag.toUpperCase(); if (tag === 'canvas') h.canvases.push(element); return element; }, querySelectorAll: () => [], addEventListener: (name, fn) => { (h.events[name] ??= []).push(fn); } };
@@ -285,6 +290,11 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
   } };
   const createTelemetry = h.context.WGTelemetry.create;
   h.context.WGTelemetry = { ...h.context.WGTelemetry, create(options) { h.telemetry = createTelemetry(options); return h.telemetry; } };
+  const createCalibrationView = h.context.WGCalibrationView.create;
+  h.context.WGCalibrationView = { ...h.context.WGCalibrationView, create(options) {
+    const view = createCalibrationView(options);
+    return { ...view, compute(...args) { h.calibrationViewComputes++; return view.compute(...args); } };
+  } };
   h.context.WGCamera = { createScanner(options) {
     h.scannerOptions.push(options); let disposed = false;
     let columns = options.columns || options.lanes || 1, rows = options.rows || 1, lanes = columns * rows;
@@ -319,7 +329,7 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
     throw new Error('Timed out draining asynchronous preparation');
   };
   h.display = (id = 'qr-canvas') => h.els[id].payload && Uint8Array.from(h.els[id].payload);
-  h.grid = () => [h.display(), ...Array.from({ length: 8 }, (_, index) => index + 1)
+  h.grid = () => [h.display(), ...Array.from({ length: 14 }, (_, index) => index + 1)
     .filter(index => !h.els[index === 1 ? 'qr-paper-second' : `qr-paper-${index + 1}`].hidden)
     .map(index => h.display(index === 1 ? 'qr-canvas-second' : `qr-canvas-${index + 1}`))];
   h.pair = h.grid;
@@ -404,7 +414,7 @@ async function openCalibration(h) {
   h.els['start-calibration'].click(); await h.flush();
   await h.wait(() => !h.els['begin-calibration'].hidden);
   const parsed = h.context.WGCalibration.parse(h.display());
-  assert.equal(parsed.version, 3); assert.equal(parsed.alignment, true);
+  assert.ok([3, 4].includes(parsed.version)); assert.equal(parsed.alignment, true);
   assert.equal(h.els['animation-toggle'].disabled, true);
   assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tickCalibration'),
     'Alignment must remain still until the sender explicitly starts measurement');
@@ -809,13 +819,88 @@ test('a 2 by 2 grid exports all four QR symbols and finishes byte-exact receptio
     assert.equal(receiver.telemetry.snapshot().usefulUnits, transfer.total);
     receiver.els['download-file'].click(); assert.deepEqual(new Uint8Array(await receiver.downloads.at(-1).blob.arrayBuffer()), original);
 
-    // The same DOM and asynchronous encoder must support the published 3×3 limit.
+    // Changing to an intermediate 3×3 grid must update every visible slot too.
     sender.els['animation-toggle'].click(); sender.change('qr-columns', '3'); sender.change('qr-rows', '3');
     sender.choose([new File([new Uint8Array(10000).fill(87)], 'grid-nine.bin')]);
     await sender.wait(() => sender.transfers.length === 2 && !sender.els['choose-file'].disabled);
     assert.equal(sender.grid().length, 9); assert.equal(sender.els['qr-paper-9'].hidden, false);
     sender.els['animation-toggle'].click(); await sender.tick();
     assert.equal(sender.grid().length, 9); assert.ok(sender.encoderJobs.some(job => job.inputs.length === 9));
+  } finally { sender.close(); receiver.close(); }
+});
+
+test('a 5 by 3 file grid exports and receives all fifteen slots, resumes without skipped data and clears cancelled batches', async () => {
+  const sender = harness(), receiver = harness();
+  try {
+    const original = Uint8Array.from({ length: 384 * 30 - 7 }, (_, index) => (index * 29 + Math.floor(index / 251)) % 256);
+    sender.change('qr-columns', '5'); sender.change('qr-rows', '3');
+    sender.choose([new File([original], 'grid-fifteen.bin')]); await sender.wait(() => !sender.els['choose-file'].disabled);
+    const transfer = sender.transfers.at(-1), initial = sender.grid();
+    assert.equal(transfer.total, 30); assert.equal(initial.length, 15);
+    assert.deepEqual(initial, [transfer.manifestFrame(), ...Array.from({ length: 14 }, (_, index) => transfer.frame(index))]);
+    assert.equal(sender.els['qr-paper-15'].hidden, false);
+    assert.equal(sender.els['qr-pair'].style.getPropertyValue('--qr-columns'), '5');
+    assert.equal(sender.els['qr-pair'].style.getPropertyValue('--qr-rows'), '3');
+    sender.els['download-qr'].click(); const png = sender.downloads.at(-1).blob.png;
+    assert.equal(png.draws.length, 15); assert.deepEqual(png.draws.map(draw => draw.payload), initial);
+    assert.equal(new Set(png.draws.map(draw => draw.args.join(','))).size, 15, 'Every exported slot must occupy its own grid cell.');
+    for (const draw of png.draws) {
+      assert.equal(draw.width, draw.height); assert.equal(draw.width % (draw.image.matrix.size + 8), 0);
+      assert.equal(draw.args.length, 2); assert.ok(draw.args.every(Number.isInteger));
+    }
+    receiver.els['decode-tab'].click(); receiver.change('scan-columns', '5'); receiver.change('scan-rows', '3');
+    receiver.upload(png.draws.map(draw => draw.payload), false, { columns: 5, rows: 3 });
+    await receiver.wait(() => !receiver.els['choose-image'].disabled);
+    assert.equal(receiver.telemetry.snapshot().imageReads, 15); assert.equal(receiver.telemetry.snapshot().usefulUnits, 14);
+    receiver.els['start-camera'].click(); await receiver.wait(() => receiver.videoCallbacks.size === 1);
+    assert.equal(receiver.scannerOptions.at(-1).lanes, 15);
+    assert.deepEqual([receiver.scannerOptions.at(-1).columns, receiver.scannerOptions.at(-1).rows], [5, 3]);
+
+    sender.deferEncoding = true; sender.els['animation-toggle'].click();
+    await sender.wait(() => sender.encoderJobs.at(-1)?.ready && sender.encoderJobs.at(-1)?.release);
+    const pending = sender.encoderJobs.at(-1), jobs = sender.encoderJobs.length;
+    assert.equal(pending.inputs.length, 14, 'The fifteenth visible slot reuses the cached manifest.');
+    assert.equal(pending.matrices.length, pending.inputs.length);
+    await sender.tick('tick', { flush: false }); await sender.tick('tick', { flush: false });
+    assert.deepEqual(sender.grid(), initial); assert.equal(sender.encoderJobs.length, jobs);
+    sender.els['animation-toggle'].click(); sender.deferEncoding = false; pending.release(); await sender.flush();
+    assert.deepEqual(sender.grid(), initial);
+    assert.ok(pending.matrices.every(matrix => matrix.data.every(value => value === 0)));
+    sender.els['animation-toggle'].click(); await sender.tick();
+    assert.deepEqual(sender.grid(), [transfer.frame(14), transfer.frame(15), transfer.manifestFrame(),
+      ...Array.from({ length: 12 }, (_, index) => transfer.frame(index + 16))]);
+    await receiver.fireFrame('camera-video', sender.grid());
+    assert.equal(receiver.telemetry.snapshot().usefulUnits, 28, 'Resuming must preserve every source slot after the last displayed checkpoint.');
+    await sender.tick(); await receiver.fireFrame('camera-video', sender.grid());
+    assert.equal(receiver.telemetry.snapshot().usefulUnits, transfer.total); assert.equal(receiver.els['download-file'].disabled, false);
+    receiver.els['download-file'].click(); assert.deepEqual(new Uint8Array(await receiver.downloads.at(-1).blob.arrayBuffer()), original);
+    sender.els['animation-toggle'].click();
+
+    for (const action of ['hide-page', 'clear-all']) {
+      // A larger cache can satisfy a resumed screen without invoking the worker.
+      // Start a new transfer so cancellation always covers a real pending batch.
+      const transfers = sender.transfers.length;
+      const freshBytes = original.map(byte => byte ^ (action === 'hide-page' ? 0x5a : 0xa5));
+      sender.choose([new File([freshBytes], `cancel-fifteen-${action}.bin`)]);
+      await sender.wait(() => sender.transfers.length === transfers + 1 && !sender.els['choose-file'].disabled);
+      assert.equal(sender.grid().length, 15);
+      const previousJobs = sender.encoderJobs.length;
+      sender.deferEncoding = true; sender.els['animation-toggle'].click();
+      await sender.wait(() => sender.encoderJobs.length > previousJobs
+        && sender.encoderJobs.at(-1)?.ready && sender.encoderJobs.at(-1)?.release);
+      const stale = sender.encoderJobs.at(-1);
+      assert.ok(stale.inputs.length > 0 && stale.inputs.length <= 15);
+      assert.equal(stale.matrices.length, stale.inputs.length);
+      if (action === 'hide-page') { sender.document.hidden = true; sender.dispatchWindow('visibilitychange'); }
+      else sender.els['clear-all'].click();
+      const visible = sender.grid(), paints = sender.rendered.length;
+      sender.deferEncoding = false; stale.release(); await sender.flush();
+      assert.deepEqual(sender.grid(), visible); assert.equal(sender.rendered.length, paints);
+      assert.ok(stale.matrices.every(matrix => matrix.data.every(value => value === 0)));
+      assert.ok([...sender.timers.values()].every(timer => timer.fn.name !== 'tick'));
+      if (action === 'hide-page') { sender.document.hidden = false; sender.dispatchWindow('visibilitychange'); }
+      else assert.equal(sender.els['qr-result'].hidden, true);
+    }
   } finally { sender.close(); receiver.close(); }
 });
 
@@ -1093,7 +1178,7 @@ test('completed receiver map separates passed and failed profiles and reset keep
   } finally { trial?.dispose(); h.close(); }
 });
 
-test('standalone calibration is available before upload, paints only synthetic codes and restores the empty view on stop', async () => {
+test('standalone calibration defaults to all fifteen layouts before upload, paints only synthetic codes and restores the empty view on stop', async () => {
   for (const id of ['start-calibration', 'scan-feedback']) {
     const ancestors = htmlAncestorIds(id);
     assert.ok(ancestors.includes('calibration-home'));
@@ -1101,22 +1186,34 @@ test('standalone calibration is available before upload, paints only synthetic c
     assert.ok(!ancestors.includes('qr-result') && !ancestors.includes('series-controls'),
       'Calibration and its return channel must be outside the hidden file-result controls.');
   }
-  const h = harness();
+  const h = harness(); const observer = h.context.WGCalibration.createObserver();
   try {
     assert.equal(h.els['start-calibration'].disabled, false);
     assert.equal(h.els['start-calibration'].closest('[hidden]'), null);
     assert.equal(h.els['calibration-setup'].parentElement, h.els['calibration-home']);
     assert.equal(h.els['qr-result'].hidden, true); assert.equal(h.els['qr-empty'].hidden, false);
-    h.change('qr-columns', '3'); h.change('qr-rows', '2'); h.change('series-ecc', 'L');
+    assert.equal(h.els['calibration-layout-scope'].value, 'all');
+    h.change('series-ecc', 'L');
     const packets = await openCalibration(h);
-    assert.equal(packets.length, 6);
+    assert.equal(packets.length, 15);
     for (let lane = 0; lane < packets.length; lane++) {
       const parsed = h.context.WGCalibration.parse(packets[lane]);
+      assert.equal(parsed.version, 4);
       assert.equal(parsed.setup, true); assert.equal(parsed.alignment, true); assert.equal(parsed.slot, lane);
+      assert.equal(parsed.allLayouts, true); assert.equal(parsed.compareLayouts, false);
       assert.equal(parsed.large, true, 'Unknown future files are calibrated with the larger packet envelope.');
-      assert.deepEqual([parsed.grid.columns, parsed.grid.rows, parsed.ecc], [3, 2, 'L']);
-      assert.equal(packets[lane].length, parsed.chunkBytes + 92);
+      assert.deepEqual([parsed.grid.columns, parsed.grid.rows, parsed.ecc], [5, 3, 'L']);
+      assert.equal(packets[lane].length, 40, 'The initial setup announces the full plan without a dense measurement payload.');
+      observer.accept(packets[lane], h.now);
     }
+    assert.equal(observer.state.totalProfiles, 90);
+    const layouts = new Set(Array.from(observer.state.results, profile => `${profile.grid.columns}x${profile.grid.rows}`));
+    assert.equal(layouts.size, 15);
+    for (let columns = 1; columns <= 5; columns++) for (let rows = 1; rows <= 3; rows++) {
+      assert.ok(layouts.has(`${columns}x${rows}`), `The default plan is missing ${columns}×${rows}.`);
+    }
+    assert.match(h.els['calibration-duration'].textContent, /\b90\b/);
+    assert.match(h.els['calibration-duration'].textContent, /450 s/);
     assert.equal(h.transfers.length, 0); assert.equal(h.largeSenders.length, 0);
     assert.ok(h.encodings.every(item => h.context.WGCalibration.isFrame(item.bytes)));
     assert.equal(h.els['source-details'].hidden, true); assert.equal(h.els['series-controls'].hidden, true);
@@ -1144,7 +1241,7 @@ test('standalone calibration is available before upload, paints only synthetic c
     await h.wait(() => h.transfers.length === 1 && !h.els['choose-file'].disabled);
     assert.equal(h.document.body.classList.contains('qr-expanded'), false,
       'Cancelling a standalone measurement must not schedule expansion of a later file.');
-  } finally { h.close(); }
+  } finally { observer.dispose(); h.close(); }
 });
 
 test('standalone calibration finishes, applies camera SET without a file and preserves settings and fullscreen for the first upload', async () => {
@@ -1193,6 +1290,7 @@ test('standalone calibration finishes, applies camera SET without a file and pre
 test('standalone calibration accepts a SET image without a file and keeps its settings through the first large-file upload', async () => {
   const h = harness(); const observer = h.context.WGCalibration.createObserver();
   try {
+    h.change('calibration-layout-scope', 'current');
     h.change('qr-columns', '2'); h.change('qr-rows', '2');
     await openCalibration(h);
     await measureCalibration(h, {
@@ -1269,6 +1367,7 @@ test('standalone calibration remains disabled while the first selected file is s
 test('standalone calibration ignores a delayed SET after reset and rejects an old SET image during a new trial', async () => {
   const h = harness(); const observer = h.context.WGCalibration.createObserver();
   try {
+    h.change('calibration-layout-scope', 'current');
     await openCalibration(h);
     await measureCalibration(h, {
       steps: (profile, index) => index === 4 ? Array.from({ length: 20 }, (_, step) => step) : [],
@@ -1299,6 +1398,7 @@ test('calibration exchanges a measured dual profile, regenerates the transfer, a
   const sender = harness(); const receiver = harness();
   try {
     const original = Uint8Array.from({ length: 1900 }, (_, index) => (index * 7) % 251);
+    sender.change('calibration-layout-scope', 'current');
     sender.change('qr-layout', 'dual'); sender.change('series-ecc', 'L'); sender.els['transfer-mode'].value = 'series';
     sender.choose([new File([original], 'after-calibration.bin')]); await sender.wait(() => !sender.els['choose-file'].disabled);
     const old = sender.transfers.at(-1);
@@ -1396,9 +1496,69 @@ test('calibration compares four layouts without restarting the camera and applie
   } finally { sender.close(); receiver.close(); }
 });
 
+test('all-layout calibration closes ninety profiles with missing data and applies a measured 5 by 3 result', async () => {
+  const sender = harness(), receiver = harness(); const plan = sender.context.WGCalibration.createObserver();
+  try {
+    const original = Uint8Array.from({ length: 1900 }, (_, index) => (index * 31 + 19) % 256);
+    sender.els['transfer-mode'].value = 'series'; sender.setRate(10);
+    sender.choose([new File([original], 'calibration-fifteen.bin')]); await sender.wait(() => !sender.els['choose-file'].disabled);
+    const old = sender.transfers.at(-1), setup = await openCalibration(sender);
+    assert.equal(setup.length, 15);
+    for (const bytes of setup) plan.accept(bytes, sender.now);
+    assert.equal(plan.state.allLayouts, true); assert.equal(plan.state.totalProfiles, 90);
+    const target = plan.state.results.find(profile => profile.grid.columns === 5 && profile.grid.rows === 3
+      && profile.chunkBytes === 600 && profile.fps === 2);
+    assert.ok(target);
+    receiver.els['decode-tab'].click(); receiver.els['start-camera'].click(); await receiver.wait(() => receiver.videoCallbacks.size === 1);
+    const stream = receiver.streams[0]; await receiver.fireFrame('camera-video', setup);
+    assert.equal(calibrationCells(receiver).length, 90);
+    assert.ok(calibrationCells(receiver).every(cell => cell.dataset.state === 'pending'));
+    assert.deepEqual([receiver.els['scan-columns'].value, receiver.els['scan-rows'].value], ['5', '3']);
+    assert.match(receiver.els['calibration-current-density'].textContent, /29\s*×\s*29/);
+    const started = sender.now; sender.els['begin-calibration'].click(); await sender.flush();
+    await receiver.fireFrame('camera-video', sender.grid());
+    // Skip unobserved profiles deliberately: the finished map must retain their
+    // fifteen layouts and mark their missing data instead of inventing success.
+    await calibrationAt(sender, started + target.index * 5000);
+    await receiver.fireFrame('camera-video', sender.grid());
+    for (let step = 0; step < target.fps * 4; step++) {
+      await calibrationAt(sender, started + target.index * 5000 + 1000 + step * 1000 / target.fps);
+      const parsed = sender.context.WGCalibration.parse(sender.display());
+      assert.equal(parsed.version, 4); assert.equal(parsed.allLayouts, true); assert.equal(parsed.alignment, false);
+      assert.equal(sender.grid().length, 15); assert.equal(sender.display().length, 640);
+      const computations = receiver.calibrationViewComputes;
+      await receiver.fireFrame('camera-video', sender.grid(), { advanceMs: 1000 / target.fps });
+      assert.equal(receiver.calibrationViewComputes - computations, 1, 'One camera batch must repaint the map once after accepting all fifteen symbols.');
+      assert.match(renderedText(calibrationCell(receiver, target.index)), new RegExp(`${(step + 1) * 15}\\s*\\/\\s*120`));
+    }
+    await calibrationAt(sender, started + 90 * 5000);
+    assert.equal(sender.context.WGCalibration.parse(sender.display()).ended, true);
+    await receiver.fireFrame('camera-video', sender.grid());
+    const cells = calibrationCells(receiver);
+    assert.equal(cells.length, 90);
+    assert.equal(new Set(cells.map(cell => `${cell.dataset.columns}x${cell.dataset.rows}`)).size, 15);
+    assert.equal(calibrationCell(receiver, target.index).dataset.state, 'passed');
+    assertCalibrationCounts(receiver, { passed: 1, failed: 89, pending: 0, running: 0 });
+    assert.equal(receiver.cameraConstraints.length, 1); assert.equal(stream.track.stopped, false);
+    assert.equal(receiver.telemetry.snapshot().transfer, null); assert.equal(receiver.els['download-file'].disabled, true);
+    receiver.els['show-calibration-feedback'].click(); const feedback = receiver.display('feedback-canvas');
+    assert.equal(receiver.context.WGCalibration.isFeedback(feedback), true);
+    sender.els['scan-feedback'].click(); await sender.wait(() => sender.videoCallbacks.size === 1);
+    await sender.fireFrame('feedback-video', feedback);
+    await sender.wait(() => sender.transfers.length === 2 && !sender.els['choose-file'].disabled);
+    const transfer = sender.transfers.at(-1);
+    assert.deepEqual([sender.els['qr-columns'].value, sender.els['qr-rows'].value, transfer.chunkBytes, sender.rate()], ['5', '3', 600, 2]);
+    assert.equal(sender.grid().length, 15); assert.equal(sender.els['qr-paper-15'].hidden, false);
+    assert.equal(sender.els['animation-toggle'].getAttribute('aria-pressed'), 'false');
+    assert.deepEqual(await collectTransfer(sender.protocol, transfer), original);
+    assert.throws(() => old.frame(0), error => error.code === 'TRANSFER_DISPOSED');
+  } finally { plan.dispose(); sender.close(); receiver.close(); }
+});
+
 test('calibration with three observed steps per profile exposes gaps and offers no setting feedback', async () => {
   const sender = harness(), receiver = harness();
   try {
+    sender.change('calibration-layout-scope', 'current');
     sender.change('qr-columns', '2'); sender.change('qr-rows', '2');
     sender.els['series-sample'].click(); await sender.wait(() => !sender.els['choose-file'].disabled);
     await openCalibration(sender);
@@ -1557,6 +1717,7 @@ test('optional ZIP retains incompressible bytes, direct WireGuard and pre-existi
 test('extended calibration displays ten profiles and applies the measured 20 Hz result to a fresh transfer', async () => {
   const h = harness();
   try {
+    h.change('calibration-layout-scope', 'current');
     h.change('qr-layout', 'dual'); h.change('calibration-range', 'fast');
     h.els['series-sample'].click(); await h.wait(() => !h.els['choose-file'].disabled);
     const old = h.transfers.at(-1), observer = h.context.WGCalibration.createObserver();
@@ -1587,6 +1748,7 @@ test('extended calibration displays ten profiles and applies the measured 20 Hz 
 test('calibration discards a missed encoding slot and cannot repaint after the trial is stopped', async () => {
   const h = harness();
   try {
+    h.change('calibration-layout-scope', 'current');
     h.change('qr-layout', 'dual'); h.els['series-sample'].click(); await h.wait(() => !h.els['choose-file'].disabled);
     const initial = h.pair(); h.deferEncoding = true; h.els['start-calibration'].click();
     await h.wait(() => h.encoderJobs.at(-1)?.ready && h.encoderJobs.at(-1)?.release);
@@ -1616,6 +1778,7 @@ test('calibration discards a missed encoding slot and cannot repaint after the t
 test('calibration prefetch gives 20 Hz samples their full 50 ms display slots despite 35 ms encoding', async () => {
   const h = harness();
   try {
+    h.change('calibration-layout-scope', 'current');
     h.change('calibration-range', 'fast'); h.els['series-sample'].click();
     await h.wait(() => !h.els['choose-file'].disabled);
     const initial = h.grid(); await openCalibration(h);
@@ -1650,7 +1813,8 @@ test('closing the QR view, changing tabs and hiding the page cancel both pending
     for (const action of ['close-view', 'change-tab', 'hide-page']) await t.test(`${phase}: ${action}`, async () => {
       const h = harness();
       try {
-        h.change('qr-columns', '2'); h.change('qr-rows', '2'); h.els['series-sample'].click();
+        h.change('calibration-layout-scope', 'current');
+        h.change('qr-columns', '5'); h.change('qr-rows', '3'); h.els['series-sample'].click();
         await h.wait(() => !h.els['choose-file'].disabled); const initial = h.grid();
         if (phase === 'alignment-pending') {
           h.deferEncoding = true; h.els['start-calibration'].click();
@@ -1674,6 +1838,7 @@ test('closing the QR view, changing tabs and hiding the page cancel both pending
         assert.deepEqual(h.grid(), initial);
         const trialJobs = h.encoderJobs.filter(job => h.context.WGCalibration.isFrame(job.inputs[0]));
         assert.ok(trialJobs.length > 0);
+        assert.ok(trialJobs.every(job => job.inputs.length === 15 && job.matrices.length === 15));
         assert.ok(trialJobs.every(job => job.matrices.every(matrix => matrix.data.every(value => value === 0))));
         assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tickCalibration'));
       } finally { h.close(); }
@@ -1715,8 +1880,12 @@ test('large sender reads bounded slices, survives tab changes and calibrates the
     await h.wait(() => h.largeSegments.length === 2 && !h.els['choose-file'].disabled);
     assert.equal(h.largeSegments.at(-1).segmentIndex, 1); assert.throws(() => first.frame(0), error => error.code === 'TRANSFER_DISPOSED');
     h.els['start-calibration'].click(); await h.flush();
+    const setup = h.context.WGCalibration.parse(h.display());
+    assert.equal(setup.version, 4); assert.equal(setup.setup, true); assert.equal(setup.large, true);
+    assert.equal(h.display().length, 40);
+    h.els['begin-calibration'].click(); await h.flush();
     const parsed = h.context.WGCalibration.parse(h.display());
-    assert.equal(parsed.version, 3); assert.equal(parsed.alignment, true);
+    assert.equal(parsed.alignment, true); assert.equal(parsed.setup, false);
     assert.equal(parsed.large, true); assert.equal(h.display().length, 476); assert.equal(parsed.chunkBytes, 384);
     h.els['stop-calibration'].click(); assert.equal(input.audit.fullReads, 0);
   } finally { h.close(); }
@@ -1904,4 +2073,59 @@ test('late storage opening after clear or receiver reset is disposed and cannot 
       assert.equal(h.els['output-name'].value, 'late-open.bin');
     } finally { sender?.dispose(); await h.cleanup(); }
   });
+});
+
+test('fifteen current QR matrices survive three prefetched screens and cache eviction stays bounded', async () => {
+  const h = harness();
+  try {
+    const original = Uint8Array.from({ length: 384 * 180 }, (_, index) => (index * 37 + Math.floor(index / 239)) % 256);
+    h.change('qr-columns', '5'); h.change('qr-rows', '3');
+    h.choose([new File([original], 'matrix-cache-fifteen.bin')]);
+    await h.wait(() => !h.els['choose-file'].disabled);
+    const initial = h.rendered.slice(-15).map(frame => frame.matrix);
+    assert.equal(h.grid().length, 15);
+
+    // Payload labels in the renderer mock survive even when a matrix is erased.
+    // Compare the actual modules with independently regenerated QR matrices.
+    const verify = matrices => {
+      for (const matrix of new Set(matrices)) {
+        const encoded = h.encodings.find(entry => entry.matrix.data === matrix.data);
+        assert.ok(encoded, 'Every cached matrix must have a source packet.');
+        const expected = h.context.WGQR.encodeBytes(encoded.bytes, encoded.options);
+        assert.equal(matrix.size, expected.size);
+        assert.deepEqual(Uint8Array.from(matrix.data), Uint8Array.from(expected.data),
+          'A visible or prefetched QR must retain all of its modules until presentation.');
+      }
+    };
+    h.els['animation-toggle'].click(); await h.flush();
+    assert.equal(h.encoderJobs.length, 3, 'Preparation must stop at three complete future screens.');
+    assert.equal(h.maxActiveEncodes, 1);
+    assert.ok(initial.length + h.encoderJobs.reduce((sum, job) => sum + job.matrices.length, 0) > 32,
+      'This fixture must exceed the previous cache limit before presenting another screen.');
+    verify([...initial, ...h.encoderJobs.flatMap(job => job.matrices)]);
+    const initialPackets = h.grid();
+    h.els['download-qr'].click();
+    const png = h.downloads.at(-1).blob.png;
+    assert.equal(png.draws.length, 15);
+    assert.deepEqual(png.draws.map(draw => draw.payload), initialPackets);
+    verify(png.draws.map(draw => draw.image.matrix));
+    h.els['animation-toggle'].click(); await h.flush(); // Export pauses playback; cached screens can be reused.
+
+    // Churn beyond the cache budget, checking both the new visible screen and
+    // all three queued screens after every refill, including reused manifests.
+    for (let step = 0; step < 8; step++) {
+      await h.tick(); await h.flush();
+      assert.equal(h.encoderJobs.length, step + 4);
+      verify([...h.rendered.filter(frame => frame.canvas.id.startsWith('qr-canvas')).slice(-15).map(frame => frame.matrix),
+        ...h.encoderJobs.slice(-3).flatMap(job => job.matrices)]);
+    }
+    const cached = [...new Set([...initial, ...h.encoderJobs.flatMap(job => job.matrices)])];
+    assert.ok(cached.length > 100, 'The fixture must exercise eviction repeatedly.');
+    assert.ok(cached.filter(matrix => matrix.data.some(value => value !== 0)).length <= 15 * 4,
+      'Retained matrices must fit the current screen and three-screen cache budget.');
+    assert.ok(cached.some(matrix => matrix.data.every(value => value === 0)), 'Unused evicted matrices must be erased.');
+    assert.equal(h.maxActiveEncodes, 1);
+    h.els['clear-all'].click();
+    assert.ok(cached.every(matrix => matrix.data.every(value => value === 0)), 'Clearing the source must erase retained QR modules.');
+  } finally { h.close(); }
 });

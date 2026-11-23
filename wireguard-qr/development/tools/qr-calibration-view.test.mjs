@@ -279,3 +279,90 @@ test('reset and new sessions replace the cached plan; models cannot mutate snaps
   assert.equal(encodes, 4);
   assert.doesNotMatch(viewSource, /\b(?:document|fetch|XMLHttpRequest|setTimeout|setInterval)\b|\bnew\s+(?:Worker|WebSocket)\b/);
 });
+
+test('v4 all-grid map has 90 or 150 pending cells and describes the actual short setup QR separately', () => {
+  for (const extended of [false, true]) {
+    const sender = calibration.create({ allLayouts: true, extended, large: true, ecc: 'M' });
+    const observer = calibration.createObserver();
+    const calls = [];
+    const view = presentation.create({ encodeBytes(payload, options) {
+      const qr = WGQR.encodeBytes(payload, options);
+      calls.push({ payload, qr });
+      return qr;
+    } });
+    const setup = sender.alignmentFrame(14, sender.alignmentIndex, true);
+    observer.accept(setup, 0);
+    const model = view.compute(observer.state);
+    const actual = WGQR.encodeBytes(setup, { errorCorrectionLevel: 'M' });
+    assert.equal(model.allLayouts, true);
+    assert.equal(model.phase, 'setup');
+    assert.equal(model.current.index, extended ? 140 : 84);
+    assert.deepEqual(plain(model.current.grid), { columns: 5, rows: 3 });
+    assert.equal(model.current.lanes, 15);
+    assert.equal(model.current.chunkBytes, 0);
+    assert.equal(model.current.payloadBytes, 40);
+    assert.equal(model.current.headerOnly, true);
+    assert.equal(model.current.modules, actual.size);
+    assert.equal(model.current.qrVersion, actual.version);
+    assert.equal(model.current.plannedChunkBytes, 384);
+    assert.equal(model.current.plannedModules, model.groups[0].modules);
+    assert.ok(model.current.modules < model.current.plannedModules);
+    assert.equal(model.totalProfiles, extended ? 150 : 90);
+    assert.deepEqual(plain(model.counts), { pending: model.totalProfiles, running: 0, passed: 0, failed: 0 });
+    assert.equal(allCells(model).length, model.totalProfiles);
+    assert.equal(model.groups.length, 2);
+    for (const group of model.groups) {
+      assert.equal(group.layouts.length, 15);
+      assert.equal(group.layouts.at(-1).key, '5x3');
+      assert.deepEqual(plain(group.layouts.map(layout => layout.grid)), plain(calibration.allGrids));
+      assert.deepEqual(plain(group.frequencies), extended ? [2, 5, 10, 15, 20] : [2, 5, 10]);
+      for (const layout of group.layouts) {
+        assert.equal(layout.cells.length, group.frequencies.length);
+        assert.ok(layout.cells.every(cell => !cell.closed && cell.state === 'pending' && cell.payloadBytes > 40));
+      }
+    }
+    assert.equal(calls.length, 3, 'Two measurement densities plus one small header density cover the full plan.');
+    assert.ok(calls.every(call => call.qr.data.every(byte => byte === 0) && call.payload.every(byte => byte === 0)));
+    observer.accept(sender.alignmentFrame(0, 0), 1);
+    const settling = view.compute(observer.state);
+    assert.equal(settling.phase, 'settling');
+    assert.equal(settling.current.headerOnly, undefined);
+    assert.equal(settling.current.chunkBytes, 384);
+    assert.equal(settling.current.payloadBytes, 476);
+    assert.equal(settling.current.modules, settling.groups[0].modules);
+    observer.accept(sender.frame(0, 0), 2);
+    view.compute(observer.state);
+    view.compute(observer.state, { fromImages: true });
+    assert.equal(calls.length, 3, 'Changing phase or source does not encode any of the 150 cells again.');
+    setup.fill(0); actual.data.fill(0);
+  }
+});
+
+test('v4 END closes the full plan, including every unreadable dense grid, without inventing failed reads during setup', () => {
+  const sender = calibration.create({ allLayouts: true, extended: true, large: true });
+  const observer = calibration.createObserver(), view = presentation.create();
+  observer.accept(sender.alignmentFrame(0, sender.alignmentIndex, true), 0);
+  assert.equal(view.compute(observer.state).counts.failed, 0);
+  observeProfile(sender, observer, 0);
+  let model = view.compute(observer.state);
+  assert.equal(model.counts.passed, 0); assert.equal(model.counts.running, 1);
+  assert.equal(model.counts.pending, 149);
+  observer.accept(sender.endFrame(), 800000);
+  model = view.compute(observer.state);
+  assert.deepEqual(plain(model.counts), { pending: 0, running: 0, passed: 1, failed: 149 });
+  for (const group of model.groups) {
+    for (const key of ['3x2', '4x2', '5x3']) {
+      const layout = group.layouts.find(item => item.key === key);
+      assert.ok(layout.cells.every(cell => cell.closed && cell.state === 'failed'
+        && cell.received === 0 && cell.missing === cell.expected));
+    }
+  }
+  assert.equal(model.current.index, 149);
+  assert.equal(model.current.state, 'failed');
+  assert.equal(model.current.headerOnly, undefined);
+  const selected = sender.acceptFeedback(observer.createFeedback());
+  assert.deepEqual([selected.grid.columns, selected.grid.rows, selected.allLayouts], [1, 1, true]);
+  const images = view.compute(observer.state, { fromImages: true });
+  assert.equal(images.rateVerified, false);
+  assert.ok(allCells(images).every(cell => cell.bytesPerSecond === null));
+});

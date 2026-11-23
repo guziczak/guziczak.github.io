@@ -9,18 +9,22 @@
   const RATES = Object.freeze([2, 5, 10, 15, 20]);
   const FAST_PROFILES = Object.freeze([...PROFILES, ...[384, 600].flatMap(chunkBytes =>
     [15, 20].map(fps => Object.freeze({ chunkBytes, fps })))]);
-  const GRIDS = Object.freeze(Object.fromEntries([1, 2, 3].flatMap(columns =>
+  const LIMITS = Object.freeze({ columns: 5, rows: 3, lanes: 15 });
+  const GRIDS = Object.freeze(Object.fromEntries([1, 2, 3, 4, 5].flatMap(columns =>
     [1, 2, 3].map(rows => [(columns << 4) | rows, Object.freeze({ columns, rows })]))));
   const COMPARED_GRIDS = Object.freeze([GRIDS[0x11], GRIDS[0x21], GRIDS[0x12], GRIDS[0x22]]);
+  const ALL_GRIDS = Object.freeze(Object.values(GRIDS).sort((a, b) =>
+    a.columns * a.rows - b.columns * b.rows || a.columns - b.columns || a.rows - b.rows));
   const withGrids = (profiles, grids) => Object.freeze(grids.flatMap(grid => profiles.map(profile =>
     Object.freeze({ ...profile, grid, lanes: grid.columns * grid.rows }))));
   const GRID_PROFILES = Object.freeze(Object.fromEntries(Object.entries(GRIDS).map(([key, grid]) =>
     [key, Object.freeze([withGrids(PROFILES, [grid]), withGrids(FAST_PROFILES, [grid])])])));
   const COMPARED_PROFILES = Object.freeze([withGrids(PROFILES, COMPARED_GRIDS), withGrids(FAST_PROFILES, COMPARED_GRIDS)]);
+  const ALL_PROFILES = Object.freeze([withGrids(PROFILES, ALL_GRIDS), withGrids(FAST_PROFILES, ALL_GRIDS)]);
   const packGrid = grid => (grid.columns << 4) | grid.rows;
-  const profilesFor = (version, extended = false, grid = GRIDS[0x11], compareLayouts = false) =>
+  const profilesFor = (version, extended = false, grid = GRIDS[0x11], compareLayouts = false, allLayouts = false) =>
     version < 3 ? version === 1 ? PROFILES : FAST_PROFILES
-      : (compareLayouts ? COMPARED_PROFILES : GRID_PROFILES[packGrid(grid)])[Number(extended)];
+      : (allLayouts ? ALL_PROFILES : compareLayouts ? COMPARED_PROFILES : GRID_PROFILES[packGrid(grid)])[Number(extended)];
   const equal = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
   const bytes = value => ArrayBuffer.isView(value) && Object.prototype.toString.call(value) === '[object Uint8Array]';
   const starts = (value, magic) => bytes(value) && value.length >= 8 && equal(value.subarray(0, 8), magic);
@@ -28,7 +32,7 @@
   function fail(message) { const error = new Error(message); error.code = 'CALIBRATION_INVALID'; return error; }
   function gridOf(value) {
     if (!value || typeof value !== 'object' || !Number.isInteger(value.columns) || !Number.isInteger(value.rows)
-      || value.columns < 1 || value.columns > 3 || value.rows < 1 || value.rows > 3) throw fail('Nieprawidłowa siatka próby.');
+      || value.columns < 1 || value.columns > LIMITS.columns || value.rows < 1 || value.rows > LIMITS.rows) throw fail('Nieprawidłowa siatka próby.');
     return GRIDS[packGrid(value)];
   }
   function checksum(value) {
@@ -47,7 +51,7 @@
     if (!bytes(value) || value.length < 40) throw fail('Niepełny kod próby.');
     const view = new DataView(value.buffer, value.byteOffset, value.byteLength);
     if (view.getUint32(value.length - 4) !== checksum(value.subarray(0, -4))) throw fail('Uszkodzony kod próby.');
-    if (![1, 2, 3].includes(value[8])) throw fail('Nieobsługiwana wersja próby.');
+    if (![1, 2, 3, 4].includes(value[8])) throw fail('Nieobsługiwana wersja próby.');
     return view;
   }
   function parse(value) {
@@ -55,41 +59,45 @@
     if (![40, 424, 640, 476, 692].includes(value.length)) throw fail('Nieprawidłowy rozmiar próby.');
     const view = checked(value);
     const version = value[8], flags = value[9];
-    const compareLayouts = version === 3 && Boolean(flags & 32);
-    const extended = version === 2 || (version === 3 && Boolean(flags & 16));
-    const alignment = version === 3 && Boolean(flags & 8);
-    const setup = version === 3 && Boolean(flags & 64);
-    const grid = version === 3 ? GRIDS[value[11]] : GRIDS[(value[11] << 4) | 1];
-    if ((flags & ~(version === 3 ? 127 : 7)) || !grid || (setup && !alignment)
+    const compareLayouts = version >= 3 && Boolean(flags & 32);
+    const allLayouts = version === 4 && Boolean(flags & 128);
+    const extended = version === 2 || (version >= 3 && Boolean(flags & 16));
+    const alignment = version >= 3 && Boolean(flags & 8);
+    const setup = version >= 3 && Boolean(flags & 64);
+    const grid = version >= 3 ? GRIDS[value[11]] : GRIDS[(value[11] << 4) | 1];
+    if ((flags & ~(version === 4 ? 255 : version === 3 ? 127 : 7)) || !grid || (setup && !alignment)
+      || (version < 4 && grid.columns > 3) || (allLayouts && compareLayouts)
       || (version < 3 && ![1, 2].includes(value[11]))) {
       throw fail('Nieprawidłowa siatka próby.');
     }
-    const profiles = profilesFor(version, extended, grid, compareLayouts);
+    const profiles = profilesFor(version, extended, grid, compareLayouts, allLayouts);
     const index = value[10], lanes = grid.columns * grid.rows, ended = Boolean(flags & 1), large = Boolean(flags & 4);
     if (index >= profiles.length || (alignment && ended)
       || view.getUint16(32) !== DURATION || value[34] > 1 || value[35] >= (version === 1 ? 3 : RATES.length)) throw fail('Nieprawidłowy profil próby.');
     const profile = profiles[index];
     const sequence = view.getUint16(28);
-    if ((version === 3 && packGrid(profile.grid) !== packGrid(grid))
+    if ((version >= 3 && packGrid(profile.grid) !== packGrid(grid))
       || view.getUint16(30) !== 0 || value[34] !== (profile.chunkBytes === 600 ? 1 : 0)
       || value[35] !== RATES.indexOf(profile.fps)
-      || value.length !== (ended ? 40 : profile.chunkBytes + 40 + (large ? 52 : 0))
+      || value.length !== (ended || (version === 4 && setup) ? 40 : profile.chunkBytes + 40 + (large ? 52 : 0))
       || (!ended && sequence >= (alignment ? lanes : profile.fps * (DURATION / 1000) * lanes))
       || (ended && (sequence !== 65535 || index !== profiles.length - 1))) throw fail('Nieprawidłowa ramka próby.');
-    return { version, index, lanes, grid, compareLayouts, extended, alignment, setup, ended, large, sequence, ...profile,
+    return { version, index, lanes, grid, compareLayouts, allLayouts, extended, alignment, setup, ended, large, sequence, ...profile,
       slot: ended ? null : sequence % lanes, step: ended || alignment ? null : Math.floor(sequence / lanes),
       window: ended || alignment ? null : Math.floor(sequence / (profile.fps * lanes)),
       ecc: flags & 2 ? 'L' : 'M', id: hex(value.subarray(12, 28)), idBytes: value.subarray(12, 28) };
   }
-  function create({ lanes = 1, ecc = 'M', extended = false, large = false, grid, compareLayouts = false } = {}) {
+  function create({ lanes = 1, ecc = 'M', extended = false, large = false, grid, compareLayouts = false, allLayouts = false } = {}) {
     if (![1, 2].includes(lanes) || !['M', 'L'].includes(ecc) || typeof extended !== 'boolean'
-      || typeof large !== 'boolean' || typeof compareLayouts !== 'boolean') throw fail('Nieprawidłowe ustawienia próby.');
+      || typeof large !== 'boolean' || typeof compareLayouts !== 'boolean' || typeof allLayouts !== 'boolean'
+      || (allLayouts && compareLayouts)) throw fail('Nieprawidłowe ustawienia próby.');
     if (typeof root.crypto?.getRandomValues !== 'function') throw fail('Próba wymaga generatora losowego.');
     const requestedGrid = grid === undefined ? GRIDS[0x11] : gridOf(grid);
-    const version = grid !== undefined || compareLayouts ? 3 : extended ? 2 : 1;
-    const profiles = profilesFor(version, extended, requestedGrid, compareLayouts);
-    const alignmentLanes = version === 3 ? Math.max(...profiles.map(profile => profile.lanes)) : lanes;
-    const alignmentIndex = version === 3 ? profiles.findIndex(profile => profile.lanes === alignmentLanes) : 0;
+    const version = allLayouts || (!compareLayouts && requestedGrid.columns > 3) ? 4
+      : grid !== undefined || compareLayouts ? 3 : extended ? 2 : 1;
+    const profiles = profilesFor(version, extended, requestedGrid, compareLayouts, allLayouts);
+    const alignmentLanes = version >= 3 ? Math.max(...profiles.map(profile => profile.lanes)) : lanes;
+    const alignmentIndex = version >= 3 ? profiles.findIndex(profile => profile.lanes === alignmentLanes) : 0;
     const idBytes = root.crypto.getRandomValues(new Uint8Array(16));
     const id = hex(idBytes);
     let disposed = false;
@@ -100,12 +108,13 @@
       if (typeof ended !== 'boolean' || (ended && index !== profiles.length - 1)) throw fail('Nieprawidłowy koniec próby.');
       if (!ended && (!Number.isInteger(sequence) || sequence < 0
         || sequence >= (alignment ? profileLanes : profile.fps * DURATION / 1000 * profileLanes))) throw fail('Nieprawidłowy numer próby.');
-      const value = new Uint8Array(ended ? 40 : profile.chunkBytes + 40 + (large ? 52 : 0));
+      const value = new Uint8Array(ended || (version === 4 && setup) ? 40 : profile.chunkBytes + 40 + (large ? 52 : 0));
       const view = new DataView(value.buffer);
       value.set(CAL); value[8] = version;
       value[9] = (ended ? 1 : 0) | (ecc === 'L' ? 2 : 0) | (large ? 4 : 0)
-        | (alignment ? 8 : 0) | (version === 3 && extended ? 16 : 0) | (compareLayouts ? 32 : 0) | (setup ? 64 : 0);
-      value[10] = index; value[11] = version === 3 ? packGrid(profile.grid) : lanes; value.set(idBytes, 12);
+        | (alignment ? 8 : 0) | (version >= 3 && extended ? 16 : 0) | (compareLayouts ? 32 : 0) | (setup ? 64 : 0)
+        | (allLayouts ? 128 : 0);
+      value[10] = index; value[11] = version >= 3 ? packGrid(profile.grid) : lanes; value.set(idBytes, 12);
       view.setUint16(28, ended ? 65535 : sequence); view.setUint16(32, DURATION);
       value[34] = profile.chunkBytes === 600 ? 1 : 0; value[35] = RATES.indexOf(profile.fps);
       let seed = ((index + 1) * 0x9e3779b1 + sequence) >>> 0;
@@ -114,7 +123,7 @@
     }
     function frame(index, sequence = 0, ended = false) { return makeFrame(index, sequence, ended); }
     function alignmentFrame(lane = 0, index = alignmentIndex, setup = false) {
-      if (version !== 3 || typeof setup !== 'boolean') throw fail('Nieprawidłowe ustawianie siatki próby.');
+      if (version < 3 || typeof setup !== 'boolean') throw fail('Nieprawidłowe ustawianie siatki próby.');
       return makeFrame(index, lane, false, true, setup);
     }
     function acceptFeedback(value) {
@@ -122,24 +131,25 @@
       const view = checked(value);
       const profile = profiles[value[9]];
       if (value[8] !== version || !profile
-        || value[10] !== (version === 3 ? packGrid(profile.grid) : lanes)
-        || value[11] !== ((ecc === 'L' ? 1 : 0) | (large ? 2 : 0) | (compareLayouts ? 4 : 0) | (version === 3 && extended ? 8 : 0))
+        || value[10] !== (version >= 3 ? packGrid(profile.grid) : lanes)
+        || value[11] !== ((ecc === 'L' ? 1 : 0) | (large ? 2 : 0) | (compareLayouts ? 4 : 0)
+          | (version >= 3 && extended ? 8 : 0) | (allLayouts ? 16 : 0))
         || !equal(value.subarray(12, 28), idBytes)
         || (version < 3 && value.subarray(32, 36).some(Boolean))) throw fail('Wynik dotyczy innej próby.');
       const profileLanes = profile.lanes || lanes;
       const samples = view.getUint16(28);
       const expected = profile.fps * DURATION / 1000 * profileLanes;
-      const bytesPerSecond = version === 3 ? view.getUint32(30) : view.getUint16(30);
-      const steps = version === 3 ? view.getUint16(34) : null;
+      const bytesPerSecond = version >= 3 ? view.getUint32(30) : view.getUint16(30);
+      const steps = version >= 3 ? view.getUint16(34) : null;
       if (samples < 3 || samples > expected
         || bytesPerSecond !== Math.round(samples * profile.chunkBytes * 1000 / DURATION)
-        || (version === 3 && (samples !== expected || steps !== profile.fps * DURATION / 1000))) {
+        || (version >= 3 && (samples !== expected || steps !== profile.fps * DURATION / 1000))) {
         throw fail('Nieprawidłowa liczba lub szybkość odczytów.');
       }
-      return { ...profile, lanes: profileLanes, ecc, large, bytesPerSecond, samples,
-        ...(version === 3 ? { steps, compareLayouts, extended } : {}) };
+      return { ...profile, lanes: profileLanes, ecc, large, bytesPerSecond, samples, allLayouts,
+        ...(version >= 3 ? { steps, compareLayouts, extended } : {}) };
     }
-    return { id, version, lanes: version === 3 ? alignmentLanes : lanes, ecc, large, extended, compareLayouts,
+    return { id, version, lanes: version >= 3 ? alignmentLanes : lanes, ecc, large, extended, compareLayouts, allLayouts,
       profiles, duration: DURATION, alignmentLanes, alignmentIndex, frame, alignmentFrame,
       endFrame: () => makeFrame(profiles.length - 1, 0, true), acceptFeedback,
       dispose() { disposed = true; idBytes.fill(0); } };
@@ -173,10 +183,11 @@
       const candidates = active.ended ? results.filter(result => result.steps >= 3) : [];
       const rank = (a, b) => b.bytesPerSecond - a.bytesPerSecond || a.fps - b.fps || a.lanes - b.lanes || a.index - b.index;
       const fastest = [...candidates].sort(rank)[0] || null;
-      const best = (active.version === 3 ? candidates.filter(result => result.stable) : candidates).sort(rank)[0] || null;
+      const best = (active.version >= 3 ? candidates.filter(result => result.stable) : candidates).sort(rank)[0] || null;
       return { id: active.id, version: active.version, lanes: active.lanes, grid: active.grid,
         currentIndex: active.currentIndex, phase: active.phase, setup: active.setup,
-        latestMeasurementIndex: active.latestMeasurementIndex, compareLayouts: active.compareLayouts, extended: active.extended,
+        latestMeasurementIndex: active.latestMeasurementIndex, compareLayouts: active.compareLayouts,
+        allLayouts: active.allLayouts, extended: active.extended,
         measuredProfiles: active.records.filter(record => record.seen.size > 0).length, totalProfiles: active.profiles.length,
         ecc: active.ecc, large: active.large, ended: active.ended,
         progress: active.ended ? 100 : Math.min(99, Math.round(active.progress * 100)), results, best, fastest };
@@ -186,13 +197,14 @@
       if (!frame) return null;
       if (!Number.isFinite(now) || now < 0) throw fail('Nieprawidłowy czas próby.');
       if (active && (active.id !== frame.id || active.version !== frame.version
-        || active.compareLayouts !== frame.compareLayouts || active.extended !== frame.extended
-        || (!active.compareLayouts && packGrid(active.planGrid) !== packGrid(frame.grid))
+        || active.compareLayouts !== frame.compareLayouts || active.allLayouts !== frame.allLayouts || active.extended !== frame.extended
+        || (!active.compareLayouts && !active.allLayouts && packGrid(active.planGrid) !== packGrid(frame.grid))
         || active.ecc !== frame.ecc || active.large !== frame.large)) return { foreign: true, ...snapshot() };
       if (!active) {
-        const profiles = profilesFor(frame.version, frame.extended, frame.grid, frame.compareLayouts);
+        const profiles = profilesFor(frame.version, frame.extended, frame.grid, frame.compareLayouts, frame.allLayouts);
         active = { id: frame.id, version: frame.version, profiles, idBytes: new Uint8Array(frame.idBytes),
-          lanes: frame.lanes, grid: frame.grid, planGrid: frame.grid, compareLayouts: frame.compareLayouts, extended: frame.extended,
+          lanes: frame.lanes, grid: frame.grid, planGrid: frame.grid, compareLayouts: frame.compareLayouts,
+          allLayouts: frame.allLayouts, extended: frame.extended,
           currentIndex: frame.index, latestMeasurementIndex: -1, setup: frame.setup, phase: frame.alignment ? 'alignment' : 'measuring',
           ecc: frame.ecc, large: frame.large, ended: false, progress: 0,
           records: profiles.map(() => ({ seen: new Set(), steps: new Set(), perSecond: [0, 0, 0, 0] })) };
@@ -232,11 +244,12 @@
       if (!state?.ended || !state.best) throw fail('Zbyt mało odczytów. Przeprowadź próbę ponownie.');
       const value = new Uint8Array(40), view = new DataView(value.buffer);
       value.set(SET); value[8] = state.version; value[9] = state.best.index;
-      value[10] = state.version === 3 ? packGrid(state.best.grid) : state.lanes;
+      value[10] = state.version >= 3 ? packGrid(state.best.grid) : state.lanes;
       value[11] = (state.ecc === 'L' ? 1 : 0) | (state.large ? 2 : 0)
-        | (state.compareLayouts ? 4 : 0) | (state.version === 3 && state.extended ? 8 : 0); value.set(active.idBytes, 12);
+        | (state.compareLayouts ? 4 : 0) | (state.version >= 3 && state.extended ? 8 : 0)
+        | (state.allLayouts ? 16 : 0); value.set(active.idBytes, 12);
       view.setUint16(28, state.best.samples);
-      if (state.version === 3) {
+      if (state.version >= 3) {
         view.setUint32(30, Math.round(state.best.bytesPerSecond));
         view.setUint16(34, state.best.steps);
       } else view.setUint16(30, Math.min(65535, Math.round(state.best.bytesPerSecond)));
@@ -245,6 +258,7 @@
     return { accept, reset, dispose: reset, createFeedback, get state() { return snapshot(); } };
   }
   root.WGCalibration = Object.freeze({ create, createObserver, parse, profiles: PROFILES, fastProfiles: FAST_PROFILES,
+    allGrids: ALL_GRIDS, limits: LIMITS,
     isFrame: value => starts(value, CAL), isFeedback: value => starts(value, SET),
     isReserved: value => starts(value, CAL) || starts(value, SET) });
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -9,7 +9,7 @@
   const CORNERS = ['topLeftCorner', 'topRightCorner', 'bottomRightCorner', 'bottomLeftCorner'];
 
   function validGrid(columns, rows) {
-    return Number.isInteger(columns) && columns >= 1 && columns <= 3
+    return Number.isInteger(columns) && columns >= 1 && columns <= 5
       && Number.isInteger(rows) && rows >= 1 && rows <= 3;
   }
 
@@ -18,7 +18,7 @@
     let explicitGrid = columns !== undefined || rows !== undefined;
     if (explicitGrid) {
       if (!validGrid(columns, rows) || (lanes !== undefined && lanes !== columns * rows)) {
-        throw new TypeError('WGCamera requires a grid from 1×1 to 3×3.');
+        throw new TypeError('WGCamera requires 1–5 columns and 1–3 rows.');
       }
       lanes = columns * rows;
     } else {
@@ -100,7 +100,7 @@
     function gridRegion(index, width, height, detail) {
       const tracked = states.filter(lane => lane.tracked);
       // If the sender returned to one large code, all untracked lanes can share
-      // one detailed full-frame probe instead of decoding nine identical images.
+      // one detailed full-frame probe instead of decoding up to fifteen copies.
       if (detail && !tracked.length && (states[index].forceDetail || searchRound % 8 === 7)) {
         return { x: 0, y: 0, width, height };
       }
@@ -370,7 +370,7 @@
       reset(); ensureSurfaces();
     }
     function setGrid(nextColumns, nextRows) {
-      if (!validGrid(nextColumns, nextRows)) throw new TypeError('WGCamera requires a grid from 1×1 to 3×3.');
+      if (!validGrid(nextColumns, nextRows)) throw new TypeError('WGCamera requires 1–5 columns and 1–3 rows.');
       if (disposed || (explicitGrid && columns === nextColumns && rows === nextRows)) return;
       columns = nextColumns; rows = nextRows; lanes = columns * rows; explicitGrid = true;
       reset(); ensureSurfaces();

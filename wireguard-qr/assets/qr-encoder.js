@@ -30,7 +30,7 @@
   }
 
   /**
-   * encodeBatch accepts one to nine { bytes: Uint8Array, errorCorrectionLevel?: 'M'|'L' }
+   * encodeBatch accepts one to fifteen { bytes: Uint8Array, errorCorrectionLevel?: 'M'|'L' }
    * items and resolves to core-compatible matrices in the same order. Inputs are
    * copied synchronously before this method returns; callers retain their buffers
    * and may immediately overwrite them. Internal copies are cleared on completion,
@@ -142,8 +142,8 @@
       if (pending) return Promise.reject(failure('ENCODER_BUSY', 'Poprzedni układ kodów jest jeszcze przygotowywany.'));
       const items = [];
       try {
-        if (!Array.isArray(batch) || batch.length < 1 || batch.length > 9) {
-          throw failure('INVALID_INPUT', 'Oczekiwano od jednego do dziewięciu kodów QR.');
+        if (!Array.isArray(batch) || batch.length < 1 || batch.length > 15) {
+          throw failure('INVALID_INPUT', 'Oczekiwano od jednego do piętnastu kodów QR.');
         }
         for (const item of batch) {
           if (!item || !isBytes(item.bytes)) throw failure('INVALID_INPUT', 'Oczekiwano tablicy bajtów Uint8Array.');

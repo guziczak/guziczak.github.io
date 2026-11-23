@@ -344,6 +344,90 @@ Both `WGQR-CAL` and its 40-byte `WGQR-SET` result carry calibration version 1 or
 
 The observer deduplicates sequence numbers and waits for the end symbol before selecting a profile or emitting SET. A candidate needs at least three distinct display steps. Its score is unique accepted payload bytes divided by the full four-second period, including missed frames; an already-running profile observed after a late join is scored conservatively. Entirely missed profiles have zero samples and cannot win. In the largest profile, two lanes at 20 changes/s produce at most 160 unique symbols and **24,000 B/s**, within SET's unsigned 16-bit rate field. This synthetic result selects a candidate configuration; it is not a measured completed-file throughput and does not account for manifests, fountain dependence or later changes in camera conditions.
 
+## Synthetic grid calibration versions 3 and 4
+
+Grid calibration describes both the QR layout and the complete measurement plan. Existing v1/v2 callers and the wire bytes of v1/v2/v3 are preserved. Calibration version 4 has the `WGQR-CAL`/`WGQR-SET` magic; it is distinct from the large-file data protocol's version 4.
+
+### Plans and API
+
+`WGCalibration.create()` accepts `grid:{columns,rows}`, `compareLayouts`, `allLayouts`, `extended`, `ecc` and `large`. The two comparison flags are booleans and mutually exclusive; `allLayouts:true,compareLayouts:true` is invalid. A comparison plan ignores the requested current grid. Every grid runs the unchanged six basic profiles or ten extended profiles listed above, with the grid as the outer loop. The basic order is 384 B at 2/5/10 Hz, then 600 B at 2/5/10 Hz. Extended plans append 384 B at 15/20 Hz and 600 B at 15/20 Hz to that six-profile prefix.
+
+| Requested plan | Emitted CAL version | Grids | Basic / extended profiles |
+| --- | --- | --- | --- |
+| No grid and neither comparison flag | 1 / 2 | Fixed legacy lane count | 6 / 10 |
+| Current grid, 1–3 columns and 1–3 rows | 3 | Requested grid | 6 / 10 |
+| `compareLayouts:true` | 3 | 1×1, 2×1, 1×2, 2×2, in this order | 24 / 40 |
+| Current grid, 4–5 columns and 1–3 rows | 4 | Requested grid | 6 / 10 |
+| `allLayouts:true` | 4 | Every combination of 1–5 columns and 1–3 rows | 90 / 150 |
+
+Version 3 still rejects grids wider than three columns. Its comparison flag continues to mean exactly four grids. Version 4 permits up to 15 independent QR symbols per display. The all-layout order is fixed by increasing symbol count, then columns, then rows:
+
+| Grid | Symbols | First basic profile | First extended profile |
+| --- | --- | --- | --- |
+| 1×1 | 1 | 0 | 0 |
+| 1×2 | 2 | 6 | 10 |
+| 2×1 | 2 | 12 | 20 |
+| 1×3 | 3 | 18 | 30 |
+| 3×1 | 3 | 24 | 40 |
+| 2×2 | 4 | 30 | 50 |
+| 4×1 | 4 | 36 | 60 |
+| 5×1 | 5 | 42 | 70 |
+| 2×3 | 6 | 48 | 80 |
+| 3×2 | 6 | 54 | 90 |
+| 4×2 | 8 | 60 | 100 |
+| 3×3 | 9 | 66 | 110 |
+| 5×2 | 10 | 72 | 120 |
+| 4×3 | 12 | 78 | 130 |
+| 5×3 | 15 | 84 | 140 |
+
+`WGCalibration.allGrids` exposes this frozen array of frozen `{columns,rows}` objects. `WGCalibration.limits` is the frozen object `{columns:5,rows:3,lanes:15}`. A sender exposes its immutable `profiles`, plus `alignmentIndex` and `alignmentLanes`: the first profile of the largest grid and its symbol count. These are 84/140 and 15 for all-layout plans, 18/30 and 4 for the four-grid comparison, or 0 and the selected grid's area for a current-grid plan. The `allLayouts` boolean is included in the sender, parsed CAL, observer snapshot and accepted SET result.
+
+Each profile measures exactly four seconds. Preparation is outside that interval: the current UI holds one second of settling before each profile, making the all-layout sequence nominally 450 or 750 seconds, plus an initial setup period controlled by the user. These times are plan durations, not promised transfer rates.
+
+### CAL header and preparation
+
+All multibyte integer fields use big-endian order. Grid CAL keeps the existing 40-byte header/CRC overhead:
+
+| Offset | Length | Meaning |
+| --- | --- | --- |
+| 0 | 8 | ASCII `WGQR-CAL` |
+| 8 | 1 | Calibration version |
+| 9 | 1 | Flags described below |
+| 10 | 1 | Profile index, 0–89 or 0–149 in an all-layout plan |
+| 11 | 1 | `(columns << 4) \| rows`; v1/v2 instead contain their fixed lane count |
+| 12 | 16 | Random trial ID |
+| 28 | 2 | Sequence number, setup slot, or 65535 for END |
+| 30 | 2 | Reserved, zero |
+| 32 | 2 | Measurement duration, exactly 4000 ms |
+| 34 | 1 | Payload code: 0 = 384 B, 1 = 600 B |
+| 35 | 1 | Rate index in `[2,5,10,15,20]` |
+| 36 | Variable | Reproducible synthetic bytes, omitted from 40-byte markers |
+| Final 4 | 4 | CRC32 of every preceding byte |
+
+CAL byte 9 uses ended=`1`, ECC L=`2`, large=`4`, alignment=`8`, extended=`16`, four-grid comparison=`32`, setup-preview=`64`, and all-layout comparison=`128`. The final bit is allowed only in v4; flags `32` and `128` cannot coexist. Bits `8`/`16`/`32`/`64` require v3 or later. Setup requires alignment, and alignment cannot be END. Every frame's grid, profile, payload code, rate code, duration and sequence range must agree with its declared plan.
+
+`alignmentFrame(slot,index,setup=false)` emits a stationary preparation code for one slot. Slots range from zero through `columns*rows-1`, with distinct sequence fields and CRCs. In v3, both setup-preview and ordinary settling frames have the full measurement length. In v4, **only setup-preview frames are 40 bytes**: this lets the receiver learn a plan even when its 15 dense measurement codes cannot all be read. They retain the profile metadata and the `large` flag for the coming measurements. V4 settling frames remain full-sized. A shortened non-setup measurement or settling frame is invalid.
+
+Measurement and ordinary settling lengths remain 424/640 bytes, or 476/692 with `large:true`. END is always 40 bytes, names the plan's final profile, and uses sequence 65535. A single small END code therefore does not describe how many QR symbols were displayed during the trial. Initial setup and settling do not contribute any accepted samples, bytes, display steps or throughput.
+
+### Exact coverage, results and SET
+
+A measurement sequence identifies the slot and display step: `slot = sequence % lanes`, `step = floor(sequence / lanes)`, and the one-second window is `floor(sequence / (fps*lanes))`. Expected unique reads are `4*fps*lanes`, with `fps*lanes` reads in each of four windows. The largest v4 profile has 1200 expected reads, uses sequences 0–1199, and contains 300 distinct symbols per second. Duplicate reads do not add coverage; late reads retain their original window.
+
+Observer snapshots retain `phase:'alignment'|'measuring'|'finished'` and expose `setup` and `latestMeasurementIndex` so presentation can distinguish an initial largest-grid preview from a later settling interval. The first setup does not close earlier profiles. Settling and measurement progress cannot be rewound by delayed setup or older settling frames. A later profile closes earlier ones; END closes the entire advertised plan. Consequently, all profiles of a wholly unreadable grid are failed after END, rather than remaining untested or disappearing from the results.
+
+V3/v4 choose `best` only after END and only among profiles with full unique coverage and at least three distinct display steps. Full coverage necessarily fills all four windows. `fastest` may report the highest useful-byte rate with gaps for diagnosis, but cannot produce SET unless it also satisfies the full-coverage rule. Rates are unique synthetic data bytes divided by the full four seconds; ties prefer lower Hz, then fewer symbols, then the earlier profile. Old v1/v2 minimum-sample recommendation semantics remain unchanged.
+
+Grid SET remains 40 bytes. Bytes 0–7 contain `WGQR-SET`; byte 8 is the calibration version; byte 9 is the chosen profile; byte 10 is its packed grid; byte 11 contains ECC L=`1`, large=`2`, four-grid comparison=`4`, extended=`8`, and all-layout comparison=`16` (v4 only). Bytes 12–27 contain the trial ID. Bytes 28–29 contain the accepted sample count, bytes 30–33 an unsigned 32-bit useful-byte rate, bytes 34–35 the distinct display-step count, and bytes 36–39 CRC32. The maximum v4 result is **180,000 B/s** for 600 B × 20 Hz × 15 symbols; this fits the unchanged v3/v4 32-bit field. V1/v2 retain their 16-bit rate and reserved bytes.
+
+The sender accepts SET only for its exact version, trial ID, comparison plan, extended flag, ECC, large flag, profile and grid. V3/v4 also require samples to equal the profile's full expected count, steps to equal `4*fps`, and the rate to equal `samples*chunkBytes/4`. A different layout with the same number of symbols is still a mismatch. Unsupported versions, out-of-range grids/indices/sequences, inconsistent sizes or flags, and CRC failures cannot replace an observer's active session.
+
+### Presentation model
+
+`WGCalibrationView.create({encodeBytes}).compute(snapshot,{fromImages:false})` returns groups by data size, layout rows and frequency columns, with `pending`, `running`, `passed` or `failed` cells. A running profile is not marked passed until it closes. The model handles 90/150-profile plans without changing the protocol. A reset or null snapshot clears the model's scalar dimension cache.
+
+The table's module counts come from the real byte-mode encoder with the measurement payload length and selected ECC, without the quiet zone. There are two cached measurement dimensions per session. V4 setup adds one cached 40-byte dimension: `current` then describes the actual header-only QR (`chunkBytes:0`, `payloadBytes:40`, `headerOnly:true`), while `plannedChunkBytes`/`plannedModules` and the table retain measurement parameters. Temporary matrices are cleared. Image-derived observations retain packet coverage but expose no measured byte rates or recommended camera settings.
+
 ## Integrity, interoperability and errors
 
 Neither CRC, SHA-256, fountain coding nor feedback encrypts or authenticates the content. Anyone who can photograph sufficient independent equations can reconstruct the file. An adversarial observer can forge an unauthenticated ACK; the sender interprets it as a receiver report, not a cryptographic delivery certificate. Final SHA-256 prevents an inconsistent reconstructed file from being offered for download, but does not establish sender identity.

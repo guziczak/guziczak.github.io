@@ -9,7 +9,7 @@ self.onmessage = event => {
     && Object.prototype.toString.call(value) === '[object Uint8Array]';
   const matrices = [];
   try {
-    if (!request || !Number.isSafeInteger(request.id) || request.id < 1 || frames.length < 1 || frames.length > 9
+    if (!request || !Number.isSafeInteger(request.id) || request.id < 1 || frames.length < 1 || frames.length > 15
       || frames.some(frame => !isBytes(frame?.bytes) || !frame.bytes.length || frame.bytes.length > 2953
         || !['M', 'L'].includes(frame.errorCorrectionLevel))) throw new Error('invalid');
     for (const frame of frames) {
