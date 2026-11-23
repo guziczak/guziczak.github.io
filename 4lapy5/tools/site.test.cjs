@@ -6,7 +6,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   HOURS, AXIS, parseDate, atWarsaw, atWarsawNine, easterSunday, isHoliday, clinicStatus, todayLabel, previewInstant,
-  maskDate, typedDate, monthGrid, fieldPress,
+  maskDate, typedDate, dateDigits, typedInBoxes, monthGrid, fieldPress,
   buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename, mapEmbedSrc
 } = require('../site.js');
 
@@ -148,6 +148,38 @@ test('a typed date becomes an ISO day only when it is complete and exists', () =
   assert.deepEqual(typedDate('31.04.2027'), { iso: '', complete: true });
   assert.deepEqual(typedDate('00.00.0000'), { iso: '', complete: true });
   for (const partial of ['', '15', '15.03', '15.03.202']) assert.deepEqual(typedDate(partial), { iso: '', complete: false });
+});
+
+test('the boxes of the entry show the date digit by digit while it is typed', () => {
+  assert.equal(dateDigits(''), '');
+  assert.equal(dateDigits('1'), '1');
+  assert.equal(dateDigits('15.'), '15');
+  assert.equal(dateDigits('15.03.2'), '15032');
+  assert.equal(dateDigits('15.03.2027'), '15032027');
+  // The boxes take the same notations as the field, and never more than eight digits.
+  assert.equal(dateDigits('1.'), '01');
+  assert.equal(dateDigits('2027-03-15'), '15032027');
+  assert.equal(dateDigits('150320279'), '15032027');
+  // A date that does not exist is still shown as typed; the note beside it says what is wrong.
+  assert.equal(dateDigits('31.02.2027'), '31022027');
+});
+
+test('typing in the boxes writes the date the way typing in the field does', () => {
+  // Each step: the date in the field, what the boxes hold after the key, the date that results.
+  const steps = [
+    ['', '1', '1'], ['1', '15', '15'], ['15', '150', '15.0'], ['15.0', '1503', '15.03'],
+    ['15.03', '15032', '15.03.2'], ['15.03.202', '15032027', '15.03.2027'],
+    // A ninth digit changes nothing.
+    ['15.03.2027', '150320279', '15.03.2027'],
+    // Backspace takes one digit; the dot goes with it and nothing gets padded.
+    ['15.03.2027', '1503202', '15.03.202'], ['15.0', '15', '15'], ['15.', '1', '1'], ['01.', '0', '0'], ['1', '', ''],
+    // Separators are read where the field has them: "1." is the first, "01.3." is March.
+    ['1', '1.', '01.'], ['01.', '013', '01.3'], ['01.3', '013.', '01.03.'], ['01.3', '013/', '01.03.'],
+    ['15', '15.', '15.'], ['15.', '15.', '15.'], ['15.', '150', '15.0']
+  ];
+  for (const [field, boxes, date] of steps) assert.equal(typedInBoxes(field, boxes), date, JSON.stringify([field, boxes]));
+  // Whatever comes out, the boxes get its digits back: the two never drift apart.
+  for (const [field, boxes] of steps) assert.match(dateDigits(typedInBoxes(field, boxes)), /^\d{0,8}$/);
 });
 
 test('the calendar sheet lays a month out in weeks that start on Monday', () => {

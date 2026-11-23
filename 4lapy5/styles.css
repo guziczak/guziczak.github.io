@@ -286,11 +286,22 @@ html:not(.js) .stamp { display: none; }
 .reminder-copy, #reminder-form { display: flex; flex-direction: column; }
 .reminder-copy .tile-lead { margin-bottom: 18px; }
 .preview { display: grid; gap: 12px; margin-top: auto; }
-/* The date one digit per box, as on a paper form. */
-.comb { display: flex; align-items: center; gap: 4px; font: 700 1.25rem/1 var(--mono); }
-.comb b { display: grid; place-items: center; flex: 0 1 1.75rem; min-width: 0; height: 2.375rem; border: 1.5px solid var(--ink); border-radius: 5px; background: var(--field); }
-.comb:not([data-filled]) b { color: var(--edge); font-weight: 500; }
+/* The date one digit per box, as on a paper form. The boxes can be written in: an unseen
+   field lies over them and takes the click, the tap and the keys (see site.js). */
+.comb-field { position: relative; justify-self: start; max-width: 100%; }
+.comb-input { position: absolute; top: -4px; left: -4px; width: calc(100% + 8px); height: calc(100% + 8px); margin: 0; padding: 0; border: 0; background: none; font-size: 1.25rem; opacity: 0; cursor: text; }
+/* Eight boxes of 1.75rem and two dots. As grid tracks the boxes keep that width for the
+   field that wraps them and still narrow together on a small screen. */
+.comb { display: grid; grid-template-columns: repeat(2, minmax(0, 1.75rem)) auto repeat(2, minmax(0, 1.75rem)) auto repeat(4, minmax(0, 1.75rem)); align-items: center; gap: 4px; font: 700 1.25rem/1 var(--mono); -webkit-user-select: none; user-select: none; }
+.comb b { position: relative; display: grid; place-items: center; min-width: 0; height: 2.375rem; border: 1.5px solid var(--ink); border-radius: 5px; background: var(--field); }
+.comb b:not([data-filled]) { color: var(--edge); font-weight: 500; }
+.comb[data-error] b[data-filled] { border-color: var(--error); color: var(--error); }
 .comb i { padding-inline: 1px; font-style: normal; }
+/* While the boxes are being written in, the one that takes the next digit is ringed and holds
+   the caret. With all eight written the caret stands after the last digit, as at the end of a line. */
+.comb-field:focus-within b[data-caret] { outline: 2px solid var(--focus); outline-offset: 1px; }
+.comb-field:focus-within b[data-caret]::after { content: ''; position: absolute; top: 22%; bottom: 22%; left: calc(50% - .5ch - 4px); width: 2px; border-radius: 1px; background: var(--ink); }
+.comb-field:focus-within b[data-caret][data-filled]::after { left: calc(50% + .5ch + 1px); }
 /* The saved entry looks like the sticker a vet puts into the booklet. */
 .sticker { display: grid; gap: 2px; padding: 12px 14px; border: 1.5px dashed var(--ink); border-radius: 10px; font-size: .9375rem; line-height: 1.45; }
 .sticker strong { font-size: 1.0625rem; font-weight: 800; letter-spacing: -.015em; overflow-wrap: anywhere; }
@@ -491,6 +502,7 @@ html:not(.js) .map-consent { display: none; }
 /* ---------- Motion (only when welcome) ---------- */
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes stamp-press { from { opacity: 0; transform: rotate(-9deg) scale(1.55); } 62% { opacity: 1; transform: rotate(-9deg) scale(.95); } to { opacity: .93; transform: rotate(-9deg) scale(1); } }
+@keyframes caret-blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: no-preference) {
   @view-transition { navigation: auto; }
   :root { interpolate-size: allow-keywords; }
@@ -502,6 +514,7 @@ html:not(.js) .map-consent { display: none; }
     .t-services, .t-reminder, .t-map, .t-vet, .t-contact { animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 40%; }
   }
   .calendar:not([hidden]) { animation: rise .18s ease both; }
+  .comb-field:focus-within b[data-caret]::after { animation: caret-blink 1.1s steps(1) infinite; }
   .week li::after { transition: opacity .14s ease, transform .14s ease; }
   .week li::before { transition: opacity .14s ease; }
   .consent-box::after { transition: clip-path .22s ease-out; }

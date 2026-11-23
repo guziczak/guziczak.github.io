@@ -237,6 +237,20 @@
     return { iso: parseDate(iso) ? iso : '', complete: true };
   }
 
+  // The digits typed so far, at most eight: what the boxes of the entry show, one per box.
+  function dateDigits(text) {
+    return maskDate(text).replace(/\D/g, '');
+  }
+
+  // What typing in the boxes makes of the date. The boxes hold digits only, so one more
+  // character at the end is read where the field has it: "01.3" and "." make "01.03.",
+  // as they would when typed in the field. Anything else (a digit taken away) is plain digits.
+  function typedInBoxes(fieldText, boxText) {
+    const digits = dateDigits(fieldText);
+    const added = boxText.length === digits.length + 1 && boxText.startsWith(digits);
+    return maskDate(added ? fieldText + boxText.slice(-1) : boxText);
+  }
+
   // One month as weeks that start on Monday. Days outside the month are null.
   function monthGrid(year, month) {
     const lead = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
@@ -379,7 +393,8 @@
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { HOURS, AXIS, parseDate, atWarsaw, atWarsawNine, easterSunday, isHoliday, clinicStatus,
-      todayLabel, previewInstant, maskDate, typedDate, monthGrid, fieldPress, buildReminder, reminderPreview,
+      todayLabel, previewInstant, maskDate, typedDate, dateDigits, typedInBoxes, monthGrid, fieldPress, buildReminder,
+      reminderPreview,
       googleUrl, calendarFile, calendarFilename, mapEmbedSrc };
   }
   if (typeof document === 'undefined') return;
@@ -668,6 +683,8 @@
     const alarmInput = form.querySelector('#vacc-alarm');
     const message = form.querySelector('#reminder-message');
     if (!nameInput || !dateInput || !alarmInput || !message) return;
+    // The unseen field over the boxes of the entry. It lies next to the boxes, outside the form.
+    const boxInput = document.querySelector('[data-comb-input]');
     const values = () => {
       const typed = typedDate(dateInput.value);
       return { name: nameInput.value, date: typed.iso, invalidDate: typed.complete && !typed.iso, days: alarmInput.value };
@@ -676,7 +693,8 @@
       if (message.textContent !== text) message.textContent = text;
       message.dataset.state = isError ? 'error' : 'ok';
     };
-    const mark = field => [[dateInput, 'date'], [alarmInput, 'alarm']].forEach(([input, name]) => {
+    const mark = field => [[dateInput, 'date'], [boxInput, 'date'], [alarmInput, 'alarm']].forEach(([input, name]) => {
+      if (!input) return;
       if (field === name) input.setAttribute('aria-invalid', 'true');
       else input.removeAttribute('aria-invalid');
     });
@@ -684,15 +702,19 @@
       const view = reminderPreview(values(), undefined, language);
       setText('[data-reminder-title]', view.title);
       setText('[data-reminder-date]', view.date);
-      // The same date, one digit per box, as on a paper form.
-      const digits = typedDate(dateInput.value).iso.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$3$2$1');
+      // The same date in the entry, one digit per box as on a paper form, while it is typed.
+      const digits = dateDigits(dateInput.value);
       each('[data-comb]', comb => {
-        comb.toggleAttribute('data-filled', Boolean(digits));
+        comb.toggleAttribute('data-error', view.field === 'date');
         comb.querySelectorAll('b').forEach((box, index) => {
-          const value = digits ? digits[index] : box.dataset.placeholder;
+          const value = digits[index] || box.dataset.placeholder;
           if (box.textContent !== value) box.textContent = value;
+          box.toggleAttribute('data-filled', index < digits.length);
+          // The box that takes the next digit; with all eight written, the last one.
+          box.toggleAttribute('data-caret', index === Math.min(digits.length, 7));
         });
       });
+      if (boxInput && boxInput.value !== digits) boxInput.value = digits;
       setText('[data-reminder-note]', view.note);
       each('[data-reminder-note]', element => { element.dataset.state = view.error ? 'error' : 'ready'; });
       mark(view.field);
@@ -704,6 +726,34 @@
       const masked = maskDate(dateInput.value);
       if (dateInput.value !== masked) dateInput.value = masked;
     });
+    if (boxInput) {
+      // The boxes of the entry are written in through the unseen field laid over them. It
+      // hands every key to the date field, which stays the one holder of the date, and gets
+      // the digits back from render(). Boxes can only show a caret at the end of what is
+      // written, so the caret is kept there.
+      const write = date => {
+        dateInput.value = date;
+        dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      const toEnd = () => {
+        const end = boxInput.value.length;
+        if (boxInput.selectionStart !== end || boxInput.selectionEnd !== end) boxInput.setSelectionRange(end, end);
+      };
+      boxInput.addEventListener('input', event => {
+        if (!event.isComposing) write(typedInBoxes(dateInput.value, boxInput.value));
+      });
+      // A pasted date replaces what is there, in any notation the field accepts.
+      boxInput.addEventListener('paste', event => {
+        const text = event.clipboardData ? event.clipboardData.getData('text') : '';
+        if (!text) return;
+        event.preventDefault();
+        write(maskDate(text));
+      });
+      ['focus', 'click', 'keyup', 'select'].forEach(type => boxInput.addEventListener(type, toEnd));
+      document.addEventListener('selectionchange', () => { if (document.activeElement === boxInput) toEnd(); });
+      // Enter ends the writing and puts a phone's keyboard away; it does not send the form.
+      boxInput.addEventListener('keydown', event => { if (event.key === 'Enter') boxInput.blur(); });
+    }
     [nameInput, dateInput, alarmInput].forEach(input => {
       input.addEventListener('input', render);
       input.addEventListener('change', render);

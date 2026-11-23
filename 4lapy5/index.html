@@ -26,8 +26,8 @@
   <link rel="preload" href="assets/fonts/bricolage-grotesque-display-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/bricolage-grotesque-display-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/manrope-variable-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <script src="site.js?v=a7e6a0b0e3"></script>
-  <link rel="stylesheet" href="styles.css?v=7ea2016d57">
+  <script src="site.js?v=b875a299e5"></script>
+  <link rel="stylesheet" href="styles.css?v=81989048e2">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"VeterinaryCare","name":"Przychodnia Weterynaryjna Cztery Łapy i Ty","url":"https://guziczak.github.io/4lapy5/","telephone":"+48717867884","address":{"@type":"PostalAddress","streetAddress":"ul. Chabrowa 2D","postalCode":"52-200","addressLocality":"Wysoka","addressCountry":"PL"},"geo":{"@type":"GeoCoordinates","latitude":51.0480638,"longitude":16.9997411},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"10:00","closes":"18:00"},{"@type":"OpeningHoursSpecification","dayOfWeek":["Saturday"],"opens":"10:00","closes":"12:00"}]}</script>
 </head>
 <body>
@@ -179,7 +179,10 @@
           <p class="tile-title">Wpisz datę z książeczki.</p>
           <p class="tile-lead">Wybierz wyprzedzenie, a w swoim kalendarzu zapiszesz przypomnienie, żeby zadzwonić i umówić wizytę.</p>
           <div class="preview">
-            <p class="comb" data-comb aria-hidden="true"><b data-placeholder="D">D</b><b data-placeholder="D">D</b><i>.</i><b data-placeholder="M">M</b><b data-placeholder="M">M</b><i>.</i><b data-placeholder="R">R</b><b data-placeholder="R">R</b><b data-placeholder="R">R</b><b data-placeholder="R">R</b></p>
+            <div class="comb-field">
+              <p class="comb" data-comb aria-hidden="true"><b data-placeholder="D">D</b><b data-placeholder="D">D</b><i>.</i><b data-placeholder="M">M</b><b data-placeholder="M">M</b><i>.</i><b data-placeholder="R">R</b><b data-placeholder="R">R</b><b data-placeholder="R">R</b><b data-placeholder="R">R</b></p>
+              <input class="comb-input" id="vacc-date-boxes" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" maxlength="10" tabindex="-1" aria-labelledby="vacc-date-label" aria-describedby="reminder-help reminder-message" data-comb-input>
+            </div>
             <p class="sticker"><strong data-reminder-title>Umów szczepienie zwierzaka</strong><span class="visually-hidden" data-reminder-date>Wybierz datę szczepienia</span><span data-reminder-note>Przypomnienie: tydzień wcześniej, o 9:00</span></p>
           </div>
           <p class="privacy"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg><span>Dane wpisujesz tylko dla siebie. Przypomnienie powstaje w Twojej przeglądarce.</span></p>
@@ -191,7 +194,7 @@
           </div>
           <div class="fields-row">
             <div class="field">
-              <label for="vacc-date">Data szczepienia</label>
+              <label for="vacc-date" id="vacc-date-label">Data szczepienia</label>
               <div class="date-wrap">
                 <input id="vacc-date" name="vacc-date" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="DD.MM.RRRR" required aria-describedby="reminder-help reminder-message">
                 <button class="date-button" type="button" data-calendar-open aria-haspopup="dialog" aria-expanded="false" aria-controls="calendar" aria-label="Otwórz kalendarz"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></button>

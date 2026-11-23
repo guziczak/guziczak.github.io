@@ -156,7 +156,10 @@
           <p class="tile-title">{{reminderHeadline}}</p>
           <p class="tile-lead">{{reminderLead}}</p>
           <div class="preview">
-            <p class="comb" data-comb aria-hidden="true">{{{combHtml}}}</p>
+            <div class="comb-field">
+              <p class="comb" data-comb aria-hidden="true">{{{combHtml}}}</p>
+              <input class="comb-input" id="vacc-date-boxes" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off" maxlength="10" tabindex="-1" aria-labelledby="vacc-date-label" aria-describedby="reminder-help reminder-message" data-comb-input>
+            </div>
             <p class="sticker"><strong data-reminder-title>{{previewTitle}}</strong><span class="visually-hidden" data-reminder-date>{{previewDate}}</span><span data-reminder-note>{{previewNote}}</span></p>
           </div>
           <p class="privacy"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg><span>{{privacy}}</span></p>
@@ -168,7 +171,7 @@
           </div>
           <div class="fields-row">
             <div class="field">
-              <label for="vacc-date">{{dateLabel}}</label>
+              <label for="vacc-date" id="vacc-date-label">{{dateLabel}}</label>
               <div class="date-wrap">
                 <input id="vacc-date" name="vacc-date" type="text" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="{{datePlaceholder}}" required aria-describedby="reminder-help reminder-message">
                 <button class="date-button" type="button" data-calendar-open aria-haspopup="dialog" aria-expanded="false" aria-controls="calendar" aria-label="{{openCalendar}}"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></button>

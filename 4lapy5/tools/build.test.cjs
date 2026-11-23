@@ -179,6 +179,21 @@ test('the date field can be typed and has its own calendar sheet', () => {
   }
 });
 
+test('the boxes of the entry can be written in through a field of their own, outside the tab order', () => {
+  for (const [file, html] of Object.entries(pages)) {
+    const boxes = /<input class="comb-input"[^>]*>/.exec(html);
+    assert.ok(boxes, `${file}: the boxes have a field`);
+    for (const attribute of ['type="text"', 'inputmode="numeric"', 'autocomplete="off"', 'tabindex="-1"', 'aria-labelledby="vacc-date-label"', 'data-comb-input']) {
+      assert.ok(boxes[0].includes(attribute), `${file}: the field over the boxes has ${attribute}`);
+    }
+    // It lies right after the boxes it covers and borrows the visible label of the date field.
+    assert.match(html, /<div class="comb-field">\s*<p class="comb" data-comb aria-hidden="true">[\s\S]*?<\/p>\s*<input class="comb-input"/);
+    assert.match(html, /<label for="vacc-date" id="vacc-date-label">/);
+    // The form keeps the one date field that the keyboard reaches.
+    assert.equal(/<form id="reminder-form"[\s\S]*?<\/form>/.exec(html)[0].includes('comb-input'), false);
+  }
+});
+
 test('the Google map waits for consent: the pages ship a local picture and an unticked box', () => {
   assert.match(content.shared.mapEmbedUrl, /^https:\/\/www\.google\.com\/maps\?q=[^&]+&z=\d+&output=embed$/);
   for (const [file, html] of Object.entries(pages)) {
