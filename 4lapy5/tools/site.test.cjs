@@ -6,7 +6,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   HOURS, AXIS, parseDate, atWarsaw, atWarsawNine, easterSunday, isHoliday, clinicStatus, todayLabel, previewInstant,
-  maskDate, typedDate, monthGrid,
+  maskDate, typedDate, monthGrid, fieldPress,
   buildReminder, reminderPreview, googleUrl, calendarFile, calendarFilename, mapEmbedSrc
 } = require('../site.js');
 
@@ -170,6 +170,25 @@ test('the calendar sheet lays a month out in weeks that start on Monday', () => 
     // Sundays sit in the last column, where the sheet prints them in red.
     weeks.forEach(week => { if (week[6]) assert.equal(parseDate(week[6]).getUTCDay(), 0); });
   }
+});
+
+test('a press on the date field brings the calendar sheet up without getting in the way of typing', () => {
+  // A mouse click opens the sheet whether or not the field already has the caret.
+  assert.equal(fieldPress('mouse', false, false), 'open');
+  assert.equal(fieldPress('mouse', false, true), 'open');
+  // With the sheet up, further clicks only place the caret.
+  assert.equal(fieldPress('mouse', true, true), 'keep');
+  // A finger or a pen gets the sheet instead of the on-screen keyboard; a second tap swaps them.
+  for (const pointer of ['touch', 'pen']) {
+    assert.equal(fieldPress(pointer, false, false), 'pick');
+    assert.equal(fieldPress(pointer, true, false), 'type');
+    assert.equal(fieldPress(pointer, true, true), 'type');
+    // A field that is being typed in keeps its taps for the caret.
+    assert.equal(fieldPress(pointer, false, true), 'caret');
+  }
+  // An unknown pointer is treated like a mouse: it never takes typing away.
+  assert.equal(fieldPress('', false, false), 'open');
+  assert.equal(fieldPress(undefined, true, false), 'keep');
 });
 
 const now = new Date('2026-01-01T00:00:00Z');

@@ -247,6 +247,22 @@
     return Array.from({ length: cells.length / 7 }, (_, week) => cells.slice(week * 7, week * 7 + 7));
   }
 
+  // The pointers that bring an on-screen keyboard with them. An unknown pointer counts as a mouse.
+  const isFinger = pointerType => pointerType === 'touch' || pointerType === 'pen';
+
+  // What a press on the date field does to the calendar sheet.
+  //   open:  a mouse click brings the sheet up; the field keeps the focus, so typing goes on.
+  //   keep:  the sheet is already up; the click only places the caret.
+  //   pick:  a finger gets the sheet without the on-screen keyboard.
+  //   type:  a second tap swaps the sheet for the keyboard.
+  //   caret: the field is being typed in with the keyboard up; taps stay with the text.
+  function fieldPress(pointerType, sheetOpen, fieldFocused) {
+    const finger = isFinger(pointerType);
+    if (sheetOpen) return finger ? 'type' : 'keep';
+    if (!finger) return 'open';
+    return fieldFocused ? 'caret' : 'pick';
+  }
+
   function cleanName(value) {
     return Array.from(String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 30).join('');
   }
@@ -363,7 +379,7 @@
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { HOURS, AXIS, parseDate, atWarsaw, atWarsawNine, easterSunday, isHoliday, clinicStatus,
-      todayLabel, previewInstant, maskDate, typedDate, monthGrid, buildReminder, reminderPreview,
+      todayLabel, previewInstant, maskDate, typedDate, monthGrid, fieldPress, buildReminder, reminderPreview,
       googleUrl, calendarFile, calendarFilename, mapEmbedSrc };
   }
   if (typeof document === 'undefined') return;
@@ -467,12 +483,15 @@
 
   // The booklet's own calendar sheet replaces the browser's date popup, which cannot be
   // styled. The field stays an ordinary text input, so the date can always be typed.
+  // The sheet comes up from its button and from a press on the field itself (see fieldPress).
+  // While the field has the focus the sheet follows what is typed, and Down steps into it.
   // Keys follow the usual date-grid pattern: arrows move by day and week, Home and End go to
   // the ends of the week, PageUp and PageDown change the month (with Shift, the year).
   function initCalendar(dateInput) {
     const panel = document.querySelector('[data-calendar]');
     const opener = document.querySelector('[data-calendar-open]');
     if (!panel || !opener) return;
+    const wrap = panel.parentElement; // the field, its button and the sheet
     const sheet = panel.closest('.tile');
     const title = panel.querySelector('[data-calendar-title]');
     const body = panel.querySelector('[data-calendar-days]');
@@ -480,12 +499,17 @@
     const dayName = new Intl.DateTimeFormat(copy.locale, { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const today = () => warsawDateKey(new Date());
     let cursor = today(); // the day that holds keyboard focus; never in the past
+    let origin = opener;  // the control that gets the focus back when the sheet is put away
+    let press = '';       // what the press that has just begun on the field will do
+    let finger = false;   // the visitor's last move was made with a finger, not a mouse or a key
 
     function draw(focus) {
       const day = parseDate(cursor);
       const now = today();
       const selected = typedDate(dateInput.value).iso;
-      title.textContent = monthName.format(day);
+      const month = monthName.format(day);
+      // Redrawn on every keystroke in the field: the month is announced only when it changes.
+      if (title.textContent !== month) title.textContent = month;
       body.replaceChildren(...monthGrid(day.getUTCFullYear(), day.getUTCMonth() + 1).map(week => {
         const row = document.createElement('tr');
         week.forEach((key, column) => {
@@ -507,10 +531,16 @@
         });
         return row;
       }));
-      if (focus) {
-        const target = body.querySelector(`[data-day="${cursor}"]`);
-        if (target) target.focus();
-      }
+      if (focus) focusDay();
+    }
+
+    // Left to itself the browser centres a focused day that was out of view, which pushes
+    // the field off a small screen. The shortest scroll that shows the day is enough.
+    function focusDay() {
+      const target = body.querySelector(`[data-day="${cursor}"]`);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      if (target.scrollIntoView) target.scrollIntoView({ block: 'nearest' });
     }
 
     function show(key, focus) {
@@ -529,31 +559,79 @@
 
     function close(returnFocus) {
       if (panel.hidden) return;
+      // The focus goes back only if the sheet holds it (or nothing does): a field that is
+      // being typed in keeps it.
+      const active = document.activeElement;
+      const held = !active || active === document.body || panel.contains(active);
       panel.hidden = true;
       opener.setAttribute('aria-expanded', 'false');
       if (sheet) sheet.removeAttribute('data-calendar-open');
-      if (returnFocus) opener.focus();
+      if (returnFocus && held) origin.focus();
     }
 
-    function open() {
+    // from: the control that gets the focus back. intoDays: move the focus to the days.
+    function open(from, intoDays) {
+      origin = from;
+      // A finger needs no focus ring on the day; the first key pressed brings the ring back.
+      panel.toggleAttribute('data-quiet', finger);
       panel.hidden = false;
       opener.setAttribute('aria-expanded', 'true');
       // The sheet rises above its neighbours while the calendar hangs over its edge.
       if (sheet) sheet.setAttribute('data-calendar-open', '');
-      show(typedDate(dateInput.value).iso || today(), true);
+      show(typedDate(dateInput.value).iso || today(), false);
+      // The whole sheet first, then the day: on a screen too short for the sheet the day wins.
       if (panel.scrollIntoView) panel.scrollIntoView({ block: 'nearest' });
+      if (intoDays) focusDay();
     }
 
-    opener.addEventListener('click', () => { if (panel.hidden) open(); else close(true); });
+    opener.addEventListener('click', () => {
+      if (panel.hidden) { open(opener, true); return; }
+      close(false);
+      opener.focus();
+    });
+    dateInput.addEventListener('pointerdown', event => {
+      press = fieldPress(event.pointerType, !panel.hidden, document.activeElement === dateInput);
+      if (press === 'type') close(false);
+    });
+    // A finger asking for the sheet must not bring the keyboard up as well: the field is not
+    // focused, and the focus goes to the days, as it does from the button.
+    dateInput.addEventListener('mousedown', event => { if (press === 'pick') event.preventDefault(); });
+    dateInput.addEventListener('click', () => {
+      const action = press;
+      press = '';
+      if (action === 'pick') open(opener, true);
+      else if (action === 'open' && panel.hidden) open(dateInput, false);
+    });
+    dateInput.addEventListener('keydown', event => {
+      if (event.isComposing) return;
+      if (event.key === 'ArrowDown' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        if (panel.hidden) open(dateInput, true);
+        else { origin = dateInput; draw(true); }
+      } else if (event.key === 'Escape' || event.key === 'Tab') {
+        close(false); // Tab moves on without a walk through the sheet
+      } else if (event.key === 'Enter' && !panel.hidden) {
+        // The first Enter accepts the typed date and puts the sheet away; it does not send the form.
+        event.preventDefault();
+        close(false);
+      }
+    });
+    dateInput.addEventListener('input', () => {
+      if (!panel.hidden) show(typedDate(dateInput.value).iso || cursor, false);
+    });
     panel.querySelectorAll('[data-calendar-step]').forEach(button => {
       button.addEventListener('click', () => step(Number(button.dataset.calendarStep), false));
+    });
+    // Pressing the sheet with a mouse leaves the focus in a field that is being typed in.
+    panel.addEventListener('mousedown', event => {
+      if (document.activeElement === dateInput) event.preventDefault();
     });
     body.addEventListener('click', event => {
       const button = event.target.closest ? event.target.closest('[data-day]') : null;
       if (!button || button.getAttribute('aria-disabled') === 'true') return;
       dateInput.value = maskDate(button.dataset.day);
-      dateInput.dispatchEvent(new Event('input', { bubbles: true }));
       close(true);
+      dateInput.dispatchEvent(new Event('input', { bubbles: true }));
     });
     body.addEventListener('keydown', event => {
       const day = parseDate(cursor);
@@ -565,13 +643,20 @@
       event.preventDefault();
     });
     panel.addEventListener('keydown', event => { if (event.key === 'Escape') close(true); });
-    // A press or a focus move outside the calendar puts it away.
+    // A press or a focus move outside the field and its calendar puts the sheet away.
     document.addEventListener('pointerdown', event => {
-      if (!panel.contains(event.target) && !opener.contains(event.target)) close(false);
+      finger = isFinger(event.pointerType);
+      // Only a press on the field itself may open the sheet, not a click passed on by its label.
+      if (event.target !== dateInput) press = '';
+      if (!wrap.contains(event.target)) close(false);
     });
-    panel.addEventListener('focusout', event => {
+    document.addEventListener('keydown', () => {
+      finger = false;
+      panel.removeAttribute('data-quiet');
+    }, true);
+    wrap.addEventListener('focusout', event => {
       const next = event.relatedTarget;
-      if (next && !panel.contains(next) && next !== opener) close(false);
+      if (next && !wrap.contains(next)) close(false);
     });
   }
 
