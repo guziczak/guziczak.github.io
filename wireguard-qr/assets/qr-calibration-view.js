@@ -85,8 +85,8 @@
         group.frequencies.sort((a, b) => a - b);
         for (const layout of group.layouts) layout.cells.sort((a, b) => a.fps - b.fps);
       }
-      // Versions 4 and 5 start with small, header-only setup symbols, so a receiver
-      // can learn a 15-QR plan before attempting the denser measurement frames.
+      // Versions 4–6 start with small, header-only setup symbols, so a receiver
+      // can learn a multi-QR plan before attempting the denser measurement frames.
       // Tables retain their measurement density; the current display describes
       // the actual setup QR. This adds one cached 40-byte size for this session.
       if (current && setup && state.version >= 4) current = { ...current,

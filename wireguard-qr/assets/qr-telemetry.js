@@ -175,9 +175,9 @@
       if (frozen) return;
       const input = sample && typeof sample === 'object' ? sample : {};
       increment('cameraAttempts');
-      const attempts = integer(input.attempts, 15);
+      const attempts = integer(input.attempts, 20);
       increment('decodeAttempts', attempts === null ? 1 : attempts);
-      const symbols = integer(input.symbols, 15);
+      const symbols = integer(input.symbols, 20);
       if (symbols !== null) increment('opticalReads', symbols);
       else if (input.result) increment('opticalReads');
       if (input.region === 'tracked') increment('trackedAttempts');

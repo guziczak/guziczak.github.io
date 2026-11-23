@@ -31,8 +31,8 @@ function referenceOrder(total, startIndex = 0, interleave = true) {
   return [...order.slice(start), ...order.slice(0, start)];
 }
 
-test('periodic manifests count data symbols across single, dual and 4/6/8/9/15-slot grids and repairs', () => {
-  for (const lanes of [1, 2, 4, 6, 8, 9, 15]) {
+test('periodic manifests count data symbols across single, dual and 4/6/8/9/15/20-slot grids and repairs', () => {
+  for (const lanes of [1, 2, 4, 6, 8, 9, 15, 20]) {
     const planner = api.create(transfer(37), { lanes });
     const packets = [];
     while (packets.length < 180) packets.push(...planner.next().frames);
@@ -68,7 +68,7 @@ test('manual stepping can show the chosen source immediately and wraps every sou
 });
 
 test('restoring a displayed checkpoint discards prefetched advancement without skipping source frames', () => {
-  for (const lanes of [1, 2, 4, 6, 8, 9, 15]) for (const interleave of [false, true]) {
+  for (const lanes of [1, 2, 4, 6, 8, 9, 15, 20]) for (const interleave of [false, true]) {
     const planner = api.create(transfer(70), { lanes, interleave });
     const displayed = planner.next();
     const expected = Array.from({ length: 20 }, () => planner.next());
@@ -105,14 +105,17 @@ test('feedback invalidates old checkpoints and targets requested pivots before f
 });
 
 test('complete and awaiting-digest ACKs stop all packet generation, including later manifests', () => {
-  for (const lanes of [2, 9, 15]) for (const complete of [false, true]) {
+  for (const lanes of [2, 9, 15, 20]) for (const complete of [false, true]) {
     const planner = api.create(transfer(3), { lanes });
     planner.next();
     planner.applyFeedback({ missingBlocks: [], complete });
     for (let index = 0; index < 40; index++) assert.equal(planner.next().frames.length, 0);
     if (complete) assert.equal(planner.phase, 'complete');
     planner.applyFeedback({ missingBlocks: [0], complete: false });
-    assert.deepEqual(Array.from(planner.next().frames, frame => frame.kind), ['manifest', ...Array(lanes - 1).fill('repair')]);
+    const expected = lanes === 20
+      ? ['manifest', ...Array(16).fill('repair'), 'manifest', 'repair', 'repair']
+      : ['manifest', ...Array(lanes - 1).fill('repair')];
+    assert.deepEqual(Array.from(planner.next().frames, frame => frame.kind), expected);
   }
 });
 
@@ -135,13 +138,15 @@ test('first-pass display estimates equal real planning at lane and manifest boun
   }
 });
 
-test('grid display estimates match planning where manifests and final sources cross 4/6/8/9/15-slot boundaries', () => {
+test('grid display estimates match planning where manifests and final sources cross 4/6/8/9/15/20-slot boundaries', () => {
   const cases = [[3, 4, 16, true], [4, 4, 16, true], [16, 4, 16, true], [17, 4, 16, true],
     [5, 6, 16, true], [6, 6, 16, true], [32, 6, 16, false], [33, 6, 16, true],
     [8, 9, 16, true], [9, 9, 16, true], [16, 9, 16, true], [17, 9, 16, true], [65, 9, 0, false],
     [7, 8, 16, true], [8, 8, 16, true], [17, 8, 16, true],
     [14, 15, 16, true], [15, 15, 16, true], [16, 15, 16, true], [17, 15, 16, true],
-    [29, 15, 16, true], [30, 15, 16, true], [31, 15, 16, true], [65, 15, 0, false]];
+    [29, 15, 16, true], [30, 15, 16, true], [31, 15, 16, true], [65, 15, 0, false],
+    [18, 20, 16, true], [19, 20, 16, true], [20, 20, 16, true], [21, 20, 16, true],
+    [37, 20, 16, true], [38, 20, 16, true], [39, 20, 16, true], [65, 20, 0, false]];
   for (const [total, lanes, interval, initialManifest] of cases) {
     const planner = api.create(transfer(total, interval !== 0, interval || 16), { lanes, initialManifest });
     let displays = 0;
@@ -159,7 +164,7 @@ test('grid display estimates match planning where manifests and final sources cr
 });
 
 test('real compact streams survive a lost first manifest and permanently unreadable grid slots', async () => {
-  for (const lanes of [1, 2, 4, 6, 8, 9, 15]) {
+  for (const lanes of [1, 2, 4, 6, 8, 9, 15, 20]) {
     const bytes = pattern(384 * 67 + 7);
     const sender = await wire.createTransfer(bytes, 'lane-loss.bin', { compact: true });
     const planner = api.create(sender, { lanes }), collector = wire.createCollector();
@@ -181,7 +186,7 @@ test('real compact streams survive a lost first manifest and permanently unreada
 });
 
 test('real targeted feedback can finish a partial file without sending already complete blocks', async () => {
-  for (const lanes of [2, 4, 6, 8, 9, 15]) {
+  for (const lanes of [2, 4, 6, 8, 9, 15, 20]) {
     const bytes = pattern(600 * 35 - 7), sender = await wire.createTransfer(bytes, 'target.bin', { compact: true, chunkBytes: 600 });
     const collector = wire.createCollector(), planner = api.create(sender, { lanes });
     await collector.accept(sender.manifestFrame());
@@ -215,7 +220,7 @@ test('invalid planning inputs do not create an unbounded or unusable source sequ
     { ...transfer(3), frame: null }, { ...transfer(3), manifestFrame: undefined }, transfer(3, true, 0)]) {
     assert.throws(() => api.create(value), { name: 'TypeError' });
   }
-  for (const options of [{ lanes: 0 }, { lanes: 16 }, { lanes: 1.5 }, { startIndex: NaN }, { initialManifest: 1 }, { interleave: 1 }]) {
+  for (const options of [{ lanes: 0 }, { lanes: 21 }, { lanes: 1.5 }, { startIndex: NaN }, { initialManifest: 1 }, { interleave: 1 }]) {
     assert.throws(() => api.create(transfer(3), options), { name: 'TypeError' });
   }
   const planner = api.create(transfer(3));
@@ -223,7 +228,7 @@ test('invalid planning inputs do not create an unbounded or unusable source sequ
     { missingBlocks: [0], complete: true }, { missingBlocks: [0], repairTargets: {} }]) {
     assert.throws(() => planner.applyFeedback(feedback), { name: 'TypeError' });
   }
-  for (const args of [[0], [1, 16], [1, 1, -1], [1, 1, 1.5]]) assert.equal(api.firstPassDisplays(...args), 0);
+  for (const args of [[0], [1, 21], [1, 1, -1], [1, 1, 1.5]]) assert.equal(api.firstPassDisplays(...args), 0);
 });
 
 test('source interleaving rotates to the requested index and covers every partial-block source once', () => {
@@ -235,7 +240,8 @@ test('source interleaving rotates to the requested index and covers every partia
   }
   cases.push({ total: 67, startIndex: 31, lanes: 4 }, { total: 65, startIndex: 64, lanes: 6 },
     { total: 97, startIndex: 32, lanes: 9 }, { total: 97, startIndex: 31, lanes: 8 },
-    { total: 97, startIndex: 32, lanes: 15 }, { total: 65, startIndex: 64, lanes: 15 });
+    { total: 97, startIndex: 32, lanes: 15 }, { total: 65, startIndex: 64, lanes: 15 },
+    { total: 97, startIndex: 32, lanes: 20 }, { total: 65, startIndex: 64, lanes: 20 });
   cases.push({ total: 27307, startIndex: 27306, lanes: 2 });
   for (const { total, startIndex, lanes } of cases) {
     const planner = api.create(transfer(total), { startIndex, lanes, initialManifest: false });

@@ -4,7 +4,11 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { createContext, runInContext } from 'node:vm';
 
-const source = await readFile(new URL('../../assets/qr-calibration.js', import.meta.url), 'utf8');
+const [source, v5ReferenceText] = await Promise.all([
+  readFile(new URL('../../assets/qr-calibration.js', import.meta.url), 'utf8'),
+  readFile(new URL('./qr-calibration-v5-fixtures.json', import.meta.url), 'utf8')
+]);
+const v5References = JSON.parse(v5ReferenceText);
 function runtime(globals = {}) {
   const browser = createContext({ TextEncoder, crypto: webcrypto, ...globals }, { codeGeneration: { strings: false, wasm: false } });
   runInContext(source, browser, { timeout: 3000 });
@@ -580,7 +584,7 @@ test('v3 malformed grids, profile encodings and alignment flags fail before obse
   const sender = api.create({ grid: { columns: 3, rows: 2 } }), observer = api.createObserver();
   const frame = sender.frame(0);
   for (const change of [
-    value => { value[8] = 6; }, value => { value[9] |= 64; }, value => { value[9] |= 128; }, value => { value[10] = 6; },
+    value => { value[8] = 7; }, value => { value[9] |= 64; }, value => { value[9] |= 128; }, value => { value[10] = 6; },
     value => { value[11] = 0; }, value => { value[11] = 0x41; }, value => { value[11] = 0x14; },
     value => { value[34] = 1; }, value => { value[35] = 1; },
     (_, view) => view.setUint16(28, 48), (_, view) => view.setUint16(30, 1),
@@ -654,7 +658,7 @@ test('v4 all-grid plans cover every 1..5 by 1..3 grid with bounded indices and i
   const order = [[1, 1], [1, 2], [2, 1], [1, 3], [3, 1], [2, 2], [4, 1], [5, 1],
     [2, 3], [3, 2], [4, 2], [3, 3], [5, 2], [4, 3], [5, 3]];
   assert.deepEqual(Array.from(api.allGrids, grid => [grid.columns, grid.rows]), order);
-  assert.deepEqual([api.limits.columns, api.limits.rows, api.limits.lanes], [5, 3, 15]);
+  assert.deepEqual([api.limits.columns, api.limits.rows, api.limits.lanes], [5, 4, 20]);
   assert.ok(Object.isFrozen(api.allGrids) && api.allGrids.every(Object.isFrozen) && Object.isFrozen(api.limits));
   for (const extended of [false, true]) {
     const sender = api.create({ allLayouts: true, extended, grid: { columns: 4, rows: 2 }, large: true });
@@ -780,7 +784,7 @@ test('v4 rejects invalid grids, all/compare ambiguity, short measurement frames 
   const observer = api.createObserver(), last = sender.frame(149, 1199);
   const setup = sender.alignmentFrame(14, sender.alignmentIndex, true);
   for (const value of [
-    edit(last, value => { value[8] = 6; }), edit(last, value => { value[9] |= 32; }),
+    edit(last, value => { value[8] = 7; }), edit(last, value => { value[9] |= 32; }),
     edit(last, value => { value[10] = 150; }), edit(last, value => { value[11] = 0x63; }),
     edit(last, value => { value[11] = 0x54; }), edit(last, value => { value[11] = 0x50; }),
     edit(last, value => { value[11] = 0x43; }), edit(last, (_, view) => view.setUint16(28, 1200)),
@@ -821,8 +825,8 @@ test('v4 observers retain the exact all-layout session when other plans or ident
   assert.equal(observer.accept(forged, 3).foreign, true);
 });
 
-test('v5 landscape plans expose ten wide grids and four quick grids with stable version-specific indices', () => {
-  const wide = [[1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [3, 2], [4, 2], [5, 2], [4, 3], [5, 3]];
+test('v6 landscape plans expose eleven wide grids and four quick grids with stable version-specific indices', () => {
+  const wide = [[1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [3, 2], [4, 2], [5, 2], [4, 3], [5, 3], [5, 4]];
   const quick = [[1, 1], [2, 1], [3, 1], [3, 2]];
   assert.deepEqual(Array.from(api.landscapeGrids, grid => [grid.columns, grid.rows]), wide);
   assert.deepEqual(Array.from(api.landscapeComparedGrids, grid => [grid.columns, grid.rows]), quick);
@@ -833,11 +837,11 @@ test('v5 landscape plans expose ten wide grids and four quick grids with stable 
     const allLayouts = scope === 'all', compareLayouts = !allLayouts;
     const sender = api.create({ landscapeOnly: true, allLayouts, compareLayouts, extended, grid: { columns: 1, rows: 3 } });
     const grids = allLayouts ? wide : quick, base = extended ? api.fastProfiles : api.profiles;
-    assert.equal(sender.version, 5); assert.equal(sender.landscapeOnly, true);
+    assert.equal(sender.version, 6); assert.equal(sender.landscapeOnly, true);
     assert.equal(sender.allLayouts, allLayouts); assert.equal(sender.compareLayouts, compareLayouts);
     assert.equal(sender.profiles.length, grids.length * base.length);
     assert.equal(sender.alignmentIndex, (grids.length - 1) * base.length);
-    assert.equal(sender.alignmentLanes, allLayouts ? 15 : 6);
+    assert.equal(sender.alignmentLanes, allLayouts ? 20 : 6);
     for (let index = 0; index < sender.profiles.length; index++) {
       const profile = sender.profiles[index], [columns, rows] = grids[Math.floor(index / base.length)];
       assert.deepEqual([profile.grid.columns, profile.grid.rows, profile.lanes], [columns, rows, columns * rows]);
@@ -845,7 +849,7 @@ test('v5 landscape plans expose ten wide grids and four quick grids with stable 
       assert.deepEqual([profile.chunkBytes, profile.fps], [base[index % base.length].chunkBytes, base[index % base.length].fps]);
       const lastSequence = profile.fps * 4 * profile.lanes - 1;
       const parsed = api.parse(sender.frame(index, lastSequence));
-      assert.equal(parsed.landscapeOnly, true); assert.equal(parsed.version, 5);
+      assert.equal(parsed.landscapeOnly, true); assert.equal(parsed.version, 6);
       assert.equal(parsed.index, index); assert.equal(parsed.window, 3); assert.equal(parsed.slot, profile.lanes - 1);
     }
     const end = api.parse(sender.endFrame());
@@ -854,10 +858,10 @@ test('v5 landscape plans expose ten wide grids and four quick grids with stable 
   }
 });
 
-test('v5 current-grid trials reject portrait and square multi-QR layouts while older versions keep them', () => {
+test('v6 current-grid trials reject portrait and square multi-QR layouts while older versions keep their legacy grids', () => {
   for (const grid of api.landscapeGrids) {
     const sender = api.create({ landscapeOnly: true, grid });
-    assert.equal(sender.version, 5); assert.equal(sender.profiles.length, 6);
+    assert.equal(sender.version, 6); assert.equal(sender.profiles.length, 6);
     assert.equal(sender.allLayouts, false); assert.equal(sender.compareLayouts, false);
     const parsed = api.parse(sender.frame(0));
     assert.deepEqual([parsed.grid.columns, parsed.grid.rows], [grid.columns, grid.rows]);
@@ -869,13 +873,17 @@ test('v5 current-grid trials reject portrait and square multi-QR layouts while o
     const legacy = api.create({ grid, landscapeOnly: false });
     const legacyFrame = legacy.frame(0);
     assert.equal(api.parse(legacyFrame).landscapeOnly, false);
-    assert.throws(() => api.parse(edit(legacyFrame, value => { value[8] = 5; })), { code: 'CALIBRATION_INVALID' });
+    assert.throws(() => api.parse(edit(legacyFrame, value => { value[8] = 6; })), { code: 'CALIBRATION_INVALID' });
   }
+  for (const columns of [1, 2, 3, 4]) {
+    assert.throws(() => api.create({ landscapeOnly: true, grid: { columns, rows: 4 } }), { code: 'CALIBRATION_INVALID' });
+  }
+  assert.throws(() => api.create({ grid: { columns: 5, rows: 4 } }), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => api.create({ landscapeOnly: 1 }), { code: 'CALIBRATION_INVALID' });
   assert.throws(() => api.create({ landscapeOnly: true, allLayouts: true, compareLayouts: true }), { code: 'CALIBRATION_INVALID' });
 });
 
-test('v5 setup stays header-only and cannot count samples or rewind a started measurement', () => {
+test('v6 setup stays header-only and cannot count samples or rewind a started measurement', () => {
   for (const options of [{ allLayouts: true }, { compareLayouts: true }, { grid: { columns: 4, rows: 2 } }]) {
     const sender = api.create({ ...options, landscapeOnly: true, extended: true, large: true, ecc: 'L' });
     const observer = api.createObserver(), unique = new Set();
@@ -901,25 +909,25 @@ test('v5 setup stays header-only and cannot count samples or rewind a started me
   }
 });
 
-test('v5 SET returns each landscape layout and the maximum rate without accepting a v4 result', () => {
+test('v6 SET returns all eleven landscape layouts and 240000 B/s without accepting a v5 result', () => {
   const sender = api.create({ landscapeOnly: true, allLayouts: true, extended: true, large: true, ecc: 'L' });
   for (const grid of api.landscapeGrids) {
-    const fps = grid.columns === 5 && grid.rows === 3 ? 20 : 2;
+    const fps = grid.columns === 5 && grid.rows === 4 ? 20 : 2;
     const index = sender.profiles.findIndex(profile => profile.grid === grid && profile.chunkBytes === 600 && profile.fps === fps);
     const observer = api.createObserver();
     observeProfile(sender, observer, index);
     observer.accept(sender.endFrame(), 600000);
     const feedback = observer.createFeedback(), selected = sender.acceptFeedback(feedback);
-    assert.equal(feedback[8], 5); assert.equal(selected.landscapeOnly, true); assert.equal(selected.allLayouts, true);
+    assert.equal(feedback[8], 6); assert.equal(selected.landscapeOnly, true); assert.equal(selected.allLayouts, true);
     assert.deepEqual([selected.grid.columns, selected.grid.rows], [grid.columns, grid.rows]);
     assert.equal(selected.samples, fps * 4 * grid.columns * grid.rows);
     assert.equal(selected.bytesPerSecond, 600 * fps * grid.columns * grid.rows);
     if (fps === 20) {
-      assert.equal(index, 99); assert.equal(selected.samples, 1200); assert.equal(selected.steps, 80);
-      assert.equal(selected.bytesPerSecond, 180000);
+      assert.equal(index, 109); assert.equal(selected.samples, 1600); assert.equal(selected.steps, 80);
+      assert.equal(selected.bytesPerSecond, 240000);
     }
     for (const change of [
-      value => { value[8] = 4; }, value => { value[9] = 100; }, value => { value[11] &= ~16; },
+      value => { value[8] = 5; }, value => { value[9] = 110; }, value => { value[11] &= ~16; },
       value => { value[11] |= 4; }, value => { value[10] = 0x22; },
       (_, view) => view.setUint16(28, selected.samples - 1)
     ]) assert.throws(() => sender.acceptFeedback(edit(feedback, change)), { code: 'CALIBRATION_INVALID' });
@@ -932,13 +940,14 @@ test('v5 SET returns each landscape layout and the maximum rate without acceptin
     [3, 2, true, true, false]);
 });
 
-test('v5 rejects unsupported grids and bounds without reinterpreting v4 profile indices', () => {
+test('v6 rejects unsupported grids and bounds without reinterpreting v4 profile indices', () => {
   const sender = api.create({ landscapeOnly: true, allLayouts: true, extended: true, large: true });
-  const observer = api.createObserver(), last = sender.frame(99, 1199);
+  const observer = api.createObserver(), last = sender.frame(109, 1599);
   for (const change of [
-    value => { value[8] = 6; }, value => { value[10] = 100; }, value => { value[9] |= 32; },
+    value => { value[8] = 7; }, value => { value[10] = 110; }, value => { value[9] |= 32; },
     value => { value[11] = 0x12; }, value => { value[11] = 0x22; }, value => { value[11] = 0x33; },
-    value => { value[11] = 0x23; }, value => { value[11] = 0x63; }, (_, view) => view.setUint16(28, 1200)
+    value => { value[11] = 0x23; }, value => { value[11] = 0x63; }, value => { value[11] = 0x55; },
+    (_, view) => view.setUint16(28, 1600)
   ]) {
     assert.throws(() => observer.accept(edit(last, change), 0), { code: 'CALIBRATION_INVALID' });
     assert.equal(observer.state, null);
@@ -946,8 +955,8 @@ test('v5 rejects unsupported grids and bounds without reinterpreting v4 profile 
   const old = api.create({ allLayouts: true });
   const oldIndexTwelve = old.frame(12, 0);
   assert.deepEqual([api.parse(oldIndexTwelve).grid.columns, api.parse(oldIndexTwelve).grid.rows], [2, 1]);
-  assert.throws(() => api.parse(edit(oldIndexTwelve, value => { value[8] = 5; })), { code: 'CALIBRATION_INVALID' },
-    'Version 5 index 12 means 3×1, so a v4 2×1 header cannot reuse that index.');
+  assert.throws(() => api.parse(edit(oldIndexTwelve, value => { value[8] = 6; })), { code: 'CALIBRATION_INVALID' },
+    'Version 6 index 12 means 3×1, so a v4 2×1 header cannot reuse that index.');
   const fixed = runtime({ crypto: { getRandomValues(value) { return value.fill(9); } } });
   const current = fixed.create({ landscapeOnly: true, allLayouts: true });
   const earlier = fixed.create({ allLayouts: true });
@@ -955,6 +964,79 @@ test('v5 rejects unsupported grids and bounds without reinterpreting v4 profile 
   active.accept(current.frame(0), 0);
   assert.equal(current.id, earlier.id);
   const foreign = active.accept(earlier.frame(0), 1);
-  assert.equal(foreign.foreign, true); assert.equal(foreign.version, 5); assert.equal(foreign.landscapeOnly, true);
-  assert.equal(foreign.results.length, 60); assert.equal(foreign.results[0].received, 1);
+  assert.equal(foreign.foreign, true); assert.equal(foreign.version, 6); assert.equal(foreign.landscapeOnly, true);
+  assert.equal(foreign.results.length, 66); assert.equal(foreign.results[0].received, 1);
+});
+
+test('recorded PR14 v5 frames retain their original plans, END indices, exact SET bytes and full wire-reference hashes', () => {
+  const fixed = runtime({ crypto: { getRandomValues(value) {
+    for (let i = 0; i < value.length; i++) value[i] = i;
+    return value;
+  } } });
+  const decode = encoded => new Uint8Array(Buffer.from(encoded, 'base64'));
+  assert.equal(v5References.cases.length, 5);
+  assert.match(v5References.sourceSha256, /^[0-9a-f]{64}$/);
+  for (const reference of v5References.cases) {
+    const observer = fixed.createObserver();
+    const setup = decode(reference.setup), end = decode(reference.end), last = decode(reference.lastMeasurement);
+    assert.equal(fixed.parse(setup).version, 5);
+    observer.accept(setup, 0);
+    assert.equal(observer.state.version, 5); assert.equal(observer.state.landscapeOnly, true);
+    assert.equal(observer.state.totalProfiles, reference.profileCount);
+    assert.equal(observer.state.currentIndex, reference.alignmentIndex);
+    assert.equal(observer.state.lanes, reference.alignmentLanes);
+    const baseCount = reference.options.extended ? 10 : 6;
+    assert.deepEqual(Array.from(observer.state.results.filter((_, index) => index % baseCount === 0), result =>
+      [result.grid.columns, result.grid.rows]), reference.gridOrder.map(grid => [grid.columns, grid.rows]));
+    assert.ok(observer.state.results.every(result => result.grid.rows <= 3));
+    if (reference.options.allLayouts) assert.equal(reference.profileCount, reference.options.extended ? 100 : 60);
+
+    const lastProfile = fixed.parse(last), count = lastProfile.fps * 4 * lastProfile.lanes;
+    for (let sequence = 0; sequence < count; sequence++) {
+      observer.accept(edit(last, (_, view) => view.setUint16(28, sequence)), sequence + 1);
+    }
+    observer.accept(end, 999999);
+    assert.equal(observer.state.currentIndex, reference.profileCount - 1);
+    assert.equal(observer.state.best.index, reference.profileCount - 1);
+    const feedback = observer.createFeedback();
+    assert.deepEqual(Buffer.from(feedback), Buffer.from(decode(reference.feedback)), 'The current receiver emits the exact recorded v5 SET.');
+
+    // V6 only appends 5×4. Retagging its shared prefix and repairing the CRC
+    // must reproduce the independently recorded v5 corpus, byte for byte.
+    const current = fixed.create(reference.options), hash = createHash('sha256');
+    assert.equal(current.version, 6);
+    const asV5 = value => edit(value, data => { data[8] = 5; });
+    for (let index = 0; index < reference.profileCount; index++) {
+      const profile = current.profiles[index];
+      const first = asV5(current.frame(index, 0));
+      assert.equal(fixed.parse(first).index, index);
+      hash.update(first); hash.update(asV5(current.frame(index, profile.fps * 4 * profile.lanes - 1)));
+      for (let lane = 0; lane < profile.lanes; lane++) {
+        hash.update(asV5(current.alignmentFrame(lane, index)));
+        hash.update(asV5(current.alignmentFrame(lane, index, true)));
+      }
+    }
+    hash.update(end); hash.update(feedback);
+    assert.equal(hash.digest('hex'), reference.wireSha256);
+    assert.throws(() => current.acceptFeedback(feedback), { code: 'CALIBRATION_INVALID' }, 'A v6 sender still requires its own version.');
+  }
+});
+
+test('versions 1 through 5 reject four rows even though the current grid registry contains 5×4', () => {
+  const current = api.create({ landscapeOnly: true, grid: { columns: 5, rows: 4 } });
+  const value = current.frame(0);
+  assert.equal(api.parse(value).version, 6);
+  assert.equal(api.parse(value).lanes, 20);
+  for (const version of [1, 2, 3, 4, 5]) {
+    const observer = api.createObserver();
+    for (const grid of [0x34, 0x54]) {
+      assert.throws(() => observer.accept(edit(value, frame => { frame[8] = version; frame[11] = grid; }), 0),
+        { code: 'CALIBRATION_INVALID' });
+      assert.equal(observer.state, null);
+    }
+  }
+  const full = api.create({ landscapeOnly: true, allLayouts: true, extended: true });
+  const newProfile = full.frame(100, 0);
+  assert.equal(api.parse(newProfile).grid.rows, 4);
+  assert.throws(() => api.parse(edit(newProfile, frame => { frame[8] = 5; })), { code: 'CALIBRATION_INVALID' });
 });

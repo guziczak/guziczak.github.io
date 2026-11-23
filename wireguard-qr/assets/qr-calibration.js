@@ -9,14 +9,15 @@
   const RATES = Object.freeze([2, 5, 10, 15, 20]);
   const FAST_PROFILES = Object.freeze([...PROFILES, ...[384, 600].flatMap(chunkBytes =>
     [15, 20].map(fps => Object.freeze({ chunkBytes, fps })))]);
-  const LIMITS = Object.freeze({ columns: 5, rows: 3, lanes: 15 });
+  const LIMITS = Object.freeze({ columns: 5, rows: 4, lanes: 20 });
   const GRIDS = Object.freeze(Object.fromEntries([1, 2, 3, 4, 5].flatMap(columns =>
-    [1, 2, 3].map(rows => [(columns << 4) | rows, Object.freeze({ columns, rows })]))));
+    [1, 2, 3, 4].map(rows => [(columns << 4) | rows, Object.freeze({ columns, rows })]))));
   const COMPARED_GRIDS = Object.freeze([GRIDS[0x11], GRIDS[0x21], GRIDS[0x12], GRIDS[0x22]]);
-  const ALL_GRIDS = Object.freeze(Object.values(GRIDS).sort((a, b) =>
+  const ALL_GRIDS = Object.freeze(Object.values(GRIDS).filter(grid => grid.rows <= 3).sort((a, b) =>
     a.columns * a.rows - b.columns * b.rows || a.columns - b.columns || a.rows - b.rows));
   const isLandscape = grid => grid.columns > grid.rows || (grid.columns === 1 && grid.rows === 1);
-  const LANDSCAPE_GRIDS = Object.freeze(ALL_GRIDS.filter(isLandscape));
+  const V5_LANDSCAPE_GRIDS = Object.freeze(ALL_GRIDS.filter(isLandscape));
+  const LANDSCAPE_GRIDS = Object.freeze([...V5_LANDSCAPE_GRIDS, GRIDS[0x54]]);
   const LANDSCAPE_COMPARED_GRIDS = Object.freeze([GRIDS[0x11], GRIDS[0x21], GRIDS[0x31], GRIDS[0x32]]);
   const withGrids = (profiles, grids) => Object.freeze(grids.flatMap(grid => profiles.map(profile =>
     Object.freeze({ ...profile, grid, lanes: grid.columns * grid.rows }))));
@@ -24,14 +25,16 @@
     [key, Object.freeze([withGrids(PROFILES, [grid]), withGrids(FAST_PROFILES, [grid])])])));
   const COMPARED_PROFILES = Object.freeze([withGrids(PROFILES, COMPARED_GRIDS), withGrids(FAST_PROFILES, COMPARED_GRIDS)]);
   const ALL_PROFILES = Object.freeze([withGrids(PROFILES, ALL_GRIDS), withGrids(FAST_PROFILES, ALL_GRIDS)]);
+  const V5_LANDSCAPE_PROFILES = Object.freeze([
+    withGrids(PROFILES, V5_LANDSCAPE_GRIDS), withGrids(FAST_PROFILES, V5_LANDSCAPE_GRIDS)]);
   const LANDSCAPE_PROFILES = Object.freeze([withGrids(PROFILES, LANDSCAPE_GRIDS), withGrids(FAST_PROFILES, LANDSCAPE_GRIDS)]);
   const LANDSCAPE_COMPARED_PROFILES = Object.freeze([
     withGrids(PROFILES, LANDSCAPE_COMPARED_GRIDS), withGrids(FAST_PROFILES, LANDSCAPE_COMPARED_GRIDS)]);
   const packGrid = grid => (grid.columns << 4) | grid.rows;
   function profilesFor(version, extended = false, grid = GRIDS[0x11], compareLayouts = false, allLayouts = false) {
     if (version < 3) return version === 1 ? PROFILES : FAST_PROFILES;
-    const all = version === 5 ? LANDSCAPE_PROFILES : ALL_PROFILES;
-    const compared = version === 5 ? LANDSCAPE_COMPARED_PROFILES : COMPARED_PROFILES;
+    const all = version === 6 ? LANDSCAPE_PROFILES : version === 5 ? V5_LANDSCAPE_PROFILES : ALL_PROFILES;
+    const compared = version >= 5 ? LANDSCAPE_COMPARED_PROFILES : COMPARED_PROFILES;
     return (allLayouts ? all : compareLayouts ? compared : GRID_PROFILES[packGrid(grid)])[Number(extended)];
   }
   const equal = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
@@ -60,7 +63,7 @@
     if (!bytes(value) || value.length < 40) throw fail('Niepełny kod próby.');
     const view = new DataView(value.buffer, value.byteOffset, value.byteLength);
     if (view.getUint32(value.length - 4) !== checksum(value.subarray(0, -4))) throw fail('Uszkodzony kod próby.');
-    if (![1, 2, 3, 4, 5].includes(value[8])) throw fail('Nieobsługiwana wersja próby.');
+    if (![1, 2, 3, 4, 5, 6].includes(value[8])) throw fail('Nieobsługiwana wersja próby.');
     return view;
   }
   function parse(value) {
@@ -70,13 +73,13 @@
     const version = value[8], flags = value[9];
     const compareLayouts = version >= 3 && Boolean(flags & 32);
     const allLayouts = version >= 4 && Boolean(flags & 128);
-    const landscapeOnly = version === 5;
+    const landscapeOnly = version >= 5;
     const extended = version === 2 || (version >= 3 && Boolean(flags & 16));
     const alignment = version >= 3 && Boolean(flags & 8);
     const setup = version >= 3 && Boolean(flags & 64);
     const grid = version >= 3 ? GRIDS[value[11]] : GRIDS[(value[11] << 4) | 1];
     if ((flags & ~(version >= 4 ? 255 : version === 3 ? 127 : 7)) || !grid || (setup && !alignment)
-      || (version < 4 && grid.columns > 3) || (allLayouts && compareLayouts)
+      || (version < 4 && grid.columns > 3) || (version < 6 && grid.rows > 3) || (allLayouts && compareLayouts)
       || (landscapeOnly && !isLandscape(grid))
       || (version < 3 && ![1, 2].includes(value[11]))) {
       throw fail('Nieprawidłowa siatka próby.');
@@ -107,7 +110,8 @@
     if (typeof root.crypto?.getRandomValues !== 'function') throw fail('Próba wymaga generatora losowego.');
     const requestedGrid = grid === undefined ? GRIDS[0x11] : gridOf(grid);
     if (landscapeOnly && !allLayouts && !compareLayouts && !isLandscape(requestedGrid)) throw fail('Próba wymaga siatki poziomej albo 1×1.');
-    const version = landscapeOnly ? 5 : allLayouts || (!compareLayouts && requestedGrid.columns > 3) ? 4
+    if (!landscapeOnly && !allLayouts && !compareLayouts && requestedGrid.rows > 3) throw fail('Cztery wiersze wymagają poziomej próby.');
+    const version = landscapeOnly ? 6 : allLayouts || (!compareLayouts && requestedGrid.columns > 3) ? 4
       : grid !== undefined || compareLayouts ? 3 : extended ? 2 : 1;
     const profiles = profilesFor(version, extended, requestedGrid, compareLayouts, allLayouts);
     const alignmentLanes = version >= 3 ? Math.max(...profiles.map(profile => profile.lanes)) : lanes;

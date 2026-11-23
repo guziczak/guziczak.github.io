@@ -1,0 +1,214 @@
+{
+  "description": "CAL/SET v5 reference captured from the PR14 source before v6 was introduced. IDs are fixed synthetic bytes 00..0f; no user data.",
+  "sourceSha256": "1a7c22bc82bfc9cd453cb7e691a01c7e53f1fe11eb14711370900def0a84ecea",
+  "cases": [
+    {
+      "options": {
+        "landscapeOnly": true,
+        "allLayouts": true
+      },
+      "profileCount": 60,
+      "gridOrder": [
+        {
+          "columns": 1,
+          "rows": 1
+        },
+        {
+          "columns": 2,
+          "rows": 1
+        },
+        {
+          "columns": 3,
+          "rows": 1
+        },
+        {
+          "columns": 4,
+          "rows": 1
+        },
+        {
+          "columns": 5,
+          "rows": 1
+        },
+        {
+          "columns": 3,
+          "rows": 2
+        },
+        {
+          "columns": 4,
+          "rows": 2
+        },
+        {
+          "columns": 5,
+          "rows": 2
+        },
+        {
+          "columns": 4,
+          "rows": 3
+        },
+        {
+          "columns": 5,
+          "rows": 3
+        }
+      ],
+      "alignmentIndex": 54,
+      "alignmentLanes": 15,
+      "setup": "V0dRUi1DQUwFyDZTAAECAwQFBgcICQoLDA0ODwAAAAAPoAAABDw54A==",
+      "end": "V0dRUi1DQUwFgTtTAAECAwQFBgcICQoLDA0OD///AAAPoAEC0VlecA==",
+      "lastMeasurement": "V0dRUi1DQUwFgDtTAAECAwQFBgcICQoLDA0ODwAAAAAPoAECy8D86xjtmHA6ohrhwqQsZ6wCrW4PsqKS3WlN2UTSxUHGvWp0U4gyDE/gpxxkYAMpm61DPpe/ZEzEvWLFYbP8OcaVMdoHDcWTAYupKBo5i6LzWJcbfC6u4NIO1oxni87cJ460SqeNSTgk9O8NyWhw6xsIcTfzzzVzVElcn1y1Tstz5sMg8jP6M3ktLfwReqQPJkcHdld81eiiFWdtzU/7GBJeR+gip5q2OhzG7YCRYqRxcsUkfew+BQ2egW1SUDjpULUdZNBYValho75+IZ1tYUTrUFWzjaYro7O54enNNjl6GktN5olI+qVQdX0GQo40LRviJg/DHqYhXPjr7d2oJMua97cTbn7L94pUujRWIqFE6QbFzLjyB6Adohnist1r4qVTxyIVnnc/vJckcjgBJxv44S03ZAuedJVMwuqZymCB7UCiURJpvjunW2omsDW7YwMNUFmP0XaEooH51/01qEmKUNjpRAq6WoQA7X8R09oiOna4hxyKwIzqRFsu2gQloReWMgYtjUj4i3KKR1dXgPs4y+sms2nXOVbpjy53OTX9iucfYQUBGUAo14NV6EWq3lNpwjXcMzBTcbIXErRwzipBgeEIp6BVJ/vmFCRII+KsWv0c3Z07o/LxHEK5D7TvSyaAs0HW2PPf6frYIyJaKb89L5E2fh3egct4+x5BEpTCUh9h0AKN2mx+vHumQpe7Eewh4DbfSqHLQnpiV4B7Jdn8F71SIEnacTovybuxfYljWvGOnt49hwlKYkT6OjZgO+HiZJQf2XRAHFOIBNKYmq4wJFuu/t/D8WrAUQ==",
+      "feedback": "V0dRUi1TRVQFO1MQAAECAwQFBgcICQoLDA0ODwJYAAFfkAAo46NakQ==",
+      "wireSha256": "6e0cb7e83ea5ee4a654362ae5d07d452fa7d56c39269f868e35d576e5422d4cb"
+    },
+    {
+      "options": {
+        "landscapeOnly": true,
+        "allLayouts": true,
+        "extended": true,
+        "ecc": "L",
+        "large": true
+      },
+      "profileCount": 100,
+      "gridOrder": [
+        {
+          "columns": 1,
+          "rows": 1
+        },
+        {
+          "columns": 2,
+          "rows": 1
+        },
+        {
+          "columns": 3,
+          "rows": 1
+        },
+        {
+          "columns": 4,
+          "rows": 1
+        },
+        {
+          "columns": 5,
+          "rows": 1
+        },
+        {
+          "columns": 3,
+          "rows": 2
+        },
+        {
+          "columns": 4,
+          "rows": 2
+        },
+        {
+          "columns": 5,
+          "rows": 2
+        },
+        {
+          "columns": 4,
+          "rows": 3
+        },
+        {
+          "columns": 5,
+          "rows": 3
+        }
+      ],
+      "alignmentIndex": 90,
+      "alignmentLanes": 15,
+      "setup": "V0dRUi1DQUwF3lpTAAECAwQFBgcICQoLDA0ODwAAAAAPoAAA0qOjgg==",
+      "end": "V0dRUi1DQUwFl2NTAAECAwQFBgcICQoLDA0OD///AAAPoAEE4bYcMA==",
+      "lastMeasurement": "V0dRUi1DQUwFlmNTAAECAwQFBgcICQoLDA0ODwAAAAAPoAEEAyEYBqUuX7Dw26SL/ns/xBuX3ywwVOynSDGRDR2VmfF8kewM7yVDkDaiBxD5wtw2FUViUrZj2VIderQSu+uLKtcZljOVVcqHqMTEC9oZKdZr8R05OLmsiArMC8nLuzJhcu4zbjefyy8qDbpUyHJJGkNfYIWJYkgUa4aNDbStc5+2ZGNIybKL7X/iacrZW6v9VTSB0ssPy9HZYvCqqssaWyoUu8EGm1tso7ffrbmGz7hO2Ke8MoStLxrP6tafA3qVxFGrnpfKKvtZR13V3w97aPoO7MPrs5dB/3C4M562dULDhZ6VAK2AsCmrxyTMGfaqCVBugvEVN7Si9cFaUiAPbexuLwnzGXocEJ9RTexrCGULEpH4xgJtZKEoDOhnF3Kx241elSLuPhm/SHDVGbr2HAcp8DAojzwzN5EpMQxEGGoJpIKCDlURpa7o6l/l1mJbJxo2yuIyVyxRlrG0vF8aBv/sL1lATZFP3QSLgLRjLFhtlEotMAl9NqHd7Vk7ZAR31D7U5PEmusYYbsLsvhzYu2exF5KliXj8BfSGnE7KeXt7N8w/VtaE6Z/c3He+psFtrTwQoeL3zElJR0LkZJWTlxeqhKjh6qMV92XPTtN2naWvMxXm1yIyQocPvDdZsgjZ3E7COnFMYYZGeAP/nk1Qochs16C0jMtdcau5mTMKXqkXJtG4iALBjV5l5uwpm3HYmhRwVxvqZ5uYydo1VuGYrdi+twWVpOTpVg7Nqu4sP5I8R4KrY097Mxj2mo7YEOZ93Ur/XLTFfe9MD2lsK1nus7LhPJ9edwYrXk4bi7BEjO2ZQRf/baBnRUQdSooNVbIP/+chnDLTSqU0n0vqN99WeeWoUxNYOStLKL2vqUVuEZ4=",
+      "feedback": "V0dRUi1TRVQFY1MbAAECAwQFBgcICQoLDA0ODwSwAAK/IABQOG90vg==",
+      "wireSha256": "0cec542d9672429bbce127f7f837dde2b98484525a7bb68b63dd7f5d8385b65f"
+    },
+    {
+      "options": {
+        "landscapeOnly": true,
+        "compareLayouts": true
+      },
+      "profileCount": 24,
+      "gridOrder": [
+        {
+          "columns": 1,
+          "rows": 1
+        },
+        {
+          "columns": 2,
+          "rows": 1
+        },
+        {
+          "columns": 3,
+          "rows": 1
+        },
+        {
+          "columns": 3,
+          "rows": 2
+        }
+      ],
+      "alignmentIndex": 18,
+      "alignmentLanes": 6,
+      "setup": "V0dRUi1DQUwFaBIyAAECAwQFBgcICQoLDA0ODwAAAAAPoAAALSpcZQ==",
+      "end": "V0dRUi1DQUwFIRcyAAECAwQFBgcICQoLDA0OD///AAAPoAECrWYWSQ==",
+      "lastMeasurement": "V0dRUi1DQUwFIBcyAAECAwQFBgcICQoLDA0ODwAAAAAPoAECiKNrz7IOub3iTH6Ma5iQBYWP5OAryIvIYVlGnpRS91mAjE9C4+Qcl/nt1d9vFO3rf87Zm0lKyJMNvTLLltLgB/jTG4LB3UGhgRzpjBvNxu27VEoFkLYcxnH0pGo8CBtgs7gAFkP5HArH7ffkUfLZZzxV4B7vWcnwmTDSqvOAAQ3hn9sJcXe9dkkJqSJi1RT7gvJpHZOojPL58QA+noJOZQf6mEWnudutAvw3gsmqLOHten56/YWPlxFZkOv6c1U265+VBetQLynnQunNLcwdXOykSIl9n1DcWuy2eN74o6RAnBCyqvgYYNabYy8XeEAWO8Iuy1wKGZKljR+0resM8uQYBqr9vF4ev3W3f3G3avOk6mhLMtgbDIq8u2i/rrdzdTQ+WydK35RWHdMAOYsSu/uMtjIIqLbjPkDFVU17/g22odiOeIzwWXuV9HIoK4OR/UMZYCtGMxLYsXABGOqKvpZHQ/3QDi76qN7HiwnHmdBsR+Zvo4WLfZ0FYWS8PxxHx+L0xrLfMX4DkuAULnGUTgS13uHOtwYgFfRgx3lHTz5NduxbbNdOhWnhbPntjvYE/cQc78onYkPwypY8kpEL+MoaZrNBcJmxGeiIkc7ogQ1YXqrLsbNg1x5CJfX/xLcuCnWWyhjUA6HY2hCxJTnR6AYbmiN4k39IGe9zcQEnXhajBx1x2l2Zh+6D3IPl5BkJMue+oG64Wt+Dyl7QP9LA/Yb1Vp6Im7tLPMsHyPHpAxOxfeMptr74YlrCcdgI8Q4AWSHV8hC8AmxKXSgegktxRy++KZ/U2xHXGLfk/w==",
+      "feedback": "V0dRUi1TRVQFFzIEAAECAwQFBgcICQoLDA0ODwDwAACMoAAo6LrtRw==",
+      "wireSha256": "4f38895022eaa9e16ceabdd36d016f84255e60b42b71b047961bbe15b9804208"
+    },
+    {
+      "options": {
+        "landscapeOnly": true,
+        "compareLayouts": true,
+        "extended": true,
+        "ecc": "L",
+        "large": true
+      },
+      "profileCount": 40,
+      "gridOrder": [
+        {
+          "columns": 1,
+          "rows": 1
+        },
+        {
+          "columns": 2,
+          "rows": 1
+        },
+        {
+          "columns": 3,
+          "rows": 1
+        },
+        {
+          "columns": 3,
+          "rows": 2
+        }
+      ],
+      "alignmentIndex": 30,
+      "alignmentLanes": 6,
+      "setup": "V0dRUi1DQUwFfh4yAAECAwQFBgcICQoLDA0ODwAAAAAPoAAAsLoRlQ==",
+      "end": "V0dRUi1DQUwFNycyAAECAwQFBgcICQoLDA0OD///AAAPoAEEg6+uJw==",
+      "lastMeasurement": "V0dRUi1DQUwFNicyAAECAwQFBgcICQoLDA0ODwAAAAAPoAEEJ1yQxmdRUozePcos42vPi+ZZmRAM522bHs+1idrKPrk3eNDbjzynvF2486OjXbVNA+YyWLoJtOtVXBkwJpkxBe8Uf60UhzFZm94a3ucXd4SKjvopQobcTfKnw336Md/sapJCR4hCMI8htWnk3+yia595v/DcqZaiC7tk3rTtKbRlLNChb8hZfZYCrD9K5Ala1eEBFlyMS/YVAPYbvAbseEv+NnEU6pfPlAFPEQ0Jk89N/G1QzJx1AATcEKrafHDcEOR3zV5JZ9pOyyr3YnNrSwHqUCFrx+Z4KkSOwYHYNDKrZTbGQeG7KQOg+kiqCi01kG6Bhh1+zepbVbCXCCAwE6K6QTzhhoQhPZp+d2mkhISLG6vfdHg+rSpbM27yvV0Y36zbytUP5JZ4fT+lbDRogcxt/tGTHAfXFtw3KMDsSS5i7ykB962EYEK5i5mXyYt87Tfy99IfOg6hPp9GsrgjjldnJrIEruqVJ2jvLYZLd/kdq0LI/xO0rv1cW/yLMbr4liukvoIj0emgJ58QvhvDuSda2akTSYdNWaA7FZ8uwL1qblBtDEIWU8wMMWRXlqhyYJ73b/xJLZ8q7oMxarVKlxkebnIM6G/dyxvJcDQ7mPmYm88GXOeA6WEvJgcMQaeB5ZkCuvdbn3ribnUwJu4lqpy7JhWxFhJmWZyCqVb8XFa0JjHl+Nk8tBUAMDBZv0j7y3QIdF9TkodN9KPZDUjO8T9wxpT0hdbP98iVCUA7OYrBay+kRZdzQMUl9gnwdSXloEvXfJVxkT7Jt1wRWekcXVNGP2/N348fTgG0nqa7JiDD6vcncLX9FzWVqvcH6QrYJObOz+3QJtVOTTsjQE+0baOx9h0SodF3cLu3/5q2EMY=",
+      "feedback": "V0dRUi1TRVQFJzIPAAECAwQFBgcICQoLDA0ODwHgAAEZQABQ+He4hA==",
+      "wireSha256": "51c8b4d60ee5733300d0b787d9764e779e048b912e3e6aefc5f48c62ad188a44"
+    },
+    {
+      "options": {
+        "landscapeOnly": true,
+        "grid": {
+          "columns": 5,
+          "rows": 3
+        },
+        "extended": true,
+        "ecc": "L",
+        "large": true
+      },
+      "profileCount": 10,
+      "gridOrder": [
+        {
+          "columns": 5,
+          "rows": 3
+        }
+      ],
+      "alignmentIndex": 0,
+      "alignmentLanes": 15,
+      "setup": "V0dRUi1DQUwFXgBTAAECAwQFBgcICQoLDA0ODwAAAAAPoAAAYn6pYQ==",
+      "end": "V0dRUi1DQUwFFwlTAAECAwQFBgcICQoLDA0OD///AAAPoAEEdOz9Gg==",
+      "lastMeasurement": "V0dRUi1DQUwFFglTAAECAwQFBgcICQoLDA0ODwAAAAAPoAEE0Wy8NryMaIVgVj4nxvPzofVeLHCZA5qpjKXJQSOUomgl34nxNGKdmGRjrtTFwp6u8cC5l9yJYl/qW/mhcVG48VCv96xzFhXYJAGxU0qmaPMQ7Alp0RaY0D/HBKqzn5BAlBqasqIh7QWtBmbFOoqj0S6qy1sAGeUlSAWOntcCQvEu6vR+Sh9n16T2pqyN/uzESGZC1vu1GaTf5nt9zn7SGSvU9w23jfs8w28H/DZBH7BosO/j4syf5v1k1cZ52ko/goqkodFaP7XB0QVLoVuKzeKPfBAor7kk0rUQFrj4GFxPR0nqtkmRw6rIggLAWTFNsWX3FBpPg2kO4TD5yR6O+rnPnsHEQQYI64WStq1iRnGyozwNSs93bi/LaK922NweGlVDxTdjEjW1PAqKzA8ba0thRWCx6ncY/k4HA4NWeWJbQwLbIvtC2z9cXIYymcSzKgU7kzjPLSdwf76UYRgfRGgv+gaFqTbO2M9cMOg0XTXcVkpUJHSRW8c6Q8WIWCns4YtWYLDAmzB1U/nPp0VCG3+emZVEPKUOSVOQkNXqvfea90sJjb1LXG4U7DnPXO+bRlQD5qwUROhGdKezzDuTzLiD/NdSGGn87lJlApMZgCPLZ8UQKv0pUnw7X7dZ3u3wRdkAZDrD8wwmGNT0HE93U4Cx8IvN7Gv73OXDb+BEkaph49lMn2zzMZ0FFlBRQFg+sNe8GOmNPc4+NVHHUkfTaea3/NoYPKu+VyfdQ1rndHa3bv9SgONyTEse4ZowC8plyKk+IAdThmEtI2MO+J2ZZ5ei3HXOHnHB5JiSeGZMMk1IUz0BgiGe9P5P0HX43tZGzfWT0tbcGZYjt6lNqWVdNbeu2XYKNMz7zVqyWy57mFc=",
+      "feedback": "V0dRUi1TRVQFCVMLAAECAwQFBgcICQoLDA0ODwSwAAK/IABQYahOZw==",
+      "wireSha256": "cf200b7085a4a5ace35290ef6a6a90b91aa5c2d404e8de3ac09438f13f38c5a7"
+    }
+  ]
+}
