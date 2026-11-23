@@ -720,12 +720,14 @@
       mark(view.field);
       say(view.error, Boolean(view.error));
     };
-    // Typing is shaped into DD.MM.YYYY as it happens (not while an IME is composing).
-    dateInput.addEventListener('input', event => {
-      if (event.isComposing) return;
+    // Typing is shaped into DD.MM.YYYY as it happens. Text that a keyboard is still composing
+    // is left alone and shaped when the composition ends: Chromium sends no input event then.
+    const shape = () => {
       const masked = maskDate(dateInput.value);
       if (dateInput.value !== masked) dateInput.value = masked;
-    });
+    };
+    dateInput.addEventListener('input', event => { if (!event.isComposing) shape(); });
+    dateInput.addEventListener('compositionend', shape);
     if (boxInput) {
       // The boxes of the entry are written in through the unseen field laid over them. It
       // hands every key to the date field, which stays the one holder of the date, and gets
@@ -739,9 +741,16 @@
         const end = boxInput.value.length;
         if (boxInput.selectionStart !== end || boxInput.selectionEnd !== end) boxInput.setSelectionRange(end, end);
       };
+      // Nothing to do when the boxes already show what the unseen field holds.
+      const take = () => {
+        if (boxInput.value !== dateDigits(dateInput.value)) write(typedInBoxes(dateInput.value, boxInput.value));
+      };
+      // Digits are taken as they come, also from a keyboard that composes them. Other composed
+      // text waits for the end of its composition, when the unseen field may be rewritten.
       boxInput.addEventListener('input', event => {
-        if (!event.isComposing) write(typedInBoxes(dateInput.value, boxInput.value));
+        if (!event.isComposing || /^\d*$/.test(boxInput.value)) take();
       });
+      boxInput.addEventListener('compositionend', take);
       // A pasted date replaces what is there, in any notation the field accepts.
       boxInput.addEventListener('paste', event => {
         const text = event.clipboardData ? event.clipboardData.getData('text') : '';
