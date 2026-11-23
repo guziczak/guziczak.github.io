@@ -175,7 +175,8 @@
       const fastest = [...candidates].sort(rank)[0] || null;
       const best = (active.version === 3 ? candidates.filter(result => result.stable) : candidates).sort(rank)[0] || null;
       return { id: active.id, version: active.version, lanes: active.lanes, grid: active.grid,
-        currentIndex: active.currentIndex, phase: active.phase, compareLayouts: active.compareLayouts, extended: active.extended,
+        currentIndex: active.currentIndex, phase: active.phase, setup: active.setup,
+        latestMeasurementIndex: active.latestMeasurementIndex, compareLayouts: active.compareLayouts, extended: active.extended,
         measuredProfiles: active.records.filter(record => record.seen.size > 0).length, totalProfiles: active.profiles.length,
         ecc: active.ecc, large: active.large, ended: active.ended,
         progress: active.ended ? 100 : Math.min(99, Math.round(active.progress * 100)), results, best, fastest };
@@ -192,25 +193,28 @@
         const profiles = profilesFor(frame.version, frame.extended, frame.grid, frame.compareLayouts);
         active = { id: frame.id, version: frame.version, profiles, idBytes: new Uint8Array(frame.idBytes),
           lanes: frame.lanes, grid: frame.grid, planGrid: frame.grid, compareLayouts: frame.compareLayouts, extended: frame.extended,
-          currentIndex: frame.index, latestMeasurementIndex: -1, phase: frame.alignment ? 'alignment' : 'measuring',
+          currentIndex: frame.index, latestMeasurementIndex: -1, setup: frame.setup, phase: frame.alignment ? 'alignment' : 'measuring',
           ecc: frame.ecc, large: frame.large, ended: false, progress: 0,
           records: profiles.map(() => ({ seen: new Set(), steps: new Set(), perSecond: [0, 0, 0, 0] })) };
       }
       if (active.ended) return snapshot();
       if (frame.alignment) {
         // Setup previews can use the largest grid before profile zero starts.
-        // A delayed setup cannot masquerade as that later profile's settling
-        // period. Plain alignment still permits joining after missed profiles.
-        if (active.latestMeasurementIndex < 0 || (!frame.setup && frame.index > active.latestMeasurementIndex)) {
-          active.phase = 'alignment'; active.currentIndex = frame.index;
+        // A delayed setup or settling frame cannot rewind the measurement map.
+        // Leaving the initial preview may start at any profile, including zero.
+        const acceptSetup = frame.setup && active.setup && active.latestMeasurementIndex < 0;
+        const acceptSettle = !frame.setup && frame.index > active.latestMeasurementIndex
+          && (active.setup || frame.index >= active.currentIndex);
+        if (acceptSetup || acceptSettle) {
+          active.phase = 'alignment'; active.setup = frame.setup; active.currentIndex = frame.index;
           active.lanes = frame.lanes; active.grid = frame.grid;
         }
       } else if (frame.ended) {
-        active.ended = true; active.phase = 'finished'; active.currentIndex = frame.index;
+        active.ended = true; active.phase = 'finished'; active.setup = false; active.currentIndex = frame.index;
         active.lanes = frame.lanes; active.grid = frame.grid;
       } else {
-        if (active.latestMeasurementIndex < 0 || frame.index >= active.currentIndex) {
-          active.phase = 'measuring'; active.currentIndex = frame.index;
+        if (active.setup || frame.index >= active.currentIndex) {
+          active.phase = 'measuring'; active.setup = false; active.currentIndex = frame.index;
           active.lanes = frame.lanes; active.grid = frame.grid;
         }
         active.latestMeasurementIndex = Math.max(active.latestMeasurementIndex, frame.index);

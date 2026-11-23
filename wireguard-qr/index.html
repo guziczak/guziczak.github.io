@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl" data-app-version="2026.11.23-calibration.3">
+<html lang="pl" data-app-version="2026.11.23-calibration.4">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,7 +10,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'none'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Plik ↔ QR — lokalny konwerter</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=13">
+  <link rel="stylesheet" href="./styles.css?v=14">
   <script src="./assets/qr-core.js?v=3" defer></script>
   <script src="./assets/qr-render.js?v=1" defer></script>
   <script src="./assets/qr-encoder.js?v=2" defer></script>
@@ -19,11 +19,12 @@
   <script src="./assets/qr-camera.js?v=4" defer></script>
   <script src="./assets/zip-core.js?v=2" defer></script>
   <script src="./assets/qr-telemetry.js?v=3" defer></script>
-  <script src="./assets/qr-calibration.js?v=4" defer></script>
+  <script src="./assets/qr-calibration.js?v=5" defer></script>
+  <script src="./assets/qr-calibration-view.js?v=1" defer></script>
   <script src="./assets/qr-playback.js?v=3" defer></script>
   <script src="./assets/qr-large-store.js?v=1" defer></script>
   <script src="./assets/qr-large.js?v=1" defer></script>
-  <script src="./app.js?v=15" defer></script>
+  <script src="./app.js?v=16" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#converter">Przejdź do konwertera</a>
@@ -217,50 +218,62 @@
         </div>
       </section>
 
-      <section id="decode-panel" class="workspace" role="tabpanel" aria-labelledby="decode-tab" hidden>
+      <section id="decode-panel" class="workspace" role="tabpanel" aria-labelledby="decode-tab" data-receiver-view="file" hidden>
+        <div id="receiver-view-switch" class="receiver-view-switch" role="group" aria-label="Widok odbiornika">
+          <div class="receiver-view-buttons">
+            <button id="receiver-view-file" class="button" type="button" aria-pressed="true" aria-controls="receiver-file-input receiver-file-output">Odbiór pliku</button>
+            <button id="receiver-view-calibration" class="button" type="button" aria-pressed="false" aria-controls="receiver-calibration-dashboard">Kalibracja</button>
+          </div>
+          <p>Wybierz podgląd odbioru. Kamera jest wspólna dla obu widoków.</p>
+        </div>
         <div class="input-pane">
-          <div class="pane-heading"><h2>Wczytaj kod QR</h2><span class="small-tag">QR → PLIK</span></div>
-          <section class="large-transfer-box" aria-labelledby="large-receiver-title">
-            <h3 id="large-receiver-title">Duży plik i wznawianie</h3>
-            <p>Włącz przed odbiorem dużego transferu. Ukończone części będą zapisywane na tym urządzeniu, także po zamknięciu strony. Dane nadal przechodzą wyłącznie przez QR.</p>
-            <button id="enable-large-receiver" class="button secondary full-width" type="button">Włącz zapis i wznawianie</button>
-            <p id="large-storage-status" class="message" role="status" aria-live="polite"></p>
-            <div id="large-storage-details" hidden>
-              <button id="large-resume" class="button primary full-width" type="button" disabled>Wznów zapisany transfer</button>
-              <button id="large-delete" class="button secondary full-width" type="button" disabled>Usuń zapisany transfer</button>
-              <div id="large-delete-question" class="large-delete-question" hidden>
-                <p>Usunąć wszystkie lokalnie zapisane części tego transferu? Pobrany wcześniej plik pozostanie na urządzeniu.</p>
-                <div class="large-actions"><button id="large-delete-cancel" class="button secondary" type="button">Zachowaj części</button><button id="large-delete-confirm" class="button secondary" type="button">Usuń zapisane części</button></div>
+          <div id="receiver-file-input">
+            <div class="pane-heading"><h2>Wczytaj kod QR</h2><span class="small-tag">QR → PLIK</span></div>
+            <section class="large-transfer-box" aria-labelledby="large-receiver-title">
+              <h3 id="large-receiver-title">Duży plik i wznawianie</h3>
+              <p>Włącz przed odbiorem dużego transferu. Ukończone części będą zapisywane na tym urządzeniu, także po zamknięciu strony. Dane nadal przechodzą wyłącznie przez QR.</p>
+              <button id="enable-large-receiver" class="button secondary full-width" type="button">Włącz zapis i wznawianie</button>
+              <p id="large-storage-status" class="message" role="status" aria-live="polite"></p>
+              <div id="large-storage-details" hidden>
+                <button id="large-resume" class="button primary full-width" type="button" disabled>Wznów zapisany transfer</button>
+                <button id="large-delete" class="button secondary full-width" type="button" disabled>Usuń zapisany transfer</button>
+                <div id="large-delete-question" class="large-delete-question" hidden>
+                  <p>Usunąć wszystkie lokalnie zapisane części tego transferu? Pobrany wcześniej plik pozostanie na urządzeniu.</p>
+                  <div class="large-actions"><button id="large-delete-cancel" class="button secondary" type="button">Zachowaj części</button><button id="large-delete-confirm" class="button secondary" type="button">Usuń zapisane części</button></div>
+                </div>
               </div>
+              <p class="series-hint">Potrzebne jest miejsce na części i gotowy plik, około dwukrotność jego rozmiaru. Dostępność zapisu sprawdzimy przed odbiorem. Czyszczenie danych witryny lub tryb prywatny może usunąć zapis. „Wyczyść” i „Reset odbioru” zachowują zapisane części.</p>
+            </section>
+            <div id="image-drop" class="dropzone image-dropzone">
+              <div class="upload-icon image-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="7" width="36" height="34" rx="4"/><circle cx="17" cy="18" r="4"/><path d="M6 34l11-9 8 7 7-12 10 14"/></svg></div>
+              <p class="drop-title">Przeciągnij obrazy z kodami</p>
+              <p class="drop-subtitle">Jeden QR lub kilka klatek tej samej serii</p>
+              <button id="choose-image" class="button primary" type="button">Wybierz obrazy QR</button>
+              <input id="image-input" class="visually-hidden" type="file" accept="image/*" multiple tabindex="-1" aria-label="Wybierz obrazy kodów QR">
             </div>
-            <p class="series-hint">Potrzebne jest miejsce na części i gotowy plik, około dwukrotność jego rozmiaru. Dostępność zapisu sprawdzimy przed odbiorem. Czyszczenie danych witryny lub tryb prywatny może usunąć zapis. „Wyczyść” i „Reset odbioru” zachowują zapisane części.</p>
-          </section>
-          <div id="image-drop" class="dropzone image-dropzone">
-            <div class="upload-icon image-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="7" width="36" height="34" rx="4"/><circle cx="17" cy="18" r="4"/><path d="M6 34l11-9 8 7 7-12 10 14"/></svg></div>
-            <p class="drop-title">Przeciągnij obrazy z kodami</p>
-            <p class="drop-subtitle">Jeden QR lub kilka klatek tej samej serii</p>
-            <button id="choose-image" class="button primary" type="button">Wybierz obrazy QR</button>
-            <input id="image-input" class="visually-hidden" type="file" accept="image/*" multiple tabindex="-1" aria-label="Wybierz obrazy kodów QR">
+            <div class="camera-divider"><span>albo zeskanuj na żywo</span></div>
           </div>
-          <div class="camera-divider"><span>albo zeskanuj na żywo</span></div>
-          <div class="camera-settings">
-            <fieldset class="format-field qr-grid-settings" aria-describedby="scan-grid-help">
-              <legend>Układ na ekranie nadawcy</legend>
-              <div class="qr-grid-fields">
-                <div><label for="scan-columns">Kolumny</label><div class="select-wrap"><select id="scan-columns"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option></select></div></div>
-                <span class="qr-grid-times" aria-hidden="true">×</span>
-                <div><label for="scan-rows">Wiersze</label><div class="select-wrap"><select id="scan-rows"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option></select></div></div>
+          <details id="receiver-camera-settings" class="receiver-camera-settings">
+            <summary>Układ i kadr kamery</summary>
+            <div class="camera-settings">
+              <fieldset class="format-field qr-grid-settings" aria-describedby="scan-grid-help">
+                <legend>Układ na ekranie nadawcy</legend>
+                <div class="qr-grid-fields">
+                  <div><label for="scan-columns">Kolumny</label><div class="select-wrap"><select id="scan-columns"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option></select></div></div>
+                  <span class="qr-grid-times" aria-hidden="true">×</span>
+                  <div><label for="scan-rows">Wiersze</label><div class="select-wrap"><select id="scan-rows"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option></select></div></div>
+                </div>
+                <p id="scan-grid-count" class="qr-grid-count" role="status" aria-live="polite">1 QR do odczytu</p>
+                <select id="scan-layout" hidden aria-hidden="true" tabindex="-1"><option value="single" selected>Jeden kod</option><option value="dual">Dwa kody</option></select>
+              </fieldset>
+              <p id="scan-grid-help">Podczas kalibracji układ dostosuje się po odczytaniu kodu. Jeśli nie widzisz odczytów, wybierz kolumny i wiersze tak jak na ekranie nadawcy.</p>
+              <div class="format-field camera-profile-field">
+                <label for="camera-profile">Kadr kamery</label>
+                <div class="select-wrap"><select id="camera-profile" aria-describedby="camera-settings-help"><option value="auto" selected>Automatycznie</option><option value="wide">Szeroki · 16:9</option><option value="classic">Klasyczny · 4:3</option></select></div>
               </div>
-              <p id="scan-grid-count" class="qr-grid-count" role="status" aria-live="polite">1 QR do odczytu</p>
-              <select id="scan-layout" hidden aria-hidden="true" tabindex="-1"><option value="single" selected>Jeden kod</option><option value="dual">Dwa kody</option></select>
-            </fieldset>
-            <p id="scan-grid-help">Podczas kalibracji układ dostosuje się po odczytaniu kodu. Jeśli nie widzisz odczytów, wybierz kolumny i wiersze tak jak na ekranie nadawcy.</p>
-            <div class="format-field camera-profile-field">
-              <label for="camera-profile">Kadr kamery</label>
-              <div class="select-wrap"><select id="camera-profile" aria-describedby="camera-settings-help"><option value="auto" selected>Automatycznie</option><option value="wide">Szeroki · 16:9</option><option value="classic">Klasyczny · 4:3</option></select></div>
+              <p id="camera-settings-help">Kolumny i wiersze opisują ekran nadawcy. Zmieść wszystkie kody z białymi marginesami. Telefon możesz trzymać pionowo lub poziomo.</p>
             </div>
-            <p id="camera-settings-help">Kolumny i wiersze opisują ekran nadawcy. Zmieść wszystkie kody z białymi marginesami. Telefon możesz trzymać pionowo lub poziomo.</p>
-          </div>
+          </details>
           <p id="receiver-calibration-help" class="camera-instruction">Kalibrację uruchom przyciskiem „Kalibracja” na nadajniku. Tutaj wybierz „Uruchom kamerę”. Po odczytaniu próbnych kodów automatycznie pokażemy pomiar i wynik.</p>
           <button id="start-camera" class="button secondary camera-button" type="button" aria-describedby="receiver-calibration-help"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg>Uruchom kamerę</button>
           <div id="camera-box" class="camera-box" hidden>
@@ -277,52 +290,16 @@
             <p id="alignment-detail">Na nadajniku wybierz „Kalibracja” i pokaż próbne kody. Gdy odczyt jest stabilny, rozpocznij pomiar na nadajniku.</p>
           </section>
           <button id="stop-camera" class="button secondary camera-button" type="button" hidden>Zatrzymaj kamerę</button>
-          <section id="calibration-panel" class="calibration-panel" aria-labelledby="calibration-title" hidden>
-            <div class="calibration-heading"><span class="status-dot" aria-hidden="true"></span><h3 id="calibration-title">Pomiar i wynik kalibracji</h3></div>
-            <p id="calibration-status-receiver" role="status" aria-live="polite">Trzymaj oba urządzenia nieruchomo podczas próby.</p>
-            <progress id="calibration-progress" value="0" max="100" aria-label="Postęp dobierania ustawień"></progress>
-            <p id="calibration-result"></p>
-            <p id="calibration-coverage"></p>
-            <ol id="calibration-results" class="calibration-results" role="list" aria-label="Porównanie ustawień kalibracji"></ol>
-            <button id="show-calibration-feedback" class="button primary full-width" type="button" hidden>Pokaż wynik nadajnikowi</button>
-            <button id="reset-calibration" class="button secondary full-width" type="button">Zresetuj próbę</button>
-          </section>
           <section id="scan-metrics" class="scan-metrics" aria-label="Rzeczywista skuteczność skanowania" hidden>
             <div><span>Nowe porcje danych/s</span><strong id="scan-rate">—</strong></div>
             <div><span>Czas analizy klatki</span><strong id="scan-latency">—</strong></div>
             <p id="scan-advice">Pomiar rozpocznie się po pierwszych odczytach.</p>
             <p class="metrics-note">Tempo odbioru uwzględnia tylko nowe informacje. Powtórzenia nie podnoszą wyniku.</p>
           </section>
-          <p class="camera-instruction">Dla serii trzymaj kamerę skierowaną na zmieniające się kody. Odebrane fragmenty pozostają tutaj również po zatrzymaniu kamery.</p>
+          <p class="camera-instruction receiver-file-instruction">Dla serii trzymaj kamerę skierowaną na zmieniające się kody. Odebrane fragmenty pozostają tutaj również po zatrzymaniu kamery.</p>
           <p id="decode-message" class="message" role="status" aria-live="polite"></p>
         </div>
         <div class="output-pane">
-          <div class="pane-heading"><h2>Odzyskany plik</h2><span class="output-label">DO POBRANIA</span></div>
-          <section id="transfer-telemetry" class="transfer-telemetry" aria-labelledby="telemetry-title" hidden>
-            <div class="telemetry-heading"><h3 id="telemetry-title">Statystyki odbioru</h3><span id="telemetry-status" class="telemetry-status">W trakcie</span></div>
-            <dl class="telemetry-grid">
-              <div><dt>Czas odbioru</dt><dd id="telemetry-duration">—</dd></div>
-              <div><dt>Średnia prędkość</dt><dd id="telemetry-speed">Po ukończeniu</dd></div>
-              <div><dt>Nowe porcje danych</dt><dd id="telemetry-useful">—</dd></div>
-              <div><dt>Odczytane QR</dt><dd id="telemetry-read">—</dd></div>
-            </dl>
-            <p class="telemetry-note">Czas liczymy od pierwszego fragmentu, razem z przerwami. Średnią prędkość wyznaczamy po odebraniu całości.</p>
-            <details class="telemetry-details"><summary>Szczegóły pomiaru</summary><pre id="telemetry-detail"></pre></details>
-            <button id="copy-diagnostics" class="button secondary full-width" type="button">Kopiuj diagnostykę</button>
-            <p class="telemetry-note">Lokalne liczniki i parametry odczytu, bez nazwy i zawartości pliku. Możesz wkleić wyniki do rozmowy.</p>
-            <textarea id="diagnostics-text" class="diagnostics-text" readonly spellcheck="false" aria-label="Diagnostyka do ręcznego skopiowania" hidden></textarea>
-            <p id="diagnostics-message" class="message" role="status" aria-live="polite"></p>
-          </section>
-          <div id="receiving-progress" class="receiving-progress" hidden>
-            <span id="receiving-label" class="receiving-label">ODBIERANIE SERII</span>
-            <h3 id="receiving-name"></h3>
-            <p id="receiving-count" role="status" aria-live="polite">Odebrano 0 fragmentów</p>
-            <progress id="receiving-progressbar" value="0" max="1" aria-label="Postęp odbierania pliku"></progress>
-            <p id="receiving-missing" class="receiving-missing"></p>
-            <p id="receiving-help" class="receiving-help">Możesz zacząć od dowolnej klatki. Kody naprawcze pomagają odzyskać pominięte dane. Plik pojawi się po złożeniu całości i sprawdzeniu zgodności.</p>
-            <button id="show-feedback" class="button primary full-width" type="button" hidden>Uzupełnij brakujące</button>
-            <button id="reset-receiver" class="button secondary" type="button">Reset odbioru</button>
-          </div>
           <section id="feedback-panel" class="feedback-panel" aria-labelledby="feedback-title" hidden>
             <h3 id="feedback-title">Potwierdzenie dla nadajnika</h3>
             <div class="feedback-paper"><canvas id="feedback-canvas" aria-label="Kod QR z potwierdzeniem postępu odbioru"></canvas></div>
@@ -330,20 +307,88 @@
             <p>Na urządzeniu wysyłającym wybierz „Zeskanuj potwierdzenie” i pokaż mu ten kod. Następnie wróć do skanowania i wznów nadawanie.</p>
             <div class="feedback-actions"><button id="resume-receiving" class="button primary" type="button">Wróć do skanowania</button><button id="close-feedback" class="button secondary" type="button">Zamknij potwierdzenie</button></div>
           </section>
-          <div id="decoded-empty" class="empty-state">
-            <svg class="empty-file" viewBox="0 0 100 108" aria-hidden="true"><path d="M23 8h32l23 23v68H23zM55 8v24h23M37 52h27M37 65h27M37 78h17"/></svg>
-            <p>Odczytaj kod, aby pobrać plik</p>
-            <span>Zachowamy dokładną zawartość zapisaną w QR.</span>
-          </div>
-          <div id="decoded-result" class="decoded-result" hidden>
-            <div class="success-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m8 16 5 5 11-12"/></svg></div>
-            <h3>Kod odczytany</h3>
-            <p><span id="decoded-kind"></span><span class="result-divider">·</span><span id="decoded-size"></span></p>
-            <label for="output-name">Nazwa pliku</label>
-            <input id="output-name" class="filename-input" type="text" value="wireguard.conf" maxlength="120" autocomplete="off" autocapitalize="off" spellcheck="false">
-            <p class="filename-help">Seria zachowuje nazwę pliku. Zwykły QR zawiera samą treść — wtedy nazwę możesz nadać tutaj.</p>
-            <button id="download-file" class="button primary full-width" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 16v5h14v-5"/></svg>Pobierz plik</button>
-            <details id="preview-decoded" class="text-preview"><summary>Pokaż odczytaną zawartość</summary><pre id="decoded-preview"></pre></details>
+          <section id="receiver-calibration-dashboard" class="receiver-calibration-dashboard" aria-labelledby="receiver-calibration-title" hidden>
+            <div class="pane-heading"><h2 id="receiver-calibration-title">Kalibracja</h2><span class="small-tag">MAPA ODBIORU</span></div>
+            <p id="calibration-view-status" class="calibration-view-status" role="status" aria-live="polite">Uruchom kamerę i pokaż jej próbne kody z nadajnika. Mapa będzie uzupełniać się podczas pomiaru.</p>
+            <section class="calibration-current" aria-labelledby="calibration-current-title">
+              <h3 id="calibration-current-title">Bieżący profil</h3>
+              <dl class="calibration-current-grid">
+                <div><dt>Kolumny × wiersze</dt><dd id="calibration-current-grid">—</dd></div>
+                <div><dt>Tempo · Hz</dt><dd id="calibration-current-rate">—</dd></div>
+                <div><dt>Siatka · moduły</dt><dd id="calibration-current-density">—</dd></div>
+              </dl>
+              <p id="calibration-current-detail" class="calibration-current-detail">Parametry pojawią się po odczytaniu pierwszego kodu próby. Hz oznacza zmiany całego układu na sekundę.</p>
+            </section>
+            <dl class="calibration-counts" aria-label="Statusy profili kalibracji">
+              <div data-state="passed"><dt>Przeszło</dt><dd id="calibration-count-passed">0</dd></div>
+              <div data-state="failed"><dt>Braki</dt><dd id="calibration-count-failed">0</dd></div>
+              <div data-state="pending"><dt>Nieprzetestowane</dt><dd id="calibration-count-pending">0</dd></div>
+              <div data-state="running"><dt>W trakcie</dt><dd id="calibration-count-running">0</dd></div>
+            </dl>
+            <h3 class="calibration-map-heading">Układ × tempo × gęstość</h3>
+            <ul class="calibration-legend" aria-label="Legenda mapy wyników">
+              <li><span class="calibration-state-mark" data-state="passed" aria-hidden="true">✓</span>Przeszło bez luk</li>
+              <li><span class="calibration-state-mark" data-state="failed" aria-hidden="true">×</span>Wykryto braki</li>
+              <li><span class="calibration-state-mark" data-state="pending" aria-hidden="true">—</span>Nieprzetestowane</li>
+              <li><span class="calibration-state-mark" data-state="running" aria-hidden="true">…</span>Pomiar trwa</li>
+            </ul>
+            <div id="calibration-map" class="calibration-map" aria-describedby="calibration-map-help">
+              <p class="calibration-map-help">Czekam na plan próby z nadajnika. Brak wyniku nie oznacza nieudanego odczytu.</p>
+            </div>
+            <p id="calibration-map-help" class="calibration-map-help">Każda tabela odpowiada jednej gęstości: 384 B lub 600 B danych na kod. Wiersze to kolumny × wiersze kodów na ekranie; kolumny tabeli to tempo w Hz. Na wąskim ekranie przesuń tabelę w bok. Siatka w modułach opisuje małe pola pojedynczego QR, bez białego marginesu.</p>
+            <section id="calibration-panel" class="calibration-panel" aria-labelledby="calibration-title" hidden>
+              <div class="calibration-heading"><span class="status-dot" aria-hidden="true"></span><h3 id="calibration-title">Pomiar i wynik kalibracji</h3></div>
+              <p id="calibration-status-receiver" role="status" aria-live="polite">Trzymaj oba urządzenia nieruchomo podczas próby.</p>
+              <progress id="calibration-progress" value="0" max="100" aria-label="Postęp dobierania ustawień"></progress>
+              <p id="calibration-result"></p>
+              <p id="calibration-coverage"></p>
+              <details class="calibration-result-details"><summary>Szczegóły odczytu każdego profilu</summary><ol id="calibration-results" class="calibration-results" role="list" aria-label="Porównanie ustawień kalibracji"></ol></details>
+              <button id="show-calibration-feedback" class="button primary full-width" type="button" hidden>Pokaż wynik nadajnikowi</button>
+              <button id="reset-calibration" class="button secondary full-width" type="button">Zresetuj próbę</button>
+            </section>
+          </section>
+          <div id="receiver-file-output">
+            <div class="pane-heading"><h2>Odzyskany plik</h2><span class="output-label">DO POBRANIA</span></div>
+            <section id="transfer-telemetry" class="transfer-telemetry" aria-labelledby="telemetry-title" hidden>
+              <div class="telemetry-heading"><h3 id="telemetry-title">Statystyki odbioru</h3><span id="telemetry-status" class="telemetry-status">W trakcie</span></div>
+              <dl class="telemetry-grid">
+                <div><dt>Czas odbioru</dt><dd id="telemetry-duration">—</dd></div>
+                <div><dt>Średnia prędkość</dt><dd id="telemetry-speed">Po ukończeniu</dd></div>
+                <div><dt>Nowe porcje danych</dt><dd id="telemetry-useful">—</dd></div>
+                <div><dt>Odczytane QR</dt><dd id="telemetry-read">—</dd></div>
+              </dl>
+              <p class="telemetry-note">Czas liczymy od pierwszego fragmentu, razem z przerwami. Średnią prędkość wyznaczamy po odebraniu całości.</p>
+              <details class="telemetry-details"><summary>Szczegóły pomiaru</summary><pre id="telemetry-detail"></pre></details>
+              <button id="copy-diagnostics" class="button secondary full-width" type="button">Kopiuj diagnostykę</button>
+              <p class="telemetry-note">Lokalne liczniki i parametry odczytu, bez nazwy i zawartości pliku. Możesz wkleić wyniki do rozmowy.</p>
+              <textarea id="diagnostics-text" class="diagnostics-text" readonly spellcheck="false" aria-label="Diagnostyka do ręcznego skopiowania" hidden></textarea>
+              <p id="diagnostics-message" class="message" role="status" aria-live="polite"></p>
+            </section>
+            <div id="receiving-progress" class="receiving-progress" hidden>
+              <span id="receiving-label" class="receiving-label">ODBIERANIE SERII</span>
+              <h3 id="receiving-name"></h3>
+              <p id="receiving-count" role="status" aria-live="polite">Odebrano 0 fragmentów</p>
+              <progress id="receiving-progressbar" value="0" max="1" aria-label="Postęp odbierania pliku"></progress>
+              <p id="receiving-missing" class="receiving-missing"></p>
+              <p id="receiving-help" class="receiving-help">Możesz zacząć od dowolnej klatki. Kody naprawcze pomagają odzyskać pominięte dane. Plik pojawi się po złożeniu całości i sprawdzeniu zgodności.</p>
+              <button id="show-feedback" class="button primary full-width" type="button" hidden>Uzupełnij brakujące</button>
+              <button id="reset-receiver" class="button secondary" type="button">Reset odbioru</button>
+            </div>
+            <div id="decoded-empty" class="empty-state">
+              <svg class="empty-file" viewBox="0 0 100 108" aria-hidden="true"><path d="M23 8h32l23 23v68H23zM55 8v24h23M37 52h27M37 65h27M37 78h17"/></svg>
+              <p>Odczytaj kod, aby pobrać plik</p>
+              <span>Zachowamy dokładną zawartość zapisaną w QR.</span>
+            </div>
+            <div id="decoded-result" class="decoded-result" hidden>
+              <div class="success-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m8 16 5 5 11-12"/></svg></div>
+              <h3>Kod odczytany</h3>
+              <p><span id="decoded-kind"></span><span class="result-divider">·</span><span id="decoded-size"></span></p>
+              <label for="output-name">Nazwa pliku</label>
+              <input id="output-name" class="filename-input" type="text" value="wireguard.conf" maxlength="120" autocomplete="off" autocapitalize="off" spellcheck="false">
+              <p class="filename-help">Seria zachowuje nazwę pliku. Zwykły QR zawiera samą treść — wtedy nazwę możesz nadać tutaj.</p>
+              <button id="download-file" class="button primary full-width" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 16v5h14v-5"/></svg>Pobierz plik</button>
+              <details id="preview-decoded" class="text-preview"><summary>Pokaż odczytaną zawartość</summary><pre id="decoded-preview"></pre></details>
+            </div>
           </div>
           <div class="output-tip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 4 8 9 8 9s8-5 8-9V6zM9 12l2 2 4-5"/></svg><p>Odczyt odbywa się na Twoim urządzeniu. Strona nie otwiera linków zapisanych w kodzie.</p></div>
         </div>
@@ -359,7 +404,7 @@
       <details><summary>Jak przenieść konfigurację WireGuarda na telefon?</summary><p>Wybierz gotowy plik konfiguracji klienta <code>.conf</code>. Jeśli mieści się w jednym zwykłym QR, otwórz na telefonie aplikację WireGuard, dodaj tunel i wybierz skanowanie QR.</p><p>Dla większego pliku uruchom serię. Na telefonie otwórz tę stronę, wybierz „Odczytaj QR” i uruchom kamerę. Po zebraniu wszystkich fragmentów pobierz odtworzony <code>.conf</code> i zaimportuj go z pliku w WireGuardzie. Skaner WireGuarda nie składa serii kodów. Konwerter obsługuje istniejące konfiguracje; nie tworzy serwera VPN ani nowych kluczy.</p></details>
       <details><summary>Jak działa seria i jakie tempo wybrać?</summary><p>Najpierw nadajemy części pliku, a następnie nowe kody naprawcze. Odbiornik wykorzystuje je do odtworzenia pominiętych części. Kolejność nie ma znaczenia, a powtórzenia nie kasują postępu. Nie musisz odczytać każdego konkretnego kodu. Opis pliku powraca regularnie, więc możesz dołączyć w trakcie.</p><p>Zacznij od czytelniejszego kodu i 2 zmian obrazu na sekundę. Dostępne są 1/s, 2/s, 5/s, 10/s, 15/s i 20/s. Szybsze warianty porównuj według nowych danych odebranych na sekundę. W układzie podwójnym są to zmiany całej pary: 5 par/s to do 10 kodów/s. Odbiornik pokazuje nowe porcje danych i czas rozpoznawania. Jeśli postęp jest słaby, powiększ kody, popraw ostrość lub zmniejsz tempo.</p><p>Po złożeniu całości sprawdzana jest suma SHA-256. Dopiero po zgodnym wyniku można pobrać plik. Obca seria nie nadpisze odbieranej; „Reset odbioru” pozwala rozpocząć nową. Odśwież stronę na obu urządzeniach, aby używać nowego sposobu przesyłania.</p></details>
       <details><summary>Czy więcej kodów będzie szybsze?</summary><p>Możesz wybrać od 1 do 3 kolumn i od 1 do 3 wierszy, czyli maksymalnie 9 kodów jednocześnie. Więcej kodów może lepiej wykorzystać kadr, ale poszczególne pola stają się mniejsze i trudniejsze do odczytania. Każdy czytelny kod wnosi dane niezależnie; nie trzeba odczytać całego układu naraz.</p><p>Użyj dużego widoku. Na odbiorniku ustaw kolumny i wiersze tak jak na ekranie nadawcy, niezależnie od obrotu telefonu. Porównaj skuteczny odbiór w kalibracji i czas przesłania tego samego pliku. Dziewięć kodów nie gwarantuje dziewięciokrotnego przyspieszenia. Kadr 4:3 albo 16:9 wybierasz osobno po stronie kamery; same kody pozostają kwadratowe.</p></details>
-      <details><summary>Jak ustawić telefon i przeprowadzić kalibrację?</summary><p>Panel „Kalibracja przed transferem” jest dostępny od razu na początku ekranu „Utwórz QR”. Uruchom próbę przed wyborem pliku albo skorzystaj z niej później, przed wysyłaniem. Możesz zbadać bieżący układ kolumn i wierszy albo porównać cztery układy: 1×1, 2×1, 1×2 i 2×2. Zakres podstawowy sprawdza tempo do 10 zmian/s, a pełny do 20 zmian/s. Pomiar jednego układu trwa około 30 lub 50 sekund; porównanie czterech około 120 lub 200 sekund. Każdy wariant ma chwilę na ustabilizowanie odczytu przed pomiarem.</p><p>Na nadajniku wybierz „Kalibracja”, a na odbiorniku otwórz „Odczytaj QR” i wybierz „Uruchom kamerę”. Odbiornik automatycznie rozpozna próbne kody i pokaże pomiary; nie uruchamiasz na nim osobnej próby. Pokaż próbne kody w docelowym dużym widoku i ustaw aparat tak, aby obejmował wszystkie białe marginesy. Próbne kody zawierają dane syntetyczne, bez zawartości Twojego pliku. Odbiornik dostosuje układ po odczytaniu kodu; gdy nie ma odczytów, ustaw kolumny i wiersze ręcznie. Jeśli wcześniej odebrano fragment pliku, najpierw wybierz „Reset odbioru”.</p><p>Gdy wskaźnik na odbiorniku pokazuje stabilny odczyt, wybierz „2. Rozpocznij pomiar” na nadajniku. Podczas próby utrzymuj oba urządzenia nieruchomo i zachowaj to samo powiększenie kodów. Wyniki pokazują odczytane i oczekiwane QR, procent odbioru, braki oraz tempo w kolejnych oknach pomiaru. Zielony wynik oznacza odczyt bez luk w zmierzonej próbie. Kalibracja porównuje układ, tempo i gęstość; poziom korekcji M lub L wybierasz osobno.</p><p>Na odbiorniku wybierz „Pokaż wynik nadajnikowi”, a na nadajniku „Zeskanuj potwierdzenie”. Wynik przechodzi kodem QR i ustawia parametry serii na nadajniku. Następnie wybierz plik, wróć do skanowania na odbiorniku i wybierz „Odtwórz serię” na nadajniku. Jeśli plik był już wybrany, możesz odtworzyć go z dobranymi ustawieniami. Kalibracja jest opcjonalna; możesz samodzielnie dobrać ustawienia i rozpocząć wysyłanie. Po zmianie odległości, wielkości kodów lub oświetlenia warto powtórzyć pomiar.</p></details>
+      <details><summary>Jak ustawić telefon i przeprowadzić kalibrację?</summary><p>Panel „Kalibracja przed transferem” jest dostępny od razu na początku ekranu „Utwórz QR”. Uruchom próbę przed wyborem pliku albo skorzystaj z niej później, przed wysyłaniem. Możesz zbadać bieżący układ kolumn i wierszy albo porównać cztery układy: 1×1, 2×1, 1×2 i 2×2. Zakres podstawowy sprawdza tempo do 10 zmian/s, a pełny do 20 zmian/s. Pomiar jednego układu trwa około 30 lub 50 sekund; porównanie czterech około 120 lub 200 sekund. Każdy wariant ma chwilę na ustabilizowanie odczytu przed pomiarem.</p><p>Na nadajniku wybierz „Kalibracja”. Na odbiorniku otwórz „Odczytaj QR”, wybierz widok „Kalibracja” i uruchom kamerę. Odbiornik rozpozna próbne kody i będzie uzupełniać mapę wyników. Pokaż próbne kody w docelowym dużym widoku i ustaw aparat tak, aby obejmował wszystkie białe marginesy. Próbne kody zawierają dane syntetyczne, bez zawartości Twojego pliku. Odbiornik dostosuje układ po odczytaniu kodu; gdy nie ma odczytów, ustaw kolumny i wiersze ręcznie. Jeśli wcześniej odebrano fragment pliku, najpierw wybierz „Reset odbioru”.</p><p>Gdy wskaźnik na odbiorniku pokazuje stabilny odczyt, wybierz „2. Rozpocznij pomiar” na nadajniku. Podczas próby utrzymuj oba urządzenia nieruchomo i zachowaj to samo powiększenie kodów. Widok kalibracji pokazuje bieżący układ, tempo w Hz i wielkość siatki pojedynczego QR w modułach. Dwie mapy wyników porównują gęstości 384 B i 600 B: wiersze oznaczają układy, a kolumny tempo. Zielone pola oznaczają odczyt bez luk, czerwone wykryte braki, szare warianty nieprzetestowane, a niebieskie trwający pomiar. W szczegółach znajdziesz odczytane i oczekiwane QR, procent odbioru oraz tempo w kolejnych oknach pomiaru. Kalibracja porównuje układ, tempo i gęstość; poziom korekcji M lub L wybierasz osobno.</p><p>Na odbiorniku wybierz „Pokaż wynik nadajnikowi”, a na nadajniku „Zeskanuj potwierdzenie”. Wynik przechodzi kodem QR i ustawia parametry serii na nadajniku. Następnie wybierz plik, wróć do skanowania na odbiorniku i wybierz „Odtwórz serię” na nadajniku. Jeśli plik był już wybrany, możesz odtworzyć go z dobranymi ustawieniami. Kalibracja jest opcjonalna; możesz samodzielnie dobrać ustawienia i rozpocząć wysyłanie. Po zmianie odległości, wielkości kodów lub oświetlenia warto powtórzyć pomiar.</p></details>
       <details><summary>Jak zsynchronizować odbiór z nadajnikiem?</summary><p>Na odbiorniku wybierz „Uzupełnij brakujące”. Kamera zatrzyma się, a strona wyświetli QR z informacją o postępie. Na nadajniku wybierz „Zeskanuj potwierdzenie”. Po jego odczytaniu nadajnik wyśle wskazane brakujące porcje, a potem skupi kody naprawcze na nieukończonych częściach i zastosuje przekazaną wskazówkę tempa.</p><p>Potwierdzenie przekazujesz kamerą lub jako obraz. Przy korzystaniu z tylnej kamery telefonu trzeba na chwilę odwrócić telefon, aby nadajnik zobaczył jego ekran. Następnie wróć do skanowania i wznów serię. Postęp pozostaje zachowany; nie ma połączenia sieciowego między urządzeniami.</p></details>
       <details><summary>Jak zachować pomiary do porównania?</summary><p>Przy odzyskanym pliku zobaczysz statystyki odbioru. Po zakończeniu wyniki pozostaną widoczne, więc możesz zrobić zrzut ekranu albo wybrać „Kopiuj diagnostykę” i wkleić raport do rozmowy.</p><p>Czas biegnie od pierwszego przyjętego fragmentu, razem z przerwami. Średnia prędkość dotyczy całego ukończonego odbioru. Nowe porcje danych oznaczają postęp; liczba odczytanych QR może być większa z powodu powtórzeń. Szczegóły pokazują też próby skanowania i czas analizy obrazu.</p><p>Raport zawiera lokalne liczniki i parametry, bez nazwy oraz zawartości pliku. Nie jest automatycznie wysyłany. Reset odbioru, wyczyszczenie lub odświeżenie strony usuwa bieżące pomiary.</p></details>
       <details><summary>Czy pliki i klucze trafiają na serwer?</summary><p>Nie. Odczyt pliku, tworzenie QR i skanowanie wykonuje kod w Twojej przeglądarce. Ta strona nie wysyła zawartości i nie korzysta z analityki sieciowej ani zewnętrznych skryptów. Zwykłe kody i małe serie działają w pamięci. Duży transfer, po wybraniu „Włącz zapis i wznawianie”, zapisuje części lokalnie na urządzeniu. GitHub Pages dostarcza jedynie pliki strony. Statystyki odbioru są liczone lokalnie i udostępniasz je samodzielnie, jeśli skopiujesz raport.</p><p>Pobrane pliki i obrazy pozostają tam, gdzie je zapiszesz. „Wyczyść” usuwa wyniki z otwartej strony. Zapisane części dużego transferu usuniesz osobnym przyciskiem „Usuń zapisany transfer”. Pobrane pliki i zrzuty ekranu usuwa się oddzielnie.</p></details>
