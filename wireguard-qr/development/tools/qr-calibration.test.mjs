@@ -425,7 +425,7 @@ test('alignment supplies independent full-sized slots for every profile without 
     assert.throws(() => sender.alignmentFrame(profile.lanes, index), { code: 'CALIBRATION_INVALID' });
   }
   for (let repeat = 0; repeat < 5; repeat++) for (let lane = 0; lane < sender.alignmentLanes; lane++) {
-    observer.accept(sender.alignmentFrame(lane), repeat * 100000 + lane);
+    observer.accept(sender.alignmentFrame(lane, sender.alignmentIndex, true), repeat * 100000 + lane);
   }
   assert.equal(observer.state.phase, 'alignment'); assert.equal(observer.state.currentIndex, 18);
   assert.equal(observer.state.progress, 0); assert.equal(observer.state.measuredProfiles, 0);

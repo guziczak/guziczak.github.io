@@ -44,6 +44,11 @@
     'begin-calibration', 'calibration-step', 'calibration-layout-scope', 'calibration-duration',
     'calibration-home', 'calibration-setup', 'calibration-display-slot', 'sender-feedback',
     'calibration-alignment', 'alignment-status', 'alignment-detail', 'calibration-results', 'calibration-coverage',
+    'receiver-view-file', 'receiver-view-calibration', 'receiver-file-input', 'receiver-file-output',
+    'receiver-calibration-dashboard', 'calibration-view-status', 'calibration-current-grid',
+    'calibration-current-rate', 'calibration-current-density', 'calibration-current-detail',
+    'calibration-count-passed', 'calibration-count-failed', 'calibration-count-pending', 'calibration-count-running',
+    'calibration-map', 'calibration-map-help',
     ...Array.from({ length: 7 }, (_, index) => `qr-canvas-${index + 3}`),
     ...Array.from({ length: 7 }, (_, index) => `qr-paper-${index + 3}`)
   ].forEach((id) => { ui[id] = $(id); });
@@ -54,6 +59,9 @@
   const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
   const DEFAULT_CAPACITY = 'Jeden QR: do 2953 B. Seria: do 10 MiB. Duży plik z zapisem części: do 200 MiB. Odtwarzanie zaczyna się od pauzy.';
   let mode = 'encode';
+  let receiverView = 'file';
+  let receiverViewPainted = false;
+  let receiverActivity = null;
   let sourceBytes = null;
   let decodedBytes = null;
   let sourceName = '';
@@ -117,6 +125,9 @@
   let alignmentTimer = null;
   let alignmentState = null;
   let calibrationRenderedKey = '';
+  let calibrationView = null;
+  let calibrationMapKey = '';
+  const calibrationMapCells = new Map();
   let calibrationWasExpanded = false;
   let expandAfterCalibration = false;
   let receiverEpoch = 0;
@@ -972,6 +983,7 @@
       message('decode-message', 'To potwierdzenie dużego transferu. Pokaż je nadajnikowi po wybraniu „Zeskanuj potwierdzenie”.', 'warning');
       return { done: false, blocked: true };
     }
+    selectReceiverActivity('file');
     if (!largeStore || !largeReceiver || largeStorageBusy || largeStore.state?.corrupt) {
       message('decode-message', 'To duży transfer. Najpierw wybierz „Włącz zapis i wznawianie” albo sprawdź zapisany transfer.', 'warning');
       return { done: false, blocked: true };
@@ -981,7 +993,7 @@
       return { done: false, blocked: true };
     }
     if (calibrationObserver.state) {
-      calibrationObserver.reset(); ui['calibration-panel'].hidden = true; ui['show-calibration-feedback'].hidden = true;
+      resetCalibrationReadout();
       resetMetrics(); resetTelemetry();
       if (cameraStream) startCameraTelemetry(cameraStream);
     }
@@ -1547,15 +1559,12 @@
       renderLargeStorage();
     }
     receiverEpoch += 1;
+    receiverActivity = null;
     if (collector) collector.reset();
     if (largeReceiver) largeReceiver.reset();
     resetTelemetry();
-    if (calibrationObserver) calibrationObserver.reset();
-    calibrationRenderedKey = '';
+    resetCalibrationReadout();
     calibrationCaptureGrid = null;
-    resetAlignment();
-    ui['calibration-panel'].hidden = true;
-    ui['show-calibration-feedback'].hidden = true;
     receiverSnapshot = null;
     showReceiving(null, true);
     hideFeedback();
@@ -1608,9 +1617,7 @@
           return { done: false, blocked: true };
         }
         if (calibrationObserver.state) {
-          calibrationObserver.reset();
-          ui['calibration-panel'].hidden = true;
-          ui['show-calibration-feedback'].hidden = true;
+          resetCalibrationReadout();
           resetMetrics(); resetTelemetry();
           if (cameraStream) startCameraTelemetry(cameraStream);
         }
@@ -1619,6 +1626,7 @@
         // Switching tabs or stopping the camera retains an already accepted transfer.
         // Clearing/resetting the receiver, however, invalidates even a pending digest.
         if (epoch !== receiverEpoch) return { done: false, stale: true };
+        if (result.kind !== 'foreign') selectReceiverActivity('file');
         if (result.kind === 'pending') {
           message('decode-message', 'Widzę dane. Czekam na powtarzany opis pliku; pozostaw kamerę skierowaną na kody.', 'success');
           return { done: false, pending: true };
@@ -1947,18 +1955,155 @@
     slot.last = now; slot.hits++;
     paintAlignment();
   }
+  function selectReceiverView(nextView) {
+    const requested = nextView === 'calibration' ? 'calibration' : 'file';
+    if (receiverViewPainted && receiverView === requested) return;
+    receiverView = requested;
+    receiverViewPainted = true;
+    const calibrationVisible = receiverView === 'calibration';
+    ui['decode-panel'].dataset.receiverView = receiverView;
+    ui['receiver-view-file'].setAttribute('aria-pressed', String(!calibrationVisible));
+    ui['receiver-view-calibration'].setAttribute('aria-pressed', String(calibrationVisible));
+    ui['receiver-file-input'].hidden = calibrationVisible;
+    ui['receiver-file-output'].hidden = calibrationVisible;
+    ui['receiver-calibration-dashboard'].hidden = !calibrationVisible;
+  }
+  function selectReceiverActivity(activity, newSession = false) {
+    // Open a newly received session once. Later frames must not undo a view
+    // explicitly chosen by the person watching the camera.
+    if (newSession || receiverActivity !== activity) selectReceiverView(activity);
+    receiverActivity = activity;
+  }
+  function resetCalibrationReadout() {
+    calibrationObserver?.reset();
+    calibrationView?.reset();
+    calibrationFromImages = false;
+    calibrationRenderedKey = '';
+    resetAlignment();
+    ui['calibration-panel'].hidden = true;
+    ui['show-calibration-feedback'].hidden = true;
+    ui['calibration-results'].replaceChildren();
+    ui['calibration-progress'].value = 0;
+    renderCalibrationDashboard(null, false);
+  }
+  function calibrationCellLabel(cell, fromImages) {
+    if (cell.state === 'passed') return fromImages ? '✓ Komplet' : '✓ Przeszło';
+    if (cell.state === 'failed') return '× Nie przeszło';
+    if (cell.state === 'running') return '● Pomiar';
+    return cell.active ? '… Ustawienie' : '— Czeka';
+  }
+  function renderCalibrationDashboard(state, fromImages) {
+    const model = calibrationView?.compute(state, { fromImages });
+    if (!model) {
+      calibrationMapKey = '';
+      calibrationMapCells.clear();
+      ui['calibration-map'].replaceChildren();
+      setText(ui['calibration-view-status'], 'Czekam na kody kalibracyjne nadajnika.');
+      for (const name of ['grid', 'rate', 'density']) setText(ui['calibration-current-' + name], '—');
+      for (const name of ['passed', 'failed', 'pending', 'running']) setText(ui['calibration-count-' + name], '0');
+      setText(ui['calibration-current-detail'], 'Na nadajniku wybierz „Kalibracja”. Tutaj uruchom kamerę i pokaż jej próbne kody. Plik nie jest potrzebny.');
+      setText(ui['calibration-map-help'], 'Mapa pojawi się po odczytaniu planu próby. Szare pola będą czekać na pomiar; przed odebraniem kodów nie ma jeszcze wyników.');
+      return null;
+    }
+    if (calibrationMapKey !== model.key) {
+      calibrationMapKey = model.key;
+      calibrationMapCells.clear();
+      ui['calibration-map'].replaceChildren();
+      for (const group of model.groups) {
+        const region = document.createElement('div');
+        region.className = 'calibration-map-scroll';
+        region.tabIndex = 0;
+        region.setAttribute('role', 'region');
+        region.setAttribute('aria-label', `Wyniki dla gęstości ${group.modules} × ${group.modules} modułów, ${group.chunkBytes} B danych`);
+        const table = document.createElement('table'); table.className = 'calibration-map-table';
+        const caption = document.createElement('caption');
+        caption.textContent = `${group.modules} × ${group.modules} modułów · ${group.chunkBytes} B danych na QR`;
+        table.appendChild(caption);
+        const head = document.createElement('thead');
+        const headings = document.createElement('tr');
+        const axis = document.createElement('th'); axis.setAttribute('scope', 'col'); axis.textContent = 'QR: X × Y';
+        headings.appendChild(axis);
+        for (const fps of group.frequencies) {
+          const heading = document.createElement('th'); heading.setAttribute('scope', 'col'); heading.textContent = `${fps} Hz`;
+          headings.appendChild(heading);
+        }
+        head.appendChild(headings); table.appendChild(head);
+        const body = document.createElement('tbody');
+        for (const layout of group.layouts) {
+          const row = document.createElement('tr');
+          const heading = document.createElement('th'); heading.setAttribute('scope', 'row');
+          heading.textContent = `${layout.grid.columns} × ${layout.grid.rows}`;
+          row.appendChild(heading);
+          for (const cell of layout.cells) {
+            const element = document.createElement('td');
+            element.dataset.profileIndex = String(cell.index);
+            element.dataset.columns = String(cell.grid.columns);
+            element.dataset.rows = String(cell.grid.rows);
+            element.dataset.fps = String(cell.fps);
+            element.dataset.chunkBytes = String(cell.chunkBytes);
+            element.dataset.modules = String(cell.modules);
+            const content = document.createElement('span'); content.className = 'calibration-map-cell';
+            const value = document.createElement('strong'); value.className = 'calibration-map-value';
+            const detail = document.createElement('span'); detail.className = 'calibration-map-label';
+            content.appendChild(value); content.appendChild(detail); element.appendChild(content); row.appendChild(element);
+            calibrationMapCells.set(cell.index, { element, value, detail });
+          }
+          body.appendChild(row);
+        }
+        table.appendChild(body); region.appendChild(table); ui['calibration-map'].appendChild(region);
+      }
+    }
+    for (const group of model.groups) for (const layout of group.layouts) for (const cell of layout.cells) {
+      const entry = calibrationMapCells.get(cell.index);
+      if (!entry) continue;
+      const label = calibrationCellLabel(cell, fromImages);
+      const detail = cell.state === 'pending' ? cell.active ? 'Przed pomiarem' : 'Nieprzetestowane'
+        : `${cell.received}/${cell.expected}${cell.state === 'failed' ? ` · braki: ${cell.missing}` : ' paczek'}`;
+      if (entry.element.dataset.state !== cell.state) entry.element.dataset.state = cell.state;
+      const active = String(cell.active), best = String(!fromImages && state.best?.index === cell.index);
+      if (entry.element.dataset.active !== active) entry.element.dataset.active = active;
+      if (entry.element.dataset.best !== best) entry.element.dataset.best = best;
+      setText(entry.value, label); setText(entry.detail, detail);
+      const description = `${cell.grid.columns} × ${cell.grid.rows} QR, ${cell.fps} Hz, ${cell.modules} × ${cell.modules} modułów: ${label}. ${detail}.`;
+      if (entry.element.getAttribute('aria-label') !== description) entry.element.setAttribute('aria-label', description);
+    }
+    for (const name of ['passed', 'failed', 'pending', 'running']) {
+      setText(ui['calibration-count-' + name], String(model.counts[name]));
+    }
+    const current = model.current;
+    setText(ui['calibration-current-grid'], current ? `${current.grid.columns} × ${current.grid.rows} QR` : '—');
+    setText(ui['calibration-current-rate'], current ? `${current.fps} Hz` : '—');
+    setText(ui['calibration-current-density'], current ? `${current.modules} × ${current.modules} modułów` : '—');
+    const phaseText = model.ended ? 'Kalibracja zakończona — sprawdź mapę wyników.'
+      : model.phase === 'setup' ? 'Ustaw telefon. Pomiar rozpoczynasz na nadajniku.'
+      : model.phase === 'settling' ? 'Zmiana ustawień — za chwilę pomiar kolejnej kombinacji.'
+      : `Pomiar kombinacji ${current.index + 1}/${model.totalProfiles}.`;
+    setText(ui['calibration-view-status'], fromImages ? `Odczyt z obrazów — bez pomiaru szybkości kamery. ${phaseText}` : phaseText);
+    const counts = current && model.phase !== 'setup' && model.phase !== 'settling'
+      ? `${current.received}/${current.expected} paczek · ${current.coverage.toLocaleString('pl-PL', { maximumFractionDigits: 1 })}% · ${model.ended ? 'braki' : 'jeszcze do odebrania'}: ${current.missing}. ` : '';
+    setText(ui['calibration-current-detail'], current
+      ? `${counts}${current.chunkBytes} B danych w kodzie. ${model.phase === 'setup' || model.phase === 'settling' ? 'Nieruchome kody służą do ustawienia kadru i nie liczą się do wyniku.'
+        : model.ended ? 'Powyżej widać ostatnią mierzoną kombinację.' : 'Zielony wynik wymaga kompletu paczek z całych 4 sekund próby.'}` : '');
+    setText(ui['calibration-map-help'], fromImages
+      ? 'Odczyt z obrazów sprawdza tylko kompletność paczek. Zielony „Komplet” nie potwierdza odbioru z podaną częstotliwością. Wykonaj nową próbę kamerą, aby dobrać szybkość.'
+      : `X to liczba kodów poziomo, Y — pionowo. Hz oznacza zmianę całego układu na sekundę. Moduł to mały kwadrat wewnątrz QR; jego rozmiar w pikselach zależy od ekranu. ${state.compareLayouts
+        ? 'Próba porównuje 1 × 1, 2 × 1, 1 × 2 i 2 × 2.' : 'Próba obejmuje układ wybrany na nadajniku. Aby porównać układy, w polu „Porównywane układy” wybierz „Porównaj 1×1, 2×1, 1×2, 2×2”.'}`);
+    return model;
+  }
   function renderCalibrationResults(state, fromImages) {
-    const key = `${state.id}:${state.currentIndex}:${state.ended}:${fromImages}`;
+    const model = renderCalibrationDashboard(state, fromImages);
+    const closed = model.groups.flatMap(group => group.layouts.flatMap(layout => layout.cells)).filter(cell => cell.closed);
+    const key = `${model.key}:${model.phase}:${state.ended}:${fromImages}:${closed.map(cell => `${cell.index}:${cell.received}`).join(',')}`;
     if (calibrationRenderedKey === key) return;
     calibrationRenderedKey = key;
     const legacy = state.version < 3;
     ui['calibration-results'].replaceChildren();
-    const show = state.ended ? state.results : state.measuredProfiles > 0
-      ? state.results.filter(result => result.index < state.currentIndex) : [];
+    const completed = new Map(closed.map(cell => [cell.index, cell]));
+    const show = state.results.filter(result => completed.has(result.index));
     for (const result of show) {
       const row = document.createElement('li');
-      row.dataset.quality = result.stable ? 'good' : 'warning';
-      row.dataset.best = String(state.best?.index === result.index);
+      row.dataset.quality = completed.get(result.index).state === 'passed' ? 'good' : 'failed';
+      row.dataset.best = String(!fromImages && state.best?.index === result.index);
       const grid = result.grid || { columns: state.lanes, rows: 1 };
       const title = document.createElement('strong');
       title.className = 'calibration-result-profile';
@@ -2007,12 +2152,14 @@
       message('decode-message', 'Widzę inną próbę. Wybierz „Zresetuj próbę”, aby rozpocząć ją od nowa.', 'warning');
       return { done: false, blocked: true };
     }
+    selectReceiverActivity('calibration', newSession);
     if (source === 'image') calibrationFromImages = true;
     const grid = state.grid || { columns: state.lanes, rows: 1 };
     setGridControls(grid, true);
     cameraScanner?.setGrid?.(grid.columns, grid.rows);
     syncLayout();
-    if (parsed.alignment && (!parsed.setup || state.measuredProfiles === 0) && parsed.index === state.currentIndex && state.phase === 'alignment') recordAlignment(parsed);
+    if (parsed.alignment && Boolean(parsed.setup) === Boolean(state.setup)
+      && parsed.index === state.currentIndex && state.phase === 'alignment') recordAlignment(parsed);
     else if (state.phase !== 'alignment') resetAlignment();
     ui['calibration-panel'].hidden = false;
     ui['calibration-progress'].value = state.progress;
@@ -2610,10 +2757,7 @@
         const dataResults = results.filter(result => !window.WGCalibration.isReserved(result.bytes));
         const hasCalibration = results.some(result => window.WGCalibration.isReserved(result.bytes));
         if (dataResults.length && calibrationObserver.state) {
-          calibrationObserver.reset();
-          resetAlignment();
-          ui['calibration-panel'].hidden = true;
-          ui['show-calibration-feedback'].hidden = true;
+          resetCalibrationReadout();
           resetMetrics(); resetTelemetry(); startCameraTelemetry(stream);
         }
         if (!hasCalibration || dataResults.length) {
@@ -2679,7 +2823,7 @@
     });
   }
 
-  if (!window.WGQR || !window.WGTransfer || !window.WGResilient || !window.WGCamera || !window.WGTelemetry || !window.WGZip || !window.WGPlayback || !window.WGCalibration || !window.WGRender || !window.WGEncoder || !window.WGLarge || !window.WGLargeStore || !scanContext) {
+  if (!window.WGQR || !window.WGTransfer || !window.WGResilient || !window.WGCamera || !window.WGTelemetry || !window.WGZip || !window.WGPlayback || !window.WGCalibration || !window.WGCalibrationView || !window.WGRender || !window.WGEncoder || !window.WGLarge || !window.WGLargeStore || !scanContext) {
     message('encode-message', 'Nie udało się wczytać narzędzia. Odśwież stronę.', 'error');
     ui['choose-file'].disabled = ui['choose-image'].disabled = ui['sample-file'].disabled = ui['series-sample'].disabled = ui['speed-sample'].disabled = ui['large-sample'].disabled = ui['zip-sample'].disabled = ui['start-camera'].disabled = true;
     return;
@@ -2687,9 +2831,12 @@
   matrixEncoder = window.WGEncoder.create({ encode: window.WGQR.encodeBytes, workerUrl: './assets/qr-encoder-worker.js?v=2' });
   collector = window.WGResilient.createCollector();
   calibrationObserver = window.WGCalibration.createObserver();
+  calibrationView = window.WGCalibrationView.create({ encodeBytes: window.WGQR.encodeBytes });
   telemetry = window.WGTelemetry.create({ now: () => window.performance.now(), appVersion: document.documentElement?.dataset.appVersion || 'nieznana' });
   ui['encode-tab'].addEventListener('click', () => selectMode('encode'));
   ui['decode-tab'].addEventListener('click', () => selectMode('decode'));
+  ui['receiver-view-file'].addEventListener('click', () => selectReceiverView('file'));
+  ui['receiver-view-calibration'].addEventListener('click', () => selectReceiverView('calibration'));
   for (const id of ['encode-tab', 'decode-tab']) {
     ui[id].addEventListener('keydown', (event) => {
       if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
@@ -2767,18 +2914,20 @@
   ui['stop-calibration'].addEventListener('click', () => stopCalibration(false));
   ui['show-calibration-feedback'].addEventListener('click', showCalibrationFeedback);
   ui['reset-calibration'].addEventListener('click', () => {
-    resetCollector();
-    if (cameraStream) startCameraTelemetry(cameraStream);
+    if (!receiverSnapshot) receiverEpoch += 1;
+    resetCalibrationReadout();
+    calibrationCaptureGrid = null;
+    hideFeedback();
+    if (!receiverSnapshot) {
+      resetMetrics(); resetTelemetry();
+      if (cameraStream) startCameraTelemetry(cameraStream);
+    }
     message('decode-message', 'Próba wyczyszczona. Pokaż kamerze aktualną próbę nadajnika.');
   });
   function resetCalibrationForCameraChange() {
     calibrationCaptureGrid = null;
     if (!calibrationObserver.state) return;
-    calibrationObserver.reset();
-    calibrationRenderedKey = '';
-    resetAlignment();
-    ui['calibration-panel'].hidden = true;
-    ui['show-calibration-feedback'].hidden = true;
+    resetCalibrationReadout();
     hideFeedback();
     resetMetrics();
     message('decode-message', 'Zmieniono kadr kamery. Powtórz próbę, aby dobrać ustawienia dla nowego kadru.');
@@ -2995,5 +3144,7 @@
   showReceiving(null);
   resetMetrics();
   resetTelemetry();
+  resetCalibrationReadout();
+  selectReceiverView('file');
   selectMode('encode');
 })();

@@ -10,7 +10,7 @@ import { createDiskBackend } from './qr-large-store-fs.mjs';
 const root = path.resolve(import.meta.dirname, '../..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const sources = ['assets/qr-core.js', 'assets/qr-transfer.js', 'assets/qr-resilient.js', 'assets/zip-core.js',
-  'assets/qr-telemetry.js', 'assets/qr-playback.js', 'assets/qr-calibration.js', 'assets/qr-encoder.js',
+  'assets/qr-telemetry.js', 'assets/qr-playback.js', 'assets/qr-calibration.js', 'assets/qr-calibration-view.js', 'assets/qr-encoder.js',
   'assets/qr-large-store.js', 'assets/qr-large.js']
   .map((name) => fs.readFileSync(path.join(root, name), 'utf8'));
 const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
@@ -30,6 +30,41 @@ function htmlAncestorIds(id) {
     if (!voidTags.has(tag) && !/\/\s*$/.test(attributes)) stack.push({ tag, id: nodeId });
   }
   assert.fail(`Missing HTML element: ${id}`);
+}
+
+function descendants(element) {
+  return element.children.flatMap(child => [child, ...descendants(child)]);
+}
+
+function renderedText(element) {
+  return [element.textContent, ...element.children.map(renderedText)].filter(Boolean).join(' ');
+}
+
+function calibrationCells(h) {
+  return descendants(h.els['calibration-map']).filter(element =>
+    element.tagName === 'TD' && element.dataset.profileIndex !== undefined);
+}
+
+function calibrationCell(h, index) {
+  const cell = calibrationCells(h).find(element => Number(element.dataset.profileIndex) === index);
+  assert.ok(cell, `Missing calibration profile ${index} in the receiver map.`);
+  return cell;
+}
+
+function assertReceiverView(h, view) {
+  const calibration = view === 'calibration';
+  assert.equal(h.els['decode-panel'].dataset.receiverView, view);
+  assert.equal(h.els['receiver-view-calibration'].getAttribute('aria-pressed'), String(calibration));
+  assert.equal(h.els['receiver-view-file'].getAttribute('aria-pressed'), String(!calibration));
+  assert.equal(h.els['receiver-calibration-dashboard'].hidden, !calibration);
+  assert.equal(h.els['receiver-file-input'].hidden, calibration);
+  assert.equal(h.els['receiver-file-output'].hidden, calibration);
+}
+
+function assertCalibrationCounts(h, expected) {
+  for (const [name, count] of Object.entries(expected)) {
+    assert.equal(h.els[`calibration-count-${name}`].textContent, String(count), `Wrong ${name} profile count.`);
+  }
 }
 
 function corruptPayloadWithValidCrc(frame) {
@@ -145,6 +180,21 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
   ]) {
     h.els[container].appendChild(h.els[stage]);
     h.els[stage].appendChild(h.els[video]);
+  }
+  // Receiver panels share one camera. Keep their actual HTML ancestry so tests
+  // catch a visible result or feedback button accidentally hidden by a wrapper.
+  for (const id of ['receiver-view-switch', 'receiver-view-file', 'receiver-view-calibration',
+    'receiver-file-input', 'receiver-file-output', 'receiver-calibration-dashboard',
+    'calibration-view-status', 'calibration-current-grid', 'calibration-current-rate',
+    'calibration-current-density', 'calibration-current-detail', 'calibration-count-passed',
+    'calibration-count-failed', 'calibration-count-pending', 'calibration-count-running',
+    'calibration-map', 'calibration-map-help', 'calibration-panel', 'calibration-results',
+    'calibration-result', 'calibration-coverage', 'show-calibration-feedback', 'reset-calibration',
+    'camera-box', 'start-camera', 'stop-camera', 'decoded-empty', 'decoded-result',
+    'download-file', 'receiving-progress', 'reset-receiver', 'show-feedback', 'transfer-telemetry',
+    'feedback-panel', 'feedback-canvas', 'resume-receiving']) {
+    const parent = htmlAncestorIds(id).at(-1);
+    if (parent) h.els[parent].appendChild(h.els[id]);
   }
   h.visualViewport = new Element('visual-viewport');
   h.visualViewport.width = 1280; h.visualViewport.height = 800;
@@ -894,6 +944,155 @@ test('feedback preview geometry uses its own wrapper without optional viewport A
   } finally { h.close(); }
 });
 
+test('receiver calibration view opens empty without a camera and toggling it preserves a partially received file', async () => {
+  const h = harness(); let transfer;
+  try {
+    h.els['decode-tab'].click(); assertReceiverView(h, 'file');
+    h.els['receiver-view-calibration'].click(); assertReceiverView(h, 'calibration');
+    assert.equal(h.cameraConstraints.length, 0, 'Choosing a receiver view must not request camera access.');
+    assert.equal(h.videoCallbacks.size, 0);
+    assert.equal(calibrationCells(h).length, 0, 'An empty view must not contain synthetic demonstration results.');
+    assertCalibrationCounts(h, { passed: 0, failed: 0, pending: 0, running: 0 });
+    assert.equal(h.els['show-calibration-feedback'].hidden, true);
+    assert.equal(h.els['download-file'].disabled, true);
+    h.els['receiver-view-file'].click(); assertReceiverView(h, 'file');
+
+    const original = Uint8Array.from({ length: 900 }, (_, index) => (index * 47) % 251);
+    transfer = await h.protocol.createTransfer(original, 'view-switch.bin', { compact: true });
+    h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    const stream = h.streams[0];
+    await h.fireFrame('camera-video', transfer.manifestFrame());
+    await h.fireFrame('camera-video', transfer.frame(0));
+    const first = h.telemetry.snapshot(); assert.equal(first.usefulUnits, 1);
+    h.els['receiver-view-calibration'].click(); assertReceiverView(h, 'calibration');
+    assert.equal(h.els['camera-box'].closest('[hidden]'), null, 'The running camera must remain visible in either view.');
+    assert.equal(h.telemetry.snapshot().usefulUnits, 1, 'Changing the presentation must not reset file reception.');
+    assert.equal(h.cameraConstraints.length, 1); assert.equal(stream.track.stopped, false);
+    await h.fireFrame('camera-video', transfer.frame(1));
+    assertReceiverView(h, 'calibration');
+    assert.equal(h.telemetry.snapshot().usefulUnits, 2, 'Reception must continue while preserving the manually selected view.');
+    await h.fireFrame('camera-video', transfer.frame(2));
+    assertReceiverView(h, 'calibration');
+    assert.equal(h.els['download-file'].disabled, false);
+    assert.equal(h.els['download-file'].closest('[hidden]'), h.els['receiver-file-output']);
+    h.els['receiver-view-file'].click(); assertReceiverView(h, 'file');
+    assert.equal(h.els['download-file'].closest('[hidden]'), null);
+    h.els['download-file'].click();
+    assert.deepEqual(new Uint8Array(await h.downloads.at(-1).blob.arrayBuffer()), original);
+    h.els['receiver-view-calibration'].click(); h.els['receiver-view-file'].click();
+    assert.equal(h.els['download-file'].closest('[hidden]'), null, 'The completed file must remain reachable after inspecting the empty map.');
+    assert.equal(h.cameraConstraints.length, 1);
+  } finally { transfer?.dispose(); h.close(); }
+});
+
+test('accepted CAL opens the map, bootstrap comparison leaves all profiles pending, and live counts update within one profile', async () => {
+  const h = harness(); let trial, foreign;
+  try {
+    trial = h.context.WGCalibration.create({ compareLayouts: true });
+    foreign = h.context.WGCalibration.create({ grid: { columns: 1, rows: 1 } });
+    h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    const setup = trial.alignmentFrame(0, trial.alignmentIndex, true);
+    assert.equal(h.context.WGCalibration.parse(setup).index, 18);
+    await h.fireFrame('camera-video', setup);
+    assertReceiverView(h, 'calibration');
+    assert.equal(calibrationCells(h).length, 24);
+    assert.ok(calibrationCells(h).every(cell => cell.dataset.state === 'pending'),
+      'The initial 2×2 alignment profile is not evidence that the earlier 18 profiles failed.');
+    assertCalibrationCounts(h, { passed: 0, failed: 0, pending: 24, running: 0 });
+    assert.match(h.els['calibration-current-grid'].textContent, /2\s*×\s*2/);
+    h.els['receiver-view-file'].click();
+    await h.fireFrame('camera-video', foreign.alignmentFrame(0, 0, true));
+    assertReceiverView(h, 'file');
+    assert.equal(calibrationCells(h).length, 24, 'A foreign session must not replace the current map.');
+
+    await h.fireFrame('camera-video', trial.alignmentFrame(0, 0));
+    assertReceiverView(h, 'file');
+    h.els['receiver-view-calibration'].click(); assertReceiverView(h, 'calibration');
+    await h.fireFrame('camera-video', trial.frame(0, 0), { advanceMs: 250 });
+    assert.equal(calibrationCell(h, 0).dataset.state, 'running');
+    assert.match(renderedText(calibrationCell(h, 0)), /1\s*\/\s*8/);
+    assertCalibrationCounts(h, { passed: 0, failed: 0, pending: 23, running: 1 });
+    await h.fireFrame('camera-video', trial.frame(0, 1), { advanceMs: 250 });
+    const live = renderedText(calibrationCell(h, 0));
+    assert.match(live, /2\s*\/\s*8/, 'The same profile must repaint as new packets arrive.');
+    await h.fireFrame('camera-video', trial.frame(0, 1), { advanceMs: 250 });
+    assert.equal(renderedText(calibrationCell(h, 0)), live, 'Duplicate packets must not increase the map counters.');
+    const cell = calibrationCell(h, 0), modules = Number(cell.dataset.modules);
+    assert.equal(cell.dataset.columns, '1'); assert.equal(cell.dataset.rows, '1');
+    assert.equal(cell.dataset.fps, '2'); assert.equal(cell.dataset.chunkBytes, '384');
+    assert.ok(Number.isInteger(modules) && modules >= 21 && modules <= 177 && (modules - 17) % 4 === 0);
+    assert.match(h.els['calibration-current-grid'].textContent, /1\s*×\s*1/);
+    assert.equal(Number.parseFloat(h.els['calibration-current-rate'].textContent), 2);
+    assert.match(h.els['calibration-current-density'].textContent, new RegExp(`${modules}\\s*×\\s*${modules}`));
+    for (let sequence = 2; sequence < 8; sequence++) await h.fireFrame('camera-video', trial.frame(0, sequence));
+    assert.equal(calibrationCell(h, 0).dataset.state, 'running', 'Even complete live samples remain in progress until the profile closes.');
+    await h.fireFrame('camera-video', trial.alignmentFrame(0, 1));
+    assert.equal(calibrationCell(h, 0).dataset.state, 'passed');
+    assert.equal(calibrationCell(h, 1).dataset.state, 'pending');
+    assert.equal(calibrationCell(h, 18).dataset.state, 'pending');
+    assertCalibrationCounts(h, { passed: 1, failed: 0, pending: 23, running: 0 });
+    assert.equal(h.cameraConstraints.length, 1); assert.equal(h.streams[0].track.stopped, false);
+    assert.equal(h.telemetry.snapshot().transfer, null); assert.equal(h.els['download-file'].disabled, true);
+  } finally { trial?.dispose(); foreign?.dispose(); h.close(); }
+});
+
+test('late setup for the same calibration profile does not restore the manual-start instructions during settling', async () => {
+  const h = harness(); let trial;
+  try {
+    trial = h.context.WGCalibration.create({ grid: { columns: 1, rows: 1 } });
+    h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    const setup = trial.alignmentFrame(0, 0, true);
+    for (let repeat = 0; repeat < 3; repeat++) await h.fireFrame('camera-video', setup, { advanceMs: 250 });
+    assert.equal(h.els['calibration-alignment'].dataset.quality, 'good');
+    assert.match(h.els['alignment-detail'].textContent, /Na nadajniku rozpocznij pomiar/);
+
+    await h.fireFrame('camera-video', trial.alignmentFrame(0, 0), { advanceMs: 250 });
+    const settlingInstructions = h.els['alignment-detail'].textContent;
+    assert.match(settlingInstructions, /rozpocznie się automatycznie/);
+    await h.fireFrame('camera-video', setup, { advanceMs: 250 });
+    assert.equal(h.els['alignment-detail'].textContent, settlingInstructions,
+      'An obsolete setup packet must not overwrite instructions for the active settling phase.');
+    assert.equal(calibrationCell(h, 0).dataset.state, 'pending');
+    assertCalibrationCounts(h, { passed: 0, failed: 0, pending: 6, running: 0 });
+    assert.equal(h.cameraConstraints.length, 1);
+    assert.equal(h.telemetry.snapshot().transfer, null);
+  } finally { trial?.dispose(); h.close(); }
+});
+
+test('completed receiver map separates passed and failed profiles and reset keeps an empty calibration view', async () => {
+  const h = harness(); let trial;
+  try {
+    trial = h.context.WGCalibration.create({ grid: { columns: 1, rows: 1 } });
+    h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    for (let sequence = 0; sequence < 8; sequence++) await h.fireFrame('camera-video', trial.frame(0, sequence));
+    for (let sequence = 0; sequence < 3; sequence++) await h.fireFrame('camera-video', trial.frame(1, sequence));
+    await h.fireFrame('camera-video', trial.endFrame());
+    assertReceiverView(h, 'calibration');
+    assertCalibrationCounts(h, { passed: 1, failed: 5, pending: 0, running: 0 });
+    assert.equal(calibrationCell(h, 0).dataset.state, 'passed');
+    assert.match(renderedText(calibrationCell(h, 0)), /8\s*\/\s*8/);
+    assert.equal(calibrationCell(h, 1).dataset.state, 'failed');
+    assert.match(renderedText(calibrationCell(h, 1)), /3\s*\/\s*20/);
+    assert.equal(calibrationCell(h, 5).dataset.state, 'failed');
+    assert.match(renderedText(calibrationCell(h, 5)), /0\s*\/\s*40/);
+    assert.equal(h.els['show-calibration-feedback'].closest('[hidden]'), null);
+    assert.equal(h.els['reset-calibration'].closest('[hidden]'), null);
+    h.els['reset-calibration'].click();
+    assertReceiverView(h, 'calibration');
+    assert.equal(calibrationCells(h).length, 0);
+    assertCalibrationCounts(h, { passed: 0, failed: 0, pending: 0, running: 0 });
+    assert.equal(h.els['show-calibration-feedback'].hidden, true);
+    assert.equal(h.els['calibration-current-grid'].textContent, '—');
+    assert.equal(h.cameraConstraints.length, 1); assert.equal(h.streams[0].track.stopped, false);
+
+    const plain = new TextEncoder().encode('A real file after a cleared calibration map.\r\n');
+    await h.fireFrame('camera-video', plain);
+    assertReceiverView(h, 'file');
+    assert.equal(h.els['download-file'].closest('[hidden]'), null);
+    h.els['download-file'].click(); assert.deepEqual(new Uint8Array(await h.downloads.at(-1).blob.arrayBuffer()), plain);
+  } finally { trial?.dispose(); h.close(); }
+});
+
 test('standalone calibration is available before upload, paints only synthetic codes and restores the empty view on stop', async () => {
   for (const id of ['start-calibration', 'scan-feedback']) {
     const ancestors = htmlAncestorIds(id);
@@ -1180,7 +1379,7 @@ test('calibration compares four layouts without restarting the camera and applie
     const rows = receiver.els['calibration-results'].children;
     assert.equal(rows.length, 24); assert.equal(rows[22].dataset.best, 'true'); assert.equal(rows[22].dataset.quality, 'good');
     assert.match(rows[22].children[1].textContent, /80\/80 paczek.*100%.*braki: 0/);
-    assert.equal(rows[23].dataset.best, 'false'); assert.equal(rows[23].dataset.quality, 'warning');
+    assert.equal(rows[23].dataset.best, 'false'); assert.equal(rows[23].dataset.quality, 'failed');
     assert.match(rows[23].children[1].textContent, /156\/160 paczek.*braki: 4/);
     assert.equal(receiver.els['show-calibration-feedback'].hidden, false);
     receiver.els['show-calibration-feedback'].click(); const feedback = receiver.display('feedback-canvas');
@@ -1211,7 +1410,7 @@ test('calibration with three observed steps per profile exposes gaps and offers 
     assert.match(receiver.els['calibration-result'].textContent, /Żaden profil.*bez luk/);
     assert.match(receiver.els['calibration-coverage'].textContent, /6\/6/);
     assert.equal(receiver.els['calibration-results'].children.length, 6);
-    assert.ok(receiver.els['calibration-results'].children.every(row => row.dataset.quality === 'warning' && row.dataset.best === 'false'));
+    assert.ok(receiver.els['calibration-results'].children.every(row => row.dataset.quality === 'failed' && row.dataset.best === 'false'));
     assert.equal(receiver.els['show-calibration-feedback'].hidden, true);
     receiver.els['show-calibration-feedback'].click(); assert.equal(receiver.display('feedback-canvas'), null);
     assert.equal(receiver.telemetry.snapshot().transfer, null); assert.equal(receiver.els['download-file'].disabled, true);
@@ -1231,6 +1430,13 @@ test('complete calibration images show packet coverage but cannot be presented a
     assert.match(h.els['calibration-coverage'].textContent, /z obrazów.*nową próbę kamerą/);
     assert.equal(h.els['calibration-results'].children[0].dataset.quality, 'good');
     assert.doesNotMatch(h.els['calibration-results'].children[0].children[1].textContent, /B\/s/);
+    assertReceiverView(h, 'calibration');
+    assert.equal(calibrationCell(h, 0).dataset.state, 'passed');
+    assert.equal(calibrationCell(h, 0).dataset.best, 'false');
+    assert.equal(h.els['calibration-results'].children[0].dataset.best, 'false');
+    assert.match(h.els['calibration-view-status'].textContent, /bez pomiaru szybkości kamery/);
+    assert.doesNotMatch(renderedText(h.els['calibration-map']), /B\/s/,
+      'Packet coverage imported from images must not appear as a camera throughput measurement.');
     assert.equal(h.els['show-calibration-feedback'].hidden, true); assert.equal(h.cameraConstraints.length, 0);
     h.els['show-calibration-feedback'].click(); assert.equal(h.display('feedback-canvas'), null);
   } finally { trial?.dispose(); h.close(); }
