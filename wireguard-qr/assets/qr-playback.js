@@ -1,11 +1,11 @@
-/* Bounded, rewindable packet planning for up to nine independent QR symbols. */
+/* Bounded, rewindable packet planning for up to twenty independent QR symbols. */
 (function (root) {
   'use strict';
   function create(transfer, { lanes = 1, startIndex = 0, initialManifest = true, interleave } = {}) {
     if (!transfer || !Number.isSafeInteger(transfer.total) || transfer.total < 1
       || !Number.isSafeInteger(transfer.blockCount) || transfer.blockCount !== Math.ceil(transfer.total / 32)
       || typeof transfer.frame !== 'function' || typeof transfer.repairFrame !== 'function'
-      || !Number.isInteger(lanes) || lanes < 1 || lanes > 9 || !Number.isFinite(startIndex) || typeof initialManifest !== 'boolean'
+      || !Number.isInteger(lanes) || lanes < 1 || lanes > 20 || !Number.isFinite(startIndex) || typeof initialManifest !== 'boolean'
       || (interleave !== undefined && typeof interleave !== 'boolean')) {
       throw new TypeError('Nieprawidłowy plan nadawania.');
     }
@@ -103,7 +103,7 @@
       get phase() { return state.phase; }, get targetedCount() { return state.targets.length; } };
   }
   function firstPassDisplays(total, lanes = 1, manifestInterval = 0, initialManifest = true) {
-    if (!Number.isSafeInteger(total) || total < 1 || !Number.isInteger(lanes) || lanes < 1 || lanes > 9
+    if (!Number.isSafeInteger(total) || total < 1 || !Number.isInteger(lanes) || lanes < 1 || lanes > 20
       || !Number.isSafeInteger(manifestInterval) || manifestInterval < 0 || typeof initialManifest !== 'boolean') return 0;
     const manifests = manifestInterval > 0
       ? Math.floor((total - 1) / manifestInterval) + (initialManifest ? 1 : 0) : 0;

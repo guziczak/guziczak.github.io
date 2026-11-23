@@ -344,6 +344,145 @@ Both `WGQR-CAL` and its 40-byte `WGQR-SET` result carry calibration version 1 or
 
 The observer deduplicates sequence numbers and waits for the end symbol before selecting a profile or emitting SET. A candidate needs at least three distinct display steps. Its score is unique accepted payload bytes divided by the full four-second period, including missed frames; an already-running profile observed after a late join is scored conservatively. Entirely missed profiles have zero samples and cannot win. In the largest profile, two lanes at 20 changes/s produce at most 160 unique symbols and **24,000 B/s**, within SET's unsigned 16-bit rate field. This synthetic result selects a candidate configuration; it is not a measured completed-file throughput and does not account for manifests, fountain dependence or later changes in camera conditions.
 
+## Synthetic grid calibration versions 3 and 4
+
+Grid calibration describes both the QR layout and the complete measurement plan. Existing v1/v2 callers and the wire bytes of v1/v2/v3 are preserved. This section describes calls with the default `landscapeOnly:false`; version 5 is defined separately below. Calibration version 4 has the `WGQR-CAL`/`WGQR-SET` magic; it is distinct from the large-file data protocol's version 4.
+
+### Plans and API
+
+`WGCalibration.create()` accepts `grid:{columns,rows}`, `compareLayouts`, `allLayouts`, `extended`, `ecc` and `large`. The two comparison flags are booleans and mutually exclusive; `allLayouts:true,compareLayouts:true` is invalid. A comparison plan ignores the requested current grid. Every grid runs the unchanged six basic profiles or ten extended profiles listed above, with the grid as the outer loop. The basic order is 384 B at 2/5/10 Hz, then 600 B at 2/5/10 Hz. Extended plans append 384 B at 15/20 Hz and 600 B at 15/20 Hz to that six-profile prefix.
+
+| Requested plan | Emitted CAL version | Grids | Basic / extended profiles |
+| --- | --- | --- | --- |
+| No grid and neither comparison flag | 1 / 2 | Fixed legacy lane count | 6 / 10 |
+| Current grid, 1–3 columns and 1–3 rows | 3 | Requested grid | 6 / 10 |
+| `compareLayouts:true` | 3 | 1×1, 2×1, 1×2, 2×2, in this order | 24 / 40 |
+| Current grid, 4–5 columns and 1–3 rows | 4 | Requested grid | 6 / 10 |
+| `allLayouts:true` | 4 | Every combination of 1–5 columns and 1–3 rows | 90 / 150 |
+
+Version 3 still rejects grids wider than three columns. Its comparison flag continues to mean exactly four grids. Version 4 permits up to 15 independent QR symbols per display. The all-layout order is fixed by increasing symbol count, then columns, then rows:
+
+| Grid | Symbols | First basic profile | First extended profile |
+| --- | --- | --- | --- |
+| 1×1 | 1 | 0 | 0 |
+| 1×2 | 2 | 6 | 10 |
+| 2×1 | 2 | 12 | 20 |
+| 1×3 | 3 | 18 | 30 |
+| 3×1 | 3 | 24 | 40 |
+| 2×2 | 4 | 30 | 50 |
+| 4×1 | 4 | 36 | 60 |
+| 5×1 | 5 | 42 | 70 |
+| 2×3 | 6 | 48 | 80 |
+| 3×2 | 6 | 54 | 90 |
+| 4×2 | 8 | 60 | 100 |
+| 3×3 | 9 | 66 | 110 |
+| 5×2 | 10 | 72 | 120 |
+| 4×3 | 12 | 78 | 130 |
+| 5×3 | 15 | 84 | 140 |
+
+`WGCalibration.allGrids` exposes this frozen array of frozen `{columns,rows}` objects and remains the 15-grid legacy list. Versions 3 and 4 retain their limits of three rows and, for v4, 15 symbols; the current public `limits` object is described under v6 below. A sender exposes its immutable `profiles`, plus `alignmentIndex` and `alignmentLanes`: the first profile of the largest grid and its symbol count. These are 84/140 and 15 for all-layout plans, 18/30 and 4 for the four-grid comparison, or 0 and the selected grid's area for a current-grid plan. The `allLayouts` boolean is included in the sender, parsed CAL, observer snapshot and accepted SET result.
+
+Each profile measures exactly four seconds. Preparation is outside that interval: with one second of settling before each profile, the v4 all-layout sequence lasts nominally 450 or 750 seconds, plus an initial setup period controlled by the user. These times are plan durations, not promised transfer rates.
+
+### CAL header and preparation
+
+All multibyte integer fields use big-endian order. Grid CAL keeps the existing 40-byte header/CRC overhead:
+
+| Offset | Length | Meaning |
+| --- | --- | --- |
+| 0 | 8 | ASCII `WGQR-CAL` |
+| 8 | 1 | Calibration version |
+| 9 | 1 | Flags described below |
+| 10 | 1 | Profile index, 0–89 or 0–149 in an all-layout plan |
+| 11 | 1 | `(columns << 4) \| rows`; v1/v2 instead contain their fixed lane count |
+| 12 | 16 | Random trial ID |
+| 28 | 2 | Sequence number, setup slot, or 65535 for END |
+| 30 | 2 | Reserved, zero |
+| 32 | 2 | Measurement duration, exactly 4000 ms |
+| 34 | 1 | Payload code: 0 = 384 B, 1 = 600 B |
+| 35 | 1 | Rate index in `[2,5,10,15,20]` |
+| 36 | Variable | Reproducible synthetic bytes, omitted from 40-byte markers |
+| Final 4 | 4 | CRC32 of every preceding byte |
+
+CAL byte 9 uses ended=`1`, ECC L=`2`, large=`4`, alignment=`8`, extended=`16`, four-grid comparison=`32`, setup-preview=`64`, and all-layout comparison=`128`. The final bit is allowed only in v4; flags `32` and `128` cannot coexist. Bits `8`/`16`/`32`/`64` require v3 or later. Setup requires alignment, and alignment cannot be END. Every frame's grid, profile, payload code, rate code, duration and sequence range must agree with its declared plan.
+
+`alignmentFrame(slot,index,setup=false)` emits a stationary preparation code for one slot. Slots range from zero through `columns*rows-1`, with distinct sequence fields and CRCs. In v3, both setup-preview and ordinary settling frames have the full measurement length. In v4, **only setup-preview frames are 40 bytes**: this lets the receiver learn a plan even when its 15 dense measurement codes cannot all be read. They retain the profile metadata and the `large` flag for the coming measurements. V4 settling frames remain full-sized. A shortened non-setup measurement or settling frame is invalid.
+
+Measurement and ordinary settling lengths remain 424/640 bytes, or 476/692 with `large:true`. END is always 40 bytes, names the plan's final profile, and uses sequence 65535. A single small END code therefore does not describe how many QR symbols were displayed during the trial. Initial setup and settling do not contribute any accepted samples, bytes, display steps or throughput.
+
+### Exact coverage, results and SET
+
+A measurement sequence identifies the slot and display step: `slot = sequence % lanes`, `step = floor(sequence / lanes)`, and the one-second window is `floor(sequence / (fps*lanes))`. Expected unique reads are `4*fps*lanes`, with `fps*lanes` reads in each of four windows. The largest v4 profile has 1200 expected reads, uses sequences 0–1199, and contains 300 distinct symbols per second. Duplicate reads do not add coverage; late reads retain their original window.
+
+Observer snapshots retain `phase:'alignment'|'measuring'|'finished'` and expose `setup` and `latestMeasurementIndex` so presentation can distinguish an initial largest-grid preview from a later settling interval. The first setup does not close earlier profiles. Settling and measurement progress cannot be rewound by delayed setup or older settling frames. A later profile closes earlier ones; END closes the entire advertised plan. Consequently, all profiles of a wholly unreadable grid are failed after END, rather than remaining untested or disappearing from the results.
+
+V3/v4 choose `best` only after END and only among profiles with full unique coverage and at least three distinct display steps. Full coverage necessarily fills all four windows. `fastest` may report the highest useful-byte rate with gaps for diagnosis, but cannot produce SET unless it also satisfies the full-coverage rule. Rates are unique synthetic data bytes divided by the full four seconds; ties prefer lower Hz, then fewer symbols, then the earlier profile. Old v1/v2 minimum-sample recommendation semantics remain unchanged.
+
+Grid SET remains 40 bytes. Bytes 0–7 contain `WGQR-SET`; byte 8 is the calibration version; byte 9 is the chosen profile; byte 10 is its packed grid; byte 11 contains ECC L=`1`, large=`2`, four-grid comparison=`4`, extended=`8`, and all-layout comparison=`16` (v4 only). Bytes 12–27 contain the trial ID. Bytes 28–29 contain the accepted sample count, bytes 30–33 an unsigned 32-bit useful-byte rate, bytes 34–35 the distinct display-step count, and bytes 36–39 CRC32. The maximum v4 result is **180,000 B/s** for 600 B × 20 Hz × 15 symbols; this fits the unchanged v3/v4 32-bit field. V1/v2 retain their 16-bit rate and reserved bytes.
+
+The sender accepts SET only for its exact version, trial ID, comparison plan, extended flag, ECC, large flag, profile and grid. V3/v4 also require samples to equal the profile's full expected count, steps to equal `4*fps`, and the rate to equal `samples*chunkBytes/4`. A different layout with the same number of symbols is still a mismatch. Unsupported versions, out-of-range grids/indices/sequences, inconsistent sizes or flags, and CRC failures cannot replace an observer's active session.
+
+### Presentation model
+
+`WGCalibrationView.create({encodeBytes}).compute(snapshot,{fromImages:false})` returns groups by data size, layout rows and frequency columns, with `pending`, `running`, `passed` or `failed` cells. A running profile is not marked passed until it closes. The model handles 90/150-profile plans without changing the protocol. A reset or null snapshot clears the model's scalar dimension cache.
+
+The table's module counts come from the real byte-mode encoder with the measurement payload length and selected ECC, without the quiet zone. There are two cached measurement dimensions per session. V4 setup adds one cached 40-byte dimension: `current` then describes the actual header-only QR (`chunkBytes:0`, `payloadBytes:40`, `headerOnly:true`), while `plannedChunkBytes`/`plannedModules` and the table retain measurement parameters. Temporary matrices are cleared. Image-derived observations retain packet coverage but expose no measured byte rates or recommended camera settings.
+
+## Landscape calibration version 5
+
+Calibration version 5 introduced landscape-only plans. Its only multi-QR layouts have **more columns than rows**; 1×1 remains the baseline. The individual QR matrices remain square. This section specifies the retained v5 wire format; the current `WGCalibration.create({landscapeOnly:true,...})` emits v6 as described below. No existing plan is redefined: v1–v5 retain their original wire bytes, grid lists and profile indices, including portrait and square grids in older comparison plans.
+
+The version field itself identifies the landscape restriction. CAL and SET add no flag bits. Their existing all-layout and quick-comparison flags select version-5 lists instead of the earlier lists, and remain mutually exclusive. The sender, parsed CAL, observer snapshot, accepted SET result and presentation model expose `landscapeOnly:true`; older versions expose `false`. Session and SET validation still require the exact version as well as the ID and all existing options.
+
+| Version-5 scope | Options in addition to `landscapeOnly:true` | Grids | Basic / extended profiles |
+| --- | --- | --- | --- |
+| All landscape layouts | `allLayouts:true` | Ten grids in the table below | 60 / 100 |
+| Quick comparison | `compareLayouts:true` | 1×1, 2×1, 3×1, 3×2, in this order | 24 / 40 |
+| Current layout | `grid:{columns,rows}`; both comparison flags false | One valid landscape grid, or 1×1 | 6 / 10 |
+
+For a current-layout trial, version 5 rejects portrait grids and square multi-QR grids instead of silently changing them. Column and row bounds remain 1–5 and 1–3. A comparison plan ignores the requested current grid, as in older versions. Omitting `grid` and both comparison flags selects the 1×1 baseline. `landscapeOnly` must be a boolean.
+
+All-layout order remains increasing by symbol count, then columns and rows, after filtering out non-landscape multi-QR grids:
+
+| Grid | Symbols | First basic profile | First extended profile |
+| --- | --- | --- | --- |
+| 1×1 | 1 | 0 | 0 |
+| 2×1 | 2 | 6 | 10 |
+| 3×1 | 3 | 12 | 20 |
+| 4×1 | 4 | 18 | 30 |
+| 5×1 | 5 | 24 | 40 |
+| 3×2 | 6 | 30 | 50 |
+| 4×2 | 8 | 36 | 60 |
+| 5×2 | 10 | 42 | 70 |
+| 4×3 | 12 | 48 | 80 |
+| 5×3 | 15 | 54 | 90 |
+
+The v5 parser retains this separate frozen ten-grid list; the current public `landscapeGrids` instead describes v6. `landscapeComparedGrids` exposes the frozen quick-comparison list shared by v5 and v6. Existing `allGrids` continues to expose all 15 v4 grids. The version-5 all-layout sender has `alignmentIndex` 54 or 90 and `alignmentLanes` 15; quick comparison has index 18 or 30 and six lanes. A current-layout trial starts at index zero. END names the last profile, 59/99 for all layouts or 23/39 for quick comparison, rather than any earlier version's final index.
+
+V5 setup-preview codes are 40-byte headers, as in v4. Ordinary settling and measurement frames retain their full 424/640-byte length, or 476/692 bytes with `large:true`. Setup carries no measured data and never contributes coverage or throughput. Four-second windows, sequence-to-slot mapping, complete-coverage selection, late-frame handling and 32-bit SET rates are unchanged. The largest profile still has 1200 unique reads and a maximum synthetic useful rate of 180,000 B/s. A full all-layout run with one second of settling before each profile lasts nominally 300 or 500 seconds, plus the user-controlled initial setup.
+
+The presentation model shows 60/100 cells for the full landscape plan or 24/40 for quick comparison. Initial setup leaves all cells pending; END closes the entire plan, including every unreadable multi-QR layout. Actual 40-byte setup dimensions remain separate from planned measurement dimensions. A version-5 grid may not be inferred by reusing an older profile index: for example, basic all-layout index 12 is 2×1 in v4 but 3×1 in v5, so the version, grid and profile must agree before a frame is accepted.
+
+## Landscape calibration version 6: 5×4 and 20 symbols
+
+The current `WGCalibration.create({landscapeOnly:true,...})` emits CAL/SET version 6. It appends **5×4** to the v5 all-layout list, preserving the order of the preceding ten grids. This is the only new four-row layout: current-layout trials still require either 1×1 or strictly more columns than rows, within five columns and four rows. Four rows with `landscapeOnly:false` are rejected rather than placed in an older protocol version. Comparison plans continue to ignore the requested current grid.
+
+| Version-6 scope | Grids | Basic / extended profiles | Initial setup index / slots |
+| --- | --- | --- | --- |
+| `allLayouts:true` | The ten v5 grids followed by 5×4 | 66 / 110 | 60 or 100 / 20 slots |
+| `compareLayouts:true` | 1×1, 2×1, 3×1, 3×2 | 24 / 40 | 18 or 30 / 6 slots |
+| Current layout | One permitted grid, including 5×4 | 6 / 10 | 0 / selected grid area |
+
+The new 5×4 group occupies basic indices 60–65 or extended indices 100–109. The all-layout END marker therefore names index 65 or 109. All profile durations remain four seconds; with the UI's one-second settling interval, the full plan lasts nominally **330 or 550 seconds**, plus the user-controlled initial setup. Quick-comparison durations and indices do not change.
+
+`WGCalibration.landscapeGrids` is now a frozen list of eleven frozen grid objects. `landscapeComparedGrids` stays the same four-grid list. The frozen public `limits` object is `{columns:5,rows:4,lanes:20}`. `allGrids` intentionally remains the legacy v4 list of fifteen grids. The parser has separate version-specific plans: **v4 all-layout remains 90/150 profiles, v5 landscape all-layout remains 60/100, and every version from v1 through v5 rejects a fourth row**. A larger current grid registry does not expand any older wire format.
+
+Version 6 adds no flag bits or header fields. It retains `landscapeOnly:true`, the mutually exclusive all-layout and quick-comparison flags, 40-byte setup headers, full-sized settling and measurement frames, and exact version/session/plan validation. A 5×4 setup has distinct slots 0–19. Its largest measurement profile has **1600 expected symbols** over four seconds, sequences **0–1599**, 80 display steps and 400 expected symbols per one-second window. At 600 useful bytes per symbol, its synthetic rate is **240,000 B/s**. The existing unsigned 16-bit sample count and unsigned 32-bit SET rate safely represent these values; a v6 sender does not accept a v5 SET.
+
+The map renders 66/110 profiles for v6 all-layout trials. It keeps all 20 setup slots outside measurement statistics and shows actual 40-byte setup density separately from planned measurement density. END closes the full advertised plan, including every unreadable 5×4 profile. Older v5 snapshots continue to show ten layouts ending at 5×3.
+
+The test fixture `development/tools/qr-calibration-v5-fixtures.json` records synthetic CAL setup/measurement/END and SET packets from the PR14 v5 implementation before v6 was added. It also records full-corpus hashes for current, all-layout and quick-comparison trials, allowing tests to verify old indices, parsing and exact receiver-produced SET bytes independently of the new default sender.
+
 ## Integrity, interoperability and errors
 
 Neither CRC, SHA-256, fountain coding nor feedback encrypts or authenticates the content. Anyone who can photograph sufficient independent equations can reconstruct the file. An adversarial observer can forge an unauthenticated ACK; the sender interprets it as a receiver report, not a cryptographic delivery certificate. Final SHA-256 prevents an inconsistent reconstructed file from being offered for download, but does not establish sender identity.
