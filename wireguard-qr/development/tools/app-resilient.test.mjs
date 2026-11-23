@@ -41,10 +41,10 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
   const h = { now: 1000, serial: 0, timers: new Map(), zeroTimers: new Map(), videoCallbacks: new Map(), urls: new Map(),
     encoded: [], encodings: [], rendered: [], matrixBytes: new WeakMap(), canvases: [], downloads: [], transfers: [],
     streams: [], mediaRequests: [], cameraConstraints: [], scannerOptions: [], scanCalls: [], deferMedia: false,
-    disposedScanners: 0, events: {}, optical: null, encoderJobs: [], encoderResets: 0, activeEncodes: 0,
+    disposedScanners: 0, events: {}, optical: null, encoderJobs: [], encoderResets: 0, activeEncodes: 0, maxActiveEncodes: 0,
     deferEncoding: false, scanJobs: [], activeScans: 0, maxActiveScans: 0, deferScans: false,
     largeSenders: [], largeSegments: [], largeStores: [], largeStoreOpenCalls: 0, backend,
-    deferLargeOpen: false, largeOpenJobs: [], resizeObservers: [] };
+    deferLargeOpen: false, largeOpenJobs: [], resizeObservers: [], scannerGridChanges: [] };
   class Element {
     constructor(id = '') {
       this.id = id; this.listeners = {}; this.dataset = {}; this.value = ''; this.hidden = false;
@@ -52,7 +52,8 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
       this.children = []; this.parentElement = null; this.attributes = {}; this.isConnected = true; this.tabIndex = 0;
       this.width = this.height = 1; this.readyState = 2; this.videoWidth = this.videoHeight = 300;
       this.clientWidth = 640; this.clientHeight = 360;
-      this.currentTime = 0; this.payload = null; this.classes = new Set(); this.style = {}; this.draws = [];
+      this.currentTime = 0; this.presentedFrames = 0; this.payload = null; this.classes = new Set(); this.draws = [];
+      this.style = { setProperty(name, value) { this[name] = String(value); }, getPropertyValue(name) { return this[name] || ''; }, removeProperty(name) { const value = this[name] || ''; delete this[name]; return value; } };
       this.classList = { add: (x) => this.classes.add(x), remove: (x) => this.classes.delete(x), contains: (x) => this.classes.has(x), toggle: (x, on) => on ? this.classes.add(x) : this.classes.delete(x) };
     }
     addEventListener(name, fn) { (this.listeners[name] ??= []).push(fn); }
@@ -65,7 +66,7 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
     removeAttribute(name) { delete this.attributes[name]; }
     getAttribute(name) { return this.attributes[name]; }
     appendChild(node) { this.children.push(node); node.parentElement = this; }
-    replaceChildren() { this.children = []; }
+    replaceChildren(...nodes) { this.children = []; for (const node of nodes) this.appendChild(node); }
     remove() {}
     contains(node) { return node === this || this.children.some((child) => child.contains(node)); }
     closest(selector) { for (let node = this; node; node = node.parentElement) if (selector === '[hidden]' && node.hidden) return node; return null; }
@@ -84,9 +85,15 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
       return { fillRect() {}, drawImage(image, ...args) {
         canvas.draws.push({ image, args, width: image.width, height: image.height,
           payload: image.payload instanceof Uint8Array ? Uint8Array.from(image.payload) : image.payload });
-        // Image decoding sees the appropriate half of an uploaded pair. The full-image
-        // attempt may find either QR; the app must deduplicate it before trying each half.
-        h.optical = Array.isArray(image.payload) ? image.payload[args.length >= 8 && args[0] > 0 ? 1 : 0] : image.payload;
+        // Uploaded grid crops reveal their own symbol. A full-image decode finds
+        // the first QR again, which the app must deduplicate against later crops.
+        if (Array.isArray(image.payload)) {
+          const columns = image.qrGrid?.columns || image.payload.length;
+          const rows = image.qrGrid?.rows || 1;
+          const column = args.length >= 8 ? Math.min(columns - 1, Math.floor(args[0] * columns / image.naturalWidth)) : 0;
+          const row = args.length >= 8 ? Math.min(rows - 1, Math.floor(args[1] * rows / image.naturalHeight)) : 0;
+          h.optical = image.payload[row * columns + column];
+        } else h.optical = image.payload;
       }, getImageData() { return { data: new Uint8ClampedArray(4), width: 1, height: 1 }; } };
     }
     toBlob(callback) { const blob = Object.assign(new Blob(['png'], { type: 'image/png' }), { png: { width: this.width, height: this.height, draws: this.draws.slice(), payload: this.payload } }); callback(blob); }
@@ -95,7 +102,9 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
   }
   h.els = Object.fromEntries([...html.matchAll(/id="([^"]+)"/g)].map((m) => [m[1], new Element(m[1])]));
   h.els['transfer-mode'].value = 'auto'; h.els['qr-density'].value = '384';
-  for (const [id, value] of Object.entries({ 'qr-layout': 'single', 'series-ecc': 'M', 'scan-layout': 'single', 'camera-profile': 'auto', 'calibration-range': 'basic', 'large-repair': '1' })) h.els[id].value = value;
+  for (const [id, value] of Object.entries({ 'qr-layout': 'single', 'qr-columns': '1', 'qr-rows': '1',
+    'series-ecc': 'M', 'scan-layout': 'single', 'scan-columns': '1', 'scan-rows': '1',
+    'camera-profile': 'auto', 'calibration-range': 'basic', 'calibration-layout-scope': 'current', 'large-repair': '1' })) h.els[id].value = value;
   h.els['large-auto'].checked = true;
   for (const rate of [1, 2, 5, 10, 15, 20]) { const radio = new Element(`rate-${rate}`); radio.value = String(rate); radio.checked = rate === 2; h.els['frame-rate'].appendChild(radio); }
   h.document = { body: new Element('body'), documentElement: { clientWidth: 1280, clientHeight: 800, dataset: { appVersion: html.match(/data-app-version="([^"]+)"/)?.[1] || 'test' } }, activeElement: h.els['expand-qr'], hidden: false, getElementById: (id) => h.els[id], createElement: (tag) => { const element = new Element(); element.tagName = tag.toUpperCase(); if (tag === 'canvas') h.canvases.push(element); return element; }, querySelectorAll: () => [], addEventListener: (name, fn) => { (h.events[name] ??= []).push(fn); } };
@@ -115,7 +124,13 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
     disconnect() { this.targets.clear(); this.disconnected = true; }
   }
   class FakeImage {
-    set src(value) { if (value) { this.payload = h.urls.get(value)?.payload; this.naturalWidth = Array.isArray(this.payload) ? 600 : 300; this.naturalHeight = 300; queueMicrotask(() => this.onload?.()); } }
+    set src(value) {
+      if (value) {
+        const file = h.urls.get(value); this.payload = file?.payload; this.qrGrid = file?.qrGrid;
+        this.naturalWidth = 300 * (this.qrGrid?.columns || (Array.isArray(this.payload) ? this.payload.length : 1));
+        this.naturalHeight = 300 * (this.qrGrid?.rows || 1); queueMicrotask(() => this.onload?.());
+      }
+    }
   }
   h.makeStream = () => {
     const track = { stopped: false, listeners: {}, stop() { this.stopped = true; }, addEventListener(name, fn) { this.listeners[name] = fn; }, getSettings() { return { width: 1920, height: 1080, frameRate: 30, deviceId: 'must-not-export-camera-id' }; } };
@@ -126,7 +141,7 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
     document: h.document, navigator: { clipboard: { async writeText(text) { h.clipboardText = text; } }, mediaDevices: { getUserMedia(constraints) { h.cameraConstraints.push(constraints); if (h.deferMedia) return new Promise((resolve) => h.mediaRequests.push(resolve)); return Promise.resolve(h.makeStream()); } } },
     URL: { createObjectURL(blob) { const id = `blob:${++h.serial}`; h.urls.set(id, blob); return id; }, revokeObjectURL: (id) => h.urls.delete(id) },
     performance: { now: () => h.now }, isSecureContext: true, innerWidth: 1280, innerHeight: 800,
-    setTimeout(fn, delay = 0) { const id = ++h.serial; if (delay === 0) h.zeroTimers.set(id, setTimeout(() => { h.zeroTimers.delete(id); fn(); }, 0)); else h.timers.set(id, { fn, delay }); return id; },
+    setTimeout(fn, delay = 0) { const id = ++h.serial; if (delay === 0) h.zeroTimers.set(id, setTimeout(() => { h.zeroTimers.delete(id); fn(); }, 0)); else h.timers.set(id, { fn, delay, dueAt: h.now + delay }); return id; },
     clearTimeout(id) { if (h.zeroTimers.has(id)) clearTimeout(h.zeroTimers.get(id)); h.zeroTimers.delete(id); h.timers.delete(id); }, addEventListener(name, fn) { (h.events[name] ??= []).push(fn); },
   };
   if (withVisualViewport) context.visualViewport = h.visualViewport;
@@ -143,12 +158,12 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
   }, decodePixels: () => h.optical ? { bytes: Uint8Array.from(h.optical) } : null };
   // Preparation can encode several future packets. Assertions about transmission
   // must follow the matrices actually painted on each canvas, not the encoder log.
-  h.context.WGRender = { drawQR(matrix, canvas, options = {}) {
+  h.context.WGRender = { clear(canvas) { canvas.width = canvas.height = 1; canvas.payload = null; }, drawQR(matrix, canvas, options = {}) {
     const bytes = h.matrixBytes.get(matrix) || h.matrixBytes.get(matrix.data); assert.ok(bytes, 'Rendered a matrix without encoded bytes');
     canvas.payload = Uint8Array.from(bytes); canvas.matrix = matrix;
     const scale = Math.max(1, Math.floor((options.cssWidth || 600) / (matrix.size + 8)));
     canvas.width = canvas.height = (matrix.size + 8) * scale;
-    h.rendered.push({ canvas, bytes: Uint8Array.from(bytes), matrix, options });
+    h.rendered.push({ canvas, bytes: Uint8Array.from(bytes), matrix, options, at: h.now });
     return { size: canvas.width, scale };
   } };
   const createEncoder = h.context.WGEncoder.create;
@@ -157,7 +172,7 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
     return {
       encodeBatch(batch) {
         const job = { held: h.deferEncoding, inputs: batch.map(item => Uint8Array.from(item.bytes)), ready: false };
-        h.encoderJobs.push(job); h.activeEncodes++;
+        h.encoderJobs.push(job); h.activeEncodes++; h.maxActiveEncodes = Math.max(h.maxActiveEncodes, h.activeEncodes);
         return encoder.encodeBatch(batch).then(matrices => {
           job.matrices = matrices; job.ready = true;
           if (!job.held) return matrices;
@@ -190,12 +205,13 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
   const createTelemetry = h.context.WGTelemetry.create;
   h.context.WGTelemetry = { ...h.context.WGTelemetry, create(options) { h.telemetry = createTelemetry(options); return h.telemetry; } };
   h.context.WGCamera = { createScanner(options) {
-    h.scannerOptions.push(options); let disposed = false; let lanes = options.lanes;
+    h.scannerOptions.push(options); let disposed = false;
+    let columns = options.columns || options.lanes || 1, rows = options.rows || 1, lanes = columns * rows;
     const scan = (video) => {
       assert.equal(disposed, false);
       const payloads = Array.isArray(video.payload) ? video.payload : [video.payload];
       const results = payloads.filter(Boolean).map((bytes) => ({ bytes: Uint8Array.from(bytes) }));
-      h.scanCalls.push({ video, lanes, payloads: results.map(result => result.bytes) });
+      h.scanCalls.push({ video, lanes, columns, rows, payloads: results.map(result => result.bytes) });
       return { result: results[0] || null, results, attempts: lanes, decodeMs: 25, region: 'tracked', pixels: { width: 300, height: 300 } };
     };
     return { scan, async scanAsync(video) {
@@ -205,7 +221,10 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
         if (!h.deferScans) return sample;
         return await new Promise(resolve => { h.scanJobs.push({ sample, release: () => resolve(sample) }); });
       } finally { h.activeScans--; }
-    }, setLanes(value) { lanes = value; }, reset() {}, dispose() { if (!disposed) h.disposedScanners++; disposed = true; } };
+    }, setLanes(value) { columns = value; rows = 1; lanes = value; }, setGrid(nextColumns, nextRows) {
+      columns = nextColumns; rows = nextRows; lanes = columns * rows;
+      h.scannerGridChanges.push({ columns, rows, lanes });
+    }, reset() {}, dispose() { if (!disposed) h.disposedScanners++; disposed = true; } };
   } };
   vm.runInContext(app, h.context);
   h.wait = async (predicate) => { for (let i = 0; i < 600; i++) { if (predicate()) return; await new Promise((resolve) => setTimeout(resolve, 2)); } throw new Error('Timed out waiting for app state'); };
@@ -219,7 +238,10 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
     throw new Error('Timed out draining asynchronous preparation');
   };
   h.display = (id = 'qr-canvas') => h.els[id].payload && Uint8Array.from(h.els[id].payload);
-  h.pair = () => [h.display(), ...(h.els['qr-paper-second'].hidden ? [] : [h.display('qr-canvas-second')])];
+  h.grid = () => [h.display(), ...Array.from({ length: 8 }, (_, index) => index + 1)
+    .filter(index => !h.els[index === 1 ? 'qr-paper-second' : `qr-paper-${index + 1}`].hidden)
+    .map(index => h.display(index === 1 ? 'qr-canvas-second' : `qr-canvas-${index + 1}`))];
+  h.pair = h.grid;
   h.change = (id, value) => { h.els[id].value = value; h.els[id].dispatch('change'); };
   h.dispatchWindow = (name, event = {}) => { for (const listener of h.events[name] || []) listener(event); };
   h.notifyResize = target => {
@@ -228,22 +250,22 @@ function harness({ backend, withResizeObserver = true, withVisualViewport = true
     }
   };
   h.choose = (files) => { h.els['file-input'].files = files; h.els['file-input'].dispatch('change'); };
-  h.upload = (payload, feedback = false) => {
+  h.upload = (payload, feedback = false, qrGrid = undefined) => {
     const input = h.els[feedback ? 'feedback-image-input' : 'image-input'];
-    input.files = [Object.assign(new File(['image'], 'qr.png', { type: 'image/png' }), { payload })]; input.dispatch('change');
+    input.files = [Object.assign(new File(['image'], 'qr.png', { type: 'image/png' }), { payload, qrGrid })]; input.dispatch('change');
   };
-  h.fireFrame = async (videoId, payload) => {
+  h.fireFrame = async (videoId, payload, { advanceMs = 100 } = {}) => {
     const video = h.els[videoId];
     const item = [...h.videoCallbacks.entries()].find(([, entry]) => entry.video === video);
     assert.ok(item, `No callback for ${videoId}`); const [id, { fn }] = item; h.videoCallbacks.delete(id);
-    video.payload = payload; h.now += 100; video.currentTime += 0.1;
-    await fn(h.now, { presentedFrames: Math.round(video.currentTime * 10), mediaTime: video.currentTime });
+    video.payload = payload; h.now += advanceMs; video.currentTime += advanceMs / 1000; video.presentedFrames++;
+    await fn(h.now, { presentedFrames: video.presentedFrames, mediaTime: video.currentTime });
     return fn;
   };
   h.tick = async (name = 'tick', { flush = true } = {}) => {
     if (flush) await h.flush();
     const item = [...h.timers.entries()].find(([, entry]) => entry.fn.name === name); assert.ok(item, `No ${name} timer`);
-    const [id, entry] = item; h.timers.delete(id); h.now += entry.delay; await entry.fn();
+    const [id, entry] = item; h.timers.delete(id); h.now = Math.max(h.now, entry.dueAt); await entry.fn();
     await h.micro();
   };
   h.rate = () => Number(h.els['frame-rate'].children.find((radio) => radio.checked).value);
@@ -295,6 +317,47 @@ async function enableDiskReceiver(h) {
   h.els['decode-tab'].click(); h.els['enable-large-receiver'].click();
   await h.wait(() => h.largeStores.length > 0 && !h.els['large-storage-details'].hidden && !h.els['large-delete'].disabled);
   return h.largeStores.at(-1);
+}
+
+async function openCalibration(h) {
+  h.els['start-calibration'].click(); await h.flush();
+  await h.wait(() => !h.els['begin-calibration'].hidden);
+  const parsed = h.context.WGCalibration.parse(h.display());
+  assert.equal(parsed.version, 3); assert.equal(parsed.alignment, true);
+  assert.equal(h.els['animation-toggle'].disabled, true);
+  assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tickCalibration'),
+    'Alignment must remain still until the sender explicitly starts measurement');
+  return h.grid();
+}
+
+async function calibrationAt(h, at) {
+  await h.flush();
+  const pending = [...h.timers.entries()].find(([, timer]) => timer.fn.name === 'tickCalibration');
+  assert.ok(pending, 'A measuring trial must have its next presentation scheduled');
+  assert.ok(at >= h.now, 'The simulated display clock cannot move backwards');
+  const [id, timer] = pending; h.timers.delete(id); h.now = at;
+  await timer.fn(); await h.flush();
+}
+
+async function measureCalibration(h, { profileCount = 6, steps = () => [], onPackets = async () => {} } = {}) {
+  const started = h.now;
+  h.els['begin-calibration'].click(); await h.flush();
+  assert.equal(h.els['begin-calibration'].hidden, true);
+  for (let index = 0; index < profileCount; index++) {
+    if (index) await calibrationAt(h, started + index * 5000);
+    const profile = h.context.WGCalibration.parse(h.display());
+    assert.equal(profile.index, index); assert.equal(profile.alignment, true);
+    await onPackets(h.grid(), profile);
+    for (const step of steps(profile, index)) {
+      await calibrationAt(h, started + index * 5000 + 1000 + step * 1000 / profile.fps);
+      const parsed = h.context.WGCalibration.parse(h.display());
+      assert.equal(parsed.alignment, false); assert.equal(parsed.step, step);
+      await onPackets(h.grid(), parsed);
+    }
+  }
+  await calibrationAt(h, started + profileCount * 5000);
+  const end = h.context.WGCalibration.parse(h.display()); assert.equal(end.ended, true);
+  await onPackets(h.grid(), end);
 }
 
 test('sender sends all source packets once, then advances repair serials; pause and rate preserve the phase', async () => {
@@ -493,7 +556,7 @@ test('dual sender presents distinct source packets and resumes after prefetched 
     h.els['series-sample'].click(); await h.wait(() => !h.els['choose-file'].disabled);
     const transfer = h.transfers.at(-1);
     assert.equal(h.els['qr-pair'].dataset.layout, 'dual'); assert.equal(h.els['qr-paper-second'].hidden, false);
-    assert.match(h.els['frame-rate-label'].textContent, /pary/);
+    assert.match(h.els['frame-rate-label'].textContent, /całego układu/);
     assert.match(h.els['estimate-five-label'].textContent, /5 par\/s.*10 QR\/s/);
     assert.deepEqual(h.pair(), [transfer.manifestFrame(), transfer.frame(0)]);
     assert.equal(h.els['qr-canvas'].matrix.level, 'M'); assert.equal(h.els['qr-canvas-second'].matrix.level, 'L');
@@ -624,6 +687,55 @@ test('dual PNG export captures both visible symbols at integer module pitch and 
     assert.equal(h.timers.size, 1, 'Only the download URL cleanup timer should remain');
     assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tick'));
   } finally { h.close(); }
+});
+
+test('a 2 by 2 grid exports all four QR symbols and finishes byte-exact reception from its PNG and live frames', async () => {
+  const sender = harness(), receiver = harness();
+  try {
+    const original = Uint8Array.from({ length: 3500 }, (_, index) => (index * 19 + 127) % 256);
+    sender.change('qr-columns', '2'); sender.change('qr-rows', '2');
+    sender.choose([new File([original], 'grid-four.bin')]); await sender.wait(() => !sender.els['choose-file'].disabled);
+    const transfer = sender.transfers.at(-1);
+    assert.deepEqual(sender.grid(), [transfer.manifestFrame(), transfer.frame(0), transfer.frame(1), transfer.frame(2)]);
+    assert.equal(sender.els['qr-pair'].dataset.layout, 'grid');
+    assert.equal(sender.els['qr-pair'].style.getPropertyValue('--qr-columns'), '2');
+    assert.equal(sender.els['qr-pair'].style.getPropertyValue('--qr-rows'), '2');
+    assert.match(sender.els['qr-grid-count'].textContent, /4 QR/);
+    sender.els['download-qr'].click(); const png = sender.downloads.at(-1).blob.png;
+    assert.equal(png.draws.length, 4); assert.equal(png.width, png.height);
+    assert.deepEqual(png.draws.map(draw => draw.payload), sender.grid());
+    for (const draw of png.draws) {
+      assert.equal(draw.width, draw.height); assert.equal(draw.args.length, 2);
+      assert.equal(draw.width % (draw.image.matrix.size + 8), 0);
+      assert.ok(draw.args.every(Number.isInteger));
+    }
+    assert.ok(png.draws[0].args[0] + png.draws[0].width < png.draws[1].args[0]);
+    assert.ok(png.draws[0].args[1] + png.draws[0].height < png.draws[2].args[1]);
+    assert.ok(Math.abs(png.draws[1].args[1] + png.draws[1].height / 2 - png.draws[0].args[1] - png.draws[0].height / 2) <= 0.5);
+    assert.ok(Math.abs(png.draws[3].args[0] + png.draws[3].width / 2 - png.draws[1].args[0] - png.draws[1].width / 2) <= 0.5);
+
+    receiver.els['decode-tab'].click(); receiver.change('scan-columns', '2'); receiver.change('scan-rows', '2');
+    receiver.upload(png.draws.map(draw => draw.payload), false, { columns: 2, rows: 2 });
+    await receiver.wait(() => !receiver.els['choose-image'].disabled);
+    assert.equal(receiver.telemetry.snapshot().imageReads, 4);
+    assert.equal(receiver.telemetry.snapshot().usefulUnits, 3);
+    receiver.els['start-camera'].click(); await receiver.wait(() => receiver.videoCallbacks.size === 1);
+    assert.equal(receiver.scannerOptions.at(-1).lanes, 4);
+    assert.equal(receiver.scannerOptions.at(-1).columns, 2); assert.equal(receiver.scannerOptions.at(-1).rows, 2);
+    sender.els['animation-toggle'].click();
+    for (let step = 0; step < 2; step++) { await sender.tick(); await receiver.fireFrame('camera-video', sender.grid()); }
+    assert.equal(receiver.els['download-file'].disabled, false);
+    assert.equal(receiver.telemetry.snapshot().usefulUnits, transfer.total);
+    receiver.els['download-file'].click(); assert.deepEqual(new Uint8Array(await receiver.downloads.at(-1).blob.arrayBuffer()), original);
+
+    // The same DOM and asynchronous encoder must support the published 3×3 limit.
+    sender.els['animation-toggle'].click(); sender.change('qr-columns', '3'); sender.change('qr-rows', '3');
+    sender.choose([new File([new Uint8Array(10000).fill(87)], 'grid-nine.bin')]);
+    await sender.wait(() => sender.transfers.length === 2 && !sender.els['choose-file'].disabled);
+    assert.equal(sender.grid().length, 9); assert.equal(sender.els['qr-paper-9'].hidden, false);
+    sender.els['animation-toggle'].click(); await sender.tick();
+    assert.equal(sender.grid().length, 9); assert.ok(sender.encoderJobs.some(job => job.inputs.length === 9));
+  } finally { sender.close(); receiver.close(); }
 });
 
 test('camera profiles restart safely and automatic aspect follows one or two scan lanes', async () => {
@@ -758,31 +870,30 @@ test('calibration exchanges a measured dual profile, regenerates the transfer, a
     sender.change('qr-layout', 'dual'); sender.change('series-ecc', 'L'); sender.els['transfer-mode'].value = 'series';
     sender.choose([new File([original], 'after-calibration.bin')]); await sender.wait(() => !sender.els['choose-file'].disabled);
     const old = sender.transfers.at(-1);
-    receiver.els['decode-tab'].click(); receiver.change('scan-layout', 'dual'); receiver.els['start-camera'].click();
+    receiver.els['decode-tab'].click(); receiver.els['start-camera'].click();
     await receiver.wait(() => receiver.videoCallbacks.size === 1);
-    const started = sender.now; sender.els['start-calibration'].click();
-    await sender.flush();
-    await sender.wait(() => sender.context.WGCalibration.isFrame(sender.display()));
+    assert.equal(receiver.cameraConstraints[0].video.aspectRatio.ideal, 4 / 3);
+    assert.equal(receiver.scannerOptions[0].lanes, 1);
+    await openCalibration(sender);
     assert.equal(sender.els['stop-calibration'].hidden, false); assert.equal(sender.els['animation-toggle'].disabled, true);
-    for (let index = 0; index < 6; index++) {
-      const parsed = sender.context.WGCalibration.parse(sender.display());
-      assert.equal(parsed.index, index); assert.equal(parsed.lanes, 2); assert.equal(parsed.ecc, 'L');
-      // Model a camera which reads three distinct steps of the 600 B / 5 Hz
-      // profile. Unreadable profiles should not win just because they send faster.
-      if (index === 4) {
-        for (let step = 0; step < 3; step++) {
-          if (step) await sender.tick('tickCalibration');
-          await receiver.fireFrame('camera-video', sender.pair());
-        }
+    for (let attempt = 0; attempt < 3; attempt++) await receiver.fireFrame('camera-video', sender.grid(), { advanceMs: 250 });
+    assert.equal(receiver.els['calibration-alignment'].dataset.quality, 'good');
+    assert.equal(receiver.cameraConstraints.length, 1);
+    assert.equal(receiver.els['calibration-progress'].value, 0, 'Static alignment packets must not count as measured samples');
+    await measureCalibration(sender, {
+      // A profile is eligible only when every symbol in all four seconds arrived.
+      steps: (profile, index) => index === 4 ? Array.from({ length: 20 }, (_, step) => step) : [],
+      async onPackets(packets, parsed) {
+        assert.equal(parsed.lanes, 2); assert.equal(parsed.ecc, 'L');
+        await receiver.fireFrame('camera-video', packets, { advanceMs: 1000 / parsed.fps });
       }
-      const timer = [...sender.timers.values()].find(item => item.fn.name === 'tickCalibration');
-      sender.now = started + (index + 1) * 4000 - timer.delay;
-      await sender.tick('tickCalibration');
-    }
-    assert.equal(sender.context.WGCalibration.parse(sender.display()).ended, true);
-    await receiver.fireFrame('camera-video', sender.pair());
+    });
     assert.equal(receiver.els['show-calibration-feedback'].hidden, false);
-    assert.match(receiver.els['calibration-result'].textContent, /600 B, 5 zmian\/s, 2 QR/);
+    assert.match(receiver.els['calibration-result'].textContent, /2 × 1 QR, 600 B, 5 zmian\/s/);
+    const best = receiver.els['calibration-results'].children.find(row => row.dataset.best === 'true');
+    assert.equal(best.dataset.quality, 'good'); assert.match(best.children[1].textContent, /40\/40 paczek.*100%.*braki: 0/);
+    assert.deepEqual(best.children[2].children.map(item => item.textContent),
+      [1, 2, 3, 4].map(second => `${second}. s: 10/10 · 6000 B/s`));
     assert.equal(receiver.telemetry.snapshot().transfer, null); assert.equal(receiver.els['download-file'].disabled, true);
     receiver.els['show-calibration-feedback'].click(); const feedback = receiver.display('feedback-canvas');
     assert.equal(receiver.context.WGCalibration.isFeedback(feedback), true);
@@ -793,6 +904,9 @@ test('calibration exchanges a measured dual profile, regenerates the transfer, a
     assert.equal(transfer.chunkBytes, 600); assert.equal(sender.rate(), 5); assert.equal(sender.els['series-ecc'].value, 'L');
     assert.equal(sender.els['qr-layout'].value, 'dual'); assert.equal(sender.els['animation-toggle'].getAttribute('aria-pressed'), 'false');
     receiver.els['resume-receiving'].click(); await receiver.wait(() => receiver.videoCallbacks.size === 1);
+    assert.equal(receiver.cameraConstraints.at(-1).video.aspectRatio.ideal, 4 / 3,
+      'Applying a 2×1 result must preserve the capture conditions under which it was measured');
+    assert.equal(receiver.scannerOptions.at(-1).lanes, 2);
     await receiver.fireFrame('camera-video', sender.pair());
     assert.equal(receiver.els['calibration-panel'].hidden, true); assert.equal(receiver.telemetry.snapshot().usefulUnits, 1);
     sender.els['animation-toggle'].click();
@@ -800,6 +914,93 @@ test('calibration exchanges a measured dual profile, regenerates the transfer, a
     assert.equal(receiver.els['download-file'].disabled, false); assert.equal(receiver.telemetry.snapshot().cameraAttempts, 3);
     receiver.els['download-file'].click(); assert.deepEqual(new Uint8Array(await receiver.downloads.at(-1).blob.arrayBuffer()), original);
   } finally { sender.close(); receiver.close(); }
+});
+
+test('calibration compares four layouts without restarting the camera and applies a complete grid instead of a faster gapped one', async () => {
+  const sender = harness(), receiver = harness();
+  try {
+    const original = Uint8Array.from({ length: 1900 }, (_, index) => (index * 13) % 251);
+    sender.change('calibration-layout-scope', 'compare'); sender.els['transfer-mode'].value = 'series';
+    sender.choose([new File([original], 'calibration-grid.bin')]); await sender.wait(() => !sender.els['choose-file'].disabled);
+    const old = sender.transfers.at(-1);
+    await openCalibration(sender);
+    assert.equal(sender.grid().length, 4); assert.equal(sender.document.body.classList.contains('qr-expanded'), true);
+    assert.match(sender.els['calibration-duration'].textContent, /120 s/);
+    receiver.els['decode-tab'].click(); receiver.els['start-camera'].click(); await receiver.wait(() => receiver.videoCallbacks.size === 1);
+    const stream = receiver.streams[0]; assert.equal(receiver.scannerOptions[0].lanes, 1);
+    await receiver.fireFrame('camera-video', sender.grid()[0]);
+    assert.equal(receiver.els['scan-columns'].value, '2'); assert.equal(receiver.els['scan-rows'].value, '2');
+    assert.equal(receiver.els['calibration-alignment'].dataset.quality, 'warning');
+    for (let attempt = 0; attempt < 3; attempt++) await receiver.fireFrame('camera-video', sender.grid(), { advanceMs: 250 });
+    assert.equal(receiver.els['calibration-alignment'].dataset.quality, 'good');
+    assert.equal(receiver.cameraConstraints.length, 1); assert.equal(stream.track.stopped, false);
+    await measureCalibration(sender, {
+      profileCount: 24,
+      steps: (profile, index) => index === 22 ? Array.from({ length: 20 }, (_, step) => step)
+        : index === 23 ? Array.from({ length: 39 }, (_, step) => step) : [],
+      onPackets: (packets, parsed) => receiver.fireFrame('camera-video', packets, { advanceMs: 1000 / parsed.fps })
+    });
+    assert.equal(receiver.cameraConstraints.length, 1); assert.equal(receiver.streams[0], stream); assert.equal(stream.track.stopped, false);
+    for (const [columns, rows] of [[1, 1], [2, 1], [1, 2], [2, 2]]) {
+      assert.ok(receiver.scannerGridChanges.some(grid => grid.columns === columns && grid.rows === rows));
+    }
+    const rows = receiver.els['calibration-results'].children;
+    assert.equal(rows.length, 24); assert.equal(rows[22].dataset.best, 'true'); assert.equal(rows[22].dataset.quality, 'good');
+    assert.match(rows[22].children[1].textContent, /80\/80 paczek.*100%.*braki: 0/);
+    assert.equal(rows[23].dataset.best, 'false'); assert.equal(rows[23].dataset.quality, 'warning');
+    assert.match(rows[23].children[1].textContent, /156\/160 paczek.*braki: 4/);
+    assert.equal(receiver.els['show-calibration-feedback'].hidden, false);
+    receiver.els['show-calibration-feedback'].click(); const feedback = receiver.display('feedback-canvas');
+    sender.els['scan-feedback'].click(); await sender.wait(() => sender.videoCallbacks.size === 1);
+    await sender.fireFrame('feedback-video', feedback);
+    await sender.wait(() => sender.transfers.length === 2 && !sender.els['choose-file'].disabled);
+    const transfer = sender.transfers.at(-1);
+    assert.equal(transfer.chunkBytes, 600); assert.equal(sender.rate(), 5);
+    assert.equal(sender.els['qr-columns'].value, '2'); assert.equal(sender.els['qr-rows'].value, '2');
+    assert.equal(sender.grid().length, 4); assert.equal(sender.document.body.classList.contains('qr-expanded'), true);
+    assert.equal(sender.els['animation-toggle'].getAttribute('aria-pressed'), 'false');
+    assert.deepEqual(await collectTransfer(sender.protocol, transfer), original);
+    assert.throws(() => old.frame(0), error => error.code === 'TRANSFER_DISPOSED');
+  } finally { sender.close(); receiver.close(); }
+});
+
+test('calibration with three observed steps per profile exposes gaps and offers no setting feedback', async () => {
+  const sender = harness(), receiver = harness();
+  try {
+    sender.change('qr-columns', '2'); sender.change('qr-rows', '2');
+    sender.els['series-sample'].click(); await sender.wait(() => !sender.els['choose-file'].disabled);
+    await openCalibration(sender);
+    receiver.els['decode-tab'].click(); receiver.els['start-camera'].click(); await receiver.wait(() => receiver.videoCallbacks.size === 1);
+    await measureCalibration(sender, {
+      steps: () => [0, 1, 2],
+      onPackets: (packets, parsed) => receiver.fireFrame('camera-video', packets, { advanceMs: 1000 / parsed.fps })
+    });
+    assert.match(receiver.els['calibration-result'].textContent, /Żaden profil.*bez luk/);
+    assert.match(receiver.els['calibration-coverage'].textContent, /6\/6/);
+    assert.equal(receiver.els['calibration-results'].children.length, 6);
+    assert.ok(receiver.els['calibration-results'].children.every(row => row.dataset.quality === 'warning' && row.dataset.best === 'false'));
+    assert.equal(receiver.els['show-calibration-feedback'].hidden, true);
+    receiver.els['show-calibration-feedback'].click(); assert.equal(receiver.display('feedback-canvas'), null);
+    assert.equal(receiver.telemetry.snapshot().transfer, null); assert.equal(receiver.els['download-file'].disabled, true);
+  } finally { sender.close(); receiver.close(); }
+});
+
+test('complete calibration images show packet coverage but cannot be presented as a camera speed recommendation', async () => {
+  const h = harness(); let trial;
+  try {
+    trial = h.context.WGCalibration.create({ grid: { columns: 1, rows: 1 } });
+    h.els['decode-tab'].click();
+    for (let sequence = 0; sequence < 8; sequence++) {
+      h.upload(trial.frame(0, sequence)); await h.wait(() => !h.els['choose-image'].disabled);
+    }
+    h.upload(trial.endFrame()); await h.wait(() => !h.els['choose-image'].disabled);
+    assert.match(h.els['calibration-result'].textContent, /komplet paczek/);
+    assert.match(h.els['calibration-coverage'].textContent, /z obrazów.*nową próbę kamerą/);
+    assert.equal(h.els['calibration-results'].children[0].dataset.quality, 'good');
+    assert.doesNotMatch(h.els['calibration-results'].children[0].children[1].textContent, /B\/s/);
+    assert.equal(h.els['show-calibration-feedback'].hidden, true); assert.equal(h.cameraConstraints.length, 0);
+    h.els['show-calibration-feedback'].click(); assert.equal(h.display('feedback-canvas'), null);
+  } finally { trial?.dispose(); h.close(); }
 });
 
 test('late asynchronous encoding holds the visible pair and cannot skip packets or repaint after pause and reset', async () => {
@@ -920,24 +1121,18 @@ test('extended calibration displays ten profiles and applies the measured 20 Hz 
     h.change('qr-layout', 'dual'); h.change('calibration-range', 'fast');
     h.els['series-sample'].click(); await h.wait(() => !h.els['choose-file'].disabled);
     const old = h.transfers.at(-1), observer = h.context.WGCalibration.createObserver();
-    const started = h.now; h.els['start-calibration'].click(); await h.flush();
-    assert.match(h.els['calibration-status'].textContent, /40 s/);
-    for (let index = 0; index < 10; index++) {
-      const parsed = h.context.WGCalibration.parse(h.display());
-      assert.equal(parsed.version, 2); assert.equal(parsed.index, index);
-      if (index === 9) for (let step = 0; step < 3; step++) {
-        if (step) await h.tick('tickCalibration');
-        const pair = h.pair();
-        assert.equal(h.context.WGCalibration.parse(pair[0]).sequence, step * 2);
-        for (const bytes of pair) observer.accept(bytes, h.now);
+    await openCalibration(h);
+    assert.match(h.els['calibration-duration'].textContent, /50 s/);
+    await measureCalibration(h, {
+      profileCount: 10,
+      steps: (profile, index) => index === 9 ? Array.from({ length: 80 }, (_, step) => step) : [],
+      onPackets(packets, parsed) {
+        assert.equal(parsed.version, 3);
+        for (const bytes of packets) observer.accept(bytes, h.now);
       }
-      const timer = [...h.timers.values()].find(item => item.fn.name === 'tickCalibration');
-      assert.ok(timer);
-      h.now = started + (index + 1) * 4000 - timer.delay;
-      await h.tick('tickCalibration');
-    }
-    observer.accept(h.display(), h.now);
+    });
     assert.equal(observer.state.best.fps, 20); assert.equal(observer.state.best.chunkBytes, 600);
+    assert.equal(observer.state.best.samples, 160); assert.equal(observer.state.best.missing, 0);
     h.upload(observer.createFeedback(), true); await h.wait(() => h.transfers.length === 2 && !h.els['choose-file'].disabled);
     const transfer = h.transfers.at(-1); assert.notEqual(transfer.id, old.id); assert.equal(transfer.chunkBytes, 600);
     assert.equal(h.rate(), 20); assert.equal(h.els['estimate-twenty-cell'].classList.contains('is-selected'), true);
@@ -956,18 +1151,111 @@ test('calibration discards a missed encoding slot and cannot repaint after the t
     h.change('qr-layout', 'dual'); h.els['series-sample'].click(); await h.wait(() => !h.els['choose-file'].disabled);
     const initial = h.pair(); h.deferEncoding = true; h.els['start-calibration'].click();
     await h.wait(() => h.encoderJobs.at(-1)?.ready && h.encoderJobs.at(-1)?.release);
-    const late = h.encoderJobs.at(-1); h.now += 550; h.deferEncoding = false; late.release(); await h.flush();
-    assert.deepEqual(h.pair(), initial); assert.ok(late.matrices.every(matrix => matrix.data.every(value => value === 0)));
-    await h.tick('tickCalibration');
-    assert.equal(h.context.WGCalibration.parse(h.display()).sequence, 2);
-    const current = h.pair(); h.deferEncoding = true;
+    const alignment = h.encoderJobs.at(-1); h.now += 550; h.deferEncoding = false; alignment.release(); await h.flush();
+    assert.equal(h.context.WGCalibration.parse(h.display()).alignment, true,
+      'Static alignment remains valid even when preparation takes longer than one measured display slot');
+    assert.ok(alignment.matrices.every(matrix => matrix.data.some(value => value !== 0)));
+    h.els['begin-calibration'].click(); await h.flush();
+    h.deferEncoding = true;
+    const missed = h.tick('tickCalibration'); await h.wait(() => h.encoderJobs.at(-1)?.ready && h.encoderJobs.at(-1)?.release);
+    const visible = h.grid(); assert.equal(h.context.WGCalibration.parse(h.display()).sequence, 0);
+    const late = h.encoderJobs.at(-1); h.now += 550; h.deferEncoding = false; late.release(); await missed; await h.flush();
+    assert.deepEqual(h.grid(), visible); assert.ok(late.matrices.every(matrix => matrix.data.every(value => value === 0)));
+    await h.tick('tickCalibration'); await h.flush();
+    assert.equal(h.context.WGCalibration.parse(h.display()).sequence, 4, 'The late slot is omitted instead of shown as a short catch-up flash');
+    h.deferEncoding = true;
     const next = h.tick('tickCalibration'); await h.wait(() => h.encoderJobs.at(-1)?.ready && h.encoderJobs.at(-1)?.release);
     const cancelled = h.encoderJobs.at(-1); h.els['stop-calibration'].click();
     h.deferEncoding = false; cancelled.release(); await next; await h.flush();
-    assert.deepEqual(h.pair(), current); assert.equal(h.els['stop-calibration'].hidden, true);
+    assert.deepEqual(h.pair(), initial, 'Stopping a trial restores the original paused file view');
+    assert.equal(h.els['stop-calibration'].hidden, true);
     assert.equal(h.els['animation-toggle'].disabled, false); assert.ok(cancelled.matrices.every(matrix => matrix.data.every(value => value === 0)));
     assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tickCalibration'));
   } finally { h.close(); }
+});
+
+test('calibration prefetch gives 20 Hz samples their full 50 ms display slots despite 35 ms encoding', async () => {
+  const h = harness();
+  try {
+    h.change('calibration-range', 'fast'); h.els['series-sample'].click();
+    await h.wait(() => !h.els['choose-file'].disabled);
+    const initial = h.grid(); await openCalibration(h);
+    const started = h.now; h.els['begin-calibration'].click(); await h.flush();
+    await calibrationAt(h, started + 9 * 5000);
+    assert.equal(h.context.WGCalibration.parse(h.display()).alignment, true);
+    h.deferEncoding = true;
+    const paints = h.rendered.length;
+    for (let step = 0; step < 5; step++) {
+      await h.tick('tickCalibration', { flush: false });
+      const parsed = h.context.WGCalibration.parse(h.display());
+      assert.equal(parsed.index, 9); assert.equal(parsed.alignment, false); assert.equal(parsed.step, step);
+      assert.equal(h.now, started + 9 * 5000 + 1000 + step * 50);
+      await h.wait(() => h.encoderJobs.at(-1)?.ready && h.encoderJobs.at(-1)?.release);
+      const future = h.encoderJobs.at(-1), visible = h.grid(), count = h.rendered.length;
+      h.now += 35; future.release(); await h.flush();
+      assert.deepEqual(h.grid(), visible); assert.equal(h.rendered.length, count,
+        'Finishing a future matrix must not replace the current QR before its display boundary');
+    }
+    const shown = h.rendered.slice(paints).filter(paint => paint.canvas === h.els['qr-canvas']);
+    assert.equal(shown.length, 5);
+    assert.deepEqual(shown.map(paint => paint.at), [0, 1, 2, 3, 4].map(step => started + 46000 + step * 50));
+    assert.equal(h.maxActiveEncodes, 1, 'Lookahead must keep one encoder request in flight');
+    const prepared = h.encoderJobs.at(-1); assert.ok(prepared.matrices.some(matrix => matrix.data.some(Boolean)));
+    h.els['stop-calibration'].click(); h.deferEncoding = false; await h.flush();
+    assert.deepEqual(h.grid(), initial); assert.ok(prepared.matrices.every(matrix => matrix.data.every(value => value === 0)));
+  } finally { h.close(); }
+});
+
+test('closing the QR view, changing tabs and hiding the page cancel both pending alignment and prepared measurement', async t => {
+  for (const phase of ['alignment-pending', 'measurement-prepared']) {
+    for (const action of ['close-view', 'change-tab', 'hide-page']) await t.test(`${phase}: ${action}`, async () => {
+      const h = harness();
+      try {
+        h.change('qr-columns', '2'); h.change('qr-rows', '2'); h.els['series-sample'].click();
+        await h.wait(() => !h.els['choose-file'].disabled); const initial = h.grid();
+        if (phase === 'alignment-pending') {
+          h.deferEncoding = true; h.els['start-calibration'].click();
+          await h.wait(() => h.encoderJobs.at(-1)?.ready && h.encoderJobs.at(-1)?.release);
+          assert.equal(h.display(), null, 'File content is cleared while synthetic alignment is being prepared');
+        } else {
+          await openCalibration(h); h.els['begin-calibration'].click(); await h.flush();
+          assert.equal(h.context.WGCalibration.parse(h.display()).alignment, true);
+          assert.ok(h.encoderJobs.at(-1).matrices.some(matrix => matrix.data.some(Boolean)));
+        }
+        assert.equal(h.document.body.classList.contains('qr-expanded'), true);
+        if (action === 'close-view') h.els['close-expanded'].click();
+        else if (action === 'change-tab') h.els['decode-tab'].click();
+        else { h.document.hidden = true; h.dispatchWindow('visibilitychange'); }
+        assert.equal(h.els['begin-calibration'].hidden, true); assert.equal(h.els['stop-calibration'].hidden, true);
+        assert.equal(h.document.body.classList.contains('qr-calibrating'), false);
+        assert.equal(h.els['animation-toggle'].getAttribute('aria-pressed'), 'false');
+        const count = h.rendered.length;
+        h.deferEncoding = false; for (const job of h.encoderJobs) job.release?.(); await h.flush();
+        assert.equal(h.rendered.length, count, 'A cancelled preparation cannot paint into the restored file view');
+        assert.deepEqual(h.grid(), initial);
+        const trialJobs = h.encoderJobs.filter(job => h.context.WGCalibration.isFrame(job.inputs[0]));
+        assert.ok(trialJobs.length > 0);
+        assert.ok(trialJobs.every(job => job.matrices.every(matrix => matrix.data.every(value => value === 0))));
+        assert.ok([...h.timers.values()].every(timer => timer.fn.name !== 'tickCalibration'));
+      } finally { h.close(); }
+    });
+  }
+});
+
+test('a late camera calibration decode cannot change the selected grid after receiver reset', async () => {
+  const h = harness(); let trial;
+  try {
+    trial = h.context.WGCalibration.create({ grid: { columns: 2, rows: 2 } });
+    h.els['decode-tab'].click(); h.els['start-camera'].click(); await h.wait(() => h.videoCallbacks.size === 1);
+    h.deferScans = true;
+    const pending = h.fireFrame('camera-video', trial.alignmentFrame()); await h.wait(() => h.scanJobs.length === 1);
+    h.els['reset-receiver'].click(); h.change('scan-columns', '3');
+    h.deferScans = false; h.scanJobs[0].release(); await pending; await h.micro();
+    assert.equal(h.els['scan-columns'].value, '3'); assert.equal(h.els['scan-rows'].value, '1');
+    assert.equal(h.els['calibration-panel'].hidden, true); assert.equal(h.els['calibration-alignment'].hidden, true);
+    assert.equal(h.scannerGridChanges.length, 0); assert.equal(h.videoCallbacks.size, 0);
+    assert.equal(h.telemetry.snapshot().transfer, null); assert.equal(h.els['download-file'].disabled, true);
+  } finally { trial?.dispose(); h.close(); }
 });
 
 test('large sender reads bounded slices, survives tab changes and calibrates the actual v4 envelope size', async () => {
@@ -989,6 +1277,7 @@ test('large sender reads bounded slices, survives tab changes and calibrates the
     assert.equal(h.largeSegments.at(-1).segmentIndex, 1); assert.throws(() => first.frame(0), error => error.code === 'TRANSFER_DISPOSED');
     h.els['start-calibration'].click(); await h.flush();
     const parsed = h.context.WGCalibration.parse(h.display());
+    assert.equal(parsed.version, 3); assert.equal(parsed.alignment, true);
     assert.equal(parsed.large, true); assert.equal(h.display().length, 476); assert.equal(parsed.chunkBytes, 384);
     h.els['stop-calibration'].click(); assert.equal(input.audit.fullReads, 0);
   } finally { h.close(); }

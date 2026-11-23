@@ -81,7 +81,7 @@ class LocalEncoderWorker {
   constructor(url) {
     assert.equal(url, workerUrl);
     const script = new URL('../../assets/qr-encoder-worker.js', import.meta.url).href;
-    this.audits = []; this.auditWaiters = [];
+    this.audits = []; this.auditWaiters = []; this.inputCopies = [];
     threadWorkers.push(this);
     this.thread = new NodeWorker(`
       const { parentPort } = require('node:worker_threads');
@@ -116,7 +116,10 @@ class LocalEncoderWorker {
     });
     this.thread.on('error', error => this.onerror?.({ error, preventDefault() {} }));
   }
-  postMessage(message) { this.thread.postMessage(message); }
+  postMessage(message) {
+    this.inputCopies.push(...message.frames.map(frame => frame.bytes));
+    this.thread.postMessage(message);
+  }
   terminate() { void this.thread.terminate(); }
   async audit(index) {
     while (!this.audits[index]) await new Promise(resolve => this.auditWaiters.push(resolve));
@@ -145,17 +148,57 @@ test('actual worker generates byte-exact matrices in order, transfers their buff
   } finally { encoder.dispose(); }
 });
 
+test('actual worker encodes all nine grid slots with mixed ECC, clears both owned input copies, and rejects ten slots',
+  { timeout: 10000 }, async () => {
+  const before = threadWorkers.length;
+  let fallbackCalls = 0;
+  const encoder = createEncoder({ Worker: LocalEncoderWorker, encode() { fallbackCalls++; throw new Error('Unexpected fallback'); } });
+  try {
+    const storage = Array.from({ length: 9 }, (_, index) => data(720, index + 10));
+    const frames = storage.map((bytes, index) => ({
+      bytes: bytes.subarray(index + 3, index + 3 + (index % 2 ? 600 : 384)),
+      errorCorrectionLevel: index % 3 === 0 ? 'L' : 'M'
+    }));
+    const expected = frames.map(frame => frame.bytes.slice());
+    await assert.rejects(encoder.encodeBatch([...frames, frames[0]]), { code: 'INVALID_INPUT' });
+    assert.equal(threadWorkers.length, before, 'Ten valid payloads must be rejected before a worker starts.');
+    const pending = encoder.encodeBatch(frames);
+    storage.forEach(bytes => bytes.fill(0));
+    const matrices = await pending;
+    assert.equal(matrices.length, 9);
+    for (let index = 0; index < matrices.length; index++) {
+      assertRoundTrip(matrices[index], expected[index], frames[index].errorCorrectionLevel);
+    }
+    const worker = threadWorkers[before];
+    assert.equal(worker.inputCopies.length, 9);
+    assert.ok(worker.inputCopies.every(bytes => bytes.every(byte => byte === 0)), 'The main-thread retry copies must be cleared.');
+    assert.deepEqual(await worker.audit(0), { cleared: true, transferred: 9, detached: true });
+    assert.equal(fallbackCalls, 0);
+
+    // Exercise the worker's own bound as well, bypassing the already-tested facade.
+    const oversized = Array.from({ length: 10 }, (_, index) => ({ bytes: data(60, index), errorCorrectionLevel: 'M' }));
+    const previousHandler = worker.onmessage;
+    try {
+      const rejected = new Promise(resolve => { worker.onmessage = event => resolve(event.data); });
+      worker.postMessage({ id: 99, frames: oversized });
+      assert.deepEqual(await rejected, { id: 99, failed: true });
+      assert.deepEqual(await worker.audit(1), { cleared: true, transferred: 0, detached: true });
+    } finally { worker.onmessage = previousHandler; }
+  } finally { encoder.dispose(); }
+});
+
 test('one pending batch is enforced; reset/dispose reject it and stale replies cannot affect a replacement', async () => {
   const workers = []; let fallbacks = 0;
   const encoder = createEncoder({ Worker: silentWorkers(workers), encode(...args) { fallbacks++; return WGQR.encodeBytes(...args); } });
   try {
     const source = data(128);
-    const pending = encoder.encodeBatch([{ bytes: source }]);
+    const pending = encoder.encodeBatch(Array.from({ length: 9 }, (_, index) => ({ bytes: data(128, index + 1) })));
     const cancelled = assert.rejects(pending, error => error.name === 'AbortError' && error.code === 'ENCODER_RESET');
     await assert.rejects(encoder.encodeBatch([{ bytes: source }]), { code: 'ENCODER_BUSY' });
     assert.equal(workers[0].messages.length, 1);
     encoder.reset(); await cancelled;
-    assert.equal(workers[0].terminated, true); assert.ok(workers[0].inputCopies.every(bytes => bytes.every(byte => byte === 0)));
+    assert.equal(workers[0].terminated, true); assert.equal(workers[0].inputCopies.length, 9);
+    assert.ok(workers[0].inputCopies.every(bytes => bytes.every(byte => byte === 0)));
     const next = encoder.encodeBatch([{ bytes: source }]);
     const stale = WGQR.encodeBytes(source);
     workers[0].reply([stale]); workers[0].onerror({ preventDefault() {} });
@@ -267,7 +310,8 @@ test('invalid requests are rejected before worker creation and never occupy the 
   const workers = []; const encoder = createEncoder({ Worker: silentWorkers(workers) });
   try {
     const cases = [
-      [null, 'INVALID_INPUT'], [[], 'INVALID_INPUT'], [[{}, {}, {}], 'INVALID_INPUT'],
+      [null, 'INVALID_INPUT'], [[], 'INVALID_INPUT'], [[{}], 'INVALID_INPUT'],
+      [Array.from({ length: 10 }, () => ({ bytes: data(20) })), 'INVALID_INPUT'],
       [[{ bytes: new Uint8ClampedArray(8) }], 'INVALID_INPUT'], [[{ bytes: new Uint8Array() }], 'EMPTY_INPUT'],
       [[{ bytes: data(30), errorCorrectionLevel: 'H' }], 'INVALID_OPTIONS'],
       [[{ bytes: new Uint8Array(2332), errorCorrectionLevel: 'M' }], 'INPUT_TOO_LARGE'],
